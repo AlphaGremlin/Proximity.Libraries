@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+# SharpDevelop 4.2.2.8818
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Gui", "Source\Proximity.Gui\Proximity.Gui.csproj", "{F5311886-C6D6-443F-882B-BED1FD77E73A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Gui.WinForms", "Source\Proximity.Gui.WinForms\Proximity.Gui.WinForms.csproj", "{538BA082-F967-4591-B656-F958F1AEFFC4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Gui.GtkSharp", "Source\Proximity.Gui.GtkSharp\Proximity.Gui.GtkSharp.csproj", "{BCFF6550-9E25-4350-A9A9-EDE6CC7B9AA4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Gui.Wpf", "Source\Proximity.Gui.Wpf\Proximity.Gui.Wpf.csproj", "{F62A91AA-5E83-4BAA-838E-2A609C1321C2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F5311886-C6D6-443F-882B-BED1FD77E73A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F5311886-C6D6-443F-882B-BED1FD77E73A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F5311886-C6D6-443F-882B-BED1FD77E73A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F5311886-C6D6-443F-882B-BED1FD77E73A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{538BA082-F967-4591-B656-F958F1AEFFC4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{538BA082-F967-4591-B656-F958F1AEFFC4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{538BA082-F967-4591-B656-F958F1AEFFC4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{538BA082-F967-4591-B656-F958F1AEFFC4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BCFF6550-9E25-4350-A9A9-EDE6CC7B9AA4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BCFF6550-9E25-4350-A9A9-EDE6CC7B9AA4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BCFF6550-9E25-4350-A9A9-EDE6CC7B9AA4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BCFF6550-9E25-4350-A9A9-EDE6CC7B9AA4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F62A91AA-5E83-4BAA-838E-2A609C1321C2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F62A91AA-5E83-4BAA-838E-2A609C1321C2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F62A91AA-5E83-4BAA-838E-2A609C1321C2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F62A91AA-5E83-4BAA-838E-2A609C1321C2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+	EndGlobalSection
+EndGlobal

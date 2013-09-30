@@ -1,0 +1,10 @@
+*/obj
+*.tar.bz2
+*.pdb
+*.lnk
+*.suo
+Installer/NeoJournal.exe
+Release
+PocketPC
+.svn
+*/NDepend

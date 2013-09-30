@@ -1,0 +1,116 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <ProjectGuid>{538BA082-F967-4591-B656-F958F1AEFFC4}</ProjectGuid>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Proximity.Gui.WinForms</RootNamespace>
+    <AssemblyName>Proximity.Gui.WinForms</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <SourceAnalysisOverrideSettingsFile>C:\Documents and Settings\Administrator\Application Data\ICSharpCode/SharpDevelop3.0\Settings.SourceAnalysis</SourceAnalysisOverrideSettingsFile>
+    <AllowUnsafeBlocks>False</AllowUnsafeBlocks>
+    <NoStdLib>False</NoStdLib>
+    <WarningLevel>4</WarningLevel>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <ProductVersion>9.0.21022</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <SignAssembly>True</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\Proximity.Gui.snk</AssemblyOriginatorKeyFile>
+    <DelaySign>False</DelaySign>
+    <AssemblyOriginatorKeyMode>File</AssemblyOriginatorKeyMode>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <OutputPath>..\..\Toolkits\</OutputPath>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>Full</DebugType>
+    <Optimize>False</Optimize>
+    <CheckForOverflowUnderflow>True</CheckForOverflowUnderflow>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <OutputPath>..\..\Toolkits\</OutputPath>
+    <DebugSymbols>false</DebugSymbols>
+    <DebugType>None</DebugType>
+    <Optimize>True</Optimize>
+    <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
+    <DefineConstants>TRACE</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Platform)' == 'AnyCPU' ">
+    <RegisterForComInterop>False</RegisterForComInterop>
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
+    <BaseAddress>4194304</BaseAddress>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <FileAlignment>4096</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <WarningLevel>4</WarningLevel>
+    <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>none</DebugType>
+    <Optimize>true</Optimize>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <Reference Include="Proximity.Utility">
+      <HintPath>..\..\..\Proximity.Utility\Proximity.Utility.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Data\Controls\WinButtonBase.cs" />
+    <Compile Include="Data\Controls\WinDateTimePicker.cs" />
+    <Compile Include="Data\Controls\WinGroupBox.cs" />
+    <Compile Include="Data\Controls\WinLinkLabel.cs" />
+    <Compile Include="Data\Controls\WinListControl.cs" />
+    <Compile Include="Data\Controls\WinListView.cs" />
+    <Compile Include="Data\Controls\WinPanelControl.cs" />
+    <Compile Include="Data\Controls\WinRichTextBox.cs" />
+    <Compile Include="Data\Controls\WinTabControl.cs" />
+    <Compile Include="Data\Controls\WinTextBoxBase.cs" />
+    <Compile Include="Data\Controls\WinUpDownBase.cs" />
+    <Compile Include="Data\WinBoundControl.cs" />
+    <Compile Include="Data\WinBoundListControl.cs" />
+    <Compile Include="Data\WinMonitor.cs" />
+    <Compile Include="IWinController.cs" />
+    <Compile Include="View\BindingMode.cs" />
+    <Compile Include="View\BindingDef.cs" />
+    <Compile Include="Data\WinBindingSource.cs" />
+    <Compile Include="Data\WinCommand.cs" />
+    <Compile Include="Handlers\WinToolbar.cs" />
+    <Compile Include="Handlers\WinToolItem.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ExceptionForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ExceptionForm.Designer.cs">
+      <DependentUpon>ExceptionForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="View\ViewDef.cs" />
+    <Compile Include="View\ControlDef.cs" />
+    <Compile Include="WinFormController.cs" />
+    <Compile Include="WinProvider.cs" />
+    <Compile Include="WinToolkit.cs" />
+    <Compile Include="WinChildController.cs" />
+    <Compile Include="WinAssistant.cs" />
+    <Compile Include="View\LocalDef.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Proximity.Gui\Proximity.Gui.csproj">
+      <Project>{F5311886-C6D6-443F-882B-BED1FD77E73A}</Project>
+      <Name>Proximity.Gui</Name>
+      <Private>False</Private>
+    </ProjectReference>
+  </ItemGroup>
+</Project>
