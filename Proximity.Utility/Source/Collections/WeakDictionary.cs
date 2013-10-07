@@ -130,6 +130,7 @@ namespace Proximity.Utility.Collections
 		/// <param name="key">The key to retrieve the value for</param>
 		/// <param name="value">Receives the value associated with the key, or null if the key does not exist or the value is no longer available</param>
 		/// <returns>True if the key was found and the value was available, otherwise False</returns>
+		/// <remarks>Does not remove the key if the value is no longer available</remarks>
 		public bool TryGetValue(TKey key, out TValue value)
 		{	//****************************************
 			GCHandle MyHandle;
@@ -149,23 +150,16 @@ namespace Proximity.Utility.Collections
 			if (value != null)
 				return true;
 			
-			// No, free the handle and remove the expired value
-			MyHandle.Free();
-			
-			_Dictionary.Remove(key);
-			
 			return false;
 		}
 		
 		/// <summary>
-		/// Returns an enumerator that iterates through the dictionary
+		/// Compacts the dictionary
 		/// </summary>
-		/// <returns>An enumerator that can be used to iterate through the collection</returns>
-		/// <remarks>Will perform a compaction</remarks>
-		public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
+		/// <returns>A list of keys where the values have expired</returns>
+		public IEnumerable<TKey> Compact()
 		{	//****************************************
-			List<TKey> ExpiredKeys = null;
-			var Values = new List<KeyValuePair<TKey, TValue>>(_Dictionary.Count);
+			List<TKey> ExpiredKeys = new List<TKey>();
 			//****************************************
 			
 			// Locate all the items in the dictionary that are still valid
@@ -173,28 +167,29 @@ namespace Proximity.Utility.Collections
 			{
 				var MyValue = (TValue)Pair.Value.Target;
 				
-				if (MyValue == null)
-				{
-					if (ExpiredKeys == null)
-						ExpiredKeys = new List<TKey>();
-					
-					// Add this key to the list of expired keys
-					Pair.Value.Free();
-					
-					ExpiredKeys.Add(Pair.Key);
-					
+				if (MyValue != null)
 					continue;
-				}
+				
+				// Add this key to the list of expired keys
+				Pair.Value.Free();
+				
+				ExpiredKeys.Add(Pair.Key);
 			}
 			
 			// If we found any expired keys, remove them
-			if (ExpiredKeys != null)
-			{
-				foreach(var MyKey in ExpiredKeys)
-					_Dictionary.Remove(MyKey);
-			}
+			foreach(var MyKey in ExpiredKeys)
+				_Dictionary.Remove(MyKey);
 			
-			return Values.GetEnumerator();
+			return ExpiredKeys;
+		}
+		
+		/// <summary>
+		/// Returns an enumerator that iterates through the live values in the dictionary
+		/// </summary>
+		/// <returns>An enumerator that can be used to iterate through the collection</returns>
+		public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
+		{
+			return GetContents().GetEnumerator();
 		}
 		
 		//****************************************
@@ -209,6 +204,13 @@ namespace Proximity.Utility.Collections
 			return GCHandle.Alloc(item, GCHandleType.Weak);
 		}
 		
+		private IEnumerable<KeyValuePair<TKey, TValue>> GetContents()
+		{
+			return _Dictionary
+				.Select((value) => new KeyValuePair<TKey, TValue>(value.Key, (TValue)value.Value.Target))
+				.Where((pair) => pair.Value != null);
+		}
+		
 		//****************************************
 		
 		/// <summary>
@@ -216,6 +218,7 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="key">The key of the value to get or set</param>
 		/// <exception cref="KeyNotFoundException">Thrown if the key is not found, or the value is no longer available</exception>
+		/// <remarks>Returns null if the value has expired</remarks>
 		public TValue this[TKey key]
 		{
 			get
@@ -226,16 +229,8 @@ namespace Proximity.Utility.Collections
 				// Does the item exist in the dictionary?
 				if (_Dictionary.TryGetValue(key, out MyHandle))
 				{
-					// Yes, is the reference valid?
-					var MyValue = (TValue)MyHandle.Target;
-					
-					if (MyValue != null)
-						return MyValue;
-					
-					// No, free the handle and remove the expired value
-					MyHandle.Free();
-					
-					_Dictionary.Remove(key);
+					// Yes, return the reference whether valid or not
+					return (TValue)MyHandle.Target;
 				}
 				
 				throw new KeyNotFoundException();
@@ -258,24 +253,16 @@ namespace Proximity.Utility.Collections
 		}
 		
 		/// <summary>
-		/// Gets a list of strong references to the key/value pairs in the dictionary
+		/// Gets a list of strong references to the current key/value pairs in the dictionary
 		/// </summary>
-		/// <remarks>Does not perform a compaction</remarks>
 		public IList<KeyValuePair<TKey, TValue>> Contents
 		{
-			get
-			{
-				return _Dictionary
-					.Select((value) => new KeyValuePair<TKey, TValue>(value.Key, (TValue)value.Value.Target))
-					.Where((pair) => pair.Value != null)
-					.ToList();
-			}
+			get { return GetContents().ToArray(); }
 		}
 		
 		/// <summary>
 		/// Gets a list of strong references to the values in the dictionary
 		/// </summary>
-		/// <remarks>Does not perform a compaction</remarks>
 		public IList<TValue> Values
 		{
 			get
