@@ -69,6 +69,55 @@ namespace Proximity.Utility
 			return new EmitHelper(new DynamicMethod(name, result, arguments, owner, true));
 		}
 		
+		/// <summary>
+		/// Finds the method matching the given parameters, searching any interfaces implemented by the type as well
+		/// </summary>
+		/// <param name="targetType">The type being targeted</param>
+		/// <param name="methodName">The name of the method</param>
+		/// <param name="parameters"></param>
+		/// <returns></returns>
+		public static MethodInfo GetMethod(Type targetType, string methodName, params Type[] parameters)
+		{
+			MethodInfo MyMethod = targetType.GetMethod(methodName, parameters);
+			
+			if (MyMethod == null && targetType.IsInterface)
+			{
+				foreach(Type MyType in targetType.GetInterfaces())
+				{
+					MyMethod = GetMethod(MyType, methodName, parameters);
+				
+					if (MyMethod != null)
+						return MyMethod;
+				}
+			}
+			
+			return MyMethod;
+		}
+		
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="targetType"></param>
+		/// <param name="fieldName"></param>
+		/// <returns></returns>
+		public static FieldInfo GetField(Type targetType, string fieldName)
+		{
+			FieldInfo MyField = targetType.GetField(fieldName);
+			
+			if (MyField == null && targetType.IsInterface)
+			{
+				foreach(Type MyType in targetType.GetInterfaces())
+				{
+					MyField = GetField(MyType, fieldName);
+				
+					if (MyField != null)
+						return MyField;
+				}		
+			}
+			
+			return MyField;
+		}
+		
 		//****************************************
 		// Exception Handling
 		
@@ -94,6 +143,18 @@ namespace Proximity.Utility
 		public Label BeginTry()
 		{
 			return _Generator.BeginExceptionBlock();
+		}
+		
+		/// <summary>
+		/// Begins a Try Block
+		/// </summary>
+		/// <param name="label">A variable to receive the Label Builder</param>
+		/// <returns>Self</returns>
+		public EmitHelper BeginTry(out Label label)
+		{
+			label = _Generator.BeginExceptionBlock();
+			
+			return this;
 		}
 		
 		/// <summary>
@@ -219,6 +280,43 @@ namespace Proximity.Utility
 		}
 		
 		/// <summary>
+		/// Declares a Local Variable
+		/// </summary>
+		/// <param name="localType">The Type of the Local Variable</param>
+		/// <param name="local">A variable to receive the Local Variable Builder</param>
+		/// <returns>Self</returns>
+		public EmitHelper DeclareLocal(Type localType, out LocalBuilder local)
+		{
+			local = _Generator.DeclareLocal(localType);
+			
+			return this;
+		}
+		
+		/// <summary>
+		/// Declares a named Local Variable if it doesn't exist
+		/// </summary>
+		/// <param name="localName">The internal name of the Local Variable</param>
+		/// <param name="localType">The Type of the Local Variable</param>
+		/// <returns>Self</returns>
+		/// <remarks>Checks that the local is of the correct type if defined</remarks>
+		public EmitHelper EnsureLocal(string localName, Type localType)
+		{
+			LocalBuilder MyBuilder;
+			
+			if (_Locals.TryGetValue(localName, out MyBuilder))
+			{
+				if (MyBuilder.LocalType != localType)
+					throw new ArrayTypeMismatchException("Local is already declared with a different type");
+			}
+			else
+			{
+				_Locals.Add(localName, _Generator.DeclareLocal(localType));
+			}
+			
+			return this;
+		}
+		
+		/// <summary>
 		/// Returns whether a named Local Variable is defined
 		/// </summary>
 		/// <param name="localName">The internal name of the Local Variable</param>
@@ -248,6 +346,18 @@ namespace Proximity.Utility
 		public Label DeclareLabel()
 		{
 			return _Generator.DefineLabel();
+		}
+		
+		/// <summary>
+		/// Declares a Label
+		/// </summary>
+		/// <param name="label">A variable to receive the Label Builder</param>
+		/// <returns>Self</returns>
+		public EmitHelper DeclareLabel(out Label label)
+		{
+			label = _Generator.DefineLabel();
+			
+			return this;
 		}
 		
 		/// <summary>
@@ -1430,6 +1540,75 @@ namespace Proximity.Utility
 		}
 		
 		/// <summary>
+		/// Emits an instruction to call a method, detecting whether to use Call or Callvirt
+		/// </summary>
+		/// <param name="targetMethod">The target method</param>
+		/// <returns>Self</returns>
+		public EmitHelper CallSmart(MethodInfo targetMethod)
+		{
+			_Generator.Emit(targetMethod.IsVirtual ? OpCodes.Callvirt : OpCodes.Call, targetMethod);
+			
+			return this;
+		}
+		
+		/// <summary>
+		/// Emits an instruction to call a method with variable arguments, detecting whether to use Call or Callvirt
+		/// </summary>
+		/// <param name="targetMethod">The target method</param>
+		/// <param name="optionalParameterTypes">The types of each variable argument</param>
+		/// <returns>Self</returns>
+		public EmitHelper CallSmart(MethodInfo targetMethod, Type[] optionalParameterTypes)
+		{
+			_Generator.EmitCall(targetMethod.IsVirtual ? OpCodes.Callvirt : OpCodes.Call, targetMethod, optionalParameterTypes);
+			
+			return this;
+		}
+		
+		/// <summary>
+		/// Emits an instruction to call a method, detecting whether to use Call or Callvirt
+		/// </summary>
+		/// <param name="targetType">The type owning the method to call</param>
+		/// <param name="targetName">The name of the method to call</param>
+		/// <param name="optionalParameterTypes">The types of each argument on the method</param>
+		/// <returns>Self</returns>
+		public EmitHelper CallSmart(Type targetType, string targetName, params Type[] optionalParameterTypes)
+		{
+			MethodInfo TargetMethod = GetMethod(targetType, targetName, optionalParameterTypes);
+
+			if (TargetMethod == null)
+				throw new ArgumentException(string.Format("{0}.{1} does not exist, or does not have the correct parameters", targetType.FullName, targetName));
+
+			_Generator.Emit(TargetMethod.IsVirtual ? OpCodes.Callvirt : OpCodes.Call, TargetMethod);
+			
+			return this;
+		}
+		
+		/// <summary>
+		/// Emits an instruction to call a method, detecting whether to use Call or Callvirt
+		/// </summary>
+		/// <param name="targetType">The type owning the method to call</param>
+		/// <param name="targetName">The name of the method to call</param>
+		/// <param name="flags">The appropriate binding flags for the method</param>
+		/// <param name="optionalParameterTypes">The types of each argument on the method</param>
+		/// <returns>Self</returns>
+		public EmitHelper CallSmart(Type targetType, string targetName, BindingFlags flags, params Type[] optionalParameterTypes)
+		{
+			MethodInfo TargetMethod;
+			
+			if (optionalParameterTypes == null)
+				TargetMethod = targetType.GetMethod(targetName, flags);
+			else
+				TargetMethod = targetType.GetMethod(targetName, flags, Type.DefaultBinder, optionalParameterTypes, null);
+
+			if (TargetMethod == null)
+				throw new ArgumentException(string.Format("{0}.{1} does not exist, or does not have the correct parameters", targetType.FullName, targetName));
+
+			_Generator.Emit(TargetMethod.IsVirtual ? OpCodes.Callvirt : OpCodes.Call, TargetMethod);
+			
+			return this;
+		}
+		
+		/// <summary>
 		/// Emits a constrain instruction
 		/// </summary>
 		/// <param name="targetType">The target to constrain to</param>
@@ -2409,6 +2588,20 @@ namespace Proximity.Utility
 		}
 		
 		/// <summary>
+		/// Conditionally emits a Box instruction if the given type is a value type and the condition is true
+		/// </summary>
+		/// <param name="valueType">The type to box</param>
+		/// <param name="condition">The condition result</param>
+		/// <returns>Self</returns>
+		public EmitHelper BoxIf(Type valueType, bool condition)
+		{
+			if (valueType.IsValueType && condition)
+				_Generator.Emit(OpCodes.Box, valueType);
+			
+			return this;
+		}
+		
+		/// <summary>
 		/// Emits a Castclass
 		/// </summary>
 		/// <param name="targetType">The type to cast</param>
@@ -2903,40 +3096,5 @@ namespace Proximity.Utility
 			throw new ArgumentException("Local does not exist");
 		}
 		
-		private MethodInfo GetMethod(Type targetType, string methodName, Type[] parameters)
-		{
-			MethodInfo MyMethod = targetType.GetMethod(methodName, parameters);
-			
-			if (MyMethod == null && targetType.IsInterface)
-			{
-				foreach(Type MyType in targetType.GetInterfaces())
-				{
-					MyMethod = GetMethod(MyType, methodName, parameters);
-				
-					if (MyMethod != null)
-						return MyMethod;
-				}		
-			}
-			
-			return MyMethod;
-		}
-		
-		private FieldInfo GetField(Type targetType, string fieldName)
-		{
-			FieldInfo MyField = targetType.GetField(fieldName);
-			
-			if (MyField == null && targetType.IsInterface)
-			{
-				foreach(Type MyType in targetType.GetInterfaces())
-				{
-					MyField = GetField(MyType, fieldName);
-				
-					if (MyField != null)
-						return MyField;
-				}		
-			}
-			
-			return MyField;
-		}
 	}
 }

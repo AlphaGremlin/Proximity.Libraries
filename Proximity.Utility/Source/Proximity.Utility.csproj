@@ -163,9 +163,14 @@
     <Compile Include="Logging\Outputs\XmlFileOutput.cs" />
     <Compile Include="Logging\Severity.cs" />
     <Compile Include="Logging\TraceLogEntry.cs" />
+    <Compile Include="Net\SocketAwaitable.cs" />
+    <Compile Include="Net\SocketExtensions.cs" />
     <Compile Include="OptionCodeAttribute.cs" />
     <Compile Include="Platform.cs" />
     <Compile Include="PrecisionTimer.cs" />
+    <Compile Include="Reflection\Cloning.cs" />
+    <Compile Include="Reflection\Equality.cs" />
+    <Compile Include="Reflection\TypeExtensions.cs" />
     <Compile Include="Resources\ResourceLoader.cs" />
     <Compile Include="Resources\XmlResourceManager.cs" />
     <Compile Include="Resources\XmlResourceReader.cs" />
@@ -187,6 +192,8 @@
   <ItemGroup>
     <Folder Include="Configuration" />
     <Folder Include="Events" />
+    <Folder Include="Net" />
+    <Folder Include="Reflection" />
     <Folder Include="Threading" />
   </ItemGroup>
 </Project>
