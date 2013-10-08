@@ -64,6 +64,24 @@ namespace Proximity.Utility.Net
 				throw new SocketException((int)_EventArgs.SocketError);
 		}
 		
+		/// <summary>
+		/// Performs an asynchronous operation to connect to a socket
+		/// </summary>
+		/// <param name="SocketType">The type of socket</param>
+		/// <param name="protocolType">The protocol of the socket</param>
+		/// <param name="awaitable">An awaitable around the arguments object we're using</param>
+		/// <returns>The passed in awaitable</returns>
+		/// <remarks>See <see cref="Socket.ConnectAsync(SocketType,ProtocolType,SocketAsyncEventArgs)" /> for more information</remarks>
+		public SocketAwaitable ConnectAsync(SocketType socketType, ProtocolType protocolType)
+		{
+			Reset();
+			
+			if (!Socket.ConnectAsync(socketType, protocolType, _EventArgs))
+				_IsCompleted = true;
+			
+			return this;
+		}
+		
 		//****************************************
 		
 		void INotifyCompletion.OnCompleted(Action continuation)

@@ -11,7 +11,7 @@ using System.Reflection.Emit;
 namespace Proximity.Utility.Reflection
 {
 	/// <summary>
-	/// Description of Cloning.
+	/// Provides method for performing value comparisons of objects
 	/// </summary>
 	public static class Equality<TObject> where TObject : class
 	{	//****************************************
