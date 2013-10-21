@@ -20,9 +20,8 @@ namespace Proximity.Utility.Events
 		/// Creates a new Weak Event Delegate
 		/// </summary>
 		/// <param name="eventHandler">The event handler to weakly bind to</param>
-		/// <param name="unregisterCallback">A callback to raise if the event handler becomes invalid, receiving the Weak Event Delegate to unregister</param>
 		/// <returns>A weak delegate that will call EventHandler as long as the object still exists, or <paramref name="eventHandler" /> if the target is a static object</returns>
-		public static EventHandler<TEventArgs> Create<TEventArgs>(EventHandler<TEventArgs> eventHandler, UnregisterCallback<TEventArgs> unregisterCallback) where TEventArgs : EventArgs
+		public static EventHandler<TEventArgs> Create<TEventArgs>(EventHandler<TEventArgs> eventHandler) where TEventArgs : EventArgs
 		{		//****************************************
 			Type TargetType;
 			IEventDelegate<TEventArgs> MyHandler;
@@ -33,9 +32,41 @@ namespace Proximity.Utility.Events
 			
 			TargetType = typeof(EventDelegate<,>).MakeGenericType(eventHandler.Target.GetType(), typeof(TEventArgs));
 			
-			MyHandler = (IEventDelegate<TEventArgs>)Activator.CreateInstance(TargetType, eventHandler.Target, eventHandler.Method, unregisterCallback);
+			MyHandler = (IEventDelegate<TEventArgs>)Activator.CreateInstance(TargetType, eventHandler.Target, eventHandler.Method);
 			
 			return MyHandler.Handler;
+		}
+		
+		/// <summary>
+		/// Cleans out any expired delegates from the Event
+		/// </summary>
+		/// <param name="source">The event handler delegate</param>
+		/// <param name="unregister">An action to call to remove handlers from the delegate</param>
+		/// <remarks>To ensure thread safety, the unregister delegate should take the form of <code>(action) =&gt; MyEvent -= action;</code></remarks>
+		public static void Cleanup<TEventArgs>(EventHandler<TEventArgs> source, Action<EventHandler<TEventArgs>> unregister) where TEventArgs : EventArgs
+		{	//****************************************
+			IEventDelegate<TEventArgs> MyTarget;
+			object MyTargetObject;
+			//****************************************
+			
+			if (source == null)
+				return;
+			
+			foreach(Delegate MyDelegate in source.GetInvocationList())
+			{
+				MyTarget = MyDelegate.Target as IEventDelegate<TEventArgs>;
+				
+				if (MyTarget == null) // Not a Weak Delegate (ie: static)
+					continue;
+				
+				MyTargetObject = MyTarget.Target;
+				
+				if (MyTargetObject != null) // Target object still exists
+					continue;
+				
+				// No target object, unregister the delegate
+				unregister((EventHandler<TEventArgs>)MyDelegate);
+			}
 		}
 		
 		/// <summary>
@@ -70,12 +101,7 @@ namespace Proximity.Utility.Events
 				MyTargetObject = MyTarget.Target;
 				
 				if (MyTargetObject == null)
-				{
-					// Don't bother unregistering at this point, do it only when we invoke
-					// MyTarget._UnregisterHandler.Invoke(MyTarget._EventHandler);
-					
 					continue;
-				}
 				
 				if (MyTargetObject == target.Target)
 					return (EventHandler<TEventArgs>)MyDelegate;
@@ -102,16 +128,12 @@ namespace Proximity.Utility.Events
 			
 			private GCHandle _Target;
 			private WeakEventHandler _Handler;
-			
-			private UnregisterCallback<TEventArgs> _UnregisterCallback;
 			//****************************************
 			
-			public EventDelegate(TTarget target, MethodInfo method, UnregisterCallback<TEventArgs> unregisterCallback)
+			public EventDelegate(TTarget target, MethodInfo method)
 			{
 				_Target = GCHandle.Alloc(target, GCHandleType.Weak);
 				_Handler = (WeakEventHandler)Delegate.CreateDelegate(typeof(WeakEventHandler), method);
-				
-				_UnregisterCallback = unregisterCallback;
 			}
 			
 			~EventDelegate()
@@ -128,12 +150,7 @@ namespace Proximity.Utility.Events
 				//****************************************
 				
 				if (MyTarget == null)
-				{
-					_Target.Free();
-					_UnregisterCallback(Handler);
-					
 					return;
-				}
 				
 				_Handler(MyTarget, sender, e);
 			}

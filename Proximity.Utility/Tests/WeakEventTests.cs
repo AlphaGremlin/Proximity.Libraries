@@ -80,7 +80,7 @@ namespace Proximity.Utility.Tests
 			
 			Assert.IsFalse(MyArgs.WasInvoked, "Instance Event Handler was raised");
 		}
-		
+		/*
 		[Test()]
 		public void RaiseStaticHandler()
 		{	//****************************************
@@ -164,7 +164,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(WasUnregistered, "Instance Event Handler was not unregistered");
 			Assert.IsFalse(MyArgs.WasInvoked, "Instance Event Handler was raised");
 		}
-		
+		*/
 		[Test()]
 		public void RemoveStaticEvent()
 		{	//****************************************
@@ -210,9 +210,9 @@ namespace Proximity.Utility.Tests
 			e.WasInvoked = true;
 		}
 		
-		private static EventHandler<WeakEventArgs> CreateWeak(UnregisterCallback<WeakEventArgs> callback)
+		private static EventHandler<WeakEventArgs> CreateWeak()
 		{
-			return WeakEventDelegate.Create((EventHandler<WeakEventArgs>)new WeakEventInstance().OnEventRaise, callback);
+			return WeakEventDelegate.Create((EventHandler<WeakEventArgs>)new WeakEventInstance().OnEventRaise);
 		}
 		
 		//****************************************

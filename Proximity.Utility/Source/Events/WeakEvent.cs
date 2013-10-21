@@ -10,10 +10,11 @@ namespace Proximity.Utility.Events
 	/// <summary>
 	/// Provides weakly bound, fast and type-safe events
 	/// </summary>
+	/// <remarks>This class is threadsafe, however handlers have the potential to be called a short time after removal</remarks>
 	public sealed class WeakEvent<TEventArgs> where TEventArgs : EventArgs
 	{	//****************************************
-		private EventHandler<TEventArgs> _WeakEventHandler;
-		private UnregisterCallback<TEventArgs> _UnregisterCallback;
+		private event EventHandler<TEventArgs> _WeakEventHandler;
+		private Action<EventHandler<TEventArgs>> _UnregisterCallback;
 		//****************************************
 		
 		/// <summary>
@@ -32,8 +33,9 @@ namespace Proximity.Utility.Events
 		/// <param name="eventHandler">The event handler to call weakly</param>
 		public void Add(EventHandler<TEventArgs> eventHandler)
 		{
-			//_WeakEventHandler += new WeakDelegate<TEventArgs>(eventHandler, _UnregisterCallback).GetDelegate();
-			_WeakEventHandler += WeakEventDelegate.Create(eventHandler, _UnregisterCallback);
+			WeakEventDelegate.Cleanup(_WeakEventHandler, _UnregisterCallback);
+			
+			_WeakEventHandler += WeakEventDelegate.Create(eventHandler);
 		}
 		
 		/// <summary>
@@ -42,10 +44,10 @@ namespace Proximity.Utility.Events
 		/// <param name="eventHandler">The event handler we not longer wish to call</param>
 		public void Remove(EventHandler<TEventArgs> eventHandler)
 		{	//****************************************
-			 EventHandler<TEventArgs> MyWeakHandler = WeakEventDelegate.FindHandler(_WeakEventHandler, eventHandler);
-			 //****************************************
-			 
-			 if (MyWeakHandler != null)
+			var MyWeakHandler = WeakEventDelegate.FindHandler(_WeakEventHandler, eventHandler);
+			//****************************************
+			
+			if (MyWeakHandler != null)
 				 _WeakEventHandler -= MyWeakHandler;
 		}
 		
@@ -55,9 +57,12 @@ namespace Proximity.Utility.Events
 		/// <param name="sender">The sending object</param>
 		/// <param name="e">The event arguments</param>
 		public void Invoke(object sender, TEventArgs e)
-		{
-			if (_WeakEventHandler != null)
-				_WeakEventHandler(sender, e);
+		{	//****************************************
+			var MyHandler = _WeakEventHandler;
+			//****************************************
+			
+			if (MyHandler != null)
+				MyHandler(sender, e);
 		}
 		
 		//****************************************

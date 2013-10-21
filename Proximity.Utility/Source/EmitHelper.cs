@@ -1909,6 +1909,17 @@ namespace Proximity.Utility
 		}
 		
 		/// <summary>
+		/// Emits an instruction to load an object reference from an array
+		/// </summary>
+		/// <returns>Self</returns>
+		public EmitHelper LdElem()
+		{
+			_Generator.Emit(OpCodes.Ldelem_Ref);
+			
+			return this;
+		}
+		
+		/// <summary>
 		/// Emits an instruction to load an element from an array
 		/// </summary>
 		/// <param name="targetType">The type to load from the array</param>
@@ -1942,10 +1953,7 @@ namespace Proximity.Utility
 				return this;
 			}
 			
-			if (targetType == typeof(object))
-				_Generator.Emit(OpCodes.Ldelem_Ref);
-			else
-				_Generator.Emit(OpCodes.Ldelem, targetType);
+			_Generator.Emit(OpCodes.Ldelem, targetType);
 			
 			return this;
 		}

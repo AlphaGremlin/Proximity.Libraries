@@ -67,9 +67,8 @@ namespace Proximity.Utility.Net
 		/// <summary>
 		/// Performs an asynchronous operation to connect to a socket
 		/// </summary>
-		/// <param name="SocketType">The type of socket</param>
+		/// <param name="socketType">The type of socket</param>
 		/// <param name="protocolType">The protocol of the socket</param>
-		/// <param name="awaitable">An awaitable around the arguments object we're using</param>
 		/// <returns>The passed in awaitable</returns>
 		/// <remarks>See <see cref="Socket.ConnectAsync(SocketType,ProtocolType,SocketAsyncEventArgs)" /> for more information</remarks>
 		public SocketAwaitable ConnectAsync(SocketType socketType, ProtocolType protocolType)
