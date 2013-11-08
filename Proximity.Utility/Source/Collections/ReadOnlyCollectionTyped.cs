@@ -15,7 +15,7 @@ namespace Proximity.Utility.Collections
 	/// </summary>
 	public class ReadOnlyCollectionTyped<TSource, TTarget> : ICollection<TTarget>, IReadOnlyCollection<TTarget> where TSource : class, TTarget where TTarget : class
 	{	//****************************************
-		private ICollection<TSource> _Collection;
+		private readonly ICollection<TSource> _Collection;
 		//****************************************
 		
 		/// <summary>

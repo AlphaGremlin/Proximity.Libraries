@@ -17,7 +17,7 @@ namespace Proximity.Utility.Collections
 	/// </summary>
 	public sealed class WeakCollection<TItem> : IEnumerable<TItem> where TItem : class
 	{	//****************************************
-		private List<GCHandle> _Values;
+		private readonly List<GCHandle> _Values;
 		//****************************************
 		
 		/// <summary>
@@ -67,15 +67,15 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="item">The element to remove</param>
 		/// <returns>True if the item was removed, false if it was not in the collection</returns>
-		/// <remarks>Will perform a compaction</remarks>
+		/// <remarks>Will perform a partial compaction, up to the point the target item is found</remarks>
 		public bool Remove(TItem item)
 		{
 			int Index = 0;
 			
-			do
+			while (Index < _Values.Count)
 			{
 				var Handle = _Values[Index];
-				TItem TargetItem = (TItem)Handle.Target;
+				var TargetItem = (TItem)Handle.Target;
 				
 				if (TargetItem == null)
 				{
@@ -95,7 +95,7 @@ namespace Proximity.Utility.Collections
 				{
 					Index++;
 				}
-			} while (Index < _Values.Count);
+			}
 			
 			return false;
 		}
@@ -120,14 +120,24 @@ namespace Proximity.Utility.Collections
 		/// <remarks>Will perform a compaction. May not be identical between enumerations</remarks>
 		public IEnumerator<TItem> GetEnumerator()
 		{
-			return new WeakEnumerator(_Values);
+			return GetContents().GetEnumerator();
+		}
+		
+		/// <summary>
+		/// Creates a list of strong references to the contents of the collection
+		/// </summary>
+		/// <returns>A list of strong references to the collection</returns>
+		/// <remarks>Will perform a compaction.</remarks>
+		public IList<TItem> ToStrongList()
+		{
+			return GetContents().ToList();
 		}
 		
 		//****************************************
 		
 		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
 		{
-			return new WeakEnumerator(_Values);
+			return GetContents().GetEnumerator();
 		}
 		
 		private GCHandle CreateFrom(TItem item)
@@ -135,74 +145,27 @@ namespace Proximity.Utility.Collections
 			return GCHandle.Alloc(item, GCHandleType.Weak);
 		}
 		
-		//****************************************
-		
-		/// <summary>
-		/// Gets a list of strong references to the contents of the collection
-		/// </summary>
-		public IList<TItem> Values
+		private IEnumerable<TItem> GetContents()
 		{
-			get { return new List<TItem>(_Values.Select((handle) => (TItem)handle.Target).Where((item) => item != null)); }
-		}
-		
-		//****************************************
-		
-		private class WeakEnumerator : IEnumerator<TItem>
-		{//****************************************
-			private List<GCHandle> _Source;
-			private int _Index;
-			private TItem _Current;
-			//****************************************
+			int Index = 0;
 			
-			internal WeakEnumerator(List<GCHandle> source)
+			while (Index < _Values.Count)
 			{
-				_Source = source;
-				_Index = -1;
-				_Current = null;
-			}
-			
-			//****************************************
-			
-			void IDisposable.Dispose()
-			{
-			}
-			
-			public bool MoveNext()
-			{
-				_Index++;
+				var Handle = _Values[Index];
+				var TargetItem = (TItem)Handle.Target;
 				
-				while (_Index < _Source.Count)
+				if (TargetItem == null)
 				{
-					var Handle = _Source[_Index];
-					
-					_Current = (TItem)Handle.Target;
-					
-					if (_Current != null)
-						return true;
-					
-					_Source.RemoveAt(_Index);
+					_Values.RemoveAt(Index);
 					
 					Handle.Free();
 				}
-
-				return false;
-			}
-			
-			public void Reset()
-			{
-				_Index = -1;
-			}
-			
-			//****************************************
-			
-			object IEnumerator.Current
-			{
-				get { return _Current; }
-			}
-			
-			public TItem Current
-			{
-				get { return _Current; }
+				else
+				{
+					yield return TargetItem;
+					
+					Index++;
+				}
 			}
 		}
 	}

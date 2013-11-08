@@ -7,10 +7,10 @@ using System.Collections;
 using System.Collections.Generic;
 //****************************************
 
-namespace Proximity.Utility.Collections
+namespace Proximity.Utility.Collections.Reverse
 {
 	/// <summary>
-	/// Description of NullableComparer.
+	/// Provides a generic reversed comparer for nullable value types implementing IComparable
 	/// </summary>
 	internal sealed class NullableComparer<TValue> : ReverseComparer<TValue?> where TValue : struct, IComparable<TValue>
 	{

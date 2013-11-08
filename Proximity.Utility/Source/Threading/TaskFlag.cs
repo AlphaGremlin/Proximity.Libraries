@@ -19,7 +19,7 @@ namespace Proximity.Utility.Threading
 	{	//****************************************
 		private Action _Callback;
 		
-		private object _LockObject = new object();
+		private readonly object _LockObject = new object();
 		
 		private bool _IsSet;
 		private bool _IsExecuting;

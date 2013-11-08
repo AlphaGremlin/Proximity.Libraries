@@ -5,6 +5,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Proximity.Utility.Collections.Reverse;
 //****************************************
 
 namespace Proximity.Utility.Collections
@@ -69,8 +70,8 @@ namespace Proximity.Utility.Collections
 		/// <summary>
 		/// Creates a comparer wrapping an existing comparer, reversing its sorting order
 		/// </summary>
-		/// <param name="comparer"></param>
-		/// <returns></returns>
+		/// <param name="comparer">The IComparer implementation to reverse</param>
+		/// <returns>A reversed comparer wrapping the given comparer</returns>
 		public static ReverseComparer<TValue> Wrapped(IComparer<TValue> comparer)
 		{
 			return new WrappedComparer<TValue>(comparer);

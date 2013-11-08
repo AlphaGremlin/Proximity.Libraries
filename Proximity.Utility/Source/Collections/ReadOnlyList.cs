@@ -15,7 +15,7 @@ namespace Proximity.Utility.Collections
 	/// </summary>
 	public class ReadOnlyList<TItem> : IList<TItem>, IReadOnlyList<TItem>
 	{	//****************************************
-		private IList<TItem> _Source;
+		private readonly IList<TItem> _Source;
 		//****************************************
 		
 		/// <summary>

@@ -14,12 +14,12 @@ namespace Proximity.Utility.Configuration
 	/// </summary>
 	internal struct ConfigEnumerator<TValue> : IEnumerator<TValue>
 	{	//****************************************
-		private IEnumerator InnerEnumerator;
+		private readonly IEnumerator _InnerEnumerator;
 		//****************************************
 		
 		internal ConfigEnumerator(ICollection outputSet)
 		{
-			InnerEnumerator = outputSet.GetEnumerator();
+			_InnerEnumerator = outputSet.GetEnumerator();
 		}
 		
 		//****************************************
@@ -31,24 +31,24 @@ namespace Proximity.Utility.Configuration
 		
 		public bool MoveNext()
 		{
-			return InnerEnumerator.MoveNext();
+			return _InnerEnumerator.MoveNext();
 		}
 		
 		public void Reset()
 		{
-			InnerEnumerator.Reset();
+			_InnerEnumerator.Reset();
 		}
 		
 		//****************************************
 		
 		object IEnumerator.Current
 		{
-			get { return InnerEnumerator.Current; }
+			get { return _InnerEnumerator.Current; }
 		}
 		
 		public TValue Current
 		{
-			get { return (TValue)InnerEnumerator.Current; }
+			get { return (TValue)_InnerEnumerator.Current; }
 		}
 	}
 }

@@ -7,14 +7,14 @@ using System.Collections;
 using System.Collections.Generic;
 //****************************************
 
-namespace Proximity.Utility.Collections
+namespace Proximity.Utility.Collections.Reverse
 {
 	/// <summary>
 	/// Provides a reversed comparer wrapping an existing comparer
 	/// </summary>
 	internal sealed class WrappedComparer<TValue> : ReverseComparer<TValue>
 	{	//****************************************
-		private IComparer<TValue> _Comparer;
+		private readonly IComparer<TValue> _Comparer;
 		//****************************************
 		
 		internal WrappedComparer(IComparer<TValue> comparer)

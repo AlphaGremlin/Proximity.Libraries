@@ -20,7 +20,7 @@ namespace Proximity.Utility.Threading
 	{	//****************************************
 		[ThreadStatic()] private bool _IsThreadProcessing;
 		
-		private LinkedList<Task> _Tasks = new LinkedList<Task>();
+		private readonly LinkedList<Task> _Tasks = new LinkedList<Task>();
 		private bool _IsProcessing;
 		//****************************************
 		

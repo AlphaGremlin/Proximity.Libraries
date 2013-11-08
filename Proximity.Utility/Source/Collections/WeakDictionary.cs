@@ -15,9 +15,10 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Represents a dictionary that holds only weak references to its values
 	/// </summary>
+	/// <remarks>This class does not implement IDictionary or ICollection, as many of the methods have no meaning until you have strong references to the contents</remarks>
 	public class WeakDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>> where TValue : class
 	{	//****************************************
-		private Dictionary<TKey, GCHandle> _Dictionary;
+		private readonly Dictionary<TKey, GCHandle> _Dictionary;
 		//****************************************
 		
 		/// <summary>
@@ -32,9 +33,8 @@ namespace Proximity.Utility.Collections
 		/// Creates a new WeakDictionary of references to the contents of the collection
 		/// </summary>
 		/// <param name="collection">The collection holding the key/value pairs to add</param>
-		public WeakDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection)
+		public WeakDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection) : this(collection, null)
 		{
-			_Dictionary = collection.ToDictionary((value) => value.Key, (value) => CreateFrom(value.Value));
 		}
 		
 		/// <summary>
@@ -192,11 +192,21 @@ namespace Proximity.Utility.Collections
 			return GetContents().GetEnumerator();
 		}
 		
+		/// <summary>
+		/// Constructs a strong dictionary from the live values in the weak dictionary
+		/// </summary>
+		/// <returns>A dictionary containing all the live values in this dictionary</returns>
+		/// <remarks>Changes made to the returned dictionary will not be reflected in the Weak Dictionary</remarks>
+		public IDictionary<TKey, TValue> ToStrongDictionary()
+		{
+			return GetContents().ToDictionary(item => item.Key, item => item.Value);
+		}
+		
 		//****************************************
 		
 		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
 		{
-			return this.GetEnumerator();
+			return GetContents().GetEnumerator();
 		}
 		
 		private GCHandle CreateFrom(TValue item)
@@ -206,9 +216,28 @@ namespace Proximity.Utility.Collections
 		
 		private IEnumerable<KeyValuePair<TKey, TValue>> GetContents()
 		{
-			return _Dictionary
-				.Select((value) => new KeyValuePair<TKey, TValue>(value.Key, (TValue)value.Value.Target))
-				.Where((pair) => pair.Value != null);
+			foreach(var MyResult in _Dictionary)
+			{
+				var MyValue = (TValue)MyResult.Value.Target;
+				
+				if (MyValue == null)
+					continue;
+				
+				yield return new KeyValuePair<TKey, TValue>(MyResult.Key, MyValue);
+			}
+		}
+		
+		private IEnumerable<TValue> GetValues()
+		{
+			foreach(var MyResult in _Dictionary)
+			{
+				var MyValue = (TValue)MyResult.Value.Target;
+				
+				if (MyValue == null)
+					continue;
+				
+				yield return MyValue;
+			}
 		}
 		
 		//****************************************
@@ -265,13 +294,7 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		public IList<TValue> Values
 		{
-			get
-			{
-				return _Dictionary.Values
-					.Select(value => (TValue)value.Target)
-					.Where(value => value != null)
-					.ToList();
-			}
+			get { return GetValues().ToList(); }
 		}
 	}
 }

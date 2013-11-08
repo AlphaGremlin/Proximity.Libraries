@@ -91,8 +91,8 @@ namespace Proximity.Utility
 		
 		private class OptionSet
 		{	//****************************************
-			private Dictionary<Enum, string> _FieldToCode = new Dictionary<Enum, string>();
-			private Dictionary<string, Enum> _CodeToField = new Dictionary<string, Enum>();
+			private readonly Dictionary<Enum, string> _FieldToCode = new Dictionary<Enum, string>();
+			private readonly Dictionary<string, Enum> _CodeToField = new Dictionary<string, Enum>();
 			//****************************************
 			
 			public OptionSet(Type optionType)

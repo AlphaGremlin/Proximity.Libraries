@@ -14,7 +14,7 @@ namespace Proximity.Utility.Threading
 	/// </summary>
 	internal struct WorkingEnumerator<TValue> : IEnumerator<TValue>
 	{	//****************************************
-		private TValue[] _WorkingArray;
+		private readonly TValue[] _WorkingArray;
 		private TValue _CurrentValue;
 		private int _WorkingLength, _CurrentIndex;
 		//****************************************

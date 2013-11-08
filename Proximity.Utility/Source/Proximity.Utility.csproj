@@ -112,20 +112,21 @@
     <Compile Include="ActionNameAttribute.cs" />
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Collections\BiDictionary.cs" />
-    <Compile Include="Collections\GenericComparer.cs" />
+    <Compile Include="Collections\ConcurrentExtensions.cs" />
     <Compile Include="Collections\ListExtensions.cs" />
-    <Compile Include="Collections\NullableComparer.cs" />
-    <Compile Include="Collections\ObjectComparer.cs" />
     <Compile Include="Collections\ReadOnlyCollection.cs" />
     <Compile Include="Collections\ReadOnlyCollectionTyped.cs" />
     <Compile Include="Collections\ReadOnlyDictionary.cs" />
     <Compile Include="Collections\ReadOnlyList.cs" />
     <Compile Include="Collections\ReadOnlyListTyped.cs" />
     <Compile Include="Collections\ReverseComparer.cs" />
+    <Compile Include="Collections\Reverse\GenericComparer.cs" />
+    <Compile Include="Collections\Reverse\NullableComparer.cs" />
+    <Compile Include="Collections\Reverse\ObjectComparer.cs" />
+    <Compile Include="Collections\Reverse\WrappedComparer.cs" />
     <Compile Include="Collections\TypedEnumerator.cs" />
     <Compile Include="Collections\WeakCollection.cs" />
     <Compile Include="Collections\WeakDictionary.cs" />
-    <Compile Include="Collections\WrappedComparer.cs" />
     <Compile Include="Configuration\AssemblyElement.cs" />
     <Compile Include="Configuration\AssemblyElementAttribute.cs" />
     <Compile Include="Configuration\AssemblyElementCollection.cs" />
@@ -177,7 +178,9 @@
     <Compile Include="Resources\XmlResourceSet.cs" />
     <Compile Include="SteppedTimer.cs" />
     <Compile Include="Threading\AggregateException.cs" />
+    <Compile Include="Threading\DedicatedThreadScheduler.cs" />
     <Compile Include="Threading\Extensions.cs" />
+    <Compile Include="Threading\OperationCollection.cs" />
     <Compile Include="Threading\ReadLock.cs" />
     <Compile Include="Threading\SafeThreadPool.cs" />
     <Compile Include="Threading\SafeTimer.cs" />
@@ -190,6 +193,7 @@
     <None Include="Logging\Style.xsl" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="Collections\Reverse" />
     <Folder Include="Configuration" />
     <Folder Include="Events" />
     <Folder Include="Net" />

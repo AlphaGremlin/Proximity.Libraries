@@ -1,5 +1,5 @@
 ﻿/****************************************\
- GenericComparer.cs
+ ObjectComparer.cs
  Created: 2012-05-22
 \****************************************/
 using System;
@@ -7,14 +7,14 @@ using System.Collections;
 using System.Collections.Generic;
 //****************************************
 
-namespace Proximity.Utility.Collections
+namespace Proximity.Utility.Collections.Reverse
 {
 	/// <summary>
-	/// Description of GenericComparer.
+	/// Provides a reversed comparer for types with no IComparable implementation
 	/// </summary>
-	internal sealed class GenericComparer<TValue> : ReverseComparer<TValue> where TValue : IComparable<TValue>
+	internal sealed class ObjectComparer<TValue> : ReverseComparer<TValue>
 	{
-		public GenericComparer()
+		public ObjectComparer()
 		{
 		}
 		
@@ -22,12 +22,7 @@ namespace Proximity.Utility.Collections
 		
 		public override int Compare(TValue x, TValue y)
 		{
-			if (x == null)
-				return (y == null) ? 0 : 1;
-			else if (y == null)
-				return -1;
-			
-			return y.CompareTo(x);
+			return Comparer.Default.Compare(y, x);
 		}
 	}
 }

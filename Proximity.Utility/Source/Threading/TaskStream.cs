@@ -17,9 +17,9 @@ namespace Proximity.Utility.Threading
 	/// </summary>
 	public sealed class TaskStream
 	{	//****************************************
-		private object _LockObject = new object();
+		private readonly object _LockObject = new object();
 		
-		private TaskFactory _Factory;
+		private readonly TaskFactory _Factory;
 		private Task _NextTask;
 		
 		private int _PendingActions;

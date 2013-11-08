@@ -16,7 +16,7 @@ namespace Proximity.Utility.Collections
 	/// <remarks>Unlike System.Collections.ObjectModel.ReadOnlyCollection, this requires just a Collection, and not a List</remarks>
 	public class ReadOnlyCollection<TItem> : ICollection<TItem>, IReadOnlyCollection<TItem>
 	{	//****************************************
-		private ICollection<TItem> _Collection;
+		private readonly ICollection<TItem> _Collection;
 		//****************************************
 		
 		/// <summary>

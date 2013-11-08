@@ -14,8 +14,8 @@ namespace Proximity.Utility.Collections
 	/// </summary>
 	public class BiDictionary<TFirst, TSecond> : ICollection<KeyValuePair<TFirst, TSecond>>
 	{	//****************************************
-		private Dictionary<TFirst, TSecond> _First;
-		private Dictionary<TSecond, TFirst> _Second;
+		private readonly Dictionary<TFirst, TSecond> _First;
+		private readonly Dictionary<TSecond, TFirst> _Second;
 		//****************************************
 		
 		/// <summary>

@@ -14,9 +14,9 @@ namespace Proximity.Utility.Collections
 	/// </summary>
 	public class ReadOnlyDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>
 	{	//****************************************
-		private IDictionary<TKey, TValue> _Dictionary;
-		private ReadOnlyCollection<TKey> _Keys;
-		private ReadOnlyCollection<TValue> _Values;
+		private readonly IDictionary<TKey, TValue> _Dictionary;
+		private readonly ReadOnlyCollection<TKey> _Keys;
+		private readonly ReadOnlyCollection<TValue> _Values;
 		//****************************************
 		
 		/// <summary>

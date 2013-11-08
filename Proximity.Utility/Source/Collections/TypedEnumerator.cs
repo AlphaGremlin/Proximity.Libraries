@@ -14,7 +14,7 @@ namespace Proximity.Utility.Collections
 	/// </summary>
 	internal class TypedEnumerator<TSource, TTarget> : IEnumerator<TTarget> where TSource : class, TTarget where TTarget : class
 	{	//****************************************
-		private IEnumerator<TSource> _Source;
+		private readonly IEnumerator<TSource> _Source;
 		//****************************************
 		
 		internal TypedEnumerator(IEnumerator<TSource> source)

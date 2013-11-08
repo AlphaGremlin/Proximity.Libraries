@@ -29,7 +29,7 @@ namespace Proximity.Utility.Tests
 			
 			GC.Collect();
 			
-			Assert.AreEqual(1, MyCollection.Values.Count, "Item was not added");
+			Assert.AreEqual(1, MyCollection.Count(), "Item was not added");
 			
 			GC.KeepAlive(MyObject);
 		}
@@ -45,7 +45,7 @@ namespace Proximity.Utility.Tests
 			
 			GC.Collect();
 			
-			Assert.AreEqual(2, MyCollection.Values.Count, "Items were not added");
+			Assert.AreEqual(2, MyCollection.Count(), "Items were not added");
 			
 			GC.KeepAlive(MyObject1);
 			GC.KeepAlive(MyObject2);
@@ -62,11 +62,11 @@ namespace Proximity.Utility.Tests
 			
 			GC.Collect();
 			
-			Assert.AreEqual(1, MyCollection.Values.Count, "Item was not added");
+			Assert.AreEqual(1, MyCollection.Count(), "Item was not added");
 			
 			MyCollection.Remove(MyObject);
 			
-			Assert.AreEqual(0, MyCollection.Values.Count, "Item was not removed");
+			Assert.AreEqual(0, MyCollection.Count(), "Item was not removed");
 			
 			GC.KeepAlive(MyObject);
 		}
@@ -82,11 +82,11 @@ namespace Proximity.Utility.Tests
 			
 			GC.Collect();
 			
-			Assert.AreEqual(2, MyCollection.Values.Count, "Items were not added");
+			Assert.AreEqual(2, MyCollection.Count(), "Items were not added");
 			
 			MyCollection.Remove(MyObject1);
 			
-			Assert.AreEqual(1, MyCollection.Values.Count, "Item was not removed");
+			Assert.AreEqual(1, MyCollection.Count(), "Item was not removed");
 			
 			GC.KeepAlive(MyObject1);
 			GC.KeepAlive(MyObject2);
@@ -102,7 +102,7 @@ namespace Proximity.Utility.Tests
 			
 			GC.Collect();
 			
-			Assert.AreEqual(0, MyCollection.Values.Count, "Item was not expired");
+			Assert.AreEqual(0, MyCollection.Count(), "Item was not expired");
 		}
 		
 		[Test()]
@@ -115,7 +115,7 @@ namespace Proximity.Utility.Tests
 			
 			GC.Collect();
 			
-			Assert.AreEqual(0, MyCollection.Values.Count, "Items were not removed");
+			Assert.AreEqual(0, MyCollection.Count(), "Items were not removed");
 		}
 		
 		[Test()]
@@ -129,7 +129,7 @@ namespace Proximity.Utility.Tests
 			
 			GC.Collect();
 			
-			Assert.AreEqual(1, MyCollection.Values.Count, "Item was not removed");
+			Assert.AreEqual(1, MyCollection.Count(), "Item was not removed");
 			
 			GC.KeepAlive(MyObject);
 		}
@@ -145,11 +145,11 @@ namespace Proximity.Utility.Tests
 			
 			GC.Collect();
 			
-			Assert.AreEqual(1, MyCollection.Values.Count, "Item was not added");
+			Assert.AreEqual(1, MyCollection.Count(), "Item was not added");
 			
 			MyCollection.Clear();
 			
-			Assert.AreEqual(0, MyCollection.Values.Count, "Item was not removed");
+			Assert.AreEqual(0, MyCollection.Count(), "Item was not removed");
 			
 			GC.KeepAlive(MyObject);
 		}
@@ -184,7 +184,7 @@ namespace Proximity.Utility.Tests
 				Assert.Fail("Unknown Object");
 			}
 			
-			Assert.AreEqual(2, MyCollection.Values.Count, "Items were not added");
+			Assert.AreEqual(2, MyCollection.Count(), "Items were not added");
 			Assert.IsTrue(Found1, "Object 1 not found");
 			Assert.IsTrue(Found2, "Object 2 not found");
 			
@@ -205,7 +205,7 @@ namespace Proximity.Utility.Tests
 			GC.Collect();
 			
 			// Should find two objects
-			foreach(var MyObject in MyCollection.Values)
+			foreach(var MyObject in MyCollection.ToStrongList())
 			{
 				if (object.ReferenceEquals(MyObject, MyObject1))
 				{
@@ -222,7 +222,7 @@ namespace Proximity.Utility.Tests
 				Assert.Fail("Unknown Object");
 			}
 			
-			Assert.AreEqual(2, MyCollection.Values.Count, "Items were not added");
+			Assert.AreEqual(2, MyCollection.Count(), "Items were not added");
 			Assert.IsTrue(Found1, "Object 1 not found");
 			Assert.IsTrue(Found2, "Object 2 not found");
 			
@@ -256,7 +256,7 @@ namespace Proximity.Utility.Tests
 			
 			Assert.IsTrue(Found, "Object 1 not found");
 			
-			Assert.AreEqual(1, MyCollection.Values.Count, "Item was not removed");
+			Assert.AreEqual(1, MyCollection.Count(), "Item was not removed");
 			
 			GC.KeepAlive(MyObject);
 		}
@@ -274,7 +274,7 @@ namespace Proximity.Utility.Tests
 			GC.Collect();
 			
 			// Should find only one object
-			foreach(var MyInnerObject in MyCollection.Values)
+			foreach(var MyInnerObject in MyCollection.ToStrongList())
 			{
 				if (object.ReferenceEquals(MyObject, MyInnerObject))
 				{
@@ -287,7 +287,7 @@ namespace Proximity.Utility.Tests
 			
 			Assert.IsTrue(Found, "Object 1 not found");
 			
-			Assert.AreEqual(1, MyCollection.Values.Count, "Item was not removed");
+			Assert.AreEqual(1, MyCollection.Count(), "Item was not removed");
 			
 			GC.KeepAlive(MyObject);
 		}

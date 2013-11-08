@@ -22,7 +22,7 @@ namespace Proximity.Utility.Logging
 		[ThreadStatic()] private static Stack<LogSection> _Sections;
 
 		private static string _OutputPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), Assembly.GetEntryAssembly().GetName().Name);
-		private static PrecisionTimer _Timer;
+		private static PrecisionTimer _Timer = new PrecisionTimer();
 		private static DateTime _StartTime = Process.GetCurrentProcess().StartTime;
 		//****************************************
 
@@ -31,13 +31,6 @@ namespace Proximity.Utility.Logging
 		/// </summary>
 		public static void Start()
 		{
-			//****************************************
-			// Start the High-Resolution Timer
-			
-			_Timer = new PrecisionTimer();
-			
-			//****************************************
-			
 			if (!Directory.Exists(_OutputPath))
 				Directory.CreateDirectory(_OutputPath);
 			
