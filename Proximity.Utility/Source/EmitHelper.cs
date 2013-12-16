@@ -1784,13 +1784,25 @@ namespace Proximity.Utility
 		/// <returns>Self</returns>
 		/// <remarks>
 		/// <para>Emits the values of Decimal.GetBits and passes them to the binary constructor</para>
-		/// <para>Optimises for zero and integer values</para>
+		/// <para>Optimises for Zero, One, MinusOne, MinValue and MaxValue, and integer values</para>
 		/// </remarks>
 		public EmitHelper Ldc(decimal decimalValue)
 		{
 			if (decimalValue == decimal.Zero)
 				return this.LdsFld(typeof(decimal).GetField("Zero"));
 			
+			if (decimalValue == decimal.One)
+				return this.LdsFld(typeof(decimal).GetField("One"));
+
+			if (decimalValue == decimal.MinusOne)
+				return this.LdsFld(typeof(decimal).GetField("MinusOne"));
+
+			if (decimalValue == decimal.MaxValue)
+				return this.LdsFld(typeof(decimal).GetField("MaxValue"));
+
+			if (decimalValue == decimal.MinValue)
+				return this.LdsFld(typeof(decimal).GetField("MinValue"));
+
 			if (decimal.Truncate(decimalValue) == decimalValue)
 			{
 				// Int32 range
@@ -1842,9 +1854,18 @@ namespace Proximity.Utility
 		/// </summary>
 		/// <param name="dateTimeValue">The constant to load</param>
 		/// <returns>Self</returns>
-		/// <remarks>Emits the values of DateTime.Ticks and DateTime.Kind and passes them to the DateTime constructor</remarks>
+		/// <remarks>
+		/// <para>Emits the values of DateTime.Ticks and DateTime.Kind and passes them to the DateTime constructor</para>
+		/// <para>Optimises for MinValue and MaxValue</para>
+		/// </remarks>
 		public EmitHelper Ldc(DateTime dateTimeValue)
 		{
+			if (dateTimeValue == DateTime.MinValue)
+				return this.LdsFld(typeof(DateTime).GetField("MinValue"));
+			
+			if (dateTimeValue == DateTime.MaxValue)
+				return this.LdsFld(typeof(DateTime).GetField("MaxValue"));
+			
 			return this
 				.Ldc(dateTimeValue.Ticks)
 				.Ldc((int)dateTimeValue.Kind)
@@ -1856,11 +1877,20 @@ namespace Proximity.Utility
 		/// </summary>
 		/// <param name="timeSpanValue">The constant to load</param>
 		/// <returns>Self</returns>
-		/// <remarks>Emits the value of TimeSpan.Ticks and passes it to the TimeSpan constructor</remarks>
+		/// <remarks>
+		/// <para>Emits the value of TimeSpan.Ticks and passes it to the TimeSpan constructor</para>
+		/// <para>Optimises for Zero, MinValue, and MaxValue</para>
+		/// </remarks>
 		public EmitHelper Ldc(TimeSpan timeSpanValue)
 		{
 			if (timeSpanValue == TimeSpan.Zero)
 				return this.LdsFld(typeof(TimeSpan).GetField("Zero"));
+			
+			if (timeSpanValue == TimeSpan.MinValue)
+				return this.LdsFld(typeof(TimeSpan).GetField("MinValue"));
+			
+			if (timeSpanValue == TimeSpan.MaxValue)
+				return this.LdsFld(typeof(TimeSpan).GetField("MaxValue"));
 			
 			return this
 				.Ldc(timeSpanValue.Ticks)

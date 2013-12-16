@@ -33,6 +33,10 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 		
+		/// <summary>
+		/// Queues a Task on this Scheduler
+		/// </summary>
+		/// <param name="task">The task to execute</param>
 		protected override void QueueTask(Task task)
 		{
 			lock (_Tasks)
@@ -48,6 +52,12 @@ namespace Proximity.Utility.Threading
 			ThreadPool.UnsafeQueueUserWorkItem(ProcessingOperation, null);
 		}
 		
+		/// <summary>
+		/// Determines whether a Task may be inlined.
+		/// </summary>
+		/// <param name="task">The task to be executed.</param>
+		/// <param name="taskWasPreviouslyQueued">Whether the task was previously queued.</param>
+		/// <returns>True if the task was successfully inlined, otherwise False.</returns>
 		protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
 		{
 			// Ensure we're within the Processing Loop
@@ -91,14 +101,6 @@ namespace Proximity.Utility.Threading
 			}
 		}
 		
-		protected override IEnumerable<Task> GetScheduledTasks()
-		{
-			lock (_Tasks)
-			{
-				return _Tasks.ToArray();
-			}
-		}
-		
 		//****************************************
 		
 		private void ProcessingOperation(object state)
@@ -137,6 +139,9 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 		
+		/// <summary>
+		/// Gets the maximum concurrency level supported
+		/// </summary>
 		public override int MaximumConcurrencyLevel
 		{
 			get { return 1; }

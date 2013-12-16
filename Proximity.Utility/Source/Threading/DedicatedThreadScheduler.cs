@@ -33,6 +33,20 @@ namespace Proximity.Utility.Threading
 			_Thread.Start();
 		}
 		
+		/// <summary>
+		/// Creates a new dedicated thread scheduler with a specified name
+		/// </summary>
+		/// <param name="name">The name to assign to the new Thread</param>
+		public DedicatedThreadScheduler(string name)
+		{
+			_Tasks = new BlockingCollection<Task>();
+			
+			_Thread = new Thread(ConsumeTasks);
+			_Thread.IsBackground = true;
+			_Thread.Name = name;
+			_Thread.Start();
+		}
+		
 		//****************************************
 		
 		/// <summary>
