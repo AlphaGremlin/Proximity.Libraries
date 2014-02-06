@@ -77,6 +77,7 @@
     <Compile Include="ListExtensionTests.cs" />
     <Compile Include="SafeThreadPoolTests.cs" />
     <Compile Include="SafeTimerTests.cs" />
+    <Compile Include="TaskFlagTests.cs" />
     <Compile Include="TaskStreamTests.cs" />
     <Compile Include="WeakCollectionTests.cs" />
     <Compile Include="WeakEventArgs.cs" />

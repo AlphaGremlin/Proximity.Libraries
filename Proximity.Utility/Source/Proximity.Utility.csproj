@@ -122,8 +122,10 @@
     <Compile Include="Collections\ReadOnlyCollection.cs" />
     <Compile Include="Collections\ReadOnlyCollectionTyped.cs" />
     <Compile Include="Collections\ReadOnlyDictionary.cs" />
+    <Compile Include="Collections\ReadOnlyDictionaryChild.cs" />
     <Compile Include="Collections\ReadOnlyList.cs" />
     <Compile Include="Collections\ReadOnlyListTyped.cs" />
+    <Compile Include="Collections\ReadOnlySet.cs" />
     <Compile Include="Collections\ReverseComparer.cs" />
     <Compile Include="Collections\Reverse\GenericComparer.cs" />
     <Compile Include="Collections\Reverse\NullableComparer.cs" />
