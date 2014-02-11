@@ -22,7 +22,7 @@
     <AssemblyOriginatorKeyMode>File</AssemblyOriginatorKeyMode>
     <ReferencePath>..\..\</ReferencePath>
     <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
-    <DocumentationFile>..\Proximity.Console.xml</DocumentationFile>
+    <DocumentationFile>..\..\Build\Proximity.Console.xml</DocumentationFile>
     <TargetFrameworkProfile />
     <NoWin32Manifest>False</NoWin32Manifest>
     <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>

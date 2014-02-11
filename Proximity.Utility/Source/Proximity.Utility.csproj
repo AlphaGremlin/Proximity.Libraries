@@ -27,7 +27,7 @@
     <TargetFrameworkProfile />
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
-    <DocumentationFile>..\Proximity.Utility.xml</DocumentationFile>
+    <DocumentationFile>..\..\Build\Proximity.Utility.xml</DocumentationFile>
     <RunCodeAnalysis>False</RunCodeAnalysis>
     <RunSourceAnalysis>False</RunSourceAnalysis>
     <NoWin32Manifest>False</NoWin32Manifest>
@@ -146,6 +146,8 @@
     <Compile Include="Configuration\TypedElement.cs" />
     <Compile Include="Configuration\TypedElementAttribute.cs" />
     <Compile Include="Configuration\TypedElementCollection.cs" />
+    <Compile Include="Configuration\TypedPropertyElement.cs" />
+    <Compile Include="Configuration\TypedPropertySection.cs" />
     <Compile Include="EmitHelper.cs" />
     <Compile Include="Events\ParallelEvent.cs" />
     <Compile Include="Events\SafeEvent.cs" />

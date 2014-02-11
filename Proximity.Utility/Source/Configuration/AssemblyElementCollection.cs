@@ -29,22 +29,13 @@ namespace Proximity.Utility.Configuration
 		
 		//****************************************
 		
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="reader"></param>
-		/// <param name="serializeCollectionKey"></param>
+		/// <inheritdoc />
 		protected sealed override void DeserializeElement(XmlReader reader, bool serializeCollectionKey)
 		{
 			base.DeserializeElement(reader, serializeCollectionKey);
 		}
 		
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="elementName"></param>
-		/// <param name="reader"></param>
-		/// <returns></returns>
+		/// <inheritdoc />
 		protected sealed override bool OnDeserializeUnrecognizedElement(string elementName, XmlReader reader)
 		{	//****************************************
 			string AssemblyName = reader.GetAttribute("Assembly");
@@ -83,12 +74,7 @@ namespace Proximity.Utility.Configuration
 			return base.OnDeserializeUnrecognizedElement(elementName, reader);
 		}
 		
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="writer"></param>
-		/// <param name="serializeCollectionKey"></param>
-		/// <returns></returns>
+		/// <inheritdoc />
 		protected sealed override bool SerializeElement(XmlWriter writer, bool serializeCollectionKey)
 		{	//****************************************
 			bool DataWritten = base.SerializeElement(writer, serializeCollectionKey);
