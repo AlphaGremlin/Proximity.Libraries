@@ -75,14 +75,95 @@ namespace Proximity.Utility.Collections
 		}
 		
 		/// <summary>
+		/// Adds or updates a key/value pair in the dictionary
+		/// </summary>
+		/// <param name="target">The target concurrent dictionary</param>
+		/// <param name="key">The key of the item to be added or updated</param>
+		/// <param name="addValue">The value to add if the key is absent</param>
+		/// <param name="updateValue">The function to generate a new value if the key exists</param>
+		/// <param name="wasAdded">Receives whether the value was added or updated</param>
+		/// <returns>The value stored in the dictionary</returns>
+		/// <remarks>Implements a loop around TryGetValue, TryUpdate and TryAdd</remarks>
+		public static TValue AddOrUpdate<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, TValue addValue, Func<TKey, TValue, TValue> updateValue, out bool wasAdded)
+		{	//****************************************
+			TValue OutValue, NewValue;
+			//****************************************
+			
+			for (; ;)
+			{
+				if (target.TryGetValue(key, out OutValue))
+				{
+					NewValue = updateValue(key, OutValue);
+					
+					if (target.TryUpdate(key, NewValue, OutValue))
+					{
+						wasAdded = false;
+						
+						return NewValue;
+					}
+				}
+				else if (target.TryAdd(key, addValue))
+				{
+					wasAdded = true;
+					
+					return addValue;
+				}
+			}
+		}
+		
+		/// <summary>
+		/// Adds or updates a key/value pair in the dictionary
+		/// </summary>
+		/// <param name="target">The target concurrent dictionary</param>
+		/// <param name="key">The key of the item to be added or updated</param>
+		/// <param name="addValue">The function to generate a new value if the key is absent</param>
+		/// <param name="updateValue">The function to generate a new value if the key exists</param>
+		/// <param name="wasAdded">Receives whether the value was added or updated</param>
+		/// <returns>The value stored in the dictionary</returns>
+		/// <remarks>Implements a loop around TryGetValue, TryUpdate and TryAdd</remarks>
+		public static TValue AddOrUpdate<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, Func<TKey, TValue> addValue, Func<TKey, TValue, TValue> updateValue, out bool wasAdded)
+		{	//****************************************
+			TValue OutValue, NewValue;
+			//****************************************
+			
+			for (; ;)
+			{
+				if (target.TryGetValue(key, out OutValue))
+				{
+					NewValue = updateValue(key, OutValue);
+					
+					if (target.TryUpdate(key, NewValue, OutValue))
+					{
+						wasAdded = false;
+						
+						return NewValue;
+					}
+				}
+				else
+				{
+					NewValue = addValue(key);
+					
+					if (target.TryAdd(key, NewValue))
+					{
+						wasAdded = true;
+						
+						return NewValue;
+					}
+				}
+			}
+		}
+		
+		
+		/// <summary>
 		/// Updates an item if it exists in the dictionary
 		/// </summary>
 		/// <param name="target">The target concurrent dictionary</param>
 		/// <param name="key">The key of the item to the update</param>
 		/// <param name="update">A callback that performs the update</param>
+		/// <param name="newValue">Receives the new value if the dictionary was updated</param>
 		/// <returns>True if the item was updated, False if it does not exist</returns>
 		/// <remarks>Implements a loop around TryGetValue and TryUpdate</remarks>
-		public static bool UpdateIfExists<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, Func<TKey, TValue, TValue> update)
+		public static bool UpdateIfExists<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, Func<TKey, TValue, TValue> update, out TValue newValue)
 		{	//****************************************
 			TValue OldValue;
 			//****************************************
@@ -92,8 +173,14 @@ namespace Proximity.Utility.Collections
 				var NewValue = update(key, OldValue);
 				
 				if (target.TryUpdate(key, NewValue, OldValue))
+				{
+					newValue = NewValue;
+					
 					return true;
+				}
 			}
+			
+			newValue = default(TValue);
 			
 			return false;
 		}
@@ -109,6 +196,31 @@ namespace Proximity.Utility.Collections
 		public static bool TryRemovePair<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, TValue expectedValue)
 		{
 			return ((IDictionary<TKey, TValue>)target).Remove(new KeyValuePair<TKey, TValue>(key, expectedValue));
+		}
+		
+		/// <summary>
+		/// Removes all items from the concurrent dictionary
+		/// </summary>
+		/// <param name="target">The target concurrent dictionary</param>
+		/// <returns>A list of all the key/value pairs removed</returns>
+		public static IList<KeyValuePair<TKey, TValue>> RemoveAll<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target)
+		{	//****************************************
+			var MyValues = new List<KeyValuePair<TKey, TValue>>(target.Count);
+			TValue MyValue;
+			//****************************************
+
+			while (target.Count > 0)
+			{
+				foreach (var MyKey in target.Keys)
+				{
+					if (target.TryRemove(MyKey, out MyValue))
+						MyValues.Add(new KeyValuePair<TKey, TValue>(MyKey, MyValue));
+				}
+			}
+
+			//****************************************
+
+			return MyValues;
 		}
 	}
 }
