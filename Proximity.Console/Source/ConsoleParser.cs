@@ -346,10 +346,17 @@ namespace Proximity.Console
 			//****************************************
 			
 			try
-			{	
-				Value = Convert.ChangeType(newValue, MyVariable.PropertyType);
+			{
+				if (MyVariable.PropertyType.IsEnum)
+					Value = Enum.Parse(MyVariable.PropertyType, newValue, true);
+				else
+					Value = Convert.ChangeType(newValue, MyVariable.PropertyType);
 				
 				MyVariable.SetValue(null, Value, null);
+			}
+			catch (ArgumentException)
+			{
+				Log.Warning("Invalid value. Variable '{0}' is of type {1}", MyVariable.Name, MyVariable.PropertyType.Name);
 			}
 			catch(FormatException)
 			{

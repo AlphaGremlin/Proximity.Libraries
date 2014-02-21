@@ -131,7 +131,7 @@ namespace Proximity.Console
 		public static void Clear()
 		{
 			if (ConsoleManager.Output != null)
-				ConsoleManager.Output.Clear();			
+				ConsoleManager.Output.Clear();
 		}
 		
 		//********************
@@ -139,7 +139,13 @@ namespace Proximity.Console
 		[ConsoleBinding("Execute a list of console commands")]
 		public static void Exec(string fileName)
 		{
-			
+			foreach (var MyLine in File.ReadLines(fileName))
+			{
+				if (MyLine == "" || MyLine.StartsWith("#"))
+					continue;
+				
+				ConsoleParser.Execute(MyLine);
+			}
 		}
 		
 		//****************************************

@@ -287,14 +287,17 @@ namespace Proximity.Utility.Collections
 			{
 				_Enumerator.Dispose();
 				
-				_Current = _Parent.SelectChild(_Enumerator.Current.Value);
+				_Current = default(TChild);
 			}
 			
 			public bool MoveNext()
 			{
 				var Result = _Enumerator.MoveNext();
 				
-				_Current = _Parent.SelectChild(_Enumerator.Current.Value);
+				if (Result)
+					_Current = _Parent.SelectChild(_Enumerator.Current.Value);
+				else
+					_Current = default(TChild);
 				
 				return Result;
 			}
@@ -303,7 +306,7 @@ namespace Proximity.Utility.Collections
 			{
 				_Enumerator.Reset();
 				
-				_Current = _Parent.SelectChild(_Enumerator.Current.Value);
+				_Current = default(TChild);
 			}
 			
 			//****************************************
@@ -339,14 +342,17 @@ namespace Proximity.Utility.Collections
 			{
 				_Enumerator.Dispose();
 				
-				SetCurrent(_Enumerator.Current);
+				_Current = new KeyValuePair<TKey, TChild>();
 			}
 			
 			public bool MoveNext()
 			{
 				var Result = _Enumerator.MoveNext();
 				
-				SetCurrent(_Enumerator.Current);
+				if (Result)
+					SetCurrent(_Enumerator.Current);
+				else
+					_Current = new KeyValuePair<TKey, TChild>();
 				
 				return Result;
 			}
@@ -355,7 +361,7 @@ namespace Proximity.Utility.Collections
 			{
 				_Enumerator.Reset();
 				
-				SetCurrent(_Enumerator.Current);
+				_Current = new KeyValuePair<TKey, TChild>();
 			}
 			
 			//****************************************
