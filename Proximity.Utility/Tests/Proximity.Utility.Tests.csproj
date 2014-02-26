@@ -73,6 +73,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AsyncReadWriteLockTests.cs" />
+    <Compile Include="AsyncSemaphoreTests.cs" />
     <Compile Include="EmitterTests.cs" />
     <Compile Include="EqualityTests.cs" />
     <Compile Include="ListExtensionTests.cs" />

@@ -13,28 +13,69 @@ using Proximity.Utility;
 namespace Proximity.Utility.Threading
 {
 	/// <summary>
-	/// 
+	/// Provides a reader/writer synchronisation object for async/await, and a disposable model for releasing
 	/// </summary>
-	public sealed class AsyncReadWriteLock
+	public sealed class AsyncReadWriteLock : IDisposable
 	{	//****************************************
-		private readonly Task<IDisposable> _ReaderCompleted;
-		private readonly Task<IDisposable> _WriterCompleted;
-		
 		private readonly Queue<TaskCompletionSource<IDisposable>> _Writers = new Queue<TaskCompletionSource<IDisposable>>();
 		private TaskCompletionSource<IDisposable> _Reader = new TaskCompletionSource<IDisposable>();
 		
 		private int _ReadersWaiting = 0, _Counter = 0;
 		//****************************************
 		
+		/// <summary>
+		/// Creates a new asynchronous reader/writer lock
+		/// </summary>
 		public AsyncReadWriteLock()
 		{
-			//_ReaderCompleted = Task.FromResult<IDisposable>(new AsyncReadLockInstance(this));
-			//_WriterCompleted = Task.FromResult<IDisposable>(new AsyncWriteLockInstance(this));
 		}
 		
 		//****************************************
 		
+		/// <summary>
+		/// Disposes of the reader/writer lock, cancelling any readers and writers
+		/// </summary>
+		public void Dispose()
+		{
+			lock (_Writers)
+			{
+				_ReadersWaiting = 0;
+				_Counter = 0;
+				
+				while (_Writers.Count > 0)
+				{
+					_Writers.Dequeue().TrySetCanceled();
+				}
+				
+				_Reader.SetCanceled();
+			}
+		}
+		
+		/// <summary>
+		/// Take a read lock, running concurrently with other read locks
+		/// </summary>
+		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
 		public Task<IDisposable> LockRead()
+		{
+			return LockRead(CancellationToken.None);
+		}
+		
+		/// <summary>
+		/// Take a read lock, running concurrently with other read locks, cancelling after a given timeout
+		/// </summary>
+		/// <param name="timeout">The amount of time to wait for the read lock</param>
+		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
+		public Task<IDisposable> LockRead(TimeSpan timeout)
+		{
+			return LockRead(new CancellationTokenSource(timeout));
+		}
+		
+		/// <summary>
+		/// Take a read lock, running concurrently with other read locks, with cancellation
+		/// </summary>
+		/// <param name="token">The cancellation token to abort waiting for the lock</param>
+		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
+		public Task<IDisposable> LockRead(CancellationToken token)
 		{
 			lock (_Writers)
 			{
@@ -50,13 +91,36 @@ namespace Proximity.Utility.Threading
 				// There's a writer in progress, or one waiting
 				Interlocked.Increment(ref _ReadersWaiting);
 				
-				// Return a reader task the caller can wait on
-				// Create a continuation, so they don't run serialised
-				return _Reader.Task.ContinueWith(t => t.Result);
+				// Return a reader task the caller can wait on. This is a continuation, so readers don't run serialised
+				return _Reader.Task.ContinueWith(t => (IDisposable)new AsyncReadLockInstance(this), token);
 			}
 		}
 		
+		/// <summary>
+		/// Take a write lock, running exclusively
+		/// </summary>
+		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
 		public Task<IDisposable> LockWrite()
+		{
+			return LockWrite(CancellationToken.None);
+		}
+		
+		/// <summary>
+		/// Take a write lock, running exclusively, cancelling after a given timeout
+		/// </summary>
+		/// <param name="timeout">The amount of time to wait for the write lock</param>
+		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
+		public Task<IDisposable> LockWrite(TimeSpan timeout)
+		{
+			return LockWrite(new CancellationTokenSource(timeout));
+		}
+		
+		/// <summary>
+		/// Take a write lock, running exclusively, with cancellation
+		/// </summary>
+		/// <param name="token">The cancellation token to abort waiting for the lock</param>
+		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
+		public Task<IDisposable> LockWrite(CancellationToken token)
 		{
 			lock (_Writers)
 			{
@@ -74,12 +138,60 @@ namespace Proximity.Utility.Threading
 				
 				_Writers.Enqueue(MyWaiter);
 				
+				// Check if we can get cancelled
+				if (token.CanBeCanceled)
+				{
+					// Register for cancellation
+					var MyRegistration = token.Register(CancelWrite, MyWaiter);
+					
+					// When we complete, dispose of the registration
+					MyWaiter.Task.ContinueWith((task) => MyRegistration.Dispose());
+				}
+				
 				return MyWaiter.Task;
 			}
 		}
 		
 		//****************************************
 
+		private Task<IDisposable> LockRead(CancellationTokenSource tokenSource)
+		{	//****************************************
+			var MyTask = LockRead(tokenSource.Token);
+			//****************************************
+		
+			// If the task is already completed, no need for the token source
+			if (MyTask.IsCompleted)
+			{
+				tokenSource.Dispose();
+				
+				return MyTask;
+			}
+			
+			// Ensure we cleanup the cancellation source once we're done
+			MyTask.ContinueWith(task => tokenSource.Dispose());
+			
+			return MyTask;
+		}
+		
+		private Task<IDisposable> LockWrite(CancellationTokenSource tokenSource)
+		{	//****************************************
+			var MyTask = LockWrite(tokenSource.Token);
+			//****************************************
+		
+			// If the task is already completed, no need for the token source
+			if (MyTask.IsCompleted)
+			{
+				tokenSource.Dispose();
+				
+				return MyTask;
+			}
+			
+			// Ensure we cleanup the cancellation source once we're done
+			MyTask.ContinueWith(task => tokenSource.Dispose());
+			
+			return MyTask;
+		}
+		
 		private void ReleaseRead()
 		{	//****************************************
 			TaskCompletionSource<IDisposable> NextWriter = null;
@@ -95,58 +207,126 @@ namespace Proximity.Utility.Threading
 				// If there are no more readers and one or more writers waiting...
 				if (_Counter == 0 && _Writers.Count > 0)
 				{
-					// Take the writer spot and find the writer to release
+					// Take the writer spot and find the writer to activate
 					Interlocked.Decrement(ref _Counter);
 					
 					NextWriter = _Writers.Dequeue();
 				}
+				else
+				{
+					// If we don't have a writer waiting, abort early
+					return;
+				}
 			}
 			
-			// If there's a writer to release, release them
-			if (NextWriter != null)
-				NextWriter.SetResult(new AsyncWriteLockInstance(this));
+			// A writer may cancel, so we need to check for that and loop if it fails
+			while (!NextWriter.TrySetResult(new AsyncWriteLockInstance(this)))
+			{
+				lock (_Writers)
+				{
+					// If there are no more writers, we can abort
+					if (_Writers.Count == 0)
+					{
+						_Counter = 0;
+						
+						return;
+					}
+					
+					// Get the next writer to try and activate
+					NextWriter = _Writers.Dequeue();
+				}
+			}
 		}
 
 		private void ReleaseWrite()
 		{	//****************************************
 			TaskCompletionSource<IDisposable> NextRelease = null;
-			IDisposable Result = null;
 			//****************************************
 			
-			lock (_Writers)
+			do
 			{
-				if (_Counter != -1)
-					throw new InvalidOperationException("No writer lock is currently held");
+				lock (_Writers)
+				{
+					if (_Counter != -1)
+						throw new InvalidOperationException("No writer lock is currently held");
+					
+					// If there are one or more other writers waiting...
+					if (_Writers.Count > 0)
+					{
+						// Find the next one to activate and set the result appropriately
+						NextRelease = _Writers.Dequeue();
+					}
+					// No writers, are there any readers?
+					else if (_ReadersWaiting > 0)
+					{
+						// Yes, let's swap out the existing reader task with a new one (so we can activate all the waiting readers)
+						NextRelease = Interlocked.Exchange(ref _Reader, new TaskCompletionSource<IDisposable>());
+						
+						// Swap the waiting readers with zero and update the counter
+						_Counter = Interlocked.Exchange(ref _ReadersWaiting, 0);
+					}
+					else
+					{
+						// Nothing waiting, set the counter to zero and exit
+						_Counter = 0;
+						
+						return;
+					}
+				}
 				
-				// If there are one or more other writers waiting...
-				if (_Writers.Count > 0)
+				// If it's a reader, we can just set and forget
+				if (_Counter > 0)
 				{
-					// Find the next one to release and set the result appropriately
-					NextRelease = _Writers.Dequeue();
+					NextRelease.SetResult(null);
 					
-					Result = new AsyncWriteLockInstance(this);
+					break;
 				}
-				// No writers, are there any readers?
-				else if (_ReadersWaiting > 0)
-				{
-					// Yes, let's swap out the existing reader task with a new one (so we can release all the waiting readers)
-					NextRelease = Interlocked.Exchange(ref _Reader, new TaskCompletionSource<IDisposable>());
-					
-					// Swap the waiting readers with zero and update the counter
-					_Counter = Interlocked.Exchange(ref _ReadersWaiting, 0);
-					
-					Result = new AsyncReadLockInstance(this);
-				}
-				else
-				{
-					// Nothing waiting, set the counter to zero
-					_Counter = 0;
-				}
-			}
+				
+				// A writer, however, may cancel, so we need to check for that and loop back if it fails
+			} while (!NextRelease.TrySetResult(new AsyncWriteLockInstance(this)));
+		}
+		
+		private void CancelWrite(object state)
+		{	//****************************************
+			var MyWaiter = (TaskCompletionSource<IDisposable>)state;
+			//****************************************
 			
-			// If there's a reader or writer waiting, release it
-			if (NextRelease != null)
-				NextRelease.SetResult(Result);
+			// Try and cancel our task. If it fails, we've already activate and been removed from the Writers list
+			MyWaiter.TrySetCanceled();
+		}
+		
+		//****************************************
+		
+		/// <summary>
+		/// Gets whether any concurrent reading operations are in progress
+		/// </summary>
+		public bool IsReading
+		{
+			get { return _Counter > 0; }
+		}
+		
+		/// <summary>
+		/// Gets whether an exclusive writing operation is in progress
+		/// </summary>
+		public bool IsWriting
+		{
+			get { return _Counter == -1; }
+		}
+		
+		/// <summary>
+		/// Gets the number of readers queued
+		/// </summary>
+		public int WaitingReaders
+		{
+			get { return _ReadersWaiting; }
+		}
+		
+		/// <summary>
+		/// Gets the number of writers queued
+		/// </summary>
+		public int WaitingWriters
+		{
+			get { return _Writers.Count; }
 		}
 		
 		//****************************************
@@ -154,29 +334,20 @@ namespace Proximity.Utility.Threading
 		private class AsyncReadLockInstance : IDisposable
 		{	//****************************************
 			private readonly AsyncReadWriteLock _Source;
-			private readonly StackTrace _Trace;
-			private bool _Released;
+			private int _Released;
 			//****************************************
 			
 			internal AsyncReadLockInstance(AsyncReadWriteLock source)
 			{
 				_Source = source;
-				_Trace = new StackTrace(2);
-			}
-			
-			~AsyncReadLockInstance()
-			{
-				if (!_Released)
-					Log.Error("Read Instance finalised without disposal, location: {0}", _Trace);
 			}
 			
 			//****************************************
 			
 			public void Dispose()
 			{
-				if (_Source != null)
+				if (_Source != null && Interlocked.Exchange(ref _Released, 1) == 0)
 				{
-					_Released = true;
 					_Source.ReleaseRead();
 				}
 			}
@@ -185,29 +356,20 @@ namespace Proximity.Utility.Threading
 		private class AsyncWriteLockInstance : IDisposable
 		{	//****************************************
 			private readonly AsyncReadWriteLock _Source;
-			private readonly StackTrace _Trace;
-			private bool _Released;
+			private int _Released;
 			//****************************************
 			
 			internal AsyncWriteLockInstance(AsyncReadWriteLock source)
 			{
 				_Source = source;
-				
-			}
-			
-			~AsyncWriteLockInstance()
-			{
-				if (!_Released)
-					Log.Error("Write Instance finalised without disposal, location: {0}", _Trace);
 			}
 			
 			//****************************************
 			
 			public void Dispose()
 			{
-				if (_Source != null)
+				if (_Source != null && Interlocked.Exchange(ref _Released, 1) == 0)
 				{
-					_Released = true;
 					_Source.ReleaseWrite();
 				}
 			}

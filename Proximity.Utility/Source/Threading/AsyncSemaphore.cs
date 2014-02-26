@@ -50,7 +50,7 @@ namespace Proximity.Utility.Threading
 			{
 				while (_Waiters.Count > 0)
 				{
-					_Waiters.Dequeue().SetCanceled();
+					_Waiters.Dequeue().TrySetCanceled();
 				}
 			}
 		}
@@ -59,9 +59,9 @@ namespace Proximity.Utility.Threading
 		/// Attempts to take a counter
 		/// </summary>
 		/// <returns>A task that completes when a counter is taken, giving an IDisposable to release the counter</returns>
-		public Task<IDisposable> Lock()
+		public Task<IDisposable> Wait()
 		{
-			return Lock(CancellationToken.None);
+			return Wait(CancellationToken.None);
 		}
 		
 		/// <summary>
@@ -69,7 +69,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="timeout">The amount of time to wait for a counters</param>
 		/// <returns>A task that completes when a counter is taken, giving an IDisposable to release the counter</returns>
-		public Task<IDisposable> Lock(TimeSpan timeout)
+		public Task<IDisposable> Wait(TimeSpan timeout)
 		{
 			return Lock(new CancellationTokenSource(timeout));
 		}
@@ -79,7 +79,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="token">A cancellation token that can be used to abort waiting on the lock</param>
 		/// <returns>A task that completes when a counter is taken, giving an IDisposable to release the counter</returns>
-		public Task<IDisposable> Lock(CancellationToken token)
+		public Task<IDisposable> Wait(CancellationToken token)
 		{
 			lock (_Waiters)
 			{
@@ -104,7 +104,7 @@ namespace Proximity.Utility.Threading
 					var MyRegistration = token.Register(Cancel, NewWaiter);
 					
 					// If we complete and haven't been cancelled, dispose of the registration
-					NewWaiter.Task.ContinueWith((task) => MyRegistration.Dispose(), TaskContinuationOptions.NotOnCanceled);
+					NewWaiter.Task.ContinueWith((task) => MyRegistration.Dispose());
 				}
 				
 				return NewWaiter.Task;
@@ -115,7 +115,7 @@ namespace Proximity.Utility.Threading
 		
 		private Task<IDisposable> Lock(CancellationTokenSource tokenSource)
 		{	//****************************************
-			var MyTask = Lock(tokenSource.Token);
+			var MyTask = Wait(tokenSource.Token);
 			//****************************************
 		
 			// If the task is already completed, no need for the token source
@@ -161,11 +161,29 @@ namespace Proximity.Utility.Threading
 		
 		private void Cancel(object state)
 		{	//****************************************
-			var MyWaiter = new TaskCompletionSource<IDisposable>();
+			var MyWaiter = (TaskCompletionSource<IDisposable>)state;
 			//****************************************
 			
 			// Try and cancel our task. If it fails, we've already completed and been removed from the Waiters list.
 			MyWaiter.TrySetCanceled();
+		}
+		
+		//****************************************
+		
+		/// <summary>
+		/// Gets the number of counters available for taking
+		/// </summary>
+		public int CurrentCount
+		{
+			get { return _CurrentCount; }
+		}
+		
+		/// <summary>
+		/// Gets the number of operations waiting for a counter
+		/// </summary>
+		public int WaitingCount
+		{
+			get { return _Waiters.Count; }
 		}
 		
 		//****************************************
