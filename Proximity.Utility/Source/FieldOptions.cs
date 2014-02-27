@@ -4,6 +4,7 @@
 \****************************************/
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Threading;
 //****************************************
@@ -15,7 +16,7 @@ namespace Proximity.Utility
 	/// </summary>
 	public static class FieldOptions
 	{	//****************************************
-		private static Dictionary<Type, OptionSet> _OptionSets = new Dictionary<Type, OptionSet>();
+		private static readonly ConcurrentDictionary<Type, OptionSet> _OptionSets = new ConcurrentDictionary<Type, OptionSet>();
 		//****************************************
 		
 		/// <summary>
@@ -25,25 +26,11 @@ namespace Proximity.Utility
 		/// <returns>The associated string code, or null if it does not have a code/is not a valid value</returns>
 		public static string ToCode<TEnum>(TEnum enumValue)
 		{	//****************************************
-			OptionSet MyOptionSet = null;
+			var MyOptionSet = OptionContainer<TEnum>._Options;
 			//****************************************
-			
-			lock (_OptionSets)
-			{
-				_OptionSets.TryGetValue(typeof(TEnum), out MyOptionSet);
-			}
 			
 			if (MyOptionSet == null)
-			{
-				MyOptionSet = new OptionSet(typeof(TEnum));
-				
-				lock (_OptionSets)
-				{
-					_OptionSets[typeof(TEnum)] = MyOptionSet;
-				}
-			}
-			
-			//****************************************
+				Interlocked.CompareExchange<OptionSet>(ref OptionContainer<TEnum>._Options, MyOptionSet = new OptionSet(typeof(TEnum)), null);
 			
 			return MyOptionSet.GetCode((Enum)(object)enumValue);
 		}
@@ -55,26 +42,12 @@ namespace Proximity.Utility
 		/// <returns>The associated enumeration value, or the default value (zero) if the code is not valid </returns>
 		public static TEnum ToValue<TEnum>(string codeValue)
 		{	//****************************************
-			OptionSet MyOptionSet = null;
+			var MyOptionSet = OptionContainer<TEnum>._Options;
 			object MyValue;
 			//****************************************
 			
-			lock (_OptionSets)
-			{
-				_OptionSets.TryGetValue(typeof(TEnum), out MyOptionSet);
-			}
-			
 			if (MyOptionSet == null)
-			{
-				MyOptionSet = new OptionSet(typeof(TEnum));
-				
-				lock (_OptionSets)
-				{
-					_OptionSets[typeof(TEnum)] = MyOptionSet;
-				}
-			}
-			
-			//****************************************
+				Interlocked.CompareExchange<OptionSet>(ref OptionContainer<TEnum>._Options, MyOptionSet = new OptionSet(typeof(TEnum)), null);
 			
 			if (codeValue == null)
 				return default(TEnum);
@@ -88,6 +61,11 @@ namespace Proximity.Utility
 		}
 		
 		//****************************************
+		
+		private static class OptionContainer<TEnum>
+		{
+			internal static OptionSet _Options;
+		}
 		
 		private class OptionSet
 		{	//****************************************
