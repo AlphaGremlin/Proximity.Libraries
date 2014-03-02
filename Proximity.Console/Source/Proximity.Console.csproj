@@ -65,9 +65,6 @@
   </PropertyGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
-    <Reference Include="Proximity.Utility">
-      <HintPath>..\..\Build\Proximity.Utility.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Xml" />
@@ -83,5 +80,11 @@
     <Compile Include="ConsoleParser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="StandardCommands.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Proximity.Utility\Source\Proximity.Utility.csproj">
+      <Project>{B003D333-C349-4713-94E2-7B80095D9C0D}</Project>
+      <Name>Proximity.Utility</Name>
+    </ProjectReference>
   </ItemGroup>
 </Project>
