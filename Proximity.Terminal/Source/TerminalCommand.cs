@@ -17,6 +17,7 @@ namespace Proximity.Terminal
 	/// </summary>
 	public sealed class TerminalCommand
 	{	//****************************************
+		private readonly string _Name;
 		private readonly MethodInfo _Method;
 		private readonly bool _IsTask;
 		
@@ -25,6 +26,7 @@ namespace Proximity.Terminal
 		
 		internal TerminalCommand(MethodInfo method, TerminalBindingAttribute binding)
 		{
+			_Name = binding.Name ?? method.Name;
 			_Method = method;
 			
 			_Description = binding.Description;
@@ -95,9 +97,20 @@ namespace Proximity.Terminal
 		
 		//****************************************
 		
+		public string Name
+		{
+			get { return _Name; }
+		}
+		
 		public MethodInfo Method
 		{
 			get { return _Method; }
 		}
+		
+		public string Description
+		{
+			get { return _Description; }
+		}
+		
 	}
 }

@@ -12,26 +12,23 @@ using Proximity.Utility.Collections;
 namespace Proximity.Terminal
 {
 	/// <summary>
-	/// Description of TerminalType.
+	/// Describes a type providing terminal data
 	/// </summary>
 	public sealed class TerminalType
 	{//****************************************
 		private readonly Type _Type;
-		private readonly string _InstanceType;
+		private readonly string _Name;
 		private readonly bool _IsDefault;
-		
-		private WeakReference _DefaultInstance;
-		private readonly WeakDictionary<string, object> _Instances = new WeakDictionary<string, object>();
 		
 		private readonly Dictionary<string, TerminalCommandSet> _Commands = new Dictionary<string, TerminalCommandSet>(StringComparer.InvariantCultureIgnoreCase);
 		private readonly Dictionary<string, TerminalVariable> _Variables = new Dictionary<string, TerminalVariable>(StringComparer.InvariantCultureIgnoreCase);
 		//****************************************
 		
-		internal TerminalType(Type type, TerminalProviderAttribute provider)
+		internal TerminalType(TerminalRegistry registry, Type type, TerminalProviderAttribute provider)
 		{
 			_Type = type;
 			
-			_InstanceType = provider.InstanceType;
+			_Name = provider.InstanceType;
 			_IsDefault = provider.IsDefault;
 			
 			//****************************************
@@ -40,11 +37,18 @@ namespace Proximity.Terminal
 			{
 				foreach(TerminalBindingAttribute MyBinding in MyMethod.GetCustomAttributes(typeof(TerminalBindingAttribute), true))
 				{
+					if (MyMethod.IsStatic)
+					{
+						registry.RegisterCommand(MyMethod, MyBinding);
+						
+						continue;
+					}
+					
 					var MyName = MyBinding.Name ?? MyMethod.Name;
 					TerminalCommandSet MyCommands;
 					
 					if (!_Commands.TryGetValue(MyName, out MyCommands))
-						_Commands.Add(MyName, MyCommands = new TerminalCommandSet(this, MyName));
+						_Commands.Add(MyName, MyCommands = new TerminalCommandSet(MyName));
 					
 					MyCommands.AddOverload(MyMethod, MyBinding);
 				}
@@ -54,6 +58,13 @@ namespace Proximity.Terminal
 			{
 				foreach(TerminalBindingAttribute MyBinding in MyProperty.GetCustomAttributes(typeof(TerminalBindingAttribute), true))
 				{
+					if (MyProperty.GetMethod.IsStatic)
+					{
+						registry.RegisterVariable(MyProperty, MyBinding);
+						
+						continue;
+					}
+					
 					var MyName = MyBinding.Name ?? MyProperty.Name;
 					
 					if (_Variables.ContainsKey(MyName))
@@ -66,12 +77,24 @@ namespace Proximity.Terminal
 		
 		//****************************************
 		
-		public object GetNamedInstance(string instance)
-		{
-			object MyInstance;
+		public TerminalCommandSet FindCommand(string commandName)
+		{	//****************************************
+			TerminalCommandSet MyCommand;
+			//****************************************
 			
-			if (_Instances.TryGetValue(instance, out MyInstance))
-				return MyInstance;
+			if (_Commands.TryGetValue(commandName, out MyCommand))
+				return MyCommand;
+			
+			return null;
+		}
+		
+		public TerminalVariable FindVariable(string variableName)
+		{	//****************************************
+			TerminalVariable MyVariable;
+			//****************************************
+			
+			if (_Variables.TryGetValue(variableName, out MyVariable))
+				return MyVariable;
 			
 			return null;
 		}
@@ -81,14 +104,24 @@ namespace Proximity.Terminal
 		/// <summary>
 		/// Gets the name to identify instances of this class registered with the Terminal
 		/// </summary>
-		public string InstanceType
+		public string Name
 		{
-			get { return _InstanceType; }
+			get { return _Name; }
 		}
 		
-		public object DefaultInstance
+		public bool IsDefault
 		{
-			get { return _DefaultInstance != null ? _DefaultInstance.Target : null; }
+			get { return _IsDefault; }
+		}
+		
+		public IEnumerable<string> Commands
+		{
+			get { return _Commands.Keys; }
+		}
+		
+		public IEnumerable<string> Variables
+		{
+			get { return _Variables.Keys; }
 		}
 	}
 }

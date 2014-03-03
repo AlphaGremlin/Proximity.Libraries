@@ -10,7 +10,7 @@ namespace Proximity.Terminal
 	/// <summary>
 	/// Describes a terminal binding
 	/// </summary>
-	[AttributeUsage(AttributeTargets.Method | AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+	[AttributeUsage(AttributeTargets.Method | AttributeTargets.Property, Inherited = false, AllowMultiple = true)]
 	public sealed class TerminalBindingAttribute : Attribute
 	{	//****************************************
 		private string _Name;
@@ -41,6 +41,7 @@ namespace Proximity.Terminal
 		/// <param name="description">The description to use for this binding</param>
 		public TerminalBindingAttribute(string name, string description)
 		{
+			_Name = name;
 			_Description = description;
 		}
 		

@@ -16,20 +16,18 @@ namespace Proximity.Terminal
 	/// </summary>
 	public sealed class TerminalCommandSet
 	{	//****************************************
-		private readonly TerminalType _Parent;
 		private readonly string _Name;
 		private readonly List<TerminalCommand> _Commands = new List<TerminalCommand>();
 		//****************************************
 		
-		internal TerminalCommandSet(TerminalType parent, string name)
+		internal TerminalCommandSet(string name)
 		{
-			_Parent = parent;
 			_Name = name;
 		}
 		
 		//****************************************
 		
-		public TerminalCommand AddOverload(MethodInfo method, TerminalBindingAttribute binding)
+		internal TerminalCommand AddOverload(MethodInfo method, TerminalBindingAttribute binding)
 		{	//****************************************
 			var NewCommand = new TerminalCommand(method, binding);
 			//****************************************
@@ -38,6 +36,8 @@ namespace Proximity.Terminal
 			
 			return NewCommand;
 		}
+		
+		//****************************************
 		
 		public TerminalCommand FindCommand(string[] inArgs, out object[] outArgs)
 		{	//****************************************
@@ -62,7 +62,7 @@ namespace Proximity.Terminal
 						MyConverter = TypeDescriptor.GetConverter(MethodParams[Index].ParameterType);
 							
 						if (MyConverter == null)
-							throw new InvalidCastException();
+							throw new NotSupportedException();
 						
 						ParamData[Index] = MyConverter.ConvertFromString(inArgs[Index]);
 					}
@@ -80,6 +80,10 @@ namespace Proximity.Terminal
 				{
 					// Ignore exception and try again
 				}
+				catch (NotSupportedException)
+				{
+					// Ignore exception and try again
+				}
 			}
 			
 			//****************************************
@@ -94,6 +98,11 @@ namespace Proximity.Terminal
 		public string Name
 		{
 			get { return _Name; }
+		}
+		
+		public IEnumerable<TerminalCommand> Commands
+		{
+			get { return _Commands; }
 		}
 	}
 }

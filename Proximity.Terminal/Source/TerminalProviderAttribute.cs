@@ -13,8 +13,8 @@ namespace Proximity.Terminal
 	[AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
 	public sealed class TerminalProviderAttribute : Attribute
 	{	//****************************************
-		private readonly string _InstanceType;
-		private readonly bool _IsDefault;
+		private string _InstanceType;
+		private bool _IsDefault;
 		//****************************************
 		
 		/// <summary>
