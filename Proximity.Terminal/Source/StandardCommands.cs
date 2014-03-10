@@ -28,9 +28,9 @@ namespace Proximity.Terminal
 		[TerminalBinding("Output a list of available commands, variables and instances")]
 		public static void Help()
 		{	//****************************************
-			var MyCommands = new List<string>();
-			var MyVariables = new List<string>();
-			var MyTypes = new List<string>();
+			var MyCommands = new List<TerminalCommandSet>();
+			var MyVariables = new List<TerminalVariable>();
+			var MyTypes = new List<TerminalTypeSet>();
 			//****************************************
 			
 			foreach(var MyRegistry in TerminalParser.Context)
@@ -41,6 +41,12 @@ namespace Proximity.Terminal
 				
 				MyTypes.AddRange(MyRegistry.TypeSets);
 			}
+			
+			MyCommands.Sort();
+			
+			MyVariables.Sort();
+			
+			MyTypes.Sort();
 			
 			//****************************************
 			
@@ -82,65 +88,7 @@ namespace Proximity.Terminal
 				return;
 			}
 			
-			//****************************************
-			
-			if (MyTypeData is TerminalTypeSet)
-			{
-				var MyTypeSet = (TerminalTypeSet)MyTypeData;
-				
-				using (Log.VerboseSection("Usage information for '{0}':", MyTypeSet.TypeName))
-				{
-					var MyDefault = MyTypeSet.Default != null ? MyTypeSet.Default.Target : null;
-					
-					if (MyDefault != null)
-					{
-						using (Log.VerboseSection("Available Default Commands:"))
-						{
-							Log.Info(string.Join(", ", MyTypeSet.Default.Type.Commands));
-						}
-						
-						using (Log.VerboseSection("Available Default Variables:"))
-						{
-							Log.Info(string.Join(", ", MyTypeSet.Default.Type.Variables));
-						}
-					}
-					
-					using (Log.VerboseSection("Available Instances:"))
-					{
-						Log.Info(string.Join(", ", MyTypeSet.Instances));
-					}
-				}
-			}
-			else if (MyTypeData is TerminalInstance)
-			{
-				var MyInstance = (TerminalInstance)MyTypeData;
-				
-				using (Log.VerboseSection("Available Commands:"))
-				{
-					Log.Info(string.Join(", ", MyInstance.Type.Commands));
-				}
-				
-				using (Log.VerboseSection("Available Variables:"))
-				{
-					Log.Info(string.Join(", ", MyInstance.Type.Variables));
-				}
-			}
-			else if (MyTypeData is TerminalCommandSet)
-			{
-				using (Log.VerboseSection("Available Overloads:"))
-				{
-					foreach(var MyCommand in ((TerminalCommandSet)MyTypeData).Commands)
-					{
-						Log.Info("{0}({1})\t{1}", MyCommand.Name, string.Join(", ", MyCommand.Method.GetParameters().Select(param => string.Format("{0}: {1}", param.Name, param.ParameterType.Name))), MyCommand.Description);
-					}
-				}
-			}
-			else if (MyTypeData is TerminalVariable)
-			{
-				var MyVariable = (TerminalVariable)MyTypeData;
-				
-				Log.Info("{0}: {1}\t{2}", MyVariable.Name, MyVariable.Type.Name, MyVariable.Description);
-			}
+			TerminalParser.HelpOn(MyTypeData);
 		}
 		
 		//********************

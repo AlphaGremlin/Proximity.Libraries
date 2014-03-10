@@ -18,7 +18,7 @@ namespace Proximity.Utility.Tests
 	[TestFixture]
 	public sealed class AsyncReadWriteLockTests
 	{
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, Timeout(1000)]
 		public async Task SingleRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -35,7 +35,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(Resource, "Block not entered");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, Timeout(1000)]
 		public async Task SingleWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -212,7 +212,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(8, Resource, "Block not entered");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, Timeout(1000)]
 		public async Task WriteCancelRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -235,7 +235,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(MyReader.IsCanceled, "Did not cancel");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, Timeout(1000)]
 		public async Task WriteCancelReadMulti()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -260,7 +260,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyReader2.IsCanceled, "Cancelled");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, Timeout(1000)]
 		public async Task ReadCancelWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -283,7 +283,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(MyWriter.IsCanceled, "Did not cancel");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, Timeout(1000)]
 		public async Task ReadCancelWriteMulti()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -308,7 +308,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyWriter2.IsCanceled, "Cancelled");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, Timeout(1000)]
 		public async Task WriteTimeoutRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -327,7 +327,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(MyReader.IsCanceled, "Did not cancel");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, Timeout(1000)]
 		public async Task ReadTimeoutWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -346,7 +346,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(MyWriter.IsCanceled, "Did not cancel");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, Timeout(1000)]
 		public void NoTimeoutRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -360,7 +360,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(MyReader.IsCompleted, "Is not completed");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, Timeout(1000)]
 		public void NoTimeoutWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();

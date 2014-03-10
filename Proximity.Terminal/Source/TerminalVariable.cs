@@ -14,7 +14,7 @@ namespace Proximity.Terminal
 	/// <summary>
 	/// Description of TerminalVariable.
 	/// </summary>
-	public sealed class TerminalVariable
+	public sealed class TerminalVariable : IComparable<TerminalVariable>
 	{	//****************************************
 		private readonly string _Name;
 		private readonly PropertyInfo _Property;
@@ -37,15 +37,21 @@ namespace Proximity.Terminal
 		
 		public bool SetValue(object instance, string argumentText)
 		{	//****************************************
-			var MyConverter = TypeDescriptor.GetConverter(_Property.PropertyType);
+			TypeConverter MyConverter;
+			object MyValue;
 			//****************************************
+			
+			if (!_Property.CanWrite)
+				return false;
+			
+			MyConverter = TypeDescriptor.GetConverter(_Property.PropertyType);
 			
 			if (MyConverter == null)
 				return false;
 			
 			try
 			{
-				var MyValue = MyConverter.ConvertFromString(argumentText);
+				MyValue = MyConverter.ConvertFromString(argumentText);
 				
 				_Property.SetValue(instance, MyValue);
 				
@@ -65,6 +71,16 @@ namespace Proximity.Terminal
 			}
 		}
 		
+		public override string ToString()
+		{
+			return _Name;
+		}
+		
+		public int CompareTo(TerminalVariable other)
+		{
+			return _Name.CompareTo(other._Name);
+		}
+		
 		//****************************************
 		
 		public string Name
@@ -80,6 +96,11 @@ namespace Proximity.Terminal
 		public string Description
 		{
 			get { return _Description; }
+		}
+		
+		public bool CanWrite
+		{
+			get { return _Property.CanWrite; }
 		}
 	}
 }

@@ -15,7 +15,7 @@ namespace Proximity.Terminal
 	/// <summary>
 	/// Description of TerminalTypeSet.
 	/// </summary>
-	public sealed class TerminalTypeSet
+	public sealed class TerminalTypeSet : IComparable<TerminalTypeSet>
 	{	//****************************************
 		private readonly string _TypeName;
 		
@@ -29,14 +29,6 @@ namespace Proximity.Terminal
 		}
 			
 		//****************************************
-		
-		internal void AddNamedInstance(TerminalInstance instance)
-		{
-			lock (_Instances)
-			{
-				_Instances.Add(instance.Name, instance);
-			}
-		}
 		
 		public TerminalInstance GetNamedInstance(string instanceName)
 		{	//****************************************
@@ -52,11 +44,54 @@ namespace Proximity.Terminal
 			return null;
 		}
 		
+		public override string ToString()
+		{
+			return _TypeName;
+		}
+		
+		public int CompareTo(TerminalTypeSet other)
+		{
+			return _TypeName.CompareTo(other._TypeName);
+		}
+		
+		//****************************************
+		
+		internal void AddNamedInstance(TerminalInstance instance)
+		{
+			lock (_Instances)
+			{
+				Cleanup();
+				
+				_Instances.Add(instance.Name, instance);
+			}
+		}
+		
 		internal void Remove(string instanceName)
 		{
 			lock (_Instances)
 			{
+				Cleanup();
+				
 				_Instances.Remove(instanceName);
+			}
+		}
+		
+		//****************************************
+		
+		private void Cleanup()
+		{	//****************************************
+			var OldInstances = new List<string>();
+			//****************************************
+			
+			foreach(var MyInstance in _Instances.Values)
+			{
+				if (MyInstance.Target == null)
+					OldInstances.Add(MyInstance.Name);
+			}
+			
+			foreach(var MyOldInstance in OldInstances)
+			{
+				_Instances.Remove(MyOldInstance);
 			}
 		}
 		
@@ -81,7 +116,11 @@ namespace Proximity.Terminal
 			get
 			{
 				lock (_Instances)
+				{
+					Cleanup();
+					
 					return _Instances.Keys.ToArray();
+				}
 			}
 		}
 	}

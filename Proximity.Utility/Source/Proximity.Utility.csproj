@@ -188,6 +188,7 @@
     <Compile Include="Resources\XmlResourceSet.cs" />
     <Compile Include="SteppedTimer.cs" />
     <Compile Include="Threading\AggregateException.cs" />
+    <Compile Include="Threading\AsyncSwitchLock.cs" />
     <Compile Include="Threading\AsyncSemaphore.cs" />
     <Compile Include="Threading\AsyncReadWriteLock.cs" />
     <Compile Include="Threading\DedicatedThreadScheduler.cs" />

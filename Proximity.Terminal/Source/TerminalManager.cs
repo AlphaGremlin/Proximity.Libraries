@@ -29,7 +29,7 @@ namespace Proximity.Terminal
 		
 		private static bool _HasCommandLine, _IsRedirected, _IsCursorVisible;
 		private static TerminalRegistry[] _Registry;
-		private static string _ClearMask = string.Empty.PadRight(16);
+		private static char[] _ClearMask = string.Empty.PadRight(16).ToCharArray();
 		//****************************************
 		
 		/// <summary>
@@ -239,7 +239,7 @@ namespace Proximity.Terminal
 						if (KeyData.Modifiers.HasFlag(ConsoleModifiers.Control))
 						{
 							if (_InputIndex < Width - 2)
-								_InputIndex = Math.Min(Width, _InputLine.Length);
+								_InputIndex = Math.Min(_InputIndex + Width, _InputLine.Length);
 							else
 								_InputIndex = _InputLine.Length;
 						}
@@ -356,7 +356,8 @@ namespace Proximity.Terminal
 		/// <summary>
 		/// Writes a line of text to the console
 		/// </summary>
-		/// <param name="output"></param>
+		/// <param name="output">The text to write to the console</param>
+		/// <param name="color">The text colour to apply</param>
 		public static void WriteLine(string output, ConsoleColor color)
 		{
 			lock (_LockObject)
@@ -381,6 +382,8 @@ namespace Proximity.Terminal
 		
 		private static void HideInputArea()
 		{
+			int Index;
+			
 			lock (_LockObject)
 			{
 				// Is our input visible?
@@ -390,10 +393,13 @@ namespace Proximity.Terminal
 				Console.SetCursorPosition(0, _InputTop);
 				
 				Console.Write("  ");
-				for (int Index = 0; Index > _InputLine.Length; Index++)
+				for (Index = 16; Index < _InputLine.Length; Index += 16)
 				{
-					Console.Write(' ');
+					Console.Write(_ClearMask);
 				}
+				
+				if (Index - 16 != _InputLine.Length)
+					Console.Write(_ClearMask, 0, _InputLine.Length - (Index - 16));
 				
 				Console.SetCursorPosition(0, _InputTop);
 			}
@@ -418,7 +424,8 @@ namespace Proximity.Terminal
 				_InputTop = Console.CursorTop - (_InputLine.Length + 2) / Width;
 				
 				// Now calculate where the cursor location is
-				Console.SetCursorPosition((_InputIndex + 2) - (_InputIndex / Width) * Width, _InputTop + (_InputIndex / Width));
+				var RealPosition = (_InputIndex + 2);
+				Console.SetCursorPosition(RealPosition - (RealPosition / Width) * Width, _InputTop + (RealPosition / Width));
 				
 				Console.ResetColor();
 			}
@@ -434,6 +441,9 @@ namespace Proximity.Terminal
 			get { return _HasCommandLine; }
 		}
 		
+		/// <summary>
+		/// Gets the command registry used by the terminal
+		/// </summary>
 		public static TerminalRegistry[] Registry
 		{
 			get { return _Registry; }

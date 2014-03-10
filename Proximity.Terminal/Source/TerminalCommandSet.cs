@@ -14,7 +14,7 @@ namespace Proximity.Terminal
 	/// <summary>
 	/// Description of TerminalCommandSet.
 	/// </summary>
-	public sealed class TerminalCommandSet
+	public sealed class TerminalCommandSet : IComparable<TerminalCommandSet>
 	{	//****************************************
 		private readonly string _Name;
 		private readonly List<TerminalCommand> _Commands = new List<TerminalCommand>();
@@ -93,6 +93,16 @@ namespace Proximity.Terminal
 			return null;
 		}
 		
+		public override string ToString()
+		{
+			return _Name;
+		}
+		
+		public int CompareTo(TerminalCommandSet other)
+		{
+			return _Name.CompareTo(other._Name);
+		}
+		
 		//****************************************
 		
 		public string Name
@@ -104,5 +114,6 @@ namespace Proximity.Terminal
 		{
 			get { return _Commands; }
 		}
+		
 	}
 }

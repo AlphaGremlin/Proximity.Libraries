@@ -38,6 +38,9 @@ namespace Proximity.Terminal
 		
 		//****************************************
 		
+		/// <summary>
+		/// Scans all assemblies loaded in this App Domain for Terminal Providers
+		/// </summary>
 		public void ScanLoaded()
 		{
 			foreach(Assembly MyAssembly in AppDomain.CurrentDomain.GetAssemblies())
@@ -55,11 +58,19 @@ namespace Proximity.Terminal
 			}
 		}
 		
+		/// <summary>
+		/// Attaches this Registry to the <see cref="AppDomain.AssemblyLoad" /> event, scanning new assemblies for Terminal Providers
+		/// </summary>
 		public void ScanOnLoad()
 		{
 			AppDomain.CurrentDomain.AssemblyLoad += OnAssemblyLoad;
 		}
 		
+		/// <summary>
+		/// Scans an assembly for Terminal Providers
+		/// </summary>
+		/// <param name="assembly">The Assembly to scan</param>
+		/// <returns>A list of Terminal Types within this Assembly</returns>
 		public IEnumerable<TerminalType> Scan(Assembly assembly)
 		{
 			var MyMatches = new List<TerminalType>();
@@ -75,6 +86,11 @@ namespace Proximity.Terminal
 			return MyMatches;
 		}
 		
+		/// <summary>
+		/// Scans a type, checking if it's a Terminal Provider
+		/// </summary>
+		/// <param name="type">The type to scan</param>
+		/// <returns>A Terminal Type definition, or null if this type is not a Terminal Provider</returns>
 		public TerminalType Scan(Type type)
 		{	//****************************************
 			var MyProvider = type.GetCustomAttribute<TerminalProviderAttribute>();
@@ -99,6 +115,12 @@ namespace Proximity.Terminal
 			return MyType;
 		}
 		
+		/// <summary>
+		/// Registers a Terminal Instance with this Registry
+		/// </summary>
+		/// <param name="name">The unique name to assign this Instance</param>
+		/// <param name="instance">The instance itself</param>
+		/// <returns>A new Terminal Instance describing this Instance</returns>
 		public TerminalInstance Add(string name, object instance)
 		{	//****************************************
 			TerminalType MyType;
@@ -126,6 +148,12 @@ namespace Proximity.Terminal
 			return MyInstance;
 		}
 		
+		/// <summary>
+		/// Unregisters a Terminal Instance previously registered via <see cref="Add" />
+		/// </summary>
+		/// <param name="name"></param>
+		/// <param name="instance"></param>
+		/// <remarks>Instances are held with weak references, so this method is not necessary to call. It does, however, improve performance</remarks>
 		public void Remove(string name, object instance)
 		{	//****************************************
 			TerminalType MyType;
@@ -145,6 +173,11 @@ namespace Proximity.Terminal
 		
 		//****************************************
 		
+		/// <summary>
+		/// Looks up a global command set
+		/// </summary>
+		/// <param name="commandName">The global command set to find</param>
+		/// <returns>The named command set, or null if it doesn't exist</returns>
 		public TerminalCommandSet FindCommand(string commandName)
 		{	//****************************************
 			TerminalCommandSet MyCommand;
@@ -159,6 +192,11 @@ namespace Proximity.Terminal
 			return null;
 		}
 		
+		/// <summary>
+		/// Looks up a global variable
+		/// </summary>
+		/// <param name="commandName">The global variable to find</param>
+		/// <returns>The named variable, or null if it doesn't exist</returns>
 		public TerminalVariable FindVariable(string variableName)
 		{	//****************************************
 			TerminalVariable MyVariable;
@@ -173,6 +211,11 @@ namespace Proximity.Terminal
 			return null;
 		}
 		
+		/// <summary>
+		/// Looks up a type set
+		/// </summary>
+		/// <param name="commandName">The type set to find</param>
+		/// <returns>The named type set, or null if it doesn't exist</returns>
 		public TerminalTypeSet FindTypeSet(string typeName)
 		{	//****************************************
 			TerminalTypeSet MyType;
@@ -242,27 +285,36 @@ namespace Proximity.Terminal
 		
 		//****************************************
 		
-		public IEnumerable<string> Commands
+		/// <summary>
+		/// Gets a list of all global commands
+		/// </summary>
+		public IEnumerable<TerminalCommandSet> Commands
 		{
 			get
 			{
 				lock (_LockObject)
-					return _Commands.Keys.ToArray();
+					return _Commands.Values.ToArray();
 			}
 		}
 		
-		public IEnumerable<string> Variables
+		/// <summary>
+		/// Gets a list of all global variables
+		/// </summary>
+		public IEnumerable<TerminalVariable> Variables
 		{
 			get
 			{
 				lock (_LockObject)
-					return _Variables.Keys.ToArray();
+					return _Variables.Values.ToArray();
 			}
 		}
 		
-		public IEnumerable<string> TypeSets
+		/// <summary>
+		/// Gets a list of all type sets
+		/// </summary>
+		public IEnumerable<TerminalTypeSet> TypeSets
 		{
-			get { return _TypeSets.Keys; }
+			get { return _TypeSets.Values; }
 		}
 		
 		/// <summary>

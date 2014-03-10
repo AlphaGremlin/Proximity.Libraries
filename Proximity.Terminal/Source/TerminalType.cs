@@ -33,7 +33,7 @@ namespace Proximity.Terminal
 			
 			//****************************************
 			
-			foreach(var MyMethod in type.GetMethods())
+			foreach(var MyMethod in type.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
 			{
 				foreach(TerminalBindingAttribute MyBinding in MyMethod.GetCustomAttributes(typeof(TerminalBindingAttribute), true))
 				{
@@ -54,7 +54,7 @@ namespace Proximity.Terminal
 				}
 			}
 			
-			foreach(var MyProperty in type.GetProperties())
+			foreach(var MyProperty in type.GetProperties(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
 			{
 				foreach(TerminalBindingAttribute MyBinding in MyProperty.GetCustomAttributes(typeof(TerminalBindingAttribute), true))
 				{
@@ -114,14 +114,14 @@ namespace Proximity.Terminal
 			get { return _IsDefault; }
 		}
 		
-		public IEnumerable<string> Commands
+		public IEnumerable<TerminalCommandSet> Commands
 		{
-			get { return _Commands.Keys; }
+			get { return _Commands.Values; }
 		}
 		
-		public IEnumerable<string> Variables
+		public IEnumerable<TerminalVariable> Variables
 		{
-			get { return _Variables.Keys; }
+			get { return _Variables.Values; }
 		}
 	}
 }
