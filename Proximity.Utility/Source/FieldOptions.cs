@@ -87,7 +87,9 @@ namespace Proximity.Utility
 					
 					foreach(OptionCodeAttribute MyAttrib in MyField.GetCustomAttributes(typeof(OptionCodeAttribute), false))
 					{
-						_FieldToCode[MyValue] = MyAttrib.Code;
+						if (_FieldToCode.ContainsKey(MyValue) && MyAttrib.IsDefault)
+							_FieldToCode[MyValue] = MyAttrib.Code;
+						
 						_CodeToField[MyAttrib.Code] = MyValue;
 					}
 				}

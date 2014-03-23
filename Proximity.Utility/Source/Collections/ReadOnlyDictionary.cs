@@ -20,7 +20,7 @@ namespace Proximity.Utility.Collections
 		//****************************************
 		
 		/// <summary>
-		/// Creastes a new, empty read-only dictionary
+		/// Creates a new, empty read-only dictionary
 		/// </summary>
 		public ReadOnlyDictionary()
 		{

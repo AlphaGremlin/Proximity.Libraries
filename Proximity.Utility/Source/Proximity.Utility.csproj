@@ -119,6 +119,7 @@
     <Compile Include="Collections\BiDictionary.cs" />
     <Compile Include="Collections\ConcurrentExtensions.cs" />
     <Compile Include="Collections\ListExtensions.cs" />
+    <Compile Include="Collections\ObservableDictionary.cs" />
     <Compile Include="Collections\ReadOnlyCollection.cs" />
     <Compile Include="Collections\ReadOnlyCollectionTyped.cs" />
     <Compile Include="Collections\ReadOnlyDictionary.cs" />

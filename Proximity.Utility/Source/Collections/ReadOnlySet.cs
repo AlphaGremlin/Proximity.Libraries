@@ -29,21 +29,6 @@ namespace Proximity.Utility.Collections
 		
 		//****************************************
 		
-		bool ISet<TItem>.Add(TItem item)
-		{
-			throw new NotSupportedException("Set is read-only");
-		}
-		
-		void ICollection<TItem>.Add(TItem item)
-		{
-			throw new NotSupportedException("Set is read-only");
-		}
-		
-		void ICollection<TItem>.Clear()
-		{
-			throw new NotSupportedException("Set is read-only");
-		}
-		
 		/// <summary>
 		/// Determines whether the set contains a specific item
 		/// </summary>
@@ -62,16 +47,6 @@ namespace Proximity.Utility.Collections
 		public void CopyTo(TItem[] array, int arrayIndex)
 		{
 			_Set.CopyTo(array, arrayIndex);
-		}
-		
-		void ISet<TItem>.ExceptWith(IEnumerable<TItem> other)
-		{
-			throw new NotSupportedException("Set is read-only");
-		}
-		
-		void ISet<TItem>.IntersectWith(IEnumerable<TItem> other)
-		{
-			throw new NotSupportedException("Set is read-only");
 		}
 		
 		public bool IsSubsetOf(IEnumerable<TItem> other)
@@ -99,24 +74,9 @@ namespace Proximity.Utility.Collections
 			return _Set.Overlaps(other);
 		}
 		
-		bool ICollection<TItem>.Remove(TItem item)
-		{
-			throw new NotSupportedException("Set is read-only");
-		}
-		
 		public bool SetEquals(IEnumerable<TItem> other)
 		{
 			return _Set.SetEquals(other);
-		}
-		
-		void ISet<TItem>.SymmetricExceptWith(IEnumerable<TItem> other)
-		{
-			throw new NotSupportedException("Set is read-only");
-		}
-		
-		void ISet<TItem>.UnionWith(IEnumerable<TItem> other)
-		{
-			throw new NotSupportedException("Set is read-only");
 		}
 		
 		/// <summary>
@@ -129,6 +89,46 @@ namespace Proximity.Utility.Collections
 		}
 		
 		//****************************************
+		
+		bool ISet<TItem>.Add(TItem item)
+		{
+			throw new NotSupportedException("Set is read-only");
+		}
+		
+		void ICollection<TItem>.Add(TItem item)
+		{
+			throw new NotSupportedException("Set is read-only");
+		}
+		
+		void ICollection<TItem>.Clear()
+		{
+			throw new NotSupportedException("Set is read-only");
+		}
+		
+		void ISet<TItem>.ExceptWith(IEnumerable<TItem> other)
+		{
+			throw new NotSupportedException("Set is read-only");
+		}
+		
+		void ISet<TItem>.IntersectWith(IEnumerable<TItem> other)
+		{
+			throw new NotSupportedException("Set is read-only");
+		}
+		
+		bool ICollection<TItem>.Remove(TItem item)
+		{
+			throw new NotSupportedException("Set is read-only");
+		}
+		
+		void ISet<TItem>.SymmetricExceptWith(IEnumerable<TItem> other)
+		{
+			throw new NotSupportedException("Set is read-only");
+		}
+		
+		void ISet<TItem>.UnionWith(IEnumerable<TItem> other)
+		{
+			throw new NotSupportedException("Set is read-only");
+		}
 		
 		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
 		{
