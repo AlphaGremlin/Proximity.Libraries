@@ -290,7 +290,7 @@ namespace Proximity.Terminal
 		/// <returns>The next command matching the partial string</returns>
 		public static string FindNextCommand(string partialCommand, string lastResult, params TerminalRegistry[] registries)
 		{	//****************************************
-			string CommandText, InstanceName = null, PartialText;
+			string CommandText, InstanceName = null, PartialText, Prefix;
 			
 			int CharIndex;
 			
@@ -298,6 +298,15 @@ namespace Proximity.Terminal
 			TerminalInstance MyInstance = null;
 			
 			var PartialMatches = new List<string>();
+			//****************************************
+			
+			if (partialCommand.StartsWith("help ", StringComparison.InvariantCultureIgnoreCase))
+			{
+				partialCommand = partialCommand.Substring(5);
+				
+				Prefix = "Help ";
+			}
+			
 			//****************************************
 			
 			// Find the first word (split on a space)
@@ -325,7 +334,7 @@ namespace Proximity.Terminal
 				
 				// If the instance type doesn't match, return the partial command as is
 				if (MyTypeSet == null)
-					return partialCommand;
+					return Prefix + partialCommand;
 				
 				if (InstanceName == null)
 				{
@@ -338,7 +347,7 @@ namespace Proximity.Terminal
 				
 				// If the instance doesn't exist, return as is
 				if (MyInstance == null)
-					return partialCommand;
+					return Prefix + partialCommand;
 				
 				// Add matching commands
 				foreach (var MyCommand in MyInstance.Type.Commands)
@@ -371,7 +380,7 @@ namespace Proximity.Terminal
 					
 					// If the instance type doesn't match, return the partial command as is
 					if (MyTypeSet == null)
-						return partialCommand;
+						return Prefix + partialCommand;
 					
 					foreach(var MyInstanceName in MyTypeSet.Instances)
 					{
@@ -423,12 +432,12 @@ namespace Proximity.Terminal
 				foreach(string NextCommand in PartialMatches)
 				{
 					if (NextCommand.CompareTo(lastResult) > 0)
-						return NextCommand;
+						return Prefix + NextCommand;
 				}
 				// Nothing greater, go back to the start
 			}
 			
-			return PartialMatches[0];
+			return Prefix + PartialMatches[0];
 		}
 		
 		/// <summary>

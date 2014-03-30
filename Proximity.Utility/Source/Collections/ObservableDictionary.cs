@@ -15,7 +15,7 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Implements an Observable Dictionary for WPF binding
 	/// </summary>
-	/// <remarks>Based on http://blogs.microsoft.co.il/shimmy/2010/12/26/observabledictionarylttkey-tvaluegt-c/</remarks>
+	/// <remarks>Based on http://blogs.microsoft.co.il/shimmy/2010/12/26/observabledictionarylttkey-tvaluegt-c/, modified to use SortedList and provide observable Keys and Values lists</remarks>
 	public class ObservableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, INotifyCollectionChanged, INotifyPropertyChanged
 	{	//****************************************
 		private const string CountString = "Count";
@@ -23,62 +23,39 @@ namespace Proximity.Utility.Collections
 		private const string KeysName = "Keys";
 		private const string ValuesName = "Values";
 		//****************************************
-		private readonly IDictionary<TKey, TValue> _Dictionary;
+		private readonly SortedList<TKey, TValue> _Dictionary;
 		private readonly ObservableDictionaryCollection<TKey> _Keys;
 		private readonly ObservableDictionaryCollection<TValue> _Values;
 		//****************************************
-		
+
 		/// <summary>
 		/// Creates a new, empty observable dictionary
 		/// </summary>
 		public ObservableDictionary()
 		{
-			_Dictionary = new Dictionary<TKey, TValue>();
+			_Dictionary = new SortedList<TKey, TValue>();
 			_Keys = new ObservableDictionaryCollection<TKey>(this, _Dictionary.Keys);
 			_Values = new ObservableDictionaryCollection<TValue>(this, _Dictionary.Values);
 		}
-		
+
 		/// <summary>
 		/// Creates a new pre-filled observable dictionary
 		/// </summary>
 		/// <param name="dictionary">The dictionary to retrieve the contents from</param>
 		public ObservableDictionary(IDictionary<TKey, TValue> dictionary)
 		{
-			_Dictionary = new Dictionary<TKey, TValue>(dictionary);
+			_Dictionary = new SortedList<TKey, TValue>(dictionary);
 			_Keys = new ObservableDictionaryCollection<TKey>(this, _Dictionary.Keys);
 			_Values = new ObservableDictionaryCollection<TValue>(this, _Dictionary.Values);
 		}
-		
-		/// <summary>
-		/// Creates a new empty observable dictionary with the specified comparer
-		/// </summary>
-		/// <param name="comparer">The equality comparer to use</param>
-		public ObservableDictionary(IEqualityComparer<TKey> comparer)
-		{
-			_Dictionary = new Dictionary<TKey, TValue>(comparer);
-			_Keys = new ObservableDictionaryCollection<TKey>(this, _Dictionary.Keys);
-			_Values = new ObservableDictionaryCollection<TValue>(this, _Dictionary.Values);
-		}
-		
+
 		/// <summary>
 		/// Creates a new empty observable dictionary with the specified default capacity
 		/// </summary>
 		/// <param name="capacity">The default capacity of the dictionary</param>
 		public ObservableDictionary(int capacity)
 		{
-			_Dictionary = new Dictionary<TKey, TValue>(capacity);
-			_Keys = new ObservableDictionaryCollection<TKey>(this, _Dictionary.Keys);
-			_Values = new ObservableDictionaryCollection<TValue>(this, _Dictionary.Values);
-		}
-		
-		/// <summary>
-		/// Creates a new pre-filled observable dictionary with the specified comparer
-		/// </summary>
-		/// <param name="dictionary">The dictionary to retrieve the contents from</param>
-		/// <param name="comparer">The equality comparer to use</param>
-		public ObservableDictionary(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey> comparer)
-		{
-			_Dictionary = new Dictionary<TKey, TValue>(dictionary, comparer);
+			_Dictionary = new SortedList<TKey, TValue>(capacity);
 			_Keys = new ObservableDictionaryCollection<TKey>(this, _Dictionary.Keys);
 			_Values = new ObservableDictionaryCollection<TValue>(this, _Dictionary.Values);
 		}
@@ -86,17 +63,40 @@ namespace Proximity.Utility.Collections
 		/// <summary>
 		/// Creates a new empty observable dictionary with the specified comparer
 		/// </summary>
+		/// <param name="comparer">The equality comparer to use</param>
+		public ObservableDictionary(IComparer<TKey> comparer)
+		{
+			_Dictionary = new SortedList<TKey, TValue>(comparer);
+			_Keys = new ObservableDictionaryCollection<TKey>(this, _Dictionary.Keys);
+			_Values = new ObservableDictionaryCollection<TValue>(this, _Dictionary.Values);
+		}
+
+		/// <summary>
+		/// Creates a new pre-filled observable dictionary with the specified comparer
+		/// </summary>
+		/// <param name="dictionary">The dictionary to retrieve the contents from</param>
+		/// <param name="comparer">The equality comparer to use</param>
+		public ObservableDictionary(IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer)
+		{
+			_Dictionary = new SortedList<TKey, TValue>(dictionary, comparer);
+			_Keys = new ObservableDictionaryCollection<TKey>(this, _Dictionary.Keys);
+			_Values = new ObservableDictionaryCollection<TValue>(this, _Dictionary.Values);
+		}
+
+		/// <summary>
+		/// Creates a new empty observable dictionary with the specified comparer
+		/// </summary>
 		/// <param name="capacity">The default capacity of the dictionary</param>
 		/// <param name="comparer">The equality comparer to use</param>
-		public ObservableDictionary(int capacity, IEqualityComparer<TKey> comparer)
+		public ObservableDictionary(int capacity, IComparer<TKey> comparer)
 		{
-			_Dictionary = new Dictionary<TKey, TValue>(capacity, comparer);
+			_Dictionary = new SortedList<TKey, TValue>(capacity, comparer);
 			_Keys = new ObservableDictionaryCollection<TKey>(this, _Dictionary.Keys);
 			_Values = new ObservableDictionaryCollection<TValue>(this, _Dictionary.Values);
 		}
 		
 		//****************************************
-		
+
 		/// <summary>
 		/// Adds a new element the Dictionary
 		/// </summary>
@@ -106,7 +106,7 @@ namespace Proximity.Utility.Collections
 		{
 			Insert(key, value, true);
 		}
-		
+
 		/// <summary>
 		/// Adds an element to the collection
 		/// </summary>
@@ -127,27 +127,27 @@ namespace Proximity.Utility.Collections
 
 			if (items.Count > 0)
 			{
-				if (items.Keys.Any((k) => Dictionary.ContainsKey(k)))
+				if (items.Keys.Any((k) => _Dictionary.ContainsKey(k)))
 					throw new ArgumentException("An item with the same key has already been added.");
 				else
-					foreach (var item in items) Dictionary.Add(item);
+					foreach (var item in items) _Dictionary.Add(item.Key, item.Value);
 
 				OnCollectionChanged(NotifyCollectionChangedAction.Add, items);
 			}
 		}
-		
+
 		/// <summary>
 		/// Removes all elements from the collection
 		/// </summary>
 		public void Clear()
 		{
-			if (Dictionary.Count > 0)
+			if (_Dictionary.Count > 0)
 			{
-				Dictionary.Clear();
+				_Dictionary.Clear();
 				OnCollectionChanged();
 			}
 		}
-		
+
 		/// <summary>
 		/// Determines whether the collection contains a specific item
 		/// </summary>
@@ -155,7 +155,7 @@ namespace Proximity.Utility.Collections
 		/// <returns>True if the item is in the list, otherwise false</returns>
 		public bool Contains(KeyValuePair<TKey, TValue> item)
 		{
-			return Dictionary.Contains(item);
+			return _Dictionary.Contains(item);
 		}
 
 		/// <summary>
@@ -165,9 +165,9 @@ namespace Proximity.Utility.Collections
 		/// <returns>True if there is an element with this key, otherwise false</returns>
 		public bool ContainsKey(TKey key)
 		{
-			return Dictionary.ContainsKey(key);
+			return _Dictionary.ContainsKey(key);
 		}
-		
+
 		/// <summary>
 		/// Copies the elements of the collection to a given array, starting at a specified index
 		/// </summary>
@@ -175,7 +175,12 @@ namespace Proximity.Utility.Collections
 		/// <param name="arrayIndex">The index into the array to start writing</param>
 		public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
 		{
-			Dictionary.CopyTo(array, arrayIndex);
+			for (int Index = 0; Index < _Dictionary.Count; Index++)
+			{
+				array[arrayIndex++] = new KeyValuePair<TKey, TValue>(_Dictionary.Keys[Index], _Dictionary.Values[Index]);
+			}
+
+			//_Dictionary.CopyTo(array, arrayIndex);
 		}
 
 		/// <summary>
@@ -185,16 +190,19 @@ namespace Proximity.Utility.Collections
 		public bool Remove(TKey key)
 		{
 			if (key == null) throw new ArgumentNullException("key");
-			
-			TValue value;
-			Dictionary.TryGetValue(key, out value);
-			var removed = Dictionary.Remove(key);
-			
-			if (removed)
-				//OnCollectionChanged(NotifyCollectionChangedAction.Remove, new KeyValuePair<TKey, TValue>(key, value));
-				OnCollectionChanged();
 
-			return removed;
+			var Index = _Dictionary.IndexOfKey(key);
+
+			if (Index == -1)
+				return false;
+
+			var Value = _Dictionary.Values[Index];
+
+			_Dictionary.RemoveAt(Index);
+
+			OnCollectionChanged(NotifyCollectionChangedAction.Remove, new KeyValuePair<TKey, TValue>(key, Value), Index);
+
+			return true;
 		}
 
 		/// <summary>
@@ -214,7 +222,7 @@ namespace Proximity.Utility.Collections
 		/// <returns>True if the key was found, otherwise false</returns>
 		public bool TryGetValue(TKey key, out TValue value)
 		{
-			return Dictionary.TryGetValue(key, out value);
+			return _Dictionary.TryGetValue(key, out value);
 		}
 
 		/// <summary>
@@ -223,14 +231,14 @@ namespace Proximity.Utility.Collections
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
 		public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
 		{
-			return Dictionary.GetEnumerator();
+			return _Dictionary.GetEnumerator();
 		}
 
 		//****************************************
 
 		IEnumerator IEnumerable.GetEnumerator()
 		{
-			return ((IEnumerable)Dictionary).GetEnumerator();
+			return ((IEnumerable)_Dictionary).GetEnumerator();
 		}
 
 		/// <summary>
@@ -241,7 +249,7 @@ namespace Proximity.Utility.Collections
 		{
 			if (PropertyChanged != null) PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
 		}
-		
+
 		//****************************************
 
 		private void Insert(TKey key, TValue value, bool isAdd)
@@ -249,19 +257,19 @@ namespace Proximity.Utility.Collections
 			if (key == null) throw new ArgumentNullException("key");
 
 			TValue item;
-			if (Dictionary.TryGetValue(key, out item))
+			if (_Dictionary.TryGetValue(key, out item))
 			{
 				if (isAdd) throw new ArgumentException("An item with the same key has already been added.");
 				if (Equals(item, value)) return;
-				Dictionary[key] = value;
+				_Dictionary[key] = value;
 
-				OnCollectionChanged(NotifyCollectionChangedAction.Replace, new KeyValuePair<TKey, TValue>(key, value), new KeyValuePair<TKey, TValue>(key, item));
+				OnCollectionChanged(NotifyCollectionChangedAction.Replace, new KeyValuePair<TKey, TValue>(key, value), new KeyValuePair<TKey, TValue>(key, item), _Dictionary.IndexOfKey(key));
 			}
 			else
 			{
-				Dictionary[key] = value;
+				_Dictionary[key] = value;
 
-				OnCollectionChanged(NotifyCollectionChangedAction.Add, new KeyValuePair<TKey, TValue>(key, value));
+				OnCollectionChanged(NotifyCollectionChangedAction.Add, new KeyValuePair<TKey, TValue>(key, value), _Dictionary.IndexOfKey(key));
 			}
 		}
 
@@ -276,10 +284,10 @@ namespace Proximity.Utility.Collections
 		private void OnCollectionChanged()
 		{
 			OnPropertyChanged();
-			
+
 			if (CollectionChanged != null)
 				CollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
-			
+
 			_Keys.OnCollectionChanged();
 			_Values.OnCollectionChanged();
 		}
@@ -287,38 +295,49 @@ namespace Proximity.Utility.Collections
 		private void OnCollectionChanged(NotifyCollectionChangedAction action, KeyValuePair<TKey, TValue> changedItem)
 		{
 			OnPropertyChanged();
-			
+
 			if (CollectionChanged != null)
 				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, changedItem));
-			
+
 			_Keys.OnCollectionChanged(action, changedItem.Key);
 			_Values.OnCollectionChanged(action, changedItem.Value);
 		}
 
-		private void OnCollectionChanged(NotifyCollectionChangedAction action, KeyValuePair<TKey, TValue> newItem, KeyValuePair<TKey, TValue> oldItem)
+		private void OnCollectionChanged(NotifyCollectionChangedAction action, KeyValuePair<TKey, TValue> changedItem, int index)
 		{
 			OnPropertyChanged();
-			
+
 			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItem, oldItem));
-			
-			_Keys.OnCollectionChanged(action, newItem.Key, oldItem.Key);
-			_Values.OnCollectionChanged(action, newItem.Value, oldItem.Value);
+				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, changedItem, index));
+
+			_Keys.OnCollectionChanged(action, changedItem.Key, index);
+			_Values.OnCollectionChanged(action, changedItem.Value, index);
+		}
+
+		private void OnCollectionChanged(NotifyCollectionChangedAction action, KeyValuePair<TKey, TValue> newItem, KeyValuePair<TKey, TValue> oldItem, int index)
+		{
+			OnPropertyChanged();
+
+			if (CollectionChanged != null)
+				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItem, oldItem, index));
+
+			_Keys.OnCollectionChanged(action, newItem.Key, oldItem.Key, index);
+			_Values.OnCollectionChanged(action, newItem.Value, oldItem.Value, index);
 		}
 
 		private void OnCollectionChanged(NotifyCollectionChangedAction action, IDictionary<TKey, TValue> newItems)
 		{
 			OnPropertyChanged();
-			
+
 			if (CollectionChanged != null)
 				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItems.ToArray()));
-			
+
 			_Keys.OnCollectionChanged(action, newItems.Keys);
 			_Values.OnCollectionChanged(action, newItems.Values);
 		}
-		
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Raised when the collection changes
 		/// </summary>
@@ -334,7 +353,7 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		public int Count
 		{
-			get { return Dictionary.Count; }
+			get { return _Dictionary.Count; }
 		}
 
 		/// <summary>
@@ -342,7 +361,7 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		public bool IsReadOnly
 		{
-			get { return Dictionary.IsReadOnly; }
+			get { return false; }
 		}
 
 		/// <summary>
@@ -352,7 +371,7 @@ namespace Proximity.Utility.Collections
 		{
 			get { return _Keys; }
 		}
-		
+
 		/// <summary>
 		/// Gets a read-only collection of the dictionary values
 		/// </summary>
@@ -367,10 +386,10 @@ namespace Proximity.Utility.Collections
 		[System.Runtime.CompilerServices.IndexerName("Item")]
 		public TValue this[TKey key]
 		{
-			get { return Dictionary[key]; }
+			get { return _Dictionary[key]; }
 			set { Insert(key, value, false); }
 		}
-		
+
 		/// <summary>
 		/// Gets the underlying dictionary object
 		/// </summary>
@@ -378,19 +397,19 @@ namespace Proximity.Utility.Collections
 		{
 			get { return _Dictionary; }
 		}
-		
+
 		ICollection<TKey> IDictionary<TKey, TValue>.Keys
 		{
 			get { return _Keys; }
 		}
-		
+
 		ICollection<TValue> IDictionary<TKey, TValue>.Values
 		{
 			get { return _Values; }
 		}
-		
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Provides an observable view of the dictionary's keys and values
 		/// </summary>
@@ -399,15 +418,15 @@ namespace Proximity.Utility.Collections
 			private readonly ObservableDictionary<TKey, TValue> _Owner;
 			private readonly ICollection<TSource> _Source;
 			//****************************************
-			
+
 			internal ObservableDictionaryCollection(ObservableDictionary<TKey, TValue> owner, ICollection<TSource> source)
 			{
 				_Owner = owner;
 				_Source = source;
 			}
-			
+
 			//****************************************
-			
+
 			/// <summary>
 			/// Determines whether the collection contains a specific item
 			/// </summary>
@@ -417,7 +436,7 @@ namespace Proximity.Utility.Collections
 			{
 				return _Source.Contains(item);
 			}
-			
+
 			/// <summary>
 			/// Copies the elements of the collection to a given array, starting at a specified index
 			/// </summary>
@@ -427,7 +446,7 @@ namespace Proximity.Utility.Collections
 			{
 				_Source.CopyTo(array, arrayIndex);
 			}
-			
+
 			/// <summary>
 			/// Returns an enumerator that iterates through the collection
 			/// </summary>
@@ -436,83 +455,91 @@ namespace Proximity.Utility.Collections
 			{
 				return _Source.GetEnumerator();
 			}
-			
+
 			//****************************************
-			
+
 			internal void OnCollectionChanged()
 			{
 				OnPropertyChanged("Count");
-				
+
 				if (CollectionChanged != null)
 					CollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
 			}
-			
+
 			internal void OnCollectionChanged(NotifyCollectionChangedAction action, TSource changedItem)
 			{
 				OnPropertyChanged("Count");
-				
+
 				if (CollectionChanged != null)
 					CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, changedItem));
 			}
-			
-			internal void OnCollectionChanged(NotifyCollectionChangedAction action, TSource newItem, TSource oldItem)
+
+			internal void OnCollectionChanged(NotifyCollectionChangedAction action, TSource changedItem, int index)
 			{
 				OnPropertyChanged("Count");
-				
+
 				if (CollectionChanged != null)
-					CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItem, oldItem));
+					CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, changedItem, index));
 			}
-			
+
+			internal void OnCollectionChanged(NotifyCollectionChangedAction action, TSource newItem, TSource oldItem, int index)
+			{
+				OnPropertyChanged("Count");
+
+				if (CollectionChanged != null)
+					CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItem, oldItem, index));
+			}
+
 			internal void OnCollectionChanged(NotifyCollectionChangedAction action, ICollection<TSource> newItems)
 			{
 				OnPropertyChanged("Count");
-				
+
 				if (CollectionChanged != null)
 					CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItems.ToArray()));
 			}
-			
+
 			//****************************************
-			
+
 			void ICollection<TSource>.Add(TSource item)
 			{
 				throw new NotSupportedException("Collection is read-only");
 			}
-			
+
 			void ICollection<TSource>.Clear()
 			{
 				throw new NotSupportedException("Collection is read-only");
 			}
-			
+
 			bool ICollection<TSource>.Remove(TSource item)
 			{
 				throw new NotSupportedException("Collection is read-only");
 			}
-			
+
 			IEnumerator IEnumerable.GetEnumerator()
 			{
 				return ((IEnumerable)_Source).GetEnumerator();
 			}
-			
+
 			//****************************************
-			
+
 			private void OnPropertyChanged(string propertyName)
 			{
 				if (PropertyChanged != null)
 					PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
 			}
-			
+
 			//****************************************
-			
+
 			/// <summary>
 			/// Raised when the collection changes
 			/// </summary>
 			public event NotifyCollectionChangedEventHandler CollectionChanged;
-	
+
 			/// <summary>
 			/// Raised when a property of the collection changes
 			/// </summary>
 			public event PropertyChangedEventHandler PropertyChanged;
-			
+
 			/// <summary>
 			/// Gets the number of items in the collection
 			/// </summary>
@@ -520,7 +547,7 @@ namespace Proximity.Utility.Collections
 			{
 				get { return _Owner.Count; }
 			}
-			
+
 			/// <summary>
 			/// Gets whether this collection is read-only. Always true
 			/// </summary>
