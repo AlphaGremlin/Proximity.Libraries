@@ -663,23 +663,27 @@ namespace Proximity.Terminal
 		private static async Task<bool> ExecuteCommand(string path, object instance, TerminalCommandSet commandSet, string argumentText)
 		{	//****************************************
 			var RawParams = new List<string>();
+			string AlteredText = argumentText;
 			int LastIndex = 0, CharIndex = 0, QuoteMode = 0;
 			TerminalCommand MyCommand;
+			char CurrentChar;
 			object[] OutParams;
 			//****************************************
 			
 			if (argumentText != null)
 			{
-				for(; CharIndex < argumentText.Length; CharIndex++)
+				for(; CharIndex < AlteredText.Length; CharIndex++)
 				{
-					switch (argumentText[CharIndex])
+					CurrentChar = AlteredText[CharIndex];
+					
+					switch (CurrentChar)
 					{
 					case ' ':
 						if (QuoteMode != 0)
 							continue;
 						
 						if (CharIndex != LastIndex)
-							RawParams.Add(argumentText.Substring(LastIndex, CharIndex - LastIndex));
+							RawParams.Add(AlteredText.Substring(LastIndex, CharIndex - LastIndex));
 						
 						LastIndex = CharIndex + 1;
 						
@@ -695,7 +699,7 @@ namespace Proximity.Terminal
 						{
 							QuoteMode = 0;
 							
-							RawParams.Add(argumentText.Substring(LastIndex, CharIndex - LastIndex));
+							RawParams.Add(AlteredText.Substring(LastIndex, CharIndex - LastIndex));
 							
 							LastIndex = CharIndex + 1;
 						}
@@ -711,21 +715,27 @@ namespace Proximity.Terminal
 						{
 							QuoteMode = 0;
 							
-							RawParams.Add(argumentText.Substring(LastIndex, CharIndex - LastIndex));
+							RawParams.Add(AlteredText.Substring(LastIndex, CharIndex - LastIndex));
 							
 							LastIndex = CharIndex + 1;
 						}
 						break;
 						
-					case '\\': // Skip the next character
-						argumentText = argumentText.Remove(CharIndex, 1);
+					case '\\': // Skip the next character if it's a quote or space
+						if (CharIndex < AlteredText.Length - 1) // Make sure it's not the last character
+						{
+							CurrentChar = AlteredText[CharIndex];
+							
+							if (CurrentChar != '\'' && CurrentChar != '"' && CurrentChar != ' ')
+								AlteredText = AlteredText.Remove(CharIndex, 1);
+						}
 						break;
 					}
 				}
 				
 				// Add the final parameter
-				if (LastIndex != argumentText.Length)
-					RawParams.Add(argumentText.Substring(LastIndex));
+				if (LastIndex != AlteredText.Length)
+					RawParams.Add(AlteredText.Substring(LastIndex));
 			}
 			
 			//****************************************
@@ -733,7 +743,7 @@ namespace Proximity.Terminal
 			// Try with the broken up arguments
 			MyCommand = commandSet.FindCommand(RawParams.ToArray(), out OutParams);
 			
-			// If that fails, try and pass the whole argument text as the first argument
+			// If that fails, try and pass the whole argument text as the first argument, no quoting
 			if (MyCommand == null)
 				MyCommand = commandSet.FindCommand(new string[] { argumentText }, out OutParams);
 				

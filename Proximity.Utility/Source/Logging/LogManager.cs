@@ -21,7 +21,7 @@ namespace Proximity.Utility.Logging
 		private static Dictionary<string, LogCategory> _Categories = new Dictionary<string, LogCategory>();
 		[ThreadStatic()] private static Stack<LogSection> _Sections;
 
-		private static string _OutputPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), Assembly.GetEntryAssembly().GetName().Name);
+		private static string _OutputPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).GetName().Name);
 		private static PrecisionTimer _Timer = new PrecisionTimer();
 		private static DateTime _StartTime = Process.GetCurrentProcess().StartTime;
 		//****************************************
