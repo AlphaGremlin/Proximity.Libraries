@@ -290,7 +290,7 @@ namespace Proximity.Terminal
 		/// <returns>The next command matching the partial string</returns>
 		public static string FindNextCommand(string partialCommand, string lastResult, params TerminalRegistry[] registries)
 		{	//****************************************
-			string CommandText, InstanceName = null, PartialText, Prefix;
+			string CommandText, InstanceName = null, PartialText, Prefix = "";
 			
 			int CharIndex;
 			

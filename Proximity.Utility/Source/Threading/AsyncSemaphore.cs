@@ -18,7 +18,7 @@ namespace Proximity.Utility.Threading
 	{	//****************************************
 		private readonly Task<IDisposable> _CompleteTask;
 		private readonly Queue<TaskCompletionSource<IDisposable>> _Waiters = new Queue<TaskCompletionSource<IDisposable>>();
-		private int _CurrentCount;
+		private int _MaxCount, _CurrentCount;
 		//****************************************
 		
 		/// <summary>
@@ -27,7 +27,7 @@ namespace Proximity.Utility.Threading
 		public AsyncSemaphore()
 		{
 			_CompleteTask = Task.FromResult<IDisposable>(new AsyncLockInstance(this));
-			_CurrentCount = 1;
+			_CurrentCount = _MaxCount = 1;
 		}
 		
 		/// <summary>
@@ -36,7 +36,10 @@ namespace Proximity.Utility.Threading
 		/// <param name="initialCount">The number of counters allowed</param>
 		public AsyncSemaphore(int initialCount) : this()
 		{
-			_CurrentCount = initialCount;
+			if (initialCount <= 1)
+				throw new ArgumentException("Initial Count is invalid");
+			
+			_CurrentCount = _MaxCount = initialCount;
 		}
 		
 		//****************************************
@@ -141,8 +144,8 @@ namespace Proximity.Utility.Threading
 			{
 				lock (_Waiters)
 				{
-					// Is there anybody waiting?
-					if (_Waiters.Count == 0)
+					// Is there anybody waiting, or has MaxCount been dropped below the currently held number?
+					if (_Waiters.Count == 0 || _CurrentCount < 0)
 					{
 						// No, free a counter for someone else and return
 						_CurrentCount++;
@@ -168,6 +171,49 @@ namespace Proximity.Utility.Threading
 			MyWaiter.TrySetCanceled();
 		}
 		
+		private void TryReleaseWaiters(object state)
+		{	//****************************************
+			TaskCompletionSource<IDisposable> NextWaiter = null;
+			bool HasCounter = false;
+			//****************************************
+			
+			while (true)
+			{
+				lock (_Waiters)
+				{
+					// Is there anybody waiting?
+					if (_Waiters.Count == 0)
+						break;
+
+					// Are there any free counters?
+					if (_CurrentCount <= 0)
+						break;
+						
+					// Yes, take a counter (if necessary) and remove a waiter
+					if (!HasCounter)
+					{
+						_CurrentCount--;
+						
+						HasCounter = true;
+					}
+					
+					NextWaiter = _Waiters.Dequeue();
+				}
+				
+				// Try to hand the counter over to the next waiter
+				// It may cancel (or have already been cancelled), and if so we loop back and check for another waiter
+				if (NextWaiter.TrySetResult(_CompleteTask.Result))
+				{
+					// The waiting task will take responsibility for releasing it, so we clear the flag
+					HasCounter = false;
+				}
+			}
+			
+			// If we've taken a counter and it hasn't been used, we need to release it
+			if (HasCounter)
+				Release();
+		}
+		
 		//****************************************
 		
 		/// <summary>
@@ -184,6 +230,33 @@ namespace Proximity.Utility.Threading
 		public int WaitingCount
 		{
 			get { return _Waiters.Count; }
+		}
+		
+		/// <summary>
+		/// Gets/Sets the maximum number of operations
+		/// </summary>
+		public int MaxCount
+		{
+			get { return _MaxCount; }
+			set
+			{
+				if (_MaxCount == value)
+					return;
+				
+				if (value <= 1)
+					throw new ArgumentException("Maximum is invalid");
+				
+				lock (_Waiters)
+				{
+					// Adjust the number of slots based on the difference
+					_CurrentCount += (value - _MaxCount);
+					
+					_MaxCount = value;
+				}
+				
+				// Release any waiters that might now have free slots
+				ThreadPool.QueueUserWorkItem(TryReleaseWaiters);
+			}
 		}
 		
 		//****************************************
