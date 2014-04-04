@@ -75,6 +75,7 @@
     <Compile Include="AsyncReadWriteLockTests.cs" />
     <Compile Include="AsyncSemaphoreTests.cs" />
     <Compile Include="AsyncSwitchLockTests.cs" />
+    <Compile Include="CloneTests.cs" />
     <Compile Include="EmitterTests.cs" />
     <Compile Include="EqualityTests.cs" />
     <Compile Include="ListExtensionTests.cs" />

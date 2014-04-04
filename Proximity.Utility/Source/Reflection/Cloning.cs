@@ -3,6 +3,7 @@
  Created: 2013-10-01
 \****************************************/
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -12,30 +13,57 @@ using System.Threading;
 
 namespace Proximity.Utility.Reflection
 {
+	
 	/// <summary>
-	/// Description of Cloning.
+	/// Provides methods for cloning objects
 	/// </summary>
-	public static class Cloning<TObject> where TObject : class
-	{	//****************************************
-		private static Func<TObject, TObject> _CloneMethod, _SmartCloneMethod;
-		private static Func<TObject, IDictionary<TObject, TObject>, TObject> _DeepCloneMethod, _DeepSmartCloneMethod;
-		
-		private static DynamicMethod _DeepCloneSource;
-		//****************************************
+	public static class Cloning
+	{
+		/// <summary>
+		/// Perform a shallow clone of all fields, ignoring any serialisation attributes
+		/// </summary>
+		/// <param name="input">The object to clone</param>
+		/// <returns>A copy of the provided object</returns>
+		/// <remarks>Supports Arrays, as a type-safe Array.Clone. Input must not be a derived type of TObject. Use CloneDynamic if so.</remarks>
+		public static TObject Clone<TObject>(TObject input) where TObject : class
+		{
+			return Cloning<TObject>.GetClone()(input);
+		}
 		
 		/// <summary>
 		/// Perform a shallow clone of all fields, ignoring any serialisation attributes
 		/// </summary>
 		/// <param name="input">The object to clone</param>
 		/// <returns>A copy of the provided object</returns>
-		public static TObject Clone(TObject input)
+		/// <remarks>Does not support Arrays. Use where the input is likely to be a derived type of TObject</remarks>
+		public static TObject CloneDynamic<TObject>(TObject input) where TObject : class
 		{
-			if (_CloneMethod == null)
-			{
-				BuildSimpleCloneMethod();
-			}
+			var CloneType = typeof(Cloning<>).MakeGenericType(input.GetType());
+			var CloneDelegate = (Delegate)CloneType.GetMethod("GetClone", BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, null);
 			
-			return _CloneMethod(input);
+			return (TObject)CloneDelegate.DynamicInvoke(input);
+		}
+		
+		/// <summary>
+		/// Perform a shallow clone of all fields, ignoring any serialisation attributes
+		/// </summary>
+		/// <param name="source">The object to read from</param>
+		/// <param name="target">The object to write to</param>
+		/// <remarks>Does not support Arrays, and copies read-only (initonly) fields</remarks>
+		public static void CloneToWithReadOnly<TObject>(TObject source, TObject target) where TObject : class
+		{
+			Cloning<TObject>.GetCloneToWithReadOnly()(source, target);
+		}
+		
+		/// <summary>
+		/// Perform a shallow clone of all writeable fields, ignoring any serialisation attributes
+		/// </summary>
+		/// <param name="source">The object to read from</param>
+		/// <param name="target">The object to write to</param>
+		/// <remarks>Does not support Arrays, and ignores read-only (initonly) fields</remarks>
+		public static void CloneTo<TObject>(TObject source, TObject target) where TObject : class
+		{
+			Cloning<TObject>.GetCloneTo()(source, target);
 		}
 		
 		/// <summary>
@@ -44,14 +72,54 @@ namespace Proximity.Utility.Reflection
 		/// <param name="input">The object to clone</param>
 		/// <returns>A copy of the provided object</returns>
 		/// <remarks>Supports <see cref="OnSerializingAttribute" />, <see cref="OnDeserializingAttribute" />, <see cref="OnDeserializedAttribute" /> and <see cref="OnSerializedAttribute" /></remarks>
-		public static TObject CloneSmart(TObject input)
+		public static TObject CloneSmart<TObject>(TObject input) where TObject : class
+		{
+			return Cloning<TObject>.GetCloneSmart()(input);
+		}
+	}
+	
+	/// <summary>
+	/// Provides methods for cloning objects
+	/// </summary>
+	internal static class Cloning<TObject> where TObject : class
+	{	//****************************************
+		private static Func<TObject, TObject> _CloneMethod, _SmartCloneMethod;
+		private static Action<TObject, TObject> _CloneTargetWithReadOnlyMethod, _CloneTargetMethod;
+		private static Func<TObject, IDictionary<TObject, TObject>, TObject> _DeepCloneMethod, _DeepSmartCloneMethod;
+		
+		private static DynamicMethod _DeepCloneSource;
+		//****************************************
+		
+		internal static Func<TObject, TObject> GetClone()
+		{
+			if (_CloneMethod == null)
+				Interlocked.CompareExchange(ref _CloneMethod, BuildSimpleCloneMethod(), null);
+			
+			return _CloneMethod;
+		}
+
+		internal static Action<TObject, TObject> GetCloneToWithReadOnly()
+		{
+			if (_CloneTargetWithReadOnlyMethod == null)
+				Interlocked.CompareExchange(ref _CloneTargetWithReadOnlyMethod, BuildTargetCloneMethod(false), null);
+			
+			return _CloneTargetWithReadOnlyMethod;
+		}
+		
+		internal static Action<TObject, TObject> GetCloneTo()
+		{
+			if (_CloneTargetMethod == null)
+				Interlocked.CompareExchange(ref _CloneTargetMethod, BuildTargetCloneMethod(true), null);
+			
+			return _CloneTargetMethod;
+		}
+		
+		internal static Func<TObject, TObject> GetCloneSmart()
 		{
 			if (_SmartCloneMethod == null)
-			{
-				BuildSmartCloneMethod();
-			}
+				Interlocked.CompareExchange(ref _SmartCloneMethod, BuildSmartCloneMethod(), null);
 			
-			return _SmartCloneMethod(input);
+			return _SmartCloneMethod;
 		}
 		
 		//****************************************
@@ -66,7 +134,7 @@ namespace Proximity.Utility.Reflection
 		
 		//****************************************
 		
-		private static void BuildSimpleCloneMethod()
+		private static Func<TObject, TObject> BuildSimpleCloneMethod()
 		{	//****************************************
 			var MyType = typeof(TObject);
 			var CurrentType = MyType;
@@ -78,6 +146,7 @@ namespace Proximity.Utility.Reflection
 			
 			//****************************************
 			
+			// If this is an Array type, clone just the array (basically, a type-safe Array.Clone)
 			if (MyType.IsArray)
 			{
 				if (MyType.GetArrayRank() != 1)
@@ -85,6 +154,7 @@ namespace Proximity.Utility.Reflection
 				
 				var ElementType = MyType.GetElementType();
 				
+				// If the elements are by reference, we need to store the value so we can check if it's null
 				if (ElementType.IsByRef)
 					MyEmitter.DeclareLocal("Element", ElementType);
 				
@@ -97,28 +167,48 @@ namespace Proximity.Utility.Reflection
 					.NewArr(MyType) // Clone
 					.StLoc("Clone"); // -
 				
-				var StartLoop = MyEmitter.DeclareLabel("StartLoop");
-				var EndLoop = MyEmitter.DeclareLabel("EndLoop");
+				var StartLoop = MyEmitter.DeclareLabel();
+				var EndLoop = MyEmitter.DeclareLabel();
 				
 				MyEmitter
-					.MarkLabel("StartLoop")
+					.MarkLabel(StartLoop)
 					.LdLoc("Index") // Index
-					.BrFalse("EndLoop") // -
+					.BrFalse(EndLoop) // -
 					.LdLoc("Index") // Index
 					.Ldc(1) // 1
 					.Sub // Index-1
-					.StLoc("Index") // -
-					.LdArg(0) // Source
-					.LdLoc("Index") // Source, Index
-					.LdElem(ElementType); // Element
+					.StLoc("Index"); // -
 				
 				if (ElementType.IsByRef)
 				{
 					MyEmitter
-					.StLoc("Element") // -
-					.LdLoc("Element"); // Element
+						.LdArg(0) // Source
+						.LdLoc("Index") // Source, Index
+						.LdElem(ElementType) // Element
+						.StLoc("Element") // -
+						.LdLoc("Element") // Element
 					
+					// Skip if this element is null
+						.BrFalse(StartLoop); // -
 					
+					MyEmitter
+						.LdLoc("Clone") // Clone
+						.LdLoc("Index") // Clone, Index
+						.LdLoc("Element")
+						.StElem(ElementType);
+				}
+				else
+				{
+					// Since it's a value type we can just load and immediately store it
+					MyEmitter
+						.LdLoc("Clone") // Clone
+						.LdLoc("Index") // Clone, Index
+						.LdArg(0) // Clone, Index, Source
+						.LdLoc("Index") // Clone, Index, Source, Index
+						.LdElem(ElementType) // Clone, Index, Element
+						.StElem(ElementType) // -
+					// And back to the start we go
+						.Br(StartLoop); // -
 				}
 			}
 			else
@@ -126,7 +216,7 @@ namespace Proximity.Utility.Reflection
 				MyEmitter
 					.LdToken(MyType) // Token
 					.Call(typeof(Type), "GetTypeFromHandle", typeof(RuntimeTypeHandle)) // Type
-					.Call(typeof(FormatterServices), "GetUninitializedObject") // Clone (untyped)
+					.Call(typeof(FormatterServices), "GetUninitializedObject", typeof(Type)) // Clone (untyped)
 					.CastClass(MyType) // Clone
 					.StLoc("Clone"); // -
 				
@@ -157,10 +247,48 @@ namespace Proximity.Utility.Reflection
 				.Ret // -
 				.End();
 			
-			Interlocked.CompareExchange(ref _CloneMethod, MyEmitter.ToDelegate<Func<TObject, TObject>>(), null);
+			return MyEmitter.ToDelegate<Func<TObject, TObject>>();
 		}
 		
-		private static void BuildSmartCloneMethod()
+		private static Action<TObject, TObject> BuildTargetCloneMethod(bool skipReadOnly)
+		{	//****************************************
+			var MyType = typeof(TObject);
+			var CurrentType = MyType;
+			var MyEmitter = EmitHelper.FromAction(skipReadOnly ? "CloneTarget" : "CloneTargetReadOnly", MyType, new Type[] { MyType, MyType });
+			//****************************************
+			
+			do
+			{
+				foreach(var MyField in CurrentType.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+				{
+					// Skip if it's declared in a base type. We'll check it later
+					if (MyField.DeclaringType != CurrentType)
+						continue;
+					
+					if (MyField.IsInitOnly && skipReadOnly)
+						continue;
+					
+					MyEmitter
+						.LdArg(1) // Clone
+						.LdArg(0) // Clone, Source
+						.LdFld(MyField) // Clone, Value
+						.StFld(MyField); // -
+				}
+				
+				CurrentType = CurrentType.BaseType;
+				
+			} while (CurrentType != typeof(object));
+			
+			//****************************************
+			
+			MyEmitter
+				.Ret // -
+				.End();
+			
+			return MyEmitter.ToDelegate<Action<TObject, TObject>>();
+		}
+		
+		private static Func<TObject, TObject> BuildSmartCloneMethod()
 		{	//****************************************
 			var MyType = typeof(TObject);
 			var CurrentType = MyType;
@@ -316,7 +444,7 @@ namespace Proximity.Utility.Reflection
 			
 			//****************************************
 			
-			Interlocked.CompareExchange(ref _SmartCloneMethod, MyEmitter.ToDelegate<Func<TObject, TObject>>(), null);
+			return MyEmitter.ToDelegate<Func<TObject, TObject>>();
 		}
 		
 		private static void BuildDeepCloneMethod()

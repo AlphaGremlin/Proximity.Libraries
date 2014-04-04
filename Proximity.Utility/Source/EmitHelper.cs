@@ -1409,7 +1409,7 @@ namespace Proximity.Utility
 			MethodInfo targetMethod = targetType.GetMethod(targetName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static, null, optionalParameterTypes, null);
 
 			if (targetMethod == null)
-				throw new ArgumentException("Method does not exist on the given Type");
+				throw new ArgumentException(string.Format("Method '{0}' does not exist on Type '{1}'", targetName, targetType.FullName));
 			
 			_Generator.Emit(OpCodes.Call, targetMethod);
 			
@@ -1434,7 +1434,7 @@ namespace Proximity.Utility
 				TargetMethod = targetType.GetMethod(targetName, flags, null, optionalParameterTypes, null);
 
 			if (TargetMethod == null)
-				throw new ArgumentException("Method does not exist on the given Type");
+				throw new ArgumentException(string.Format("Method '{0}' does not exist on Type '{1}'", targetName, targetType.FullName));
 			
 			_Generator.Emit(OpCodes.Call, TargetMethod);
 			

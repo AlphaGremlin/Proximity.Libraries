@@ -219,6 +219,14 @@ namespace Proximity.Utility.Collections
 			}
 		}
 		
+		/// <summary>
+		/// Gets the parent dictionary
+		/// </summary>
+		public IDictionary<TKey, TValue> Parent
+		{
+			get { return _Dictionary; }
+		}
+		
 		//****************************************
 		
 		bool ICollection<KeyValuePair<TKey, TChild>>.IsReadOnly

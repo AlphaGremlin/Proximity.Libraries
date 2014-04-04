@@ -30,6 +30,11 @@ namespace Proximity.Terminal
 			
 		//****************************************
 		
+		/// <summary>
+		/// Retrieves a registered Instance by name
+		/// </summary>
+		/// <param name="instanceName">The name of the Instance</param>
+		/// <returns>The Terminal Instance registered with this name, or null if it doesn't exist</returns>
 		public TerminalInstance GetNamedInstance(string instanceName)
 		{	//****************************************
 			TerminalInstance MyInstance;
@@ -62,7 +67,8 @@ namespace Proximity.Terminal
 			{
 				Cleanup();
 				
-				_Instances.Add(instance.Name, instance);
+				// Add the Instance under this name, or replace if it's already in use
+				_Instances[instance.Name] = instance;
 			}
 		}
 		
@@ -97,11 +103,17 @@ namespace Proximity.Terminal
 		
 		//****************************************
 		
+		/// <summary>
+		/// Gets the name of the type this set belongs to
+		/// </summary>
 		public string TypeName
 		{
 			get { return _TypeName; }
 		}
 		
+		/// <summary>
+		/// Gets the default instance for this type set
+		/// </summary>
 		public TerminalInstance Default
 		{
 			get { return _DefaultInstance; }
@@ -111,6 +123,9 @@ namespace Proximity.Terminal
 			}
 		}
 		
+		/// <summary>
+		/// Gets a list of currently known instance names
+		/// </summary>
 		public IEnumerable<string> Instances
 		{
 			get
