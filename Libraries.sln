@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-# SharpDevelop 4.3
+# SharpDevelop 4.4
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Gui", "Gui", "{23885097-BE81-43C6-8F13-B2FDD2DD3DC2}"
 	ProjectSection(SolutionItems) = postProject
 	EndProjectSection

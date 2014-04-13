@@ -149,6 +149,10 @@
     <Compile Include="Configuration\TypedElementCollection.cs" />
     <Compile Include="Configuration\TypedPropertyElement.cs" />
     <Compile Include="Configuration\TypedPropertySection.cs" />
+    <Compile Include="Diagnostics\Profiler.cs" />
+    <Compile Include="Diagnostics\ProfileSection.cs" />
+    <Compile Include="Diagnostics\Statistic.cs" />
+    <Compile Include="Diagnostics\StatisticManager.cs" />
     <Compile Include="EmitHelper.cs" />
     <Compile Include="Events\ParallelEvent.cs" />
     <Compile Include="Events\SafeEvent.cs" />
@@ -179,7 +183,6 @@
     <Compile Include="OptionCodeAttribute.cs" />
     <Compile Include="Platform.cs" />
     <Compile Include="PrecisionTimer.cs" />
-    <Compile Include="Profiler.cs" />
     <Compile Include="Reflection\Cloning.cs" />
     <Compile Include="Reflection\Equality.cs" />
     <Compile Include="Reflection\TypeExtensions.cs" />
@@ -211,6 +214,7 @@
     <Folder Include="Configuration" />
     <Folder Include="Events" />
     <Folder Include="Net" />
+    <Folder Include="Diagnostics" />
     <Folder Include="Reflection" />
     <Folder Include="Threading" />
   </ItemGroup>

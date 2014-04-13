@@ -11,7 +11,7 @@ using System.Collections.ObjectModel;
 namespace Proximity.Utility.Collections
 {
 	/// <summary>
-	/// Represents a read-only wrapper around a list that also converts to a base type
+	/// Represents a read-only wrapper around a list
 	/// </summary>
 	public class ReadOnlyList<TItem> : IList<TItem>, IReadOnlyList<TItem>
 	{	//****************************************
