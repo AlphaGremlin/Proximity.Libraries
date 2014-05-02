@@ -83,7 +83,7 @@ namespace Proximity.Utility.Logging
 		protected internal abstract void Start();
 		
 		/// <summary>
-		/// Starts a logging section for this thread
+		/// Starts a logging section for this logical call
 		/// </summary>
 		/// <param name="newSection">The details of the new logging section</param>
 		protected internal abstract void StartSection(LogSection newSection);
@@ -95,9 +95,10 @@ namespace Proximity.Utility.Logging
 		protected internal abstract void Write(LogEntry newEntry);
 		
 		/// <summary>
-		/// Ends a logging section for this thread
+		/// Ends a logging section for this logical call
 		/// </summary>
-		protected internal abstract void FinishSection();
+		/// <param name="oldSection">The details of the old logging section</param>
+		protected internal abstract void FinishSection(LogSection oldSection);
 		
 		/// <summary>
 		/// Ends the logging output process

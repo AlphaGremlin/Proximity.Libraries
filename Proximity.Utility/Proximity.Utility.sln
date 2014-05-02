@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-# SharpDevelop 4.3
+# SharpDevelop 4.4
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Utility", "Source\Proximity.Utility.csproj", "{B003D333-C349-4713-94E2-7B80095D9C0D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Utility.Tests", "Tests\Proximity.Utility.Tests.csproj", "{887C7D16-0E23-4055-8535-46AA76DD4DEA}"

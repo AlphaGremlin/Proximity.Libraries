@@ -36,18 +36,13 @@ namespace Proximity.Utility.Logging.Outputs
 		
 		//****************************************
 		
-		/// <summary>
-		/// Starts the logging output process
-		/// </summary>
+		/// <inheritdoc />
 		protected internal override void Start()
 		{
 			_Source = new TraceSource(System.Reflection.Assembly.GetEntryAssembly().GetName().Name);
 		}
 		
-		/// <summary>
-		/// Starts a logging section for this thread
-		/// </summary>
-		/// <param name="newSection">The details of the new logging section</param>
+		/// <inheritdoc />
 		protected internal override void StartSection(LogSection newSection)
 		{
 			Trace.CorrelationManager.StartLogicalOperation(newSection.Text);
@@ -56,10 +51,7 @@ namespace Proximity.Utility.Logging.Outputs
 			Trace.Indent();
 		}
 
-		/// <summary>
-		/// Writes an entry to the log
-		/// </summary>
-		/// <param name="newEntry">The log entry to write</param>
+		/// <inheritdoc />
 		protected internal override void Write(LogEntry newEntry)
 		{
 			if (newEntry is TraceLogEntry)
@@ -80,19 +72,16 @@ namespace Proximity.Utility.Logging.Outputs
 			*/
 		}
 		
-		/// <summary>
-		/// Ends a logging section for this thread
-		/// </summary>
-		protected internal override void FinishSection()
+		/// <inheritdoc />
+		protected internal override void FinishSection(LogSection section)
 		{
 			Trace.Unindent();
 
-			Trace.CorrelationManager.StopLogicalOperation();
+			if (Trace.CorrelationManager.LogicalOperationStack.Count != 0)
+				Trace.CorrelationManager.StopLogicalOperation();
 		}
 		
-		/// <summary>
-		/// Ends the logging output process
-		/// </summary>
+		/// <inheritdoc />
 		protected internal override void Finish()
 		{
 			_Source.Close();
@@ -100,12 +89,7 @@ namespace Proximity.Utility.Logging.Outputs
 		
 		//****************************************
 		
-		/// <summary>
-		/// Reads an attribute from the configuration
-		/// </summary>
-		/// <param name="name">The name of the attribute</param>
-		/// <param name="value">The attribute's value</param>
-		/// <returns>True if the Attribute is known, otherwise False</returns>
+		/// <inheritdoc />
 		protected override bool ReadAttribute(string name, string value)
 		{
 			switch (name)

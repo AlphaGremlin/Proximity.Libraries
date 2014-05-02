@@ -31,9 +31,7 @@ namespace Proximity.Utility.Logging.Outputs
 		
 		//****************************************
 		
-		/// <summary>
-		/// Starts the logging output process
-		/// </summary>
+		/// <inheritdoc />
 		protected internal override void Start()
 		{
 			string FormattedFileName = _FileName;
@@ -64,9 +62,7 @@ namespace Proximity.Utility.Logging.Outputs
 			Debug.Print(FilePath);
 		}
 		
-		/// <summary>
-		/// Ends the logging output process
-		/// </summary>
+		/// <inheritdoc />
 		protected internal override void Finish()
 		{
 			if (_Stream != null)
@@ -77,12 +73,7 @@ namespace Proximity.Utility.Logging.Outputs
 		
 		//****************************************
 		
-		/// <summary>
-		/// Reads an attribute from the configuration
-		/// </summary>
-		/// <param name="name">The name of the attribute</param>
-		/// <param name="value">The attribute's value</param>
-		/// <returns>True if the Attribute is known, otherwise False</returns>
+		/// <inheritdoc />
 		protected override bool ReadAttribute(string name, string value)
 		{
 			switch (name)

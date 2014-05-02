@@ -40,7 +40,7 @@
     <DebugType>Full</DebugType>
     <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
     <StartAction>Program</StartAction>
-    <StartProgram>..\..\..\Paragon\Paragon.Gateway.exe</StartProgram>
+    <StartProgram>..\..\..\Paritech.Prime\Build\Paritech.Prime.Feed.Proxy.exe</StartProgram>
     <StartArguments>-c</StartArguments>
     <BaseIntermediateOutputPath>obj\</BaseIntermediateOutputPath>
   </PropertyGroup>
@@ -98,6 +98,9 @@
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Collections.Immutable">
+      <HintPath>..\..\packages\Microsoft.Bcl.Immutable.1.0.30\lib\portable-net45+win8+wp8\System.Collections.Immutable.dll</HintPath>
+    </Reference>
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
@@ -118,6 +121,8 @@
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Collections\BiDictionary.cs" />
     <Compile Include="Collections\ConcurrentExtensions.cs" />
+    <Compile Include="Collections\ImmutableCountedStack.cs" />
+    <Compile Include="Collections\ImmutableInterlockedEx.cs" />
     <Compile Include="Collections\ListExtensions.cs" />
     <Compile Include="Collections\ObservableDictionary.cs" />
     <Compile Include="Collections\ReadOnlyCollection.cs" />
@@ -155,8 +160,6 @@
     <Compile Include="Diagnostics\StatisticManager.cs" />
     <Compile Include="EmitHelper.cs" />
     <Compile Include="Events\ParallelEvent.cs" />
-    <Compile Include="Events\SafeEvent.cs" />
-    <Compile Include="Events\WeakDelegate.cs" />
     <Compile Include="Events\WeakEvent.cs" />
     <Compile Include="Events\WeakEventDelegate.cs" />
     <Compile Include="Extensions.cs" />
@@ -207,7 +210,10 @@
     <Compile Include="Threading\WorkingEnumerator.cs" />
     <Compile Include="Threading\WorkingList.cs" />
     <Compile Include="Threading\WriteLock.cs" />
+    <Compile Include="WeakDelegate.cs" />
+    <Compile Include="WeakDelegateSlim.cs" />
     <None Include="Logging\Style.xsl" />
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Collections\Reverse" />

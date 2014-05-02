@@ -3,9 +3,10 @@
  Created: 2014-03-03
 \****************************************/
 using System;
-using System.Text;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading;
+using System.Text;
 using Proximity.Utility.Logging;
 //****************************************
 
@@ -16,21 +17,20 @@ namespace Proximity.Terminal
 	/// </summary>
 	public sealed class TerminalLogOutput : LogOutput
 	{	//****************************************
-		private List<ConsoleRecord> _History;
+		private readonly List<ConsoleRecord> _History;
 		private int _MaxHistoryRecords = 1024 * 4;
 		
-		[ThreadStatic()] private static int IndentLevel;
-		[ThreadStatic()] private static StringBuilder OutputBuilder;
+		private readonly ThreadLocal<StringBuilder> _OutputBuilder;
 		//****************************************
 		
 		public TerminalLogOutput() : base()
 		{
 			_History = new List<ConsoleRecord>();
+			_OutputBuilder = new ThreadLocal<StringBuilder>(() => new StringBuilder());
 		}
 		
-		public TerminalLogOutput(int maxHistoryRecords) : base()
+		public TerminalLogOutput(int maxHistoryRecords) : this()
 		{
-			_History = new List<ConsoleRecord>();
 			_MaxHistoryRecords = maxHistoryRecords;
 		}
 		
@@ -39,21 +39,21 @@ namespace Proximity.Terminal
 		/// <inheritdoc />
 		protected override void Start()
 		{
-			
 		}
 		
 		/// <inheritdoc />
 		protected override void StartSection(LogSection newSection)
 		{
 			Write(newSection.Entry);
-			
-			IndentLevel++;
 		}
 
 		/// <inheritdoc />
 		protected override void Write(LogEntry newEntry)
 		{	//****************************************
 			ConsoleRecord MyRecord;
+			
+			var MyBuilder = _OutputBuilder.Value;
+			var IndentLevel = LogManager.SectionDepth;
 			//****************************************
 
 			if (newEntry is ConsoleLogEntry)
@@ -62,15 +62,12 @@ namespace Proximity.Terminal
 			}
 			else
 			{
-				if (OutputBuilder == null)
-					OutputBuilder = new StringBuilder();
+				MyBuilder.Append(' ', IndentLevel * 2);
+				MyBuilder.Append(newEntry.Text);
 				
-				OutputBuilder.Append(' ', IndentLevel * 2);
-				OutputBuilder.Append(newEntry.Text);
+				MyRecord = new ConsoleRecord(newEntry, MyBuilder.ToString(), IndentLevel);
 				
-				MyRecord = new ConsoleRecord(newEntry, OutputBuilder.ToString());
-				
-				OutputBuilder.Length = 0;
+				MyBuilder.Length = 0;
 			}
 			
 			//****************************************
@@ -85,18 +82,18 @@ namespace Proximity.Terminal
 			{
 				foreach(string EntryLine in ((ExceptionLogEntry)newEntry).Exception.ToString().Split(new string[] {Environment.NewLine}, StringSplitOptions.None))
 				{
-					OutputBuilder.Append(' ', IndentLevel * 2);
-					OutputBuilder.Append(EntryLine);
+					MyBuilder.Append(' ', IndentLevel * 2);
+					MyBuilder.Append(EntryLine);
 		
 					//****************************************
 					
-					MyRecord = new ConsoleRecord(newEntry, OutputBuilder.ToString());
+					MyRecord = new ConsoleRecord(newEntry, MyBuilder.ToString(), IndentLevel);
 					
 					ThresholdWrite(MyRecord);
 					
 					TerminalManager.WriteLine(MyRecord.Text, MyRecord.ConsoleColour);
 					
-					OutputBuilder.Length = 0;
+					MyBuilder.Length = 0;
 				}
 			}
 		}
@@ -116,9 +113,8 @@ namespace Proximity.Terminal
 		}
 		
 		/// <inheritdoc />
-		protected override void FinishSection()
+		protected override void FinishSection(LogSection oldSection)
 		{
-			IndentLevel--;
 		}
 		
 		/// <inheritdoc />

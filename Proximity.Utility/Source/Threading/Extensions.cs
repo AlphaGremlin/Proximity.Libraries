@@ -77,5 +77,54 @@ namespace Proximity.Utility.Threading
 		{
 			return waitHandle.WaitAsync(Timeout.Infinite);
 		}
+		
+		/// <summary>
+		/// Wraps the given task, waiting for it to complete or the given token to cancel
+		/// </summary>
+		/// <param name="task">The task to wait to complete</param>
+		/// <param name="token">The cancellation token to abort waiting for the original task</param>
+		/// <returns>A task that completes with the original task, and cancelling if either the original task or the given token cancel</returns>
+		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" /></remarks>
+		public static Task When(this Task task, CancellationToken token)
+		{
+			if (!token.CanBeCanceled || task.IsCompleted)
+				return task;
+			
+			return task.ContinueWith(
+				(innerTask) =>
+				{
+					if (innerTask.IsFaulted)
+						throw new AggregateException("Cancellable task faulted", innerTask.Exception);
+				},
+				token
+			);
+		}
+		
+		/// <summary>
+		/// Wraps the given task, waiting for it to complete or the given token to cancel
+		/// </summary>
+		/// <param name="task">The task to wait to complete</param>
+		/// <param name="token">The cancellation token to abort waiting for the original task</param>
+		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
+		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" /></remarks>
+		public static Task<TResult> When<TResult>(this Task<TResult> task, CancellationToken token)
+		{
+			if (!token.CanBeCanceled || task.IsCompleted)
+				return task;
+			
+			return task.ContinueWith(
+				(innerTask) =>
+				{
+					if (innerTask.IsFaulted)
+						throw new AggregateException("Cancellable task faulted", innerTask.Exception);
+					
+					if (innerTask.IsCanceled)
+						throw new OperationCanceledException();
+					
+					return innerTask.Result;
+				},
+				token
+			);
+		}
 	}
 }

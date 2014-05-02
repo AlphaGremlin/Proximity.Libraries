@@ -15,10 +15,7 @@ namespace Proximity.Utility
 	/// Provides methods for retrieving option codes associated with enumerations
 	/// </summary>
 	public static class FieldOptions
-	{	//****************************************
-		private static readonly ConcurrentDictionary<Type, OptionSet> _OptionSets = new ConcurrentDictionary<Type, OptionSet>();
-		//****************************************
-		
+	{
 		/// <summary>
 		/// Retrieves the string code associated with an enumeration value
 		/// </summary>

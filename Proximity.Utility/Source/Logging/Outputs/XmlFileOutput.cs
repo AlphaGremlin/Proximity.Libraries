@@ -3,12 +3,14 @@
  Created: 2-06-2009
 \****************************************/
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Threading;
 using System.Xml;
-using System.Collections.Generic;
+using Proximity.Utility.Collections;
 //****************************************
 
 namespace Proximity.Utility.Logging.Outputs
@@ -18,10 +20,12 @@ namespace Proximity.Utility.Logging.Outputs
 	/// </summary>
 	public class XmlFileOutput : FileOutput
 	{	//****************************************
-		private Guid UniqueID = Guid.NewGuid();
+		private static int _NextID = 0;
+		//****************************************
+		private readonly string _UniqueID;
 		
-		private XmlWriter Writer;
-		private XmlWriterSettings WriterSettings;
+		private XmlWriter _Writer;
+		private readonly XmlWriterSettings WriterSettings;
 		//****************************************
 		
 		/// <summary>
@@ -30,140 +34,116 @@ namespace Proximity.Utility.Logging.Outputs
 		/// <param name="reader">Configuration settings</param>
 		public XmlFileOutput(XmlReader reader) : base(reader)
 		{
+			_UniqueID = string.Format("Logging.XmlOutput#{0}", Interlocked.Increment(ref _NextID));
+			
 			WriterSettings = new XmlWriterSettings();
 			WriterSettings.Indent = true;
 		}
 		
 		//****************************************
 		
-		/// <summary>
-		/// Starts the logging output process
-		/// </summary>
+		/// <inheritdoc />
 		protected internal override void Start() 
 		{
 			base.Start();
 			
-			Writer = XmlWriter.Create(Stream, WriterSettings);
+			_Writer = XmlWriter.Create(Stream, WriterSettings);
 			
-			Writer.WriteProcessingInstruction("xml-stylesheet", "href=\"Style.css\" type=\"text/css\"");
+			_Writer.WriteProcessingInstruction("xml-stylesheet", "href=\"Style.css\" type=\"text/css\"");
 			
-			Writer.WriteStartElement("Log");
+			_Writer.WriteStartElement("Log");
 			
-			Writer.WriteAttributeString("StartTime", LogManager.StartTime.ToString("O", CultureInfo.InvariantCulture));
+			_Writer.WriteAttributeString("StartTime", LogManager.StartTime.ToString("O", CultureInfo.InvariantCulture));
 		}
 		
-		/// <summary>
-		/// Starts a logging section for this thread
-		/// </summary>
-		/// <param name="newSection">The details of the new logging section</param>
+		/// <inheritdoc />
 		protected internal override void StartSection(LogSection newSection)
 		{	//****************************************
-			ThreadLocalData MyData = ThreadLocalData.GetLocalData(UniqueID);
-			XmlWriter LocalWriter = MyData.SectionWriter;
+			var MyContext = new ContextData(newSection);
 			//****************************************
 			
-			if (MyData.SectionLevel++ == 0)
-			{
-				MyData.DataStream = new MemoryStream();
-				
-				MyData.SectionWriter = XmlWriter.Create(MyData.DataStream);
-				LocalWriter = MyData.SectionWriter;
-			}
-			
-			LocalWriter.WriteStartElement("Section");
-			LocalWriter.WriteAttributeString("Time", newSection.Entry.RelativeTime.ToString());
-			LocalWriter.WriteAttributeString("Severity", newSection.Entry.Severity.ToString());
-			LocalWriter.WriteElementString("Title", newSection.Text.SanitiseForDisplay());
+			Context = Context.Push(MyContext);
 		}
 		
-		/// <summary>
-		/// Writes an entry to the log
-		/// </summary>
-		/// <param name="newEntry">The log entry to write</param>
+		/// <inheritdoc />
 		protected internal override void Write(LogEntry newEntry)
 		{	//****************************************
-			ThreadLocalData MyData = ThreadLocalData.GetLocalData(UniqueID);
-			XmlWriter LocalWriter;
+			var MyContext = Context;
+			var MySection = MyContext.IsEmpty ? null : MyContext.Peek();
+			var MyWriter = MySection != null ? MySection.Writer : _Writer;
 			//****************************************
 			
-			try
+			lock (MyWriter)
 			{
-				if (MyData.SectionLevel == 0)
-				{
-					Monitor.Enter(Writer);
-					LocalWriter = Writer;
-				}
-				else
-					LocalWriter = MyData.SectionWriter;
+				MyWriter.WriteStartElement("Entry");
 				
-				LocalWriter.WriteStartElement("Entry");
+				MyWriter.WriteAttributeString("Time", newEntry.RelativeTime.ToString());
+				MyWriter.WriteAttributeString("Severity", newEntry.Severity.ToString());
 				
-				LocalWriter.WriteAttributeString("Time", newEntry.RelativeTime.ToString());
-				LocalWriter.WriteAttributeString("Severity", newEntry.Severity.ToString());
-				
-				LocalWriter.WriteString(newEntry.Text.SanitiseForDisplay());
+				MyWriter.WriteString(newEntry.Text.SanitiseForDisplay());
 	
-				LocalWriter.WriteEndElement();
-			}
-			finally
-			{
-				if (MyData.SectionLevel == 0)
-					Monitor.Exit(Writer);
+				MyWriter.WriteEndElement();
 			}
 		}
 		
-		/// <summary>
-		/// Ends a logging section for this thread
-		/// </summary>
-		protected internal override void FinishSection()
+		/// <inheritdoc />
+		protected internal override void FinishSection(LogSection section)
 		{	//****************************************
-			ThreadLocalData MyData = ThreadLocalData.GetLocalData(UniqueID);
+			var MyContext = Context;
+			ContextData MySection, MyParent = null;
 			//****************************************
 			
-			MyData.SectionWriter.WriteEndElement();
-				
-			if (--MyData.SectionLevel == 0)
+			// Might be empty if we were added in the middle of a section
+			if (MyContext.IsEmpty)
+				return;
+			
+			// Remove this section's context
+			Context = MyContext = MyContext.Pop(out MySection);
+			
+			while (!MyContext.IsEmpty)
 			{
-				MyData.SectionWriter.Close();
-					
-				MyData.DataStream.Position = 0;
-				lock (Writer)
+				MyParent = MyContext.Peek();
+				
+				lock (MyParent.Writer)
 				{
-					XmlReader MyReader = XmlReader.Create(MyData.DataStream);
-					
-					MyReader.ReadToFollowing("Section");
-					
-					Writer.WriteNode(MyReader, false);
-					
-					Writer.Flush();
+					// If the parent isn't finished, we can write out to it
+					if (!MyParent.IsFinished)
+					{
+						MySection.Finish(MyParent.Writer);
+						
+						return;
+					}
 				}
+				
+				// Parent is finished already, move up a level
+				// This can happen if we start a void async operation inside a section and don't call ClearContext
+				Context = MyContext = MyContext.Pop();
+			}
+			
+			// No parent context, we write directly to the output
+			lock (_Writer)
+			{
+				MySection.Finish(_Writer);
 			}
 		}
 		
-		/// <summary>
-		/// Ends the logging output process
-		/// </summary>
+		/// <inheritdoc />
 		protected internal override void Finish()
 		{
-			Writer.WriteEndElement();
+			_Writer.WriteEndElement();
 
-			Writer.Flush();
+			_Writer.Flush();
 
-			Writer.Close();
+			_Writer.Close();
 
-			Writer = null;
+			_Writer = null;
 			
 			base.Finish();
 		}
 		
 		//****************************************
 		
-		/// <summary>
-		/// Reads an attribute from the configuration
-		/// </summary>
-		/// <param name="name">The name of the attribute</param>
-		/// <param name="value">The attribute's value</param>
-		/// <returns>True if the Attribute is known, otherwise False</returns>
+		/// <inheritdoc />
 		protected override bool ReadAttribute(string name, string value)
 		{
 			switch (name)
@@ -179,18 +159,11 @@ namespace Proximity.Utility.Logging.Outputs
 			return true;
 		}
 		
-		/// <summary>
-		/// Retrieves the extension of the file to create
-		/// </summary>
-		/// <returns>The extension  of the file</returns>
-		/// <remarks>For this output provider, the value is always 'xml'</remarks>
+		/// <inheritdoc />
 		protected override string GetExtension()
 		{
 			return "xml";
 		}
-		
-		//****************************************
-		
 		
 		//****************************************
 		
@@ -203,35 +176,70 @@ namespace Proximity.Utility.Logging.Outputs
 			set { WriterSettings.Indent = value; }
 		}
 		
+		/// <summary>
+		/// Gets the current section stack for this logical context
+		/// </summary>
+		private ImmutableCountedStack<ContextData> Context
+		{
+			get { return (CallContext.LogicalGetData(_UniqueID) as ImmutableCountedStack<ContextData>) ?? ImmutableCountedStack<ContextData>.Empty; }
+			set { CallContext.LogicalSetData(_UniqueID, value); }
+		}
+		
 		//****************************************
 		
-		private class ThreadLocalData
+		private class ContextData
 		{	//****************************************
-			public XmlWriter SectionWriter;
-			public Stream DataStream;
-			public int SectionLevel;
-			//****************************************
-			[ThreadStatic()] private static Dictionary<Guid, ThreadLocalData> LocalData;
+			private readonly XmlWriter _SectionWriter;
+			private readonly Stream _DataStream;
+			private bool _IsFinished;
 			//****************************************
 			
-			public static ThreadLocalData GetLocalData(Guid uniqueID)
-			{	//****************************************
-				ThreadLocalData MyData;
+			public ContextData(LogSection section)
+			{
+				_DataStream = new MemoryStream();
+				
+				_SectionWriter = XmlWriter.Create(_DataStream);
+				
 				//****************************************
 				
-				// Any local data for this thread?
-				if (LocalData == null)
-					LocalData = new Dictionary<Guid, ThreadLocalData>();
+				_SectionWriter.WriteStartElement("Section");
+				_SectionWriter.WriteAttributeString("Time", section.Entry.RelativeTime.ToString());
+				_SectionWriter.WriteAttributeString("Severity", section.Entry.Severity.ToString());
+				_SectionWriter.WriteElementString("Title", section.Text.SanitiseForDisplay());
+			}
+			
+			//****************************************
+			
+			public void Finish(XmlWriter parent)
+			{
+				_IsFinished = true;
 				
-				// Any data on this thread for this Output?
-				if (!LocalData.TryGetValue(uniqueID, out MyData))
-				{
-					MyData = new ThreadLocalData();
+				_SectionWriter.WriteEndElement();
+				
+				_SectionWriter.Close();
 					
-					LocalData.Add(uniqueID, MyData);
+				_DataStream.Position = 0;
+				
+				using (var MyReader = XmlReader.Create(_DataStream))
+				{
+					MyReader.ReadToFollowing("Section");
+					
+					parent.WriteNode(MyReader, false);
 				}
 				
-				return MyData;
+				parent.Flush();
+			}
+			
+			//****************************************
+			
+			public XmlWriter Writer
+			{
+				get { return _SectionWriter; }
+			}
+			
+			public bool IsFinished
+			{
+				get { return _IsFinished; }
 			}
 		}
 	}

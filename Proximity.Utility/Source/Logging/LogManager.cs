@@ -3,10 +3,15 @@
  Created: 3-06-2009
 \****************************************/
 using System;
-using System.IO;
-using System.Diagnostics;
-using System.Reflection;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Diagnostics;
+using System.IO;
+using System.Reflection;
+using System.Runtime.Remoting.Messaging;
+using System.Threading;
+using Proximity.Utility.Collections;
 using Proximity.Utility.Logging.Config;
 //****************************************
 
@@ -17,12 +22,12 @@ namespace Proximity.Utility.Logging
 	/// </summary>
 	public static class LogManager
 	{	//****************************************
-		private static List<LogOutput> _Outputs = new List<LogOutput>();
-		private static Dictionary<string, LogCategory> _Categories = new Dictionary<string, LogCategory>();
-		[ThreadStatic()] private static Stack<LogSection> _Sections;
-
+		private static ImmutableList<LogOutput> _Outputs = ImmutableList<LogOutput>.Empty;
+		private static readonly ConcurrentDictionary<string, LogCategory> _Categories = new ConcurrentDictionary<string, LogCategory>();
+		
 		private static string _OutputPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).GetName().Name);
 		private static PrecisionTimer _Timer = new PrecisionTimer();
+		private static bool _IsStarted;
 		private static DateTime _StartTime = Process.GetCurrentProcess().StartTime;
 		//****************************************
 
@@ -37,6 +42,8 @@ namespace Proximity.Utility.Logging
 			//****************************************
 			// Initialise Log Outputs
 			
+			_IsStarted = true;
+			
 			foreach(LogOutput MyOutput in _Outputs)
 			{
 				MyOutput.Start();
@@ -44,10 +51,30 @@ namespace Proximity.Utility.Logging
 			
 			foreach (OutputConfig MyConfig in LoggingConfig.OpenConfig().Outputs)
 			{
-				MyConfig.Output.Start();
-				
-				_Outputs.Add(MyConfig.Output);
+				AddOutput(MyConfig.Output);
 			}
+		}
+		
+		/// <summary>
+		/// Adds a new logging output
+		/// </summary>
+		/// <param name="output">A log output to receive logging information</param>
+		public static void AddOutput(LogOutput output)
+		{	//****************************************
+			ImmutableList<LogOutput> OldList, NewList;
+			//****************************************
+			
+			do
+			{
+				OldList = _Outputs;
+				
+				NewList = OldList.Add(output);
+			} while (Interlocked.CompareExchange(ref _Outputs, NewList, OldList) != OldList);
+			
+			//****************************************
+			
+			if (_IsStarted)
+				output.Start();
 		}
 		
 		/// <summary>
@@ -55,22 +82,22 @@ namespace Proximity.Utility.Logging
 		/// </summary>
 		/// <param name="newSection">The section to start</param>
 		public static void StartSection(LogSection newSection)
-		{
-			if (_Sections == null)
-				_Sections = new Stack<LogSection>(16);
+		{	//****************************************
+			var MyOutputs = _Outputs;
+			//****************************************
 			
-			_Sections.Push(newSection);
+			foreach(LogOutput MyOutput in _Outputs)
+				MyOutput.StartSection(newSection);
 			
-			for(int Index = 0; Index < _Outputs.Count; Index++)
-				_Outputs[Index].StartSection(newSection);
+			Context = Context.Push(newSection);
 		}
 		
-		internal static DateTime GetTimestamp()
+		/// <summary>
+		/// Resets the section context for this logical call, so future log operations are isolated
+		/// </summary>
+		public static void ClearContext()
 		{
-			if (_Timer == null)
-				return DateTime.Now;
-
-			return _Timer.GetTime();
+			Context = ImmutableCountedStack<LogSection>.Empty;
 		}
 		
 		/// <summary>
@@ -78,14 +105,20 @@ namespace Proximity.Utility.Logging
 		/// </summary>
 		/// <param name="oldSection">The section to finish</param>
 		public static void FinishSection(LogSection oldSection)
-		{
-			for(int Index = 0; Index < _Outputs.Count; Index++)
-				_Outputs[Index].FinishSection();			
+		{	//****************************************
+			var MyContext = Context;
+			var MyOutputs = _Outputs;
+			//****************************************
 			
-			if (_Sections.Pop() == oldSection)
+			oldSection.IsDisposed = true;
+			
+			if (MyContext.IsEmpty || MyContext.Peek() != oldSection)
 				return;
 			
-			throw new InvalidOperationException("Closed section is not the latest section");
+			Context = MyContext.Pop();
+			
+			foreach(LogOutput MyOutput in _Outputs)
+				MyOutput.FinishSection(oldSection);
 		}
 		
 		/// <summary>
@@ -94,9 +127,7 @@ namespace Proximity.Utility.Logging
 		public static void Finish()
 		{
 			foreach(LogOutput MyOutput in _Outputs)
-			{
 				MyOutput.Finish();
-			}
 		}
 
 		//****************************************
@@ -107,7 +138,7 @@ namespace Proximity.Utility.Logging
 		/// <param name="newCategory">The new category to register</param>
 		public static void AddCategory(LogCategory newCategory)
 		{
-			_Categories.Add(newCategory.Name, newCategory);
+			_Categories.TryAdd(newCategory.Name, newCategory);
 		}
 		
 		/// <summary>
@@ -127,11 +158,21 @@ namespace Proximity.Utility.Logging
 		}
 		
 		//****************************************
+		
+		internal static DateTime GetTimestamp()
+		{
+			if (_Timer == null)
+				return DateTime.Now;
+
+			return _Timer.GetTime();
+		}
+		
+		//****************************************
 
 		/// <summary>
 		/// Gets a list of all the logging outputs
 		/// </summary>
-		public static IList<LogOutput> Outputs
+		public static IReadOnlyList<LogOutput> Outputs
 		{
 			get { return _Outputs; }
 		}
@@ -151,6 +192,23 @@ namespace Proximity.Utility.Logging
 		public static DateTime StartTime
 		{
 			get { return _StartTime; }
+		}
+		
+		/// <summary>
+		/// Gets the current section stack for this logical context
+		/// </summary>
+		public static ImmutableCountedStack<LogSection> Context
+		{
+			get { return (CallContext.LogicalGetData("Logging.Context") as ImmutableCountedStack<LogSection>) ?? ImmutableCountedStack<LogSection>.Empty; }
+			private set { CallContext.LogicalSetData("Logging.Context", value); }
+		}
+		
+		/// <summary>
+		/// Gets the current depth of the section stack
+		/// </summary>
+		public static int SectionDepth
+		{
+			get { return Context.Count; }
 		}
 	}
 }

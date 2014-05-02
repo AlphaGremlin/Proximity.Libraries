@@ -37,6 +37,7 @@ namespace Proximity.Terminal
 		/// Identifies a reference class that provides terminal commands
 		/// </summary>
 		/// <param name="instanceType">The name to identify instances of this class registered with the Terminal</param>
+		/// <param name="isDefault">Whether this instance acts as the default target for this instance type</param>
 		public TerminalProviderAttribute(string instanceType, bool isDefault)
 		{
 			_InstanceType = instanceType;
@@ -54,6 +55,9 @@ namespace Proximity.Terminal
 			set { _InstanceType = value; }
 		}
 		
+		/// <summary>
+		/// Gets/Sets whether this instance acts as the default target for this instance type
+		/// </summary>
 		public bool IsDefault
 		{
 			get { return _IsDefault; }

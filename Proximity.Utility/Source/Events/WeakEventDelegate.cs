@@ -12,7 +12,7 @@ using System.Runtime.InteropServices;
 namespace Proximity.Utility.Events
 {
 	/// <summary>
-	/// Provides Weak Event Delegate services
+	/// Provides Weak Delegate services optimised for the EventHandler model
 	/// </summary>
 	public static class WeakEventDelegate
 	{

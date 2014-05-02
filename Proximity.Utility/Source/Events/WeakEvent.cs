@@ -43,12 +43,8 @@ namespace Proximity.Utility.Events
 		/// </summary>
 		/// <param name="eventHandler">The event handler we not longer wish to call</param>
 		public void Remove(EventHandler<TEventArgs> eventHandler)
-		{	//****************************************
-			var MyWeakHandler = WeakEventDelegate.FindHandler(_WeakEventHandler, eventHandler);
-			//****************************************
-			
-			if (MyWeakHandler != null)
-				 _WeakEventHandler -= MyWeakHandler;
+		{
+			_WeakEventHandler -= WeakEventDelegate.FindHandler(_WeakEventHandler, eventHandler);
 		}
 		
 		/// <summary>

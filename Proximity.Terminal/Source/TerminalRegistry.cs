@@ -195,7 +195,7 @@ namespace Proximity.Terminal
 		/// <summary>
 		/// Looks up a global variable
 		/// </summary>
-		/// <param name="commandName">The global variable to find</param>
+		/// <param name="variableName">The global variable to find</param>
 		/// <returns>The named variable, or null if it doesn't exist</returns>
 		public TerminalVariable FindVariable(string variableName)
 		{	//****************************************
@@ -214,7 +214,7 @@ namespace Proximity.Terminal
 		/// <summary>
 		/// Looks up a type set
 		/// </summary>
-		/// <param name="commandName">The type set to find</param>
+		/// <param name="typeName">The type set to find</param>
 		/// <returns>The named type set, or null if it doesn't exist</returns>
 		public TerminalTypeSet FindTypeSet(string typeName)
 		{	//****************************************

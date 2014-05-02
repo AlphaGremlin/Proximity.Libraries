@@ -339,10 +339,12 @@ namespace Proximity.Terminal
 				if (InstanceName == null)
 				{
 					MyInstance = MyTypeSet.Default;
+					InstanceName = MyTypeSet.TypeName;
 				}
 				else
 				{
 					MyInstance = MyTypeSet.GetNamedInstance(InstanceName);
+					InstanceName = string.Format("{0}.{1}", MyTypeSet.TypeName, MyInstance.Name);
 				}
 				
 				// If the instance doesn't exist, return as is
@@ -353,14 +355,14 @@ namespace Proximity.Terminal
 				foreach (var MyCommand in MyInstance.Type.Commands)
 				{
 					if (MyCommand.Name.StartsWith(PartialText, StringComparison.InvariantCultureIgnoreCase))
-						PartialMatches.Add(string.Format("{0}.{1} {2}", MyTypeSet.TypeName, MyInstance.Name, MyCommand.Name));
+						PartialMatches.Add(string.Format("{0} {1}", InstanceName, MyCommand.Name));
 				}
 				
 				// Add matching variables
 				foreach (var MyVariable in MyInstance.Type.Variables)
 				{
 					if (MyVariable.Name.StartsWith(PartialText, StringComparison.InvariantCultureIgnoreCase))
-						PartialMatches.Add(string.Format("{0}.{1} {2}", MyTypeSet.TypeName, MyInstance.Name, MyVariable.Name));
+						PartialMatches.Add(string.Format("{0} {1}", InstanceName, MyVariable.Name));
 				}
 			}
 			else

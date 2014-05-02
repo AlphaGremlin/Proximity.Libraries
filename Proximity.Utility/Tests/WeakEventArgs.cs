@@ -3,7 +3,7 @@
  Created: 26-08-2010
 \****************************************/
 using System;
-using System.Collections.Generic;
+using System.Threading;
 using Proximity.Utility;
 //****************************************
 
@@ -14,7 +14,7 @@ namespace Proximity.Utility.Tests
 	/// </summary>
 	public class WeakEventArgs : EventArgs
 	{	//****************************************
-		private bool _WasInvoked = false;
+		private int _WasInvoked = 0;
 		//****************************************
 		
 		public WeakEventArgs()
@@ -23,10 +23,14 @@ namespace Proximity.Utility.Tests
 		
 		//****************************************
 		
-		public bool WasInvoked
+		public void Increment()
+		{
+			Interlocked.Increment(ref _WasInvoked);
+		}
+		
+		public int InvokeCount
 		{
 			get { return _WasInvoked; }
-			set { _WasInvoked = true; }
 		}
 	}
 }

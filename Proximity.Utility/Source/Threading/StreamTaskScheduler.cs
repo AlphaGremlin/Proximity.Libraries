@@ -33,10 +33,7 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 		
-		/// <summary>
-		/// Queues a Task on this Scheduler
-		/// </summary>
-		/// <param name="task">The task to execute</param>
+		/// <inheritdoc />
 		protected override void QueueTask(Task task)
 		{
 			lock (_Tasks)
@@ -52,12 +49,7 @@ namespace Proximity.Utility.Threading
 			ThreadPool.UnsafeQueueUserWorkItem(ProcessingOperation, null);
 		}
 		
-		/// <summary>
-		/// Determines whether a Task may be inlined.
-		/// </summary>
-		/// <param name="task">The task to be executed.</param>
-		/// <param name="taskWasPreviouslyQueued">Whether the task was previously queued.</param>
-		/// <returns>True if the task was successfully inlined, otherwise False.</returns>
+		/// <inheritdoc />
 		protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
 		{
 			// Ensure we're within the Processing Loop
@@ -72,6 +64,7 @@ namespace Proximity.Utility.Threading
 			return base.TryExecuteTask(task);
 		}
 		
+		/// <inheritdoc />
 		protected override bool TryDequeue(Task task)
 		{
 			lock (_Tasks)
@@ -80,6 +73,7 @@ namespace Proximity.Utility.Threading
 			}
 		}
 		
+		/// <inheritdoc />
 		protected override IEnumerable<Task> GetScheduledTasks()
 		{	//****************************************
 			bool LockTaken = false;

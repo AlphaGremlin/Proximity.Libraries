@@ -163,7 +163,7 @@ namespace Proximity.Utility.Collections
 		/// <param name="newValue">Receives the new value if the dictionary was updated</param>
 		/// <returns>True if the item was updated, False if it does not exist</returns>
 		/// <remarks>Implements a loop around TryGetValue and TryUpdate</remarks>
-		public static bool UpdateIfExists<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, Func<TKey, TValue, TValue> update, out TValue newValue)
+		public static bool TryUpdate<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, Func<TKey, TValue, TValue> update, out TValue newValue)
 		{	//****************************************
 			TValue OldValue;
 			//****************************************
@@ -202,8 +202,8 @@ namespace Proximity.Utility.Collections
 		/// Removes all items from the concurrent dictionary
 		/// </summary>
 		/// <param name="target">The target concurrent dictionary</param>
-		/// <returns>A list of all the key/value pairs removed</returns>
-		public static IList<KeyValuePair<TKey, TValue>> RemoveAll<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target)
+		/// <returns>An array of all the key/value pairs removed</returns>
+		public static KeyValuePair<TKey, TValue>[] RemoveAll<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target)
 		{	//****************************************
 			var MyValues = new List<KeyValuePair<TKey, TValue>>(target.Count);
 			TValue MyValue;
@@ -220,7 +220,7 @@ namespace Proximity.Utility.Collections
 
 			//****************************************
 
-			return MyValues;
+			return MyValues.ToArray();
 		}
 	}
 }

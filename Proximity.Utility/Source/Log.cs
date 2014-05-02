@@ -282,16 +282,21 @@ namespace Proximity.Utility
 		//****************************************
 		
 		/// <summary>
+		/// Resets the section context for this logical call, so future log operations are isolated
+		/// </summary>
+		public static void ClearContext()
+		{
+			LogManager.ClearContext();
+		}
+		
+		/// <summary>
 		/// Writes an entry to the log
 		/// </summary>
 		/// <param name="newEntry">The entry to write</param>
 		public static void Write(LogEntry newEntry)
-		{	//****************************************
-			IList<LogOutput> Outputs = LogManager.Outputs;
-			//****************************************
-			
-			for(int Index = 0; Index < Outputs.Count; Index++)
-				Outputs[Index].Write(newEntry);
+		{
+			foreach(var MyOutput in LogManager.Outputs)
+				MyOutput.Write(newEntry);
 		}
 	}
 }

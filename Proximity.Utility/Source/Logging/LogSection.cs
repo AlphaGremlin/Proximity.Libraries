@@ -10,11 +10,13 @@ namespace Proximity.Utility.Logging
 	/// <summary>
 	/// Represents a logical grouping for entries
 	/// </summary>
-	public class LogSection : IDisposable
+	public sealed class LogSection : IDisposable
 	{	//****************************************
 		private LogEntry _Entry;
 		
 		private int _Priority;
+		
+		private bool _IsDisposed;
 		//****************************************
 		
 		/// <summary>
@@ -77,6 +79,15 @@ namespace Proximity.Utility.Logging
 		public int Priority
 		{
 			get { return _Priority; }
+		}
+		
+		/// <summary>
+		/// Gets whether this section has been disposed
+		/// </summary>
+		public bool IsDisposed
+		{
+			get { return _IsDisposed; }
+			internal set { _IsDisposed = value; }
 		}
 	}
 }

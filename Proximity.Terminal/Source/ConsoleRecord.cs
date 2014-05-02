@@ -14,11 +14,12 @@ namespace Proximity.Terminal
 	/// </summary>
 	public sealed class ConsoleRecord
 	{	//****************************************
-		private DateTime _Timestamp;
-		private Severity _Severity;
-		private string _Text;
+		private readonly DateTime _Timestamp;
+		private readonly Severity _Severity;
+		private readonly string _Text;
 		
-		private ConsoleColor _ConsoleColour;
+		private readonly ConsoleColor _ConsoleColour;
+		private readonly int _IndentLevel;
 		//****************************************
 				
 		internal ConsoleRecord(string text)
@@ -39,7 +40,7 @@ namespace Proximity.Terminal
 			_Severity = Severity.None;
 		}
 
-		internal ConsoleRecord(LogEntry entry, string text)
+		internal ConsoleRecord(LogEntry entry, string text, int indentLevel)
 		{
 			switch(entry.Severity)
 			{
@@ -48,7 +49,7 @@ namespace Proximity.Terminal
 				break;
 				
 			case Severity.Error:
-				_ConsoleColour = ConsoleColor.Magenta;
+				_ConsoleColour = ConsoleColor.Red;
 				break;
 				
 			case Severity.Warning:
@@ -76,6 +77,7 @@ namespace Proximity.Terminal
 			_Text = text;
 			_Severity = entry.Severity;
 			_Timestamp = entry.Timestamp;
+			_IndentLevel = indentLevel;
 		}
 		
 		//****************************************
@@ -111,6 +113,14 @@ namespace Proximity.Terminal
 		public Severity Severity
 		{
 			get { return _Severity; }
+		}
+		
+		/// <summary>
+		/// Gets the indentation level
+		/// </summary>
+		public int IndentLevel
+		{
+			get { return _IndentLevel; }
 		}
 	}
 }

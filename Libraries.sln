@@ -18,8 +18,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Utility", "Proxim
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Utility.Tests", "Proximity.Utility\Tests\Proximity.Utility.Tests.csproj", "{887C7D16-0E23-4055-8535-46AA76DD4DEA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Console", "Proximity.Console\Source\Proximity.Console.csproj", "{A471B13A-4A87-44F2-8384-7556A7BD948E}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Terminal", "Proximity.Terminal\Source\Proximity.Terminal.csproj", "{8D2F9F27-59FA-4357-982F-803007388FB7}"
 EndProject
 Global
@@ -36,10 +34,6 @@ Global
 		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Release|Any CPU.Build.0 = Release|Any CPU
 		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A471B13A-4A87-44F2-8384-7556A7BD948E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A471B13A-4A87-44F2-8384-7556A7BD948E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A471B13A-4A87-44F2-8384-7556A7BD948E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A471B13A-4A87-44F2-8384-7556A7BD948E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F5311886-C6D6-443F-882B-BED1FD77E73A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F5311886-C6D6-443F-882B-BED1FD77E73A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F5311886-C6D6-443F-882B-BED1FD77E73A}.Release|Any CPU.Build.0 = Release|Any CPU

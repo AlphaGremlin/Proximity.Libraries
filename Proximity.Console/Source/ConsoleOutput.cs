@@ -3,9 +3,10 @@
  Created: 2009-06-03
 \****************************************/
 using System;
-using System.Text;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Text;
+using System.Threading;
 using Proximity.Utility.Logging;
 //****************************************
 
@@ -16,18 +17,19 @@ namespace Proximity.Console
 	/// </summary>
 	public sealed class ConsoleOutput : LogOutput
 	{	//****************************************
-		private List<ConsoleRecord> _History;
+		private readonly List<ConsoleRecord> _History;
 		private int _MaxHistoryRecords = 1024 * 4;
 		
 		public delegate void ConsoleClearEvent();
 		public delegate void ConsoleWriteEvent(ConsoleRecord newRecord);
 		
-		[ThreadStatic()] private static int IndentLevel;
-		[ThreadStatic()] private static StringBuilder OutputBuilder;
+		private readonly ThreadLocal<StringBuilder> _OutputBuilder;
 		//****************************************
 		
 		internal ConsoleOutput() : base()
 		{
+			_OutputBuilder = new ThreadLocal<StringBuilder>(() => new StringBuilder());
+				
 			_History = new List<ConsoleRecord>();
 		}
 		
@@ -41,13 +43,13 @@ namespace Proximity.Console
 		protected override void StartSection(LogSection newSection)
 		{
 			Write(newSection.Entry);
-			
-			IndentLevel++;
 		}
 
 		protected override void Write(LogEntry newEntry)
 		{	//****************************************
 			ConsoleRecord MyRecord;
+			var MyBuilder = _OutputBuilder.Value;
+			var IndentLevel = LogManager.Context.Count;
 			//****************************************
 
 			if (newEntry is ConsoleLogEntry)
@@ -56,15 +58,12 @@ namespace Proximity.Console
 			}
 			else
 			{
-				if (OutputBuilder == null)
-					OutputBuilder = new StringBuilder();
+				MyBuilder.Append(' ', IndentLevel * 2);
+				MyBuilder.Append(newEntry.Text);
 				
-				OutputBuilder.Append(' ', IndentLevel * 2);
-				OutputBuilder.Append(newEntry.Text);
+				MyRecord = new ConsoleRecord(newEntry, MyBuilder.ToString(), IndentLevel);
 				
-				MyRecord = new ConsoleRecord(newEntry, OutputBuilder.ToString());
-				
-				OutputBuilder.Length = 0;
+				MyBuilder.Length = 0;
 			}
 			
 			//****************************************
@@ -80,19 +79,19 @@ namespace Proximity.Console
 			{
 				foreach(string EntryLine in ((ExceptionLogEntry)newEntry).Exception.ToString().Split(new string[] {Environment.NewLine}, StringSplitOptions.None))
 				{
-					OutputBuilder.Append(' ', IndentLevel * 2);
-					OutputBuilder.Append(EntryLine);
+					MyBuilder.Append(' ', IndentLevel * 2);
+					MyBuilder.Append(EntryLine);
 		
 					//****************************************
 					
-					MyRecord = new ConsoleRecord(newEntry, OutputBuilder.ToString());
+					MyRecord = new ConsoleRecord(newEntry, MyBuilder.ToString());
 					
 					ThresholdWrite(MyRecord);
 					
 					if (OnWriteLine != null)
 						OnWriteLine(MyRecord);
 					
-					OutputBuilder.Length = 0;
+					MyBuilder.Length = 0;
 				}
 			}
 		}
@@ -112,9 +111,8 @@ namespace Proximity.Console
 				OnWriteLine(MyRecord);
 		}
 		
-		protected override void FinishSection()
+		protected override void FinishSection(LogSection oldSection)
 		{
-			IndentLevel--;
 		}
 		
 		protected override void Finish()
