@@ -22,13 +22,23 @@ namespace Proximity.Utility.Threading
 		private readonly List<TaskCompletionSource<IDisposable>> _RightWaiting = new List<TaskCompletionSource<IDisposable>>();
 		
 		private int _Counter = 0;
+		private bool _IsUnfair = false;
 		//****************************************
+		
+		/// <summary>
+		/// Creates a new fair switch lock
+		/// </summary>
+		public AsyncSwitchLock()
+		{
+		}
 		
 		/// <summary>
 		/// Creates a new switch lock
 		/// </summary>
-		public AsyncSwitchLock()
+		/// <param name="isUnfair">Whether to prefer fairness when switching</param>
+		public AsyncSwitchLock(bool isUnfair)
 		{
+			_IsUnfair = isUnfair;
 		}
 		
 		//****************************************
@@ -61,8 +71,8 @@ namespace Proximity.Utility.Threading
 		{
 			lock (_LockObject)
 			{
-				// If there are zero or more lefts and no waiting rights...
-				if (_Counter >= 0 && _RightWaiting.Count == 0)
+				// If there are zero or more lefts and no waiting rights (or we're in unfair mode)...
+				if (_Counter >= 0 && (_IsUnfair || _RightWaiting.Count == 0))
 				{
 					// Add another left and return a completed task the caller can use to release the lock
 					Interlocked.Increment(ref _Counter);
@@ -117,8 +127,8 @@ namespace Proximity.Utility.Threading
 		{
 			lock (_LockObject)
 			{
-				// If there are zero or more rights and no waiting lefts...
-				if (_Counter <= 0 && _LeftWaiting.Count == 0)
+				// If there are zero or more rights and no waiting lefts (or we're in unfair mode)...
+				if (_Counter <= 0 && (_IsUnfair || _LeftWaiting.Count == 0))
 				{
 					// Add another right and return a completed task the caller can use to release the lock
 					Interlocked.Decrement(ref _Counter);
@@ -299,6 +309,49 @@ namespace Proximity.Utility.Threading
 			
 			// Try and cancel our task. If it fails, we've already activated and been removed from the waiters list
 			MyWaiter.TrySetCanceled();
+		}
+		
+		//****************************************
+		
+		/// <summary>
+		/// Gets the number of left waiters queued
+		/// </summary>
+		public int WaitingLeft
+		{
+			get { return _LeftWaiting.Count; }
+		}
+		
+		/// <summary>
+		/// Gets the number of right waiters queued
+		/// </summary>
+		public int WaitingRight
+		{
+			get { return _RightWaiting.Count; }
+		}
+		
+		/// <summary>
+		/// Gets whether any concurrent left operations are in progress
+		/// </summary>
+		public bool IsLeft
+		{
+			get { return _Counter > 0; }
+		}
+		
+		/// <summary>
+		/// Gets whether any concurrent right operations are in progress
+		/// </summary>
+		public bool IsRight
+		{
+			get { return _Counter < 0; }
+		}
+		
+		/// <summary>
+		/// Gets if the switch lock favours an unfair algorithm
+		/// </summary>
+		/// <remarks>In unfair mode, a lock on one side will succeed if it's already held elsewhere, even if there are waiters on the other side</remarks>
+		public bool IsUnfair
+		{
+			get { return _IsUnfair; }
 		}
 		
 		//****************************************

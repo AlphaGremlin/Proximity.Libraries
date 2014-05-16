@@ -79,6 +79,7 @@
     <Compile Include="EmitterTests.cs" />
     <Compile Include="EqualityTests.cs" />
     <Compile Include="ListExtensionTests.cs" />
+    <Compile Include="RemoteTaskTests.cs" />
     <Compile Include="SafeThreadPoolTests.cs" />
     <Compile Include="SafeTimerTests.cs" />
     <Compile Include="TaskFlagTests.cs" />

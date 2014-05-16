@@ -21,6 +21,8 @@ namespace Proximity.Utility.Threading
 		private TaskCompletionSource<IDisposable> _Reader = new TaskCompletionSource<IDisposable>();
 		
 		private int _ReadersWaiting = 0, _Counter = 0;
+		
+		private bool _IsUnfair = false;
 		//****************************************
 		
 		/// <summary>
@@ -28,6 +30,15 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		public AsyncReadWriteLock()
 		{
+		}
+		
+		/// <summary>
+		/// Creates a new asynchronous reader/writer lock
+		/// </summary>
+		/// <param name="isUnfair">Whether to prefer fairness when switching</param>
+		public AsyncReadWriteLock(bool isUnfair)
+		{
+			_IsUnfair = isUnfair;
 		}
 		
 		//****************************************
@@ -79,8 +90,8 @@ namespace Proximity.Utility.Threading
 		{
 			lock (_Writers)
 			{
-				// If there are zero or more readers and no waiting writers...
-				if (_Counter >=0 && _Writers.Count == 0)
+				// If there are zero or more readers and no waiting writers (or we're in unfair mode)...
+				if (_Counter >=0 && (_IsUnfair || _Writers.Count == 0))
 				{
 					// Add another reader and return a completed task the caller can use to release the lock
 					Interlocked.Increment(ref _Counter);
@@ -327,6 +338,15 @@ namespace Proximity.Utility.Threading
 		public int WaitingWriters
 		{
 			get { return _Writers.Count; }
+		}
+		
+		/// <summary>
+		/// Gets if the read/write lock favours an unfair algorithm
+		/// </summary>
+		/// <remarks>In unfair mode, a read lock will succeed if it's already held elsewhere, even if there are writers waiting</remarks>
+		public bool IsUnfair
+		{
+			get { return _IsUnfair; }
 		}
 		
 		//****************************************
