@@ -54,11 +54,17 @@ namespace Proximity.Utility.Threading
 					var Source = (RemoteTaskCompletionSource<VoidStruct>)state;
 					
 					if (innerTask.IsFaulted)
-						Source.TrySetException(innerTask.Exception.InnerException);
+						Source.SetException(innerTask.Exception.InnerException);
 					else if (innerTask.IsCanceled)
-						Source.TrySetCancelled();
+						Source.SetCancelled();
 					else
-						Source.TrySetResult(default(VoidStruct));
+						Source.SetResult(default(VoidStruct));
+					
+					// Task has completed, no need to maintain the sponsorship
+					var MyInnerLease = (ILease)RemotingServices.GetLifetimeService(Source);
+					
+					MyInnerLease.Unregister(this);
+					
 				}
 				, taskSource, TaskContinuationOptions.ExecuteSynchronously);
 		}
@@ -144,6 +150,17 @@ namespace Proximity.Utility.Threading
 			return CreateTask(remoteTask);
 		}
 		
+		/// <summary>
+		/// Transforms a Task into a RemoteTask suitable for passing between AppDomains
+		/// </summary>
+		/// <param name="task">The task to transform</param>
+		/// <returns>A RemoteTask that can be awaited from another AppDomain</returns>
+		/// <remarks>To create a RemoteTask that listens to a RemoteCancellationToken, use one of the <see cref="O:RemoteTask.Start" /> overrides</remarks>
+		public static implicit operator RemoteTask(Task task)
+		{
+			return new RemoteTask(task);
+		}
+		
 		//****************************************
 		
 		internal static Task CreateTask(RemoteTask remoteTask)
@@ -201,16 +218,21 @@ namespace Proximity.Utility.Threading
 					try
 					{
 						if (innerTask.IsFaulted)
-							Source.TrySetException(innerTask.Exception.InnerException);
+							Source.SetException(innerTask.Exception.InnerException);
 						else if (innerTask.IsCanceled)
-							Source.TrySetCancelled();
+							Source.SetCancelled();
 						else
-							Source.TrySetResult(innerTask.Result);
+							Source.SetResult(innerTask.Result);
 					}
 					catch (Exception e) // Can fail if the result object is not serialisable or marshalable
 					{
-						Source.TrySetException(e);
+						Source.SetException(e);
 					}
+					
+					// Task has completed, no need to maintain the sponsorship
+					var MyInnerLease = (ILease)RemotingServices.GetLifetimeService(Source);
+					
+					MyInnerLease.Unregister(this);
 				}
 				, taskSource, TaskContinuationOptions.ExecuteSynchronously);
 		}
@@ -260,6 +282,17 @@ namespace Proximity.Utility.Threading
 		public static implicit operator Task<TResult>(RemoteTask<TResult> remoteTask)
 		{
 			return CreateTask(remoteTask);
+		}
+		
+		/// <summary>
+		/// Transforms a Task into a RemoteTask suitable for passing between AppDomains
+		/// </summary>
+		/// <param name="task">The task to transform</param>
+		/// <returns>A RemoteTask that can be awaited from another AppDomain</returns>
+		/// <remarks>To create a RemoteTask that listens to a RemoteCancellationToken, use one of the <see cref="O:RemoteTask&lt;TResult&gt;.Start" /> overrides</remarks>
+		public static implicit operator RemoteTask<TResult>(Task<TResult> task)
+		{
+			return new RemoteTask<TResult>(task);
 		}
 		
 		//****************************************

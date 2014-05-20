@@ -20,12 +20,16 @@ namespace Proximity.Utility.Threading
 	internal sealed class RemoteTaskCompletionSource<TResult> : MarshalByRefObject, ISponsor
 	{	//****************************************
 		private readonly TaskCompletionSource<TResult> _TaskSource;
+		
+		private readonly MarshalByRefObject _RemoteTask;
 		//****************************************
 		
 		[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
 		internal RemoteTaskCompletionSource(MarshalByRefObject remoteTask)
 		{
 			Debug.Assert(RemotingServices.IsObjectOutOfAppDomain(remoteTask), "Attempt to unwrap remote task inside the owning AppDomain");
+			
+			_RemoteTask = remoteTask;
 			
 			// Create the local TaskCompletionSource, and attach ourselves to it.
 			// Otherwise, remoting will be the only thing with a reference to us, and we may end up garbage collected
@@ -60,19 +64,35 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 		
-		internal bool TrySetCancelled()
+		internal void SetCancelled()
 		{
-			return _TaskSource.TrySetCanceled();
+			_TaskSource.TrySetCanceled();
+			
+			Dispose();
 		}
 		
-		internal bool TrySetException(Exception ex)
+		internal void SetException(Exception ex)
 		{
-			return _TaskSource.TrySetException(ex);
+			_TaskSource.TrySetException(ex);
+			
+			Dispose();
 		}
 
-		internal bool TrySetResult(TResult result)
+		internal void SetResult(TResult result)
 		{
-			return _TaskSource.TrySetResult(result);
+			_TaskSource.TrySetResult(result);
+			
+			Dispose();
+		}
+		
+		//****************************************
+		
+		private void Dispose()
+		{
+			// Task has completed, no need to maintain the sponsorship
+			var MyLease = (ILease)RemotingServices.GetLifetimeService(_RemoteTask);
+			
+			MyLease.Unregister(this);
 		}
 		
 		//****************************************
