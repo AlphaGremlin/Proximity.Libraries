@@ -130,6 +130,11 @@ namespace Proximity.Utility.Threading
 			get { return _Token.CanBeCanceled; }
 		}
 		
+		internal CancellationToken Token
+		{
+			get { return _Token; }
+		}
+		
 		//****************************************
 		
 		/// <summary>

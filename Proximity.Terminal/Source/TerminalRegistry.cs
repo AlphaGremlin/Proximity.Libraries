@@ -19,6 +19,8 @@ namespace Proximity.Terminal
 	/// </summary>
 	public sealed class TerminalRegistry
 	{	//****************************************
+		private bool _IsLoaded = false;
+		
 		private readonly object _LockObject = new object();
 		
 		// Global Commands and Variables
@@ -101,6 +103,9 @@ namespace Proximity.Terminal
 			if (MyProvider == null)
 				return null;
 			
+			// We've scanned at least one type, so mark us as Loaded
+			_IsLoaded = true;
+			
 			MyType = new TerminalType(this, type, MyProvider);
 			
 			// Register this type
@@ -127,6 +132,9 @@ namespace Proximity.Terminal
 			TerminalTypeSet MyTypeSet;
 			TerminalInstance MyInstance;
 			//****************************************
+			
+			if (!_IsLoaded)
+				return null;
 			
 			if (!_Types.TryGetValue(instance.GetType(), out MyType))
 				throw new ArgumentException("Unknown Instance Type");
@@ -159,6 +167,9 @@ namespace Proximity.Terminal
 			TerminalType MyType;
 			TerminalTypeSet MyTypeSet;
 			//****************************************
+			
+			if (!_IsLoaded)
+				return;
 			
 			if (!_Types.TryGetValue(instance.GetType(), out MyType))
 				throw new ArgumentException("Unknown Instance Type");
