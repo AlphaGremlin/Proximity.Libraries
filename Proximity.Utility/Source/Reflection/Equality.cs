@@ -88,7 +88,7 @@ namespace Proximity.Utility.Reflection
 					
 					// No equality operator, see if there's an IEquatable
 					if (CheckMethod == null)
-						CheckMethod = MyField.FieldType.GetMethodOnInterface(typeof(IEquatable<>).MakeGenericType(MyField.FieldType), "Equals");
+						CheckMethod = MyField.FieldType.GetMethodOnInterface(typeof(IEquatable<>).MakeGenericType(MyField.FieldType), "Equals", new Type[] { MyField.FieldType });
 					
 					// No IEquatable, see if there's a normal equals
 					if (CheckMethod == null)

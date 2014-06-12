@@ -94,16 +94,6 @@ namespace Proximity.Utility.Threading
 		//****************************************
 		
 		/// <summary>
-		/// Provides a dummy structure for TaskCompletionSource
-		/// </summary>
-		[Serializable]
-		private struct VoidStruct
-		{
-		}
-		
-		//****************************************
-		
-		/// <summary>
 		/// Wraps an async callback in a RemoteTask
 		/// </summary>
 		/// <param name="callback">The callback returning a task to wrap</param>
@@ -203,7 +193,7 @@ namespace Proximity.Utility.Threading
 			if (!RemotingServices.IsTransparentProxy(remoteTask))
 				return remoteTask._Task; // Local object, so we can safely pass the Task
 			
-			var TaskSource = new RemoteTaskCompletionSource<RemoteTask.VoidStruct>(remoteTask);
+			var TaskSource = new RemoteTaskCompletionSource<VoidStruct>(remoteTask);
 			
 			// Inform our Remote Task to call the Local Task Completion Source
 			remoteTask.Attach(TaskSource);

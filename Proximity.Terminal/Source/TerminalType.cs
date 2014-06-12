@@ -109,16 +109,25 @@ namespace Proximity.Terminal
 			get { return _Name; }
 		}
 		
+		/// <summary>
+		/// Gets whether this Type is the default for this Name
+		/// </summary>
 		public bool IsDefault
 		{
 			get { return _IsDefault; }
 		}
 		
+		/// <summary>
+		/// Gets the collection of commands offered by this type
+		/// </summary>
 		public IEnumerable<TerminalCommandSet> Commands
 		{
 			get { return _Commands.Values; }
 		}
 		
+		/// <summary>
+		/// Gets the collection of variables offered by this type
+		/// </summary>
 		public IEnumerable<TerminalVariable> Variables
 		{
 			get { return _Variables.Values; }

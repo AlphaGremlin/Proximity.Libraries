@@ -145,6 +145,8 @@
     <Compile Include="Configuration\AssemblyElementCollection.cs" />
     <Compile Include="Configuration\ConfigCollection.cs" />
     <Compile Include="Configuration\ConfigEnumerator.cs" />
+    <Compile Include="Configuration\NullableDecimalValidator.cs" />
+    <Compile Include="Configuration\NullableDecimalValidatorAttribute.cs" />
     <Compile Include="Configuration\NullableIntegerValidator.cs" />
     <Compile Include="Configuration\NullableIntegerValidatorAttribute.cs" />
     <Compile Include="Configuration\NullableTimeSpanValidator.cs" />
@@ -212,6 +214,7 @@
     <Compile Include="Threading\StreamTaskScheduler.cs" />
     <Compile Include="Threading\TaskFlag.cs" />
     <Compile Include="Threading\TaskStream.cs" />
+    <Compile Include="Threading\VoidStruct.cs" />
     <Compile Include="Threading\WorkingEnumerator.cs" />
     <Compile Include="Threading\WorkingList.cs" />
     <Compile Include="Threading\WriteLock.cs" />

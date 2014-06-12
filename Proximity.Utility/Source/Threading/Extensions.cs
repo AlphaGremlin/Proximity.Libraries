@@ -90,14 +90,20 @@ namespace Proximity.Utility.Threading
 			if (!token.CanBeCanceled || task.IsCompleted)
 				return task;
 			
-			return task.ContinueWith(
+			var MyCompletionSource = new TaskCompletionSource<VoidStruct>();
+			
+			task.ContinueWith(
 				(innerTask) =>
 				{
 					if (innerTask.IsFaulted)
-						throw new AggregateException("Cancellable task faulted", innerTask.Exception);
+						MyCompletionSource.SetException(innerTask.Exception.InnerException);
+					else
+						MyCompletionSource.SetResult(VoidStruct.Empty);
 				},
-				token
+				token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current
 			);
+			
+			return MyCompletionSource.Task;
 		}
 		
 		/// <summary>
@@ -112,19 +118,22 @@ namespace Proximity.Utility.Threading
 			if (!token.CanBeCanceled || task.IsCompleted)
 				return task;
 			
-			return task.ContinueWith(
+			var MyCompletionSource = new TaskCompletionSource<TResult>();
+			
+			task.ContinueWith(
 				(innerTask) =>
 				{
 					if (innerTask.IsFaulted)
-						throw new AggregateException("Cancellable task faulted", innerTask.Exception);
-					
-					if (innerTask.IsCanceled)
-						throw new OperationCanceledException();
-					
-					return innerTask.Result;
+						MyCompletionSource.SetException(innerTask.Exception.InnerException);
+					else if (innerTask.IsCanceled)
+						MyCompletionSource.SetCanceled();
+					else 
+						MyCompletionSource.SetResult(innerTask.Result);
 				},
-				token
+				token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current
 			);
+			
+			return MyCompletionSource.Task;
 		}
 	}
 }

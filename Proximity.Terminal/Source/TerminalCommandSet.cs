@@ -12,7 +12,7 @@ using Proximity.Utility.Collections;
 namespace Proximity.Terminal
 {
 	/// <summary>
-	/// Description of TerminalCommandSet.
+	/// Describes a set of commands grouped by name
 	/// </summary>
 	public sealed class TerminalCommandSet : IComparable<TerminalCommandSet>
 	{	//****************************************
@@ -93,6 +93,7 @@ namespace Proximity.Terminal
 			return null;
 		}
 		
+		/// <inheritdoc />
 		public override string ToString()
 		{
 			return _Name;
@@ -105,15 +106,20 @@ namespace Proximity.Terminal
 		
 		//****************************************
 		
+		/// <summary>
+		/// Gets the name of this command set
+		/// </summary>
 		public string Name
 		{
 			get { return _Name; }
 		}
 		
+		/// <summary>
+		/// Gets the commands under this set
+		/// </summary>
 		public IEnumerable<TerminalCommand> Commands
 		{
 			get { return _Commands; }
 		}
-		
 	}
 }

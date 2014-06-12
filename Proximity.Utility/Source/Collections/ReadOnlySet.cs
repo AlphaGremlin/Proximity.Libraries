@@ -49,31 +49,61 @@ namespace Proximity.Utility.Collections
 			_Set.CopyTo(array, arrayIndex);
 		}
 		
+		/// <summary>
+		/// Checks whether this set is a subset of the collection
+		/// </summary>
+		/// <param name="other">The collection to check</param>
+		/// <returns>True if this set is a subset of the collection, otherwise False</returns>
 		public bool IsSubsetOf(IEnumerable<TItem> other)
 		{
 			return _Set.IsSubsetOf(other);
 		}
 		
+		/// <summary>
+		/// Checks whether this set is a superset of the collection
+		/// </summary>
+		/// <param name="other">The collection to check</param>
+		/// <returns>True if this set is a superset of the collection, otherwise False</returns>
 		public bool IsSupersetOf(IEnumerable<TItem> other)
 		{
 			return _Set.IsSupersetOf(other);
 		}
 		
+		/// <summary>
+		/// Checks whether this set is a strict superset of the collection
+		/// </summary>
+		/// <param name="other">The collection to check</param>
+		/// <returns>True if this set is a strict superset of the collection, otherwise False</returns>
 		public bool IsProperSupersetOf(IEnumerable<TItem> other)
 		{
 			return _Set.IsProperSupersetOf(other);
 		}
 		
+		/// <summary>
+		/// Checks whether this set is a strict subset of the collection
+		/// </summary>
+		/// <param name="other">The collection to check</param>
+		/// <returns>True if this set is a strict subset of the collection, otherwise False</returns>
 		public bool IsProperSubsetOf(IEnumerable<TItem> other)
 		{
 			return _Set.IsProperSubsetOf(other);
 		}
 		
+		/// <summary>
+		/// Checks whether the current set overlaps with the specified collection
+		/// </summary>
+		/// <param name="other">The collection to check</param>
+		/// <returns>True if at least one element is common between this set and the collection, otherwise False</returns>
 		public bool Overlaps(IEnumerable<TItem> other)
 		{
 			return _Set.Overlaps(other);
 		}
 		
+		/// <summary>
+		/// Checks whether this set and the given collection contain the same elements
+		/// </summary>
+		/// <param name="other">The collection to check against</param>
+		/// <returns>True if they contain the same elements, otherwise FAlse</returns>
 		public bool SetEquals(IEnumerable<TItem> other)
 		{
 			return _Set.SetEquals(other);

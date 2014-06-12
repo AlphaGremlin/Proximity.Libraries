@@ -12,7 +12,7 @@ using Proximity.Utility.Collections;
 namespace Proximity.Terminal
 {
 	/// <summary>
-	/// Description of TerminalVariable.
+	/// Describes a Terminal Variable
 	/// </summary>
 	public sealed class TerminalVariable : IComparable<TerminalVariable>
 	{	//****************************************
@@ -71,6 +71,7 @@ namespace Proximity.Terminal
 			}
 		}
 		
+		/// <inheritdoc />
 		public override string ToString()
 		{
 			return _Name;
@@ -83,21 +84,33 @@ namespace Proximity.Terminal
 		
 		//****************************************
 		
+		/// <summary>
+		/// Gets the name of this Variable
+		/// </summary>
 		public string Name
 		{
 			get { return _Name; }
 		}
 		
+		/// <summary>
+		/// Gets the type of the value this Variable contains
+		/// </summary>
 		public Type Type
 		{
 			get { return _Property.PropertyType; }
 		}
 		
+		/// <summary>
+		/// Gets a description of the Variable
+		/// </summary>
 		public string Description
 		{
 			get { return _Description; }
 		}
 		
+		/// <summary>
+		/// Gets whether this property can be written to
+		/// </summary>
 		public bool CanWrite
 		{
 			get { return _Property.CanWrite; }

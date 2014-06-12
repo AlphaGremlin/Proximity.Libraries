@@ -13,7 +13,7 @@ using Proximity.Utility.Collections;
 namespace Proximity.Terminal
 {
 	/// <summary>
-	/// Description of TerminalTypeSet.
+	/// Represents a set of types grouped by a type name
 	/// </summary>
 	public sealed class TerminalTypeSet : IComparable<TerminalTypeSet>
 	{	//****************************************
@@ -49,6 +49,7 @@ namespace Proximity.Terminal
 			return null;
 		}
 		
+		/// <inheritdoc />
 		public override string ToString()
 		{
 			return _TypeName;

@@ -13,7 +13,7 @@ using Proximity.Utility;
 namespace Proximity.Terminal
 {
 	/// <summary>
-	/// Description of TerminalCommand.
+	/// Represents a Terminal Command
 	/// </summary>
 	public sealed class TerminalCommand
 	{	//****************************************
@@ -97,20 +97,28 @@ namespace Proximity.Terminal
 		
 		//****************************************
 		
+		/// <summary>
+		/// Gets the name of this Command
+		/// </summary>
 		public string Name
 		{
 			get { return _Name; }
 		}
 		
+		/// <summary>
+		/// Gets the underlying Method this Command invokes
+		/// </summary>
 		public MethodInfo Method
 		{
 			get { return _Method; }
 		}
 		
+		/// <summary>
+		/// Gets a description of this Command
+		/// </summary>
 		public string Description
 		{
 			get { return _Description; }
 		}
-		
 	}
 }
