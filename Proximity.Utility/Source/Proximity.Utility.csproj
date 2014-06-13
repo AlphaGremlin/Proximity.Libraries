@@ -145,6 +145,7 @@
     <Compile Include="Configuration\AssemblyElementCollection.cs" />
     <Compile Include="Configuration\ConfigCollection.cs" />
     <Compile Include="Configuration\ConfigEnumerator.cs" />
+    <Compile Include="Configuration\ConfigurationTextElement.cs" />
     <Compile Include="Configuration\NullableDecimalValidator.cs" />
     <Compile Include="Configuration\NullableDecimalValidatorAttribute.cs" />
     <Compile Include="Configuration\NullableIntegerValidator.cs" />
