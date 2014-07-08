@@ -179,7 +179,7 @@ namespace Proximity.Utility.Threading
 			}
 			
 			// Ensure we cleanup the cancellation source once we're done
-			MyTask.ContinueWith(task => tokenSource.Dispose());
+			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), tokenSource);
 			
 			return MyTask;
 		}
@@ -198,7 +198,7 @@ namespace Proximity.Utility.Threading
 			}
 			
 			// Ensure we cleanup the cancellation source once we're done
-			MyTask.ContinueWith(task => tokenSource.Dispose());
+			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), tokenSource);
 			
 			return MyTask;
 		}

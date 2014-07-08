@@ -74,7 +74,7 @@ namespace Proximity.Utility.Threading
 		/// <returns>A task that completes when a counter is taken, giving an IDisposable to release the counter</returns>
 		public Task<IDisposable> Wait(TimeSpan timeout)
 		{
-			return Lock(new CancellationTokenSource(timeout));
+			return Wait(new CancellationTokenSource(timeout));
 		}
 		
 		/// <summary>
@@ -116,7 +116,7 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 		
-		private Task<IDisposable> Lock(CancellationTokenSource tokenSource)
+		private Task<IDisposable> Wait(CancellationTokenSource tokenSource)
 		{	//****************************************
 			var MyTask = Wait(tokenSource.Token);
 			//****************************************
@@ -130,7 +130,7 @@ namespace Proximity.Utility.Threading
 			}
 			
 			// Ensure we cleanup the cancellation source once we're done
-			MyTask.ContinueWith(task => tokenSource.Dispose());
+			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), tokenSource);
 			
 			return MyTask;
 		}
