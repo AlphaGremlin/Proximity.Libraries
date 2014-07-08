@@ -57,7 +57,7 @@ namespace Proximity.Utility.Threading
 					(innerHandle) =>
 					{
 						var MyTaskSource = new TaskCompletionSource<bool>();
-						var MyRegisteredWait = ThreadPool.RegisterWaitForSingleObject(waitHandle, (state, timedOut) => ((TaskCompletionSource<bool>)state).TrySetResult(!timedOut), MyTaskSource, timeout, true);
+						var MyRegisteredWait = ThreadPool.RegisterWaitForSingleObject(innerHandle, (state, timedOut) => ((TaskCompletionSource<bool>)state).TrySetResult(!timedOut), MyTaskSource, timeout, true);
 						var MyTask = MyTaskSource.Task;
 						
 						MyTask.ContinueWith((ancestor, state) => ((RegisteredWaitHandle)state).Unregister(null), MyRegisteredWait);
@@ -93,14 +93,16 @@ namespace Proximity.Utility.Threading
 			var MyCompletionSource = new TaskCompletionSource<VoidStruct>();
 			
 			task.ContinueWith(
-				(innerTask) =>
+				(innerTask, state) =>
 				{
+					var MySource = (TaskCompletionSource<VoidStruct>)state;
+					
 					if (innerTask.IsFaulted)
-						MyCompletionSource.SetException(innerTask.Exception.InnerException);
+						MySource.SetException(innerTask.Exception.InnerException);
 					else
-						MyCompletionSource.SetResult(VoidStruct.Empty);
+						MySource.SetResult(VoidStruct.Empty);
 				},
-				token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current
+				MyCompletionSource, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current
 			);
 			
 			return MyCompletionSource.Task;
@@ -121,16 +123,18 @@ namespace Proximity.Utility.Threading
 			var MyCompletionSource = new TaskCompletionSource<TResult>();
 			
 			task.ContinueWith(
-				(innerTask) =>
+				(innerTask, state) =>
 				{
+					var MySource = (TaskCompletionSource<TResult>)state;
+					
 					if (innerTask.IsFaulted)
-						MyCompletionSource.SetException(innerTask.Exception.InnerException);
+						MySource.SetException(innerTask.Exception.InnerException);
 					else if (innerTask.IsCanceled)
-						MyCompletionSource.SetCanceled();
+						MySource.SetCanceled();
 					else 
-						MyCompletionSource.SetResult(innerTask.Result);
+						MySource.SetResult(innerTask.Result);
 				},
-				token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current
+				MyCompletionSource, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current
 			);
 			
 			return MyCompletionSource.Task;

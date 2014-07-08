@@ -67,6 +67,23 @@ namespace Proximity.Utility.Reflection
 		}
 		
 		/// <summary>
+		/// Perform a shallow clone of all writeable fields, ignoring any serialisation attributes
+		/// </summary>
+		/// <param name="source">The object to read from</param>
+		/// <param name="target">The object to write to. Must be the same type as the source</param>
+		/// <remarks>Does not support Arrays. Use where the input is likely to be a derived type of TObject</remarks>
+		public static void CloneToDynamic<TObject>(TObject source, TObject target) where TObject : class
+		{
+			if (source.GetType() != target.GetType())
+				throw new ArgumentException("Objects are not of the same type");
+			
+			var CloneType = typeof(Cloning<>).MakeGenericType(source.GetType());
+			var CloneDelegate = (Delegate)CloneType.GetMethod("GetCloneTo", BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, null);
+			
+			CloneDelegate.DynamicInvoke(source, target);
+		}
+		
+		/// <summary>
 		/// Performs a shallow copy of all fields, paying attention to serialisation attributes
 		/// </summary>
 		/// <param name="input">The object to clone</param>

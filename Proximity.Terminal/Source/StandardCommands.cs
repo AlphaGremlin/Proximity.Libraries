@@ -70,7 +70,7 @@ namespace Proximity.Terminal
 			{
 				using (Log.VerboseSection("Available Types:"))
 				{
-					Log.Info(string.Join(", ", MyTypes));
+					Log.Info(string.Join(", ", MyTypes.Where(type => type.HasInstance)));
 				}
 			}
 		}

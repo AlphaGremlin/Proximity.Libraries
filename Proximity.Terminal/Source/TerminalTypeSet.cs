@@ -139,5 +139,13 @@ namespace Proximity.Terminal
 				}
 			}
 		}
+		
+		/// <summary>
+		/// Gets whether there is any Instance associated with this type set
+		/// </summary>
+		public bool HasInstance
+		{
+			get { return _Instances.Count > 0 || _DefaultInstance != null; }
+		}
 	}
 }
