@@ -73,8 +73,23 @@ namespace Proximity.Utility.Threading
 		/// <param name="timeout">The amount of time to wait for a counters</param>
 		/// <returns>A task that completes when a counter is taken, giving an IDisposable to release the counter</returns>
 		public Task<IDisposable> Wait(TimeSpan timeout)
-		{
-			return Wait(new CancellationTokenSource(timeout));
+		{	//****************************************
+			var MySource = new CancellationTokenSource(timeout);
+			var MyTask = Wait(MySource.Token);
+			//****************************************
+		
+			// If the task is already completed, no need for the token source
+			if (MyTask.IsCompleted)
+			{
+				MySource.Dispose();
+				
+				return MyTask;
+			}
+			
+			// Ensure we cleanup the cancellation source once we're done
+			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), MySource);
+			
+			return MyTask;
 		}
 		
 		/// <summary>
@@ -107,7 +122,7 @@ namespace Proximity.Utility.Threading
 					var MyRegistration = token.Register(Cancel, NewWaiter);
 					
 					// If we complete and haven't been cancelled, dispose of the registration
-					NewWaiter.Task.ContinueWith((task) => MyRegistration.Dispose());
+					NewWaiter.Task.ContinueWith((task, state) => ((CancellationTokenRegistration)state).Dispose(), MyRegistration);
 				}
 				
 				return NewWaiter.Task;
@@ -115,25 +130,6 @@ namespace Proximity.Utility.Threading
 		}
 		
 		//****************************************
-		
-		private Task<IDisposable> Wait(CancellationTokenSource tokenSource)
-		{	//****************************************
-			var MyTask = Wait(tokenSource.Token);
-			//****************************************
-		
-			// If the task is already completed, no need for the token source
-			if (MyTask.IsCompleted)
-			{
-				tokenSource.Dispose();
-				
-				return MyTask;
-			}
-			
-			// Ensure we cleanup the cancellation source once we're done
-			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), tokenSource);
-			
-			return MyTask;
-		}
 		
 		private void Release()
 		{	//****************************************

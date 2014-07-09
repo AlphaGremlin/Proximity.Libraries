@@ -72,6 +72,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AsyncCollectionTests.cs" />
+    <Compile Include="AsyncCounterTests.cs" />
     <Compile Include="AsyncReadWriteLockTests.cs" />
     <Compile Include="AsyncSemaphoreTests.cs" />
     <Compile Include="AsyncSwitchLockTests.cs" />

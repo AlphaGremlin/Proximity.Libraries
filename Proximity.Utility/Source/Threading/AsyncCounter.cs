@@ -37,7 +37,7 @@ namespace Proximity.Utility.Threading
 		/// <param name="initialCount">The initial count</param>
 		public AsyncCounter(int initialCount) : this()
 		{
-			if (initialCount <= 0)
+			if (initialCount < 0)
 				throw new ArgumentException("Initial Count is invalid");
 			
 			_CurrentCount = initialCount;
@@ -76,8 +76,23 @@ namespace Proximity.Utility.Threading
 		/// <param name="timeout">The amount of time to wait</param>
 		/// <returns>A task that completes when we were able to decrement the counter</returns>
 		public Task Decrement(TimeSpan timeout)
-		{
-			return Decrement(new CancellationTokenSource(timeout));
+		{	//****************************************
+			var MySource = new CancellationTokenSource(timeout);
+			var MyTask = Decrement(MySource.Token);
+			//****************************************
+		
+			// If the task is already completed, no need for the token source
+			if (MyTask.IsCompleted)
+			{
+				MySource.Dispose();
+				
+				return MyTask;
+			}
+			
+			// Ensure we cleanup the cancellation source once we're done
+			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), MySource);
+			
+			return MyTask;
 		}
 		
 		/// <summary>
@@ -113,7 +128,7 @@ namespace Proximity.Utility.Threading
 					var MyRegistration = token.Register(Cancel, NewWaiter);
 					
 					// If we complete and haven't been cancelled, dispose of the registration
-					NewWaiter.Task.ContinueWith((task) => MyRegistration.Dispose());
+					NewWaiter.Task.ContinueWith((task, state) => ((CancellationTokenRegistration)state).Dispose(), MyRegistration);
 				}
 				
 				return NewWaiter.Task;
@@ -151,25 +166,6 @@ namespace Proximity.Utility.Threading
 		}
 		
 		//****************************************
-		
-		private Task Decrement(CancellationTokenSource tokenSource)
-		{	//****************************************
-			var MyTask = Decrement(tokenSource.Token);
-			//****************************************
-		
-			// If the task is already completed, no need for the token source
-			if (MyTask.IsCompleted)
-			{
-				tokenSource.Dispose();
-				
-				return MyTask;
-			}
-			
-			// Ensure we cleanup the cancellation source once we're done
-			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), tokenSource);
-			
-			return MyTask;
-		}
 		
 		private void Cancel(object state)
 		{	//****************************************

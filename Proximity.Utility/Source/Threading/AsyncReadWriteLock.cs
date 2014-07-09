@@ -77,8 +77,23 @@ namespace Proximity.Utility.Threading
 		/// <param name="timeout">The amount of time to wait for the read lock</param>
 		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
 		public Task<IDisposable> LockRead(TimeSpan timeout)
-		{
-			return LockRead(new CancellationTokenSource(timeout));
+		{	//****************************************
+			var MySource = new CancellationTokenSource(timeout);
+			var MyTask = LockRead(MySource.Token);
+			//****************************************
+		
+			// If the task is already completed, no need for the token source
+			if (MyTask.IsCompleted)
+			{
+				MySource.Dispose();
+				
+				return MyTask;
+			}
+			
+			// Ensure we cleanup the cancellation source once we're done
+			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), MySource);
+			
+			return MyTask;
 		}
 		
 		/// <summary>
@@ -122,8 +137,23 @@ namespace Proximity.Utility.Threading
 		/// <param name="timeout">The amount of time to wait for the write lock</param>
 		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
 		public Task<IDisposable> LockWrite(TimeSpan timeout)
-		{
-			return LockWrite(new CancellationTokenSource(timeout));
+		{	//****************************************
+			var MySource = new CancellationTokenSource(timeout);
+			var MyTask = LockWrite(MySource.Token);
+			//****************************************
+		
+			// If the task is already completed, no need for the token source
+			if (MyTask.IsCompleted)
+			{
+				MySource.Dispose();
+				
+				return MyTask;
+			}
+			
+			// Ensure we cleanup the cancellation source once we're done
+			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), MySource);
+			
+			return MyTask;
 		}
 		
 		/// <summary>
@@ -156,7 +186,7 @@ namespace Proximity.Utility.Threading
 					var MyRegistration = token.Register(CancelWrite, MyWaiter);
 					
 					// When we complete, dispose of the registration
-					MyWaiter.Task.ContinueWith((task) => MyRegistration.Dispose());
+					MyWaiter.Task.ContinueWith((task, state) => ((CancellationTokenRegistration)state).Dispose(), MyRegistration);
 				}
 				
 				return MyWaiter.Task;
@@ -165,44 +195,6 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 
-		private Task<IDisposable> LockRead(CancellationTokenSource tokenSource)
-		{	//****************************************
-			var MyTask = LockRead(tokenSource.Token);
-			//****************************************
-		
-			// If the task is already completed, no need for the token source
-			if (MyTask.IsCompleted)
-			{
-				tokenSource.Dispose();
-				
-				return MyTask;
-			}
-			
-			// Ensure we cleanup the cancellation source once we're done
-			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), tokenSource);
-			
-			return MyTask;
-		}
-		
-		private Task<IDisposable> LockWrite(CancellationTokenSource tokenSource)
-		{	//****************************************
-			var MyTask = LockWrite(tokenSource.Token);
-			//****************************************
-		
-			// If the task is already completed, no need for the token source
-			if (MyTask.IsCompleted)
-			{
-				tokenSource.Dispose();
-				
-				return MyTask;
-			}
-			
-			// Ensure we cleanup the cancellation source once we're done
-			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), tokenSource);
-			
-			return MyTask;
-		}
-		
 		private void ReleaseRead()
 		{	//****************************************
 			TaskCompletionSource<IDisposable> NextWriter = null;

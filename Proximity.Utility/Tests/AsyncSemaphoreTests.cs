@@ -1,5 +1,5 @@
 ﻿/****************************************\
- AsyncReadWriteLockTests.cs
+ AsyncSemaphoreTests.cs
  Created: 2014-02-26
 \****************************************/
 using System;
@@ -105,7 +105,7 @@ namespace Proximity.Utility.Tests
 					
 					MySource.Cancel();
 					
-					Assert.IsTrue(MyWaiter1.IsCanceled, "NWait cancelled");
+					Assert.IsTrue(MyWaiter1.IsCanceled, "Wait not cancelled");
 					
 					Assert.IsFalse(MyWaiter2.IsCompleted, "Nested lock taken");
 					

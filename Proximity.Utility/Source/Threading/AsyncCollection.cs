@@ -63,6 +63,9 @@ namespace Proximity.Utility.Threading
 		/// <param name="capacity">The maximum number of items in the queue</param>
 		public AsyncCollection(IProducerConsumerCollection<TItem> collection, int capacity)
 		{
+			if (capacity <= 0)
+				throw new ArgumentException("Capacity is invalid");
+			
 			_Collection = collection;
 			_Capacity = capacity;
 			
@@ -72,11 +75,24 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 		
+		/// <summary>
+		/// Attempts to add an Item to the collection
+		/// </summary>
+		/// <param name="item">The item to add</param>
+		/// <returns>A task representing the addition operation</returns>
+		/// <exception cref="OperationCanceledException">The collection was completed while we were waiting for free space</exception>
 		public Task Add(TItem item)
 		{
 			return Add(item, CancellationToken.None);
 		}
 		
+		/// <summary>
+		/// Attempts to add an Item to the collection
+		/// </summary>
+		/// <param name="item">The item to add</param>
+		/// <param name="timeout">The amount of time to wait if the collection is at full capacity</param>
+		/// <returns>A task representing the addition operation</returns>
+		/// <exception cref="OperationCanceledException">The collection was completed while we were waiting for free space</exception>
 		public Task Add(TItem item, TimeSpan timeout)
 		{	//****************************************
 			var MySource = new CancellationTokenSource();
@@ -97,6 +113,13 @@ namespace Proximity.Utility.Threading
 			return MyTask;
 		}
 		
+		/// <summary>
+		/// Attempts to add an Item to the collection
+		/// </summary>
+		/// <param name="item">The item to add</param>
+		/// <param name="token">A cancellation token to abort the addition operation</param>
+		/// <returns>A task representing the addition operation</returns>
+		/// <exception cref="OperationCanceledException">The collection was completed while we were waiting for free space</exception>
 		public Task Add(TItem item, CancellationToken token)
 		{
 			if (_IsCompleted)
@@ -123,11 +146,22 @@ namespace Proximity.Utility.Threading
 			return _Complete;
 		}
 		
+		/// <summary>
+		/// Attempts to take an Item to the collection
+		/// </summary>
+		/// <returns>A task returning the result of the take operation</returns>
+		/// <exception cref="OperationCanceledException">The collection was completed while we were waiting for an item</exception>
 		public Task<TItem> Take()
 		{
 			return Take(CancellationToken.None);
 		}
 		
+		/// <summary>
+		/// Attempts to take an Item to the collection
+		/// </summary>
+		/// <param name="timeout">The amount of time to wait for an item to arrive in the collection</param>
+		/// <returns>A task returning the result of the take operation</returns>
+		/// <exception cref="OperationCanceledException">The collection was completed while we were waiting for an item</exception>
 		public Task<TItem> Take(TimeSpan timeout)
 		{	//****************************************
 			var MySource = new CancellationTokenSource(timeout);
@@ -148,6 +182,12 @@ namespace Proximity.Utility.Threading
 			return MyTask;
 		}
 		
+		/// <summary>
+		/// Attempts to take an Item to the collection
+		/// </summary>
+		/// <param name="token">A cancellation token to abort the take operation</param>
+		/// <returns>A task returning the result of the take operation</returns>
+		/// <exception cref="OperationCanceledException">The collection was completed while we were waiting for an item</exception>
 		public Task<TItem> Take(CancellationToken token)
 		{	//****************************************
 			TItem MyItem;
@@ -181,6 +221,15 @@ namespace Proximity.Utility.Threading
 			return Task.FromResult(MyItem);
 		}
 		
+		/// <summary>
+		/// Completes the collection
+		/// </summary>
+		/// <remarks>
+		/// <para>Any pending <see cref="O:Add" /> calls will complete successfully. Any future <see cref="O:Add" /> calls will throw <see cref="OperationCanceledException"/>.</para>
+		/// <para>Any pending or future <see cref="O:Take" /> calls will return the contents of the collection until it is empty, before also throwing <see cref="OperationCanceledException"/>.</para>
+		/// <para>If the collection is empty at this point, pending <see cref="O:Take" /> calls will immediately throw <see cref="OperationCanceledException"/>.</para>
+		/// <para>If a consumer is currently waiting on a task retrieved via <see cref="O:GetConsumingEnumerable" /> and the collection is empty, the task will throw <see cref="OperationCanceledException"/>.</para>
+		/// </remarks>
 		public void CompleteAdding()
 		{
 			// Any pending Adds may throw, any future adds -will- throw
@@ -195,14 +244,32 @@ namespace Proximity.Utility.Threading
 				_UsedSlots.Dispose();
 		}
 		
+		/// <summary>
+		/// Creates an enumerable that can be used to consume items as they are added to this collection
+		/// </summary>
+		/// <returns>An enumerable returning tasks that asynchronously wait for items to be added</returns>
+		/// <remarks>
+		/// <para>If the provider calls <see cref="CompleteAdding" /> while wating, the returned task will throw <see cref="OperationCanceledException"/>.</para>
+		/// <para>If there are still items in the collection at that point, the enumeration will complete successfully.</para>
+		/// </remarks>
 		public IEnumerable<Task<TItem>> GetConsumingEnumerable()
 		{
 			return GetConsumingEnumerable(CancellationToken.None);
 		}
 		
+		/// <summary>
+		/// Creates an enumerable that can be used to consume items as they are added to this collection
+		/// </summary>
+		/// <param name="token">A cancellation token to abort consuming</param>
+		/// <returns>An enumerable returning tasks that asynchronously wait for items to be added</returns>
+		/// <remarks>
+		/// <para>If the provider calls <see cref="CompleteAdding" /> while wating, the returned task will throw <see cref="OperationCanceledException"/>.</para>
+		/// <para>If there are still items in the collection at that point, the enumeration will complete successfully.</para>
+		/// </remarks>
 		public IEnumerable<Task<TItem>> GetConsumingEnumerable(CancellationToken token)
-		{
+		{	//****************************************
 			Task MyTask;
+			//****************************************
 			
 			while (!IsCompleted)
 			{
@@ -254,9 +321,6 @@ namespace Proximity.Utility.Threading
 			
 			if (task.IsFaulted)
 				throw new InvalidOperationException("Failed to decrement free counter", task.Exception);
-			
-			if (_IsCompleted)
-				throw new InvalidOperationException("Adding has been completed");
 			
 			// Try and add our item to the collection
 			if (!_Collection.TryAdd(MyItem))
@@ -322,11 +386,33 @@ namespace Proximity.Utility.Threading
 			get { return _Collection.Count; }
 		}
 		
+		/// <summary>
+		/// Gets the number of operations waiting to take from the collection
+		/// </summary>
+		public int WaitingToTake
+		{
+			get { return _UsedSlots.WaitingCount; }
+		}
+		
+		/// <summary>
+		/// Gets the number of operations waiting to add to the collection
+		/// </summary>
+		public int WaitingToAdd
+		{
+			get { return _FreeSlots != null ? _FreeSlots.WaitingCount : 0; }
+		}
+		
+		/// <summary>
+		/// Gets whether adding has been completed
+		/// </summary>
 		public bool IsAddingCompleted
 		{
 			get { return _IsCompleted; }
 		}
 		
+		/// <summary>
+		/// Gets whether adding has been completed and the collection is empty
+		/// </summary>
 		public bool IsCompleted
 		{
 			get { return _IsCompleted && _UsedSlots.CurrentCount == 0; }

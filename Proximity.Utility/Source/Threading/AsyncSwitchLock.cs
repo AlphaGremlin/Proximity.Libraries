@@ -58,8 +58,23 @@ namespace Proximity.Utility.Threading
 		/// <param name="timeout">The amount of time to wait for the left lock</param>
 		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
 		public Task<IDisposable> LockLeft(TimeSpan timeout)
-		{
-			return LockLeft(new CancellationTokenSource(timeout));
+		{	//****************************************
+			var MySource = new CancellationTokenSource(timeout);
+			var MyTask = LockLeft(MySource.Token);
+			//****************************************
+		
+			// If the task is already completed, no need for the token source
+			if (MyTask.IsCompleted)
+			{
+				MySource.Dispose();
+				
+				return MyTask;
+			}
+			
+			// Ensure we cleanup the cancellation source once we're done
+			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), MySource);
+			
+			return MyTask;
 		}
 		
 		/// <summary>
@@ -92,7 +107,7 @@ namespace Proximity.Utility.Threading
 					var MyRegistration = token.Register(Cancel, MyWaiter);
 					
 					// When we complete, dispose of the registration
-					MyWaiter.Task.ContinueWith((task) => MyRegistration.Dispose());
+					MyWaiter.Task.ContinueWith((task, state) => ((CancellationTokenRegistration)state).Dispose(), MyRegistration);
 				}
 				
 				return MyWaiter.Task;
@@ -114,8 +129,23 @@ namespace Proximity.Utility.Threading
 		/// <param name="timeout">The amount of time to wait for the left lock</param>
 		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
 		public Task<IDisposable> LockRight(TimeSpan timeout)
-		{
-			return LockRight(new CancellationTokenSource(timeout));
+		{	//****************************************
+			var MySource = new CancellationTokenSource(timeout);
+			var MyTask = LockRight(MySource.Token);
+			//****************************************
+		
+			// If the task is already completed, no need for the token source
+			if (MyTask.IsCompleted)
+			{
+				MySource.Dispose();
+				
+				return MyTask;
+			}
+			
+			// Ensure we cleanup the cancellation source once we're done
+			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), MySource);
+			
+			return MyTask;
 		}
 		
 		/// <summary>
@@ -148,7 +178,7 @@ namespace Proximity.Utility.Threading
 					var MyRegistration = token.Register(Cancel, MyWaiter);
 					
 					// When we complete, dispose of the registration
-					MyWaiter.Task.ContinueWith((task) => MyRegistration.Dispose());
+					MyWaiter.Task.ContinueWith((task, state) => ((CancellationTokenRegistration)state).Dispose(), MyRegistration);
 				}
 				
 				return MyWaiter.Task;
@@ -156,44 +186,6 @@ namespace Proximity.Utility.Threading
 		}
 		
 		//****************************************
-		
-		private Task<IDisposable> LockLeft(CancellationTokenSource tokenSource)
-		{	//****************************************
-			var MyTask = LockLeft(tokenSource.Token);
-			//****************************************
-		
-			// If the task is already completed, no need for the token source
-			if (MyTask.IsCompleted)
-			{
-				tokenSource.Dispose();
-				
-				return MyTask;
-			}
-			
-			// Ensure we cleanup the cancellation source once we're done
-			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), tokenSource);
-			
-			return MyTask;
-		}
-		
-		private Task<IDisposable> LockRight(CancellationTokenSource tokenSource)
-		{	//****************************************
-			var MyTask = LockRight(tokenSource.Token);
-			//****************************************
-		
-			// If the task is already completed, no need for the token source
-			if (MyTask.IsCompleted)
-			{
-				tokenSource.Dispose();
-				
-				return MyTask;
-			}
-			
-			// Ensure we cleanup the cancellation source once we're done
-			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), tokenSource);
-			
-			return MyTask;
-		}
 		
 		private void ReleaseLeft()
 		{	//****************************************
