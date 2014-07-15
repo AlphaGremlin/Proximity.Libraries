@@ -1,5 +1,5 @@
 ﻿/****************************************\
- AsyncReadWriteLock.cs
+ AsyncCollection.cs
  Created: 2014-02-20
 \****************************************/
 using System;
@@ -10,9 +10,10 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Proximity.Utility;
+using Proximity.Utility.Threading;
 //****************************************
 
-namespace Proximity.Utility.Threading
+namespace Proximity.Utility.Collections
 {
 	/// <summary>
 	/// Provides a BlockingCollection that supports async/await
@@ -139,6 +140,38 @@ namespace Proximity.Utility.Threading
 			// Try and add our item to the collection
 			if (!_Collection.TryAdd(item))
 				throw new InvalidOperationException("Item was rejected by the underlying collection");
+			
+			// Increment the slots counter, releasing any Takers
+			_UsedSlots.Increment();
+			
+			return _Complete;
+		}
+		
+		public Task AddComplete(TItem item, CancellationToken token)
+		{
+			if (_IsCompleted)
+				throw new OperationCanceledException("Adding has already been completed");
+			
+			// Is there a maximum size?
+			if (_FreeSlots != null)
+			{
+				// Try and find a free slot
+				var MyTask = _FreeSlots.Decrement(token);
+				
+				if (!MyTask.IsCompleted)
+					// No slot, wait for it
+					return MyTask.ContinueWith(InternalAddComplete, item, token, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Current);
+				
+				// Free slot, now cancel anyone else trying to add
+				_FreeSlots.Dispose();
+			}
+			
+			// Try and add our item to the collection
+			if (!_Collection.TryAdd(item))
+				throw new InvalidOperationException("Item was rejected by the underlying collection");
+			
+			// Flag as completed first, so any Takers will handle the cleanup
+			_IsCompleted = true;
 			
 			// Increment the slots counter, releasing any Takers
 			_UsedSlots.Increment();
@@ -325,6 +358,28 @@ namespace Proximity.Utility.Threading
 			// Try and add our item to the collection
 			if (!_Collection.TryAdd(MyItem))
 				throw new InvalidOperationException("Item was rejected by the underlying collection");
+			
+			// Increment the slots counter
+			_UsedSlots.Increment();
+		}
+		
+		private void InternalAddComplete(Task task, object state)
+		{	//****************************************
+			var MyItem = (TItem)state;
+			//****************************************
+			
+			if (task.IsFaulted)
+				throw new InvalidOperationException("Failed to decrement free counter", task.Exception);
+			
+			// Free slot, now cancel anyone else trying to add
+			_FreeSlots.Dispose();
+			
+			// Try and add our item to the collection
+			if (!_Collection.TryAdd(MyItem))
+				throw new InvalidOperationException("Item was rejected by the underlying collection");
+			
+			// Flag as completed first, so any Takers will handle the cleanup
+			_IsCompleted = true;
 			
 			// Increment the slots counter
 			_UsedSlots.Increment();

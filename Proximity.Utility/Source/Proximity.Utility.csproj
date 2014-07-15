@@ -119,10 +119,16 @@
     <Compile Include="ActionGroupAttribute.cs" />
     <Compile Include="ActionNameAttribute.cs" />
     <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="Collections\AsyncCollection.cs" />
+    <None Include="Collections\AsyncEnumerable.cs" />
+    <None Include="Collections\AsyncLinq.cs" />
     <Compile Include="Collections\BiDictionary.cs" />
     <Compile Include="Collections\ConcurrentExtensions.cs" />
+    <Compile Include="Collections\IAsyncEnumerable.cs" />
+    <Compile Include="Collections\IAsyncEnumerator.cs" />
     <Compile Include="Collections\ImmutableCountedStack.cs" />
     <Compile Include="Collections\ImmutableInterlockedEx.cs" />
+    <None Include="Collections\AsyncInterleave.cs" />
     <Compile Include="Collections\ListExtensions.cs" />
     <Compile Include="Collections\ObservableDictionary.cs" />
     <Compile Include="Collections\ReadOnlyCollection.cs" />
@@ -198,13 +204,13 @@
     <Compile Include="Resources\XmlResourceSet.cs" />
     <Compile Include="SteppedTimer.cs" />
     <Compile Include="Threading\AggregateException.cs" />
-    <Compile Include="Threading\AsyncCollection.cs" />
     <Compile Include="Threading\AsyncCounter.cs" />
     <Compile Include="Threading\AsyncSwitchLock.cs" />
     <Compile Include="Threading\AsyncSemaphore.cs" />
     <Compile Include="Threading\AsyncReadWriteLock.cs" />
     <Compile Include="Threading\DedicatedThreadScheduler.cs" />
     <Compile Include="Threading\Extensions.cs" />
+    <Compile Include="Threading\Interleave.cs" />
     <Compile Include="Threading\OperationCollection.cs" />
     <Compile Include="Threading\ReadLock.cs" />
     <Compile Include="Threading\RemoteCancellationToken.cs" />
@@ -232,6 +238,7 @@
     <Folder Include="Events" />
     <Folder Include="Net" />
     <Folder Include="Diagnostics" />
+    <Folder Include="Linq" />
     <Folder Include="Reflection" />
     <Folder Include="Threading" />
   </ItemGroup>

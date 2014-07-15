@@ -319,6 +319,8 @@ namespace Proximity.Utility.Tests
 				await MyCollection.Add(Item);
 			}
 			
+			await Task.Delay(100);
+			
 			MyCollection.CompleteAdding();
 			
 			await MyTask;
