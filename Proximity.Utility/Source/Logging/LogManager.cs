@@ -49,9 +49,9 @@ namespace Proximity.Utility.Logging
 				MyOutput.Start();
 			}
 			
-			foreach (OutputConfig MyConfig in LoggingConfig.OpenConfig().Outputs)
+			foreach (var MyConfig in LoggingConfig.OpenConfig().Outputs)
 			{
-				AddOutput(MyConfig.Output);
+				AddOutput(MyConfig.ToOutput());
 			}
 		}
 		

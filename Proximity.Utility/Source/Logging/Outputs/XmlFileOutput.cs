@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Xml;
 using Proximity.Utility.Collections;
+using Proximity.Utility.Logging.Config;
 //****************************************
 
 namespace Proximity.Utility.Logging.Outputs
@@ -31,8 +32,7 @@ namespace Proximity.Utility.Logging.Outputs
 		/// <summary>
 		/// Creates a new Xml Output writer
 		/// </summary>
-		/// <param name="reader">Configuration settings</param>
-		public XmlFileOutput(XmlReader reader) : base(reader)
+		public XmlFileOutput() : base()
 		{
 			_UniqueID = string.Format("Logging.XmlOutput#{0}", Interlocked.Increment(ref _NextID));
 			
@@ -42,18 +42,49 @@ namespace Proximity.Utility.Logging.Outputs
 		
 		//****************************************
 		
+		protected internal override void Configure(OutputElement config)
+		{	//****************************************
+			var MyConfig = (XmlFileOutputElement)config;
+			//****************************************
+			
+			base.Configure(config);
+			
+			//****************************************
+			
+			WriterSettings.Indent = MyConfig.Indent;
+			
+			WriterSettings.Encoding = Encoding.GetEncoding(MyConfig.Encoding);
+		}
+		
+		//****************************************
+		
 		/// <inheritdoc />
-		protected internal override void Start() 
+		protected override void OnStreamChanging(Stream newStream)
 		{
-			base.Start();
+			if (_Writer != null)
+			{
+				_Writer.WriteEndElement();
+
+				_Writer.Flush();
+				_Writer.Close();
+
+				_Writer = null;
+			}
 			
-			_Writer = XmlWriter.Create(Stream, WriterSettings);
+			if (newStream != null)
+			{
+				_Writer = XmlWriter.Create(newStream, WriterSettings);
+				
+				//_Writer.WriteProcessingInstruction("xml-stylesheet", "href=\"Style.css\" type=\"text/css\"");
+				
+				_Writer.WriteStartElement("Log");
+				_Writer.WriteAttributeString("StartTime", LogManager.StartTime.ToString("O", CultureInfo.InvariantCulture));
+			}
+		}
+		
+		protected override void OnWrite(LogEntry entry, ImmutableCountedStack<LogSection> context)
+		{
 			
-			_Writer.WriteProcessingInstruction("xml-stylesheet", "href=\"Style.css\" type=\"text/css\"");
-			
-			_Writer.WriteStartElement("Log");
-			
-			_Writer.WriteAttributeString("StartTime", LogManager.StartTime.ToString("O", CultureInfo.InvariantCulture));
 		}
 		
 		/// <inheritdoc />
@@ -127,37 +158,7 @@ namespace Proximity.Utility.Logging.Outputs
 			}
 		}
 		
-		/// <inheritdoc />
-		protected internal override void Finish()
-		{
-			_Writer.WriteEndElement();
-
-			_Writer.Flush();
-
-			_Writer.Close();
-
-			_Writer = null;
-			
-			base.Finish();
-		}
-		
 		//****************************************
-		
-		/// <inheritdoc />
-		protected override bool ReadAttribute(string name, string value)
-		{
-			switch (name)
-			{
-			case "DebuggerOnly":
-				WriterSettings.Indent = bool.Parse(value);
-				break;
-				
-			default:
-				return base.ReadAttribute(name, value);
-			}
-			
-			return true;
-		}
 		
 		/// <inheritdoc />
 		protected override string GetExtension()

@@ -3,8 +3,10 @@
  Created: 2-06-2009
 \****************************************/
 using System;
-using System.Xml;
 using System.Diagnostics;
+using System.Reflection;
+using System.Xml;
+using Proximity.Utility.Logging.Config;
 //****************************************
 
 namespace Proximity.Utility.Logging.Outputs
@@ -26,12 +28,14 @@ namespace Proximity.Utility.Logging.Outputs
 		{
 		}
 		
-		/// <summary>
-		/// Creates a new Trace Log Output
-		/// </summary>
-		/// <param name="reader">An XmlReader describing the settings for the Log Output</param>
-		public TraceOutput(XmlReader reader) : base(reader)
+		//****************************************
+		
+		/// <inheritdoc />
+		protected internal override void Configure(OutputElement config)
 		{
+			var MyConfig = (TraceOutputElement)config;
+			
+			_DebuggerOnly = MyConfig.DebuggerOnly;
 		}
 		
 		//****************************************
@@ -39,16 +43,16 @@ namespace Proximity.Utility.Logging.Outputs
 		/// <inheritdoc />
 		protected internal override void Start()
 		{
-			_Source = new TraceSource(System.Reflection.Assembly.GetEntryAssembly().GetName().Name);
+			_Source = new TraceSource((Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).GetName().Name);
 		}
 		
 		/// <inheritdoc />
 		protected internal override void StartSection(LogSection newSection)
 		{
 			Trace.CorrelationManager.StartLogicalOperation(newSection.Text);
+			
+			Trace.IndentLevel = LogManager.Context.Count;
 			Trace.WriteLine(newSection.Text);
-
-			Trace.Indent();
 		}
 
 		/// <inheritdoc />
@@ -57,6 +61,7 @@ namespace Proximity.Utility.Logging.Outputs
 			if (newEntry is TraceLogEntry)
 				return;
 			
+			Trace.IndentLevel = LogManager.Context.Count;
 			Trace.WriteLine(newEntry.Text);
 			
 			if (newEntry is ExceptionLogEntry)
@@ -75,7 +80,7 @@ namespace Proximity.Utility.Logging.Outputs
 		/// <inheritdoc />
 		protected internal override void FinishSection(LogSection section)
 		{
-			Trace.Unindent();
+			Trace.IndentLevel = LogManager.Context.Count;
 
 			if (Trace.CorrelationManager.LogicalOperationStack.Count != 0)
 				Trace.CorrelationManager.StopLogicalOperation();
@@ -85,24 +90,6 @@ namespace Proximity.Utility.Logging.Outputs
 		protected internal override void Finish()
 		{
 			_Source.Close();
-		}
-		
-		//****************************************
-		
-		/// <inheritdoc />
-		protected override bool ReadAttribute(string name, string value)
-		{
-			switch (name)
-			{
-			case "DebuggerOnly":
-				bool.TryParse(value, out _DebuggerOnly);
-				break;
-				
-			default:
-				return base.ReadAttribute(name, value);
-			}
-			
-			return true;
 		}
 		
 		//****************************************

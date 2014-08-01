@@ -3,10 +3,15 @@
  Created: 2-06-2009
 \****************************************/
 using System;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Xml;
-using System.Diagnostics;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Proximity.Utility.Collections;
+using Proximity.Utility.Logging.Config;
+using Proximity.Utility.Threading;
 //****************************************
 
 namespace Proximity.Utility.Logging.Outputs
@@ -16,78 +21,80 @@ namespace Proximity.Utility.Logging.Outputs
 	/// </summary>
 	public abstract class FileOutput : LogOutput
 	{	//****************************************
+		private readonly AsyncCollection<FullLogEntry> _Entries = new AsyncCollection<FullLogEntry>();
+		private Task _LogTask;
+		
+		private FileStream _Stream;
+		
 		private string _FileName;
-
-		private Stream _Stream;
+		private RolloverType _RolloverOn;
+		private long _MaxSize;
+		private int? _KeepHistory;
+		
+		private DateTime _LastLogEntry;
 		//****************************************
 		
 		/// <summary>
 		/// Creates a new File Outout
 		/// </summary>
-		/// <param name="reader">Configuration Settings</param>
-		protected FileOutput(XmlReader reader) : base(reader)
+		protected FileOutput() : base()
 		{
 		}
 		
 		//****************************************
 		
 		/// <inheritdoc />
-		protected internal override void Start()
+		protected internal override void Configure(OutputElement config)
+		{	//****************************************
+			var MyConfig = (FileOutputElement)config;
+			//****************************************
+			
+			_FileName = Path.Combine(LogManager.OutputPath, MyConfig.Prefix);
+			_RolloverOn = MyConfig.RolloverOn;
+			
+			_MaxSize = MyConfig.MaximumSize;
+			_KeepHistory = MyConfig.KeepHistory != -1 ? (int?)MyConfig.KeepHistory : null;
+		}
+		
+		
+		/// <inheritdoc />
+		protected internal sealed override void Start()
 		{
-			string FormattedFileName = _FileName;
-			string FilePath;
-
-			FormattedFileName = FormattedFileName.Replace("{datetime}", DateTime.Now.ToString("yyyyMMdd'T'HHmmss"));
-			
-			FilePath = string.Format(CultureInfo.InvariantCulture, "{0}.{1}", Path.Combine(LogManager.OutputPath, FormattedFileName), GetExtension());
-			
+			_LogTask = PerformLogging();
+		}
+		
+		/// <inheritdoc />
+		protected internal override void StartSection(LogSection newSection)
+		{
+			Write(newSection.Entry);
+		}
+		
+		/// <inheritdoc />
+		protected internal sealed override void Write(LogEntry newEntry)
+		{
 			try
 			{
-				_Stream = File.Open(FilePath, FileMode.Create, FileAccess.Write, FileShare.Read);
+				_Entries.Add(new FullLogEntry(newEntry, LogManager.Context)).Wait();
 			}
-			catch(IOException)
+			catch (OperationCanceledException)
 			{
-				FilePath = string.Format(CultureInfo.InvariantCulture, "{0} ({1}).{2}", Path.Combine(LogManager.OutputPath, FormattedFileName), Process.GetCurrentProcess().Id, GetExtension());
-				
-				try
-				{
-					_Stream = File.Open(FilePath, FileMode.Create, FileAccess.Write, FileShare.Read);
-				}
-				catch (IOException e)
-				{
-					Debug.Print(e.Message);
-				}
 			}
-			
-			Debug.Print(FilePath);
 		}
 		
 		/// <inheritdoc />
-		protected internal override void Finish()
+		protected internal override void FinishSection(LogSection oldSection)
 		{
-			if (_Stream != null)
-				_Stream.Close();
+		}
+		
+		/// <inheritdoc />
+		protected internal sealed override void Finish()
+		{
+			_Entries.CompleteAdding();
 			
-			_Stream = null;
+			_LogTask.Wait();
 		}
 		
 		//****************************************
-		
-		/// <inheritdoc />
-		protected override bool ReadAttribute(string name, string value)
-		{
-			switch (name)
-			{
-			case "FileName":
-				_FileName = value;
-				break;
-				
-			default:
-				return base.ReadAttribute(name, value);
-			}
-			
-			return true;
-		}
 		
 		/// <summary>
 		/// Retrieves the extension of the file to create
@@ -96,6 +103,205 @@ namespace Proximity.Utility.Logging.Outputs
 		protected virtual string GetExtension()
 		{
 			return "txt";
+		}
+		
+		/// <summary>
+		/// Notifies implementers that the underlying stream has switched
+		/// </summary>
+		/// <param name="newStream">The new stream to write to. May be null if we're closing</param>
+		protected abstract void OnStreamChanging(Stream newStream);
+		
+		/// <summary>
+		/// Notifies implementers that they can write to the stream
+		/// </summary>
+		/// <param name="entry">The log entry to write</param>
+		/// <param name="context">The context when the entry was recorded</param>
+		protected abstract void OnWrite(LogEntry entry, ImmutableCountedStack<LogSection> context);
+		
+		//****************************************
+		
+		private async Task PerformLogging()
+		{	//****************************************
+			FullLogEntry MyEntry;
+			//****************************************
+			
+			try
+			{
+				CheckOutput();
+				
+				foreach (var MyEntryTask in _Entries.GetConsumingEnumerable())
+				{
+					if (MyEntryTask.Status == TaskStatus.RanToCompletion)
+					{
+						MyEntry = MyEntryTask.Result;
+					}
+					else
+					{
+						MyEntry = await MyEntryTask;
+						
+						// Check the output file status, since we've been waiting
+						CheckOutput();
+					}
+					
+					OnWrite(MyEntry.Entry, MyEntry.Context);
+					
+					_Stream.Flush();
+				}
+			}
+			catch (OperationCanceledException)
+			{
+			}
+			finally
+			{
+				// Close the log file
+				OnStreamChanging(null);
+				
+				_Stream.Flush();
+				_Stream.Close();
+			}
+		}
+		
+		private void CheckOutput()
+		{	//****************************************
+			bool CloseOld = false;
+			var CurrentTime = DateTime.Now;
+			var CurrentStream = _Stream;
+			//****************************************
+			
+			// Do we already have an open file?
+			if (_Stream != null)
+			{
+				// Yes, check if the close conditions have been met
+				switch (_RolloverOn)
+				{
+				case RolloverType.Daily:
+					if (_LastLogEntry.Date != CurrentTime.Date)
+						CloseOld = true;
+					break;
+					
+				case RolloverType.Weekly:
+					var MyCalendar = CultureInfo.InvariantCulture.Calendar;
+					if (MyCalendar.GetWeekOfYear(_LastLogEntry, CalendarWeekRule.FirstDay, DayOfWeek.Sunday) != MyCalendar.GetWeekOfYear(CurrentTime, CalendarWeekRule.FirstDay, DayOfWeek.Sunday))
+						CloseOld = true;
+					break;
+					
+				case RolloverType.Monthly:
+					if (_LastLogEntry.Year != CurrentTime.Year || _LastLogEntry.Month != CurrentTime.Month)
+						CloseOld = true;
+					break;
+				
+				case RolloverType.Size:
+					if (_Stream.Length >= _MaxSize)
+						CloseOld = true;
+					break;
+					
+				case RolloverType.Startup:
+				default:
+					// Do nothing
+					break;
+				}
+				
+				if (!CloseOld)
+					return;
+			}
+			
+			//****************************************
+			
+			// We either have no stream, or we're performing a rollover
+			string FullPath;
+			bool CanAppend = false;
+			
+			// Figure out the appropriate file name
+			switch (_RolloverOn)
+			{
+			case RolloverType.Daily:
+			case RolloverType.Weekly:
+			case RolloverType.Monthly:
+				FullPath = string.Format("{0} {1:yyyyMMdd}.{2}", _FileName, CurrentTime, GetExtension());
+				CanAppend = true;
+				break;
+				
+			case RolloverType.Startup:
+			case RolloverType.Size:
+			default:
+				FullPath = string.Format("{0} {1:yyyyMMdd'T'HHmmss}.{2}", _FileName, CurrentTime, GetExtension());
+				break;
+			}
+			
+			FullPath = Path.Combine(LogManager.OutputPath, FullPath);
+			
+			//****************************************
+			
+			// Try and open/append to the log file
+			try
+			{
+				_Stream = File.Open(FullPath, CanAppend ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.Read);
+			}
+			catch(IOException)
+			{
+				// Failed to create the file. Add our PID to the end and try again
+				FullPath = string.Format("{0} ({1}).{2}", Path.GetFileNameWithoutExtension(FullPath), Process.GetCurrentProcess().Id, GetExtension());
+				
+				try
+				{
+					_Stream = File.Open(FullPath, FileMode.Create, FileAccess.Write, FileShare.Read);
+				}
+				catch (IOException e)
+				{
+					_Stream = null;
+					
+					Debug.Print(e.Message);
+				}
+			}
+			
+			//****************************************
+			
+			// Update the time we rolled over
+			_LastLogEntry = DateTime.Now;
+			
+			// Let the inherited class know we've changed stream
+			OnStreamChanging(_Stream);
+			
+			// If we've changed Stream, close the old one
+			if (CurrentStream != null && CurrentStream != _Stream)
+			{
+				CurrentStream.Flush();
+				
+				CurrentStream.Close();
+			}
+			
+			//****************************************
+			
+			Debug.Print(string.Format("Logging to {0}", FullPath));
+			
+			// If there's a history limit, perform some cleanup
+			if (_KeepHistory.HasValue)
+			{
+				try
+				{
+					var DeleteFiles = Directory.EnumerateFiles(LogManager.OutputPath, string.Format("{0} *.{1}", _FileName, GetExtension()))
+						.Where(name => name != FullPath) // Ignore the file we've currently got open
+						.OrderByDescending(name => File.GetCreationTime(name)) // Order by most recently created
+						.Skip(_KeepHistory.Value); // Skip the allowed history limit
+						
+					// Enumerate the directory, finding all the files to delete
+					foreach (var FileName in DeleteFiles)
+					{
+						try
+						{
+							File.Delete(FileName);
+							
+							Debug.Print(string.Format("Removed old log file {0}", FileName));
+						}
+						catch (Exception) // Ignore any errors that happen (file in use, no delete permissions, etc)
+						{
+						}
+					}
+				}
+				catch (IOException)
+				{
+				}
+			}
 		}
 		
 		//****************************************
@@ -121,6 +327,20 @@ namespace Proximity.Utility.Logging.Outputs
 		protected Stream Stream
 		{
 			get { return _Stream; }
+		}
+		
+		//****************************************
+		
+		private struct FullLogEntry
+		{
+			public readonly ImmutableCountedStack<LogSection> Context;
+			public readonly LogEntry Entry;
+			
+			public FullLogEntry(LogEntry entry, ImmutableCountedStack<LogSection> context)
+			{
+				this.Entry = entry;
+				this.Context = context;
+			}
 		}
 	}
 }

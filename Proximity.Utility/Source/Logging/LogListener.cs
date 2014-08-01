@@ -3,8 +3,10 @@
  Created: 5-06-2009
 \****************************************/
 using System;
-using System.Text;
 using System.Diagnostics;
+using System.Globalization;
+using System.Linq;
+using System.Text;
 //****************************************
 
 namespace Proximity.Utility.Logging
@@ -87,7 +89,7 @@ namespace Proximity.Utility.Logging
 			string FlatData;
 			//****************************************
 		
-			FlatData = string.Join(" ", Array.ConvertAll<object, string>(data, delegate(object obj) { return obj.ToString(); }));
+			FlatData = string.Join(" ", data.Select(obj => obj.ToString()));
 			
 			Log.Write(new TraceLogEntry(eventCache, source, eventType, FlatData));
 		}
@@ -115,7 +117,7 @@ namespace Proximity.Utility.Logging
 		/// <param name="args"></param>
 		public override void TraceEvent(TraceEventCache eventCache, string source, TraceEventType eventType, int id, string format, params object[] args)
 		{
-			Log.Write(new TraceLogEntry(eventCache, source, eventType, string.Format(System.Globalization.CultureInfo.InvariantCulture, format, args)));
+			Log.Write(new TraceLogEntry(eventCache, source, eventType, string.Format(CultureInfo.InvariantCulture, format, args)));
 		}
 		
 		/// <summary>

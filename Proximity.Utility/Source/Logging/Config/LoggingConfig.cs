@@ -49,10 +49,10 @@ namespace Proximity.Utility.Logging
 		/// <summary>
 		/// Gets whether to maintain an internal history of logged data
 		/// </summary>
-		[ConfigurationProperty("MaintainHistory")]
+		[ConfigurationProperty("MaintainHistory", IsRequired = false, DefaultValue = false)]
 		public bool MaintainHistory
 		{
-			get { return Convert.ToBoolean(this["MaintainHistory"], System.Globalization.CultureInfo.InvariantCulture); }
+			get { return (bool)this["MaintainHistory"]; }
 		}
 	}
 }

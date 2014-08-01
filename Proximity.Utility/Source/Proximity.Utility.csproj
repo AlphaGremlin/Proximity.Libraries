@@ -40,7 +40,7 @@
     <DebugType>Full</DebugType>
     <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
     <StartAction>Program</StartAction>
-    <StartProgram>..\..\..\Paritech.Prime\Build\Paritech.Prime.Feed.Proxy.exe</StartProgram>
+    <StartProgram>..\..\..\Paritech.Zenith\Build\Paritech.Zenith.Feed.Proxy.exe</StartProgram>
     <StartArguments>-c</StartArguments>
     <BaseIntermediateOutputPath>obj\</BaseIntermediateOutputPath>
   </PropertyGroup>
@@ -176,7 +176,7 @@
     <Compile Include="Log.cs" />
     <Compile Include="Logging\Config\LoggingConfig.cs" />
     <Compile Include="Logging\Config\OutputCollection.cs" />
-    <Compile Include="Logging\Config\OutputConfig.cs" />
+    <Compile Include="Logging\Config\OutputElement.cs" />
     <Compile Include="Logging\ExceptionLogEntry.cs" />
     <Compile Include="Logging\LogCategory.cs" />
     <Compile Include="Logging\LogEntry.cs" />
@@ -185,9 +185,14 @@
     <Compile Include="Logging\LogOutput.cs" />
     <Compile Include="Logging\LogSection.cs" />
     <Compile Include="Logging\Outputs\FileOutput.cs" />
+    <Compile Include="Logging\Outputs\FileOutputElement.cs" />
+    <Compile Include="Logging\Outputs\RolloverType.cs" />
     <Compile Include="Logging\Outputs\TextFileOutput.cs" />
+    <Compile Include="Logging\Outputs\TextFileOutputElement.cs" />
     <Compile Include="Logging\Outputs\TraceOutput.cs" />
-    <Compile Include="Logging\Outputs\XmlFileOutput.cs" />
+    <Compile Include="Logging\Outputs\TraceOutputElement.cs" />
+    <None Include="Logging\Outputs\XmlFileOutput.cs" />
+    <None Include="Logging\Outputs\XmlFileOutputElement.cs" />
     <Compile Include="Logging\Severity.cs" />
     <Compile Include="Logging\TraceLogEntry.cs" />
     <Compile Include="Net\SocketAwaitable.cs" />

@@ -3,6 +3,7 @@
  Created: 2-06-2009
 \****************************************/
 using System;
+using Proximity.Utility.Logging.Config;
 using System.Xml;
 //****************************************
 
@@ -19,60 +20,16 @@ namespace Proximity.Utility.Logging
 		/// </summary>
 		protected LogOutput()
 		{
-			
-		}
-		
-		/// <summary>
-		/// Creates a new Log Output
-		/// </summary>
-		/// <param name="reader">Configuration Settings</param>
-		protected LogOutput(XmlReader reader)
-		{
-			reader.MoveToElement();
-			
-			while (reader.MoveToNextAttribute())
-			{
-				ReadAttribute(reader.LocalName, reader.Value);
-			}
-			
-			reader.MoveToElement();
-			
-			if (reader.IsEmptyElement)
-				return;
-			
-			while(reader.Read())
-			{
-				if (reader.MoveToContent() == XmlNodeType.EndElement)
-					break;
-				
-				if (ReadElement(reader))
-					continue;
-				
-				reader.Skip();
-			}
 		}
 		
 		//****************************************
 		
 		/// <summary>
-		/// Reads an attribute from the configuration
+		/// Applies the configuration for this log output
 		/// </summary>
-		/// <param name="name">The name of the attribute</param>
-		/// <param name="value">The attribute's value</param>
-		/// <returns>True if the Attribute is known, otherwise False</returns>
-		protected virtual bool ReadAttribute(string name, string value)
+		/// <param name="config">The configuration to use</param>
+		protected internal virtual void Configure(OutputElement config)
 		{
-			return false;
-		}
-		
-		/// <summary>
-		/// Reads an element from the configuration
-		/// </summary>
-		/// <param name="reader">The XmlReader containing the element</param>
-		/// <returns>True if the Element was known, otherwise False</returns>
-		protected virtual bool ReadElement(XmlReader reader)
-		{
-			return false;
 		}
 		
 		//****************************************

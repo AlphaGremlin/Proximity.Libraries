@@ -9,6 +9,9 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Xml;
+using Proximity.Utility.Collections;
+using Proximity.Utility.Configuration;
+using Proximity.Utility.Logging.Config;
 //****************************************
 
 namespace Proximity.Utility.Logging.Outputs
@@ -16,8 +19,10 @@ namespace Proximity.Utility.Logging.Outputs
 	/// <summary>
 	/// Writes log entries to a text file
 	/// </summary>
+	[TypedElement(typeof(TextFileOutputElement))]
 	public class TextFileOutput : FileOutput
 	{	//****************************************
+		private readonly StringBuilder _OutputBuilder;
 		private TextWriter _Writer;
 		
 		private int _IndentSize = 2;
@@ -27,19 +32,16 @@ namespace Proximity.Utility.Logging.Outputs
 		
 		private string OutputFormatPre;
 		private string OutputFormatPost;
-		
-		private readonly ThreadLocal<StringBuilder> _OutputBuilder;
 		//****************************************
 		
 		/// <summary>
 		/// Creates a new Text File Output
 		/// </summary>
-		/// <param name="reader">Configuration settings</param>
-		public TextFileOutput(XmlReader reader) : base(reader)
+		public TextFileOutput() : base()
 		{
 			_Encoding = Encoding.Default;
 			
-			_OutputBuilder = new ThreadLocal<StringBuilder>(() => new StringBuilder());
+			_OutputBuilder = new StringBuilder();
 			
 			OutputFormatPre = "{0:yyyy-MM-dd HH:mm:ss.fff}:\t";
 			OutputFormatPost = "{4:16}: {7}";
@@ -48,37 +50,52 @@ namespace Proximity.Utility.Logging.Outputs
 		//****************************************
 		
 		/// <inheritdoc />
-		protected internal override void Start()
-		{
-			base.Start();
+		protected internal override void Configure(OutputElement config)
+		{	//****************************************
+			var MyConfig = (TextFileOutputElement)config;
+			//****************************************
 			
-			_Writer = TextWriter.Synchronized(new StreamWriter(Stream, _Encoding));
-			_Writer.WriteLine("Log Started {0} (Process {1})", LogManager.GetTimestamp(), LogManager.StartTime);
+			base.Configure(config);
+			
+			//****************************************
+			
+			_IndentTabs = MyConfig.IndentTabs;
+			_IndentSize = MyConfig.IndentSize;
+			
+			_Encoding = Encoding.GetEncoding(MyConfig.Encoding);
 		}
 		
 		/// <inheritdoc />
-		protected internal override void StartSection(LogSection newSection)
+		protected override void OnStreamChanging(Stream newStream)
 		{
-			Write(newSection.Entry);
+			if (_Writer != null)
+			{
+				_Writer.WriteLine("Log Ended {0}", LogManager.GetTimestamp());
+				_Writer.Close();
+				
+				_Writer = null;
+			}
+			
+			if (newStream != null)
+			{
+				_Writer = new StreamWriter(Stream, _Encoding, 1024, true);
+				_Writer.WriteLine("Log Started {0} (Process {1})", LogManager.GetTimestamp(), LogManager.StartTime);
+			}
 		}
 		
 		/// <inheritdoc />
-		protected internal override void Write(LogEntry newEntry)
+		protected override void OnWrite(LogEntry entry, ImmutableCountedStack<LogSection> context)
 		{	//****************************************
 			string SourceAssembly = null, SourceFullType = null, SourceShortType = null, SourceMethod = null;
 			object[] Arguments;
 			
-			int IndentLevel = LogManager.Context.Count;
-			var OutputBuilder = _OutputBuilder.Value;
-			var MyWriter = _Writer;
+			var IndentLevel = context.Count;
+			var OutputBuilder = _OutputBuilder;
 			//****************************************
 			
-			if (MyWriter == null)
-				return;
-			
-			if (newEntry.Source != null)
+			if (entry.Source != null)
 			{
-				var DeclaringType = newEntry.Source.DeclaringType;
+				var DeclaringType = entry.Source.DeclaringType;
 				
 				if (DeclaringType.IsNestedPrivate)
 					DeclaringType = DeclaringType.DeclaringType;
@@ -86,97 +103,54 @@ namespace Proximity.Utility.Logging.Outputs
 				SourceAssembly = DeclaringType.Assembly.GetName().Name;
 				SourceFullType = DeclaringType.FullName;
 				SourceShortType = DeclaringType.Name;
-				SourceMethod = newEntry.Source.Name;
+				SourceMethod = entry.Source.Name;
 			}
 			
-			if (newEntry.RelativeTime < TimeSpan.Zero)
-			{
-				MyWriter.WriteLine("Got negative Relative Time: {0} ({1} - {2})", newEntry.RelativeTime, newEntry.Timestamp, LogManager.StartTime);
-				Console.WriteLine("Got negative Relative Time: {0} ({1} - {2})", newEntry.RelativeTime, newEntry.Timestamp, LogManager.StartTime);
-			}
-			
-			Arguments = new object[] {newEntry.Timestamp, DateTime.MinValue.Add(newEntry.RelativeTime > TimeSpan.Zero ? newEntry.RelativeTime : TimeSpan.Zero), SourceAssembly, SourceFullType, SourceShortType, SourceMethod, newEntry.Severity, newEntry.Text};
+			Arguments = new object[] {entry.Timestamp, DateTime.MinValue.Add(entry.RelativeTime > TimeSpan.Zero ? entry.RelativeTime : TimeSpan.Zero), SourceAssembly, SourceFullType, SourceShortType, SourceMethod, entry.Severity, entry.Text};
 			
 			OutputBuilder.AppendFormat(OutputFormatPre, Arguments);
 			
-			if (_IndentTabs)
-				OutputBuilder.Append('\t', IndentLevel);
-			else
-				OutputBuilder.Append(' ', IndentLevel * _IndentSize);
+			IndentTo(IndentLevel);
 			
 			OutputBuilder.AppendFormat(CultureInfo.InvariantCulture, OutputFormatPost, Arguments);
 			
-			if (newEntry is ExceptionLogEntry)
+			if (entry is ExceptionLogEntry)
 			{
-				foreach(string EntryLine in ((ExceptionLogEntry)newEntry).Exception.ToString().Split(new string[] {Environment.NewLine}, StringSplitOptions.None))
+				foreach(string EntryLine in ((ExceptionLogEntry)entry).Exception.ToString().Split(new string[] {Environment.NewLine}, StringSplitOptions.None))
 				{
 					OutputBuilder.AppendLine();
 					
 					OutputBuilder.AppendFormat(OutputFormatPre, Arguments);
 					
-					if (_IndentTabs)
-						OutputBuilder.Append('\t', IndentLevel);
-					else
-						OutputBuilder.Append(' ', IndentLevel * _IndentSize);
+					IndentTo(IndentLevel);
 					
 					OutputBuilder.Append(EntryLine);
 				}
 			}
 			
-			MyWriter.WriteLine(OutputBuilder.ToString());
+			_Writer.WriteLine(OutputBuilder.ToString());
 			
 			OutputBuilder.Length = 0;
 			
-			MyWriter.Flush();
-			Stream.Flush();
-		}
-		
-		/// <inheritdoc />
-		protected internal override void FinishSection(LogSection oldSection)
-		{
-		}
-		
-		/// <inheritdoc />
-		protected internal override void Finish()
-		{
-			if (_Writer != null)
-				_Writer.Close();
-			
-			Interlocked.Exchange(ref _Writer, null);
-			
-			base.Finish();
+			_Writer.Flush();
 		}
 		
 		//****************************************
 		
 		/// <inheritdoc />
-		protected override bool ReadAttribute(string name, string value)
-		{
-			switch (name)
-			{
-			case "IndentTabs":
-				bool.TryParse(value, out _IndentTabs);
-				break;
-				
-			case "IndentSize":
-				int.TryParse(value, out _IndentSize);
-				break;
-				
-			case "Encoding":
-				_Encoding = Encoding.GetEncoding(value);
-				break;
-				
-			default:
-				return base.ReadAttribute(name, value);
-			}
-			
-			return true;
-		}
-		
-		/// <inheritdoc />
 		protected override string GetExtension()
 		{
 			return "log";
+		}
+		
+		//****************************************
+		
+		private void IndentTo(int indentLevel)
+		{
+			if (_IndentTabs)
+				_OutputBuilder.Append('\t', indentLevel);
+			else if (_IndentSize != 0)
+				_OutputBuilder.Append(' ', indentLevel * _IndentSize);
 		}
 		
 		//****************************************

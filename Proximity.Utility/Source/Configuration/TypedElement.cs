@@ -13,7 +13,10 @@ namespace Proximity.Utility.Configuration
 	/// The base class of an element within a <see cref="TypedElementCollection&lt;TValue&gt;" />
 	/// </summary>
 	public abstract class TypedElement : ConfigurationElement
-	{
+	{	//****************************************
+		private Type _InstanceType;
+		//****************************************
+		
 		/// <summary>
 		/// Creates a typed element
 		/// </summary>
@@ -42,6 +45,15 @@ namespace Proximity.Utility.Configuration
 		public string Type
 		{
 			get { return (string)base["Type"]; }
+		}
+		
+		/// <summary>
+		/// Gets the type resolved by the collection when using TypedElementAttribute
+		/// </summary>
+		public Type InstanceType
+		{
+			get { return _InstanceType; }
+			internal set { _InstanceType = value; }
 		}
 	}
 }

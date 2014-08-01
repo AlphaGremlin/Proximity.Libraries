@@ -42,7 +42,7 @@ namespace Proximity.Utility.Configuration
 		protected sealed override bool OnDeserializeUnrecognizedElement(string elementName, XmlReader reader)
 		{	//****************************************
 			string TypeName = reader.GetAttribute("Type");
-			Type TargetType = Type.GetType(TypeName);
+			Type TargetType = ResolveType(TypeName);
 			object[] Attributes;
 			TValue NewElement;
 			//****************************************
@@ -54,6 +54,8 @@ namespace Proximity.Utility.Configuration
 				if (typeof(TValue).IsAssignableFrom(TargetType))
 				{
 					NewElement = (TValue)Activator.CreateInstance(TargetType);
+					
+					NewElement.InstanceType = TargetType;
 					
 					NewElement.Deserialise(reader, false);
 					
@@ -68,6 +70,8 @@ namespace Proximity.Utility.Configuration
 				{
 					NewElement = (TValue)Activator.CreateInstance(((TypedElementAttribute)Attributes[0]).ConfigType);
 					
+					NewElement.InstanceType = TargetType;
+					
 					NewElement.Deserialise(reader, false);
 					
 					_Items.Add(NewElement);
@@ -79,6 +83,8 @@ namespace Proximity.Utility.Configuration
 			try
 			{
 				NewElement = Activator.CreateInstance<TValue>();
+				
+				NewElement.InstanceType = TargetType;
 				
 				NewElement.Deserialise(reader, false);
 				
@@ -105,6 +111,16 @@ namespace Proximity.Utility.Configuration
 			}
 			
 			return DataWritten;
+		}
+		
+		/// <summary>
+		/// Resolves a type name into a .Net Type
+		/// </summary>
+		/// <param name="typeName">The name of the type</param>
+		/// <returns>A .Net Type, or null if the name could not be resolved</returns>
+		protected virtual Type ResolveType(string typeName)
+		{
+			return Type.GetType(typeName);
 		}
 		
 		//****************************************
