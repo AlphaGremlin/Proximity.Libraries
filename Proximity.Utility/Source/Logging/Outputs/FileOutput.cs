@@ -82,6 +82,22 @@ namespace Proximity.Utility.Logging.Outputs
 		}
 		
 		/// <inheritdoc />
+		protected internal override void Flush()
+		{
+			var MyCompletionSource = new TaskCompletionSource<VoidStruct>();
+			
+			try
+			{
+				_Entries.Add(new FullLogEntry(null, null, () => MyCompletionSource.SetResult(VoidStruct.Empty))).Wait();
+				
+				MyCompletionSource.Task.Wait();
+			}
+			catch (OperationCanceledException)
+			{
+			}
+		}
+		
+		/// <inheritdoc />
 		protected internal override void FinishSection(LogSection oldSection)
 		{
 		}
@@ -143,9 +159,13 @@ namespace Proximity.Utility.Logging.Outputs
 						CheckOutput();
 					}
 					
-					OnWrite(MyEntry.Entry, MyEntry.Context);
+					if (MyEntry.Entry != null)
+						OnWrite(MyEntry.Entry, MyEntry.Context);
 					
 					_Stream.Flush();
+					
+					if (MyEntry.Callback != null)
+						MyEntry.Callback();
 				}
 			}
 			catch (OperationCanceledException)
@@ -156,8 +176,13 @@ namespace Proximity.Utility.Logging.Outputs
 				// Close the log file
 				OnStreamChanging(null);
 				
-				_Stream.Flush();
-				_Stream.Close();
+				if (_Stream != null)
+				{
+					_Stream.Flush();
+					_Stream.Close();
+					
+					_Stream = null;
+				}
 			}
 		}
 		
@@ -237,16 +262,16 @@ namespace Proximity.Utility.Logging.Outputs
 			{
 				_Stream = File.Open(FullPath, CanAppend ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.Read);
 			}
-			catch(IOException)
+			catch(Exception)
 			{
 				// Failed to create the file. Add our PID to the end and try again
-				FullPath = string.Format("{0} ({1}).{2}", Path.GetFileNameWithoutExtension(FullPath), Process.GetCurrentProcess().Id, GetExtension());
+				FullPath = string.Format("{0} ({1}).{2}", Path.Combine(LogManager.OutputPath, Path.GetFileNameWithoutExtension(FullPath)), Process.GetCurrentProcess().Id, GetExtension());
 				
 				try
 				{
 					_Stream = File.Open(FullPath, FileMode.Create, FileAccess.Write, FileShare.Read);
 				}
-				catch (IOException e)
+				catch (Exception e)
 				{
 					_Stream = null;
 					
@@ -335,11 +360,20 @@ namespace Proximity.Utility.Logging.Outputs
 		{
 			public readonly ImmutableCountedStack<LogSection> Context;
 			public readonly LogEntry Entry;
+			public readonly Action Callback;
 			
 			public FullLogEntry(LogEntry entry, ImmutableCountedStack<LogSection> context)
 			{
 				this.Entry = entry;
 				this.Context = context;
+				this.Callback = null;
+			}
+			
+			public FullLogEntry(LogEntry entry, ImmutableCountedStack<LogSection> context, Action callback)
+			{
+				this.Entry = entry;
+				this.Context = context;
+				this.Callback = callback;
 			}
 		}
 	}

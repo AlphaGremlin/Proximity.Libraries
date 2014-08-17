@@ -78,6 +78,12 @@ namespace Proximity.Utility.Logging.Outputs
 		}
 		
 		/// <inheritdoc />
+		protected internal override void Flush()
+		{
+			Trace.Flush();
+		}
+		
+		/// <inheritdoc />
 		protected internal override void FinishSection(LogSection section)
 		{
 			Trace.IndentLevel = LogManager.Context.Count;

@@ -147,6 +147,13 @@ namespace Proximity.Utility.Collections
 			return _Complete;
 		}
 		
+		/// <summary>
+		/// Attempts to add and complete a collection in one operation
+		/// </summary>
+		/// <param name="item">The item to add</param>
+		/// <param name="token">A cancellation token to abort the addition operation</param>
+		/// <returns>A task representing the addition and completion operation</returns>
+		/// <remarks>Ensures that in a one-to-one situation, the subscriber enumeration completes without throwing a cancellation</remarks>
 		public Task AddComplete(TItem item, CancellationToken token)
 		{
 			if (_IsCompleted)

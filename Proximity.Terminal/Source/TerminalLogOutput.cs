@@ -98,6 +98,11 @@ namespace Proximity.Terminal
 			}
 		}
 		
+		/// <inheritdoc />
+		protected override void Flush()
+		{
+		}
+		
 		/// <summary>
 		/// Prints a line to the console, bypassing the log
 		/// </summary>

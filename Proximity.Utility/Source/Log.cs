@@ -242,6 +242,7 @@ namespace Proximity.Utility
 		/// </summary>
 		/// <param name="newException">The exception to write</param>
 		/// <param name="text">The text to write explaining the exception</param>
+		/// <remarks>Automatically calls <see cref="LogManager.Flush" /></remarks>
 		public static void Exception(Exception newException, string text)
 		{
 			Write(new ExceptionLogEntry(new StackFrame(1), text, newException));
@@ -253,6 +254,7 @@ namespace Proximity.Utility
 		/// <param name="newException">The exception to write</param>
 		/// <param name="text">The text to write explaining the exception</param>
 		/// <param name="args">The arguments to format the text with</param>
+		/// <remarks>Automatically calls <see cref="LogManager.Flush" /></remarks>
 		public static void Exception(Exception newException, string text, params object[] args)
 		{
 			Write(new ExceptionLogEntry(new StackFrame(1), string.Format(CultureInfo.InvariantCulture, text, args), newException));
@@ -297,6 +299,14 @@ namespace Proximity.Utility
 		{
 			foreach(var MyOutput in LogManager.Outputs)
 				MyOutput.Write(newEntry);
+		}
+		
+		/// <summary>
+		/// Flushes all outputs, ensuring all previously written log messages have been stored
+		/// </summary>
+		public static void Flush()
+		{
+			LogManager.Flush();
 		}
 	}
 }

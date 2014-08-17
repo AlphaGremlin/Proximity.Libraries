@@ -52,6 +52,11 @@ namespace Proximity.Utility.Logging
 		protected internal abstract void Write(LogEntry newEntry);
 		
 		/// <summary>
+		/// Flushes the output, ensuring all previously written log entries have been stored
+		/// </summary>
+		protected internal abstract void Flush();
+		
+		/// <summary>
 		/// Ends a logging section for this logical call
 		/// </summary>
 		/// <param name="oldSection">The details of the old logging section</param>

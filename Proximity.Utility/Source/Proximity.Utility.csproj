@@ -228,6 +228,7 @@
     <Compile Include="Threading\StreamTaskScheduler.cs" />
     <Compile Include="Threading\TaskFlag.cs" />
     <Compile Include="Threading\TaskStream.cs" />
+    <Compile Include="Threading\UnsafeTask.cs" />
     <Compile Include="Threading\VoidStruct.cs" />
     <Compile Include="Threading\WorkingEnumerator.cs" />
     <Compile Include="Threading\WorkingList.cs" />
@@ -243,7 +244,6 @@
     <Folder Include="Events" />
     <Folder Include="Net" />
     <Folder Include="Diagnostics" />
-    <Folder Include="Linq" />
     <Folder Include="Reflection" />
     <Folder Include="Threading" />
   </ItemGroup>

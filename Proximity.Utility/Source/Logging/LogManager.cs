@@ -101,6 +101,15 @@ namespace Proximity.Utility.Logging
 		}
 		
 		/// <summary>
+		/// Flushes all outputs, ensuring all previously written log messages have been stored
+		/// </summary>
+		public static void Flush()
+		{
+			foreach(LogOutput MyOutput in _Outputs)
+				MyOutput.Flush();
+		}
+		
+		/// <summary>
 		/// Finishes a logging section
 		/// </summary>
 		/// <param name="oldSection">The section to finish</param>
