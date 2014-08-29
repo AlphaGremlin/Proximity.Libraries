@@ -54,6 +54,9 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 		
+		/// <summary>
+		/// Disposes of the interleaving enuerator
+		/// </summary>
 		public void Dispose()
 		{
 		}
@@ -87,6 +90,10 @@ namespace Proximity.Utility.Threading
 			}
 		}
 		
+		/// <summary>
+		/// Resets the interleaving enumerator
+		/// </summary>
+		/// <remarks>Does nothing. You cannot enumerate over an interleaved task set more than once</remarks>
 		public void Reset()
 		{
 		}

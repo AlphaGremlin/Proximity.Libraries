@@ -33,6 +33,11 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(Resource, "Block not entered");
+			
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
 		[Test, Timeout(1000)]
@@ -50,6 +55,11 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(Resource, "Block not entered");
+			
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
 		[Test, Timeout(1000), Repeat(10)]
@@ -77,6 +87,11 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.AreEqual(100, Resource, "Block not entered");
+			
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
 		[Test, Timeout(1000), Repeat(10)]
@@ -114,6 +129,11 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.AreEqual(100, Resource, "Block not entered");
+			
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
 		[Test, Timeout(1000), Repeat(10)]
@@ -161,6 +181,11 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.AreEqual(8, Resource, "Block not entered");
+			
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
 		[Test, Timeout(1000), Repeat(10)]
@@ -210,6 +235,11 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.AreEqual(8, Resource, "Block not entered");
+			
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
 		[Test, Timeout(1000)]
@@ -233,6 +263,11 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(MyReader.IsCanceled, "Did not cancel");
+			
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
 		[Test, Timeout(1000)]
@@ -258,6 +293,13 @@ namespace Proximity.Utility.Tests
 			
 			Assert.IsTrue(MyReader1.IsCanceled, "Did not cancel");
 			Assert.IsFalse(MyReader2.IsCanceled, "Cancelled");
+			
+			MyReader2.Result.Dispose();
+			
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
 		[Test, Timeout(1000)]
@@ -281,6 +323,11 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(MyWriter.IsCanceled, "Did not cancel");
+			
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
 		[Test, Timeout(1000)]
@@ -306,6 +353,13 @@ namespace Proximity.Utility.Tests
 			
 			Assert.IsTrue(MyWriter1.IsCanceled, "Did not cancel");
 			Assert.IsFalse(MyWriter2.IsCanceled, "Cancelled");
+			
+			MyWriter2.Result.Dispose();
+			
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
 		[Test, Timeout(1000)]
@@ -325,6 +379,11 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(MyReader.IsCanceled, "Did not cancel");
+			
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
 		[Test, Timeout(1000)]
@@ -344,6 +403,11 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(MyWriter.IsCanceled, "Did not cancel");
+			
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
 		[Test, Timeout(1000)]
@@ -358,6 +422,13 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(MyReader.IsCompleted, "Is not completed");
+			
+			MyReader.Result.Dispose();
+			
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
 		[Test, Timeout(1000)]
@@ -372,6 +443,13 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(MyWriter.IsCompleted, "Is not completed");
+			
+			MyWriter.Result.Dispose();
+			
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 	}
 }

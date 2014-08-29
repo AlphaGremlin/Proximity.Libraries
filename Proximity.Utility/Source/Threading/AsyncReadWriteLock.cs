@@ -118,7 +118,13 @@ namespace Proximity.Utility.Threading
 				Interlocked.Increment(ref _ReadersWaiting);
 				
 				// Return a reader task the caller can wait on. This is a continuation, so readers don't run serialised
-				return _Reader.Task.ContinueWith(t => (IDisposable)new AsyncReadLockInstance(this), token);
+				var MyTask = _Reader.Task.ContinueWith(t => (IDisposable)new AsyncReadLockInstance(this), token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
+				
+				// If we can be cancelled, queue a task that runs if we get cancelled to release the waiter
+				if (token.CanBeCanceled)
+					MyTask.ContinueWith(CancelRead, TaskContinuationOptions.OnlyOnCanceled | TaskContinuationOptions.ExecuteSynchronously);
+				
+				return MyTask;
 			}
 		}
 		
@@ -186,7 +192,7 @@ namespace Proximity.Utility.Threading
 					var MyRegistration = token.Register(CancelWrite, MyWaiter);
 					
 					// When we complete, dispose of the registration
-					MyWaiter.Task.ContinueWith((task, state) => ((CancellationTokenRegistration)state).Dispose(), MyRegistration);
+					MyWaiter.Task.ContinueWith((task, state) => ((CancellationTokenRegistration)state).Dispose(), MyRegistration, TaskContinuationOptions.ExecuteSynchronously);
 				}
 				
 				return MyWaiter.Task;
@@ -296,6 +302,25 @@ namespace Proximity.Utility.Threading
 			
 			// Try and cancel our task. If it fails, we've already activate and been removed from the Writers list
 			MyWaiter.TrySetCanceled();
+		}
+		
+		private void CancelRead(Task<IDisposable> task)
+		{
+			lock (_Writers)
+			{
+				// A waiting Reader was cancelled. Is it still waiting?
+				if (_Counter < 0)
+				{
+					// A writer is still working, so we can just decrement the waiting readers count
+					Interlocked.Decrement(ref _ReadersWaiting);
+					
+					return;
+				}
+			}
+			
+			// Writer finished between the task cancelling and this continuation running
+			// Need to release the reader
+			ReleaseRead();
 		}
 		
 		//****************************************

@@ -90,7 +90,7 @@ namespace Proximity.Utility.Threading
 			}
 			
 			// Ensure we cleanup the cancellation source once we're done
-			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), MySource);
+			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), MySource, TaskContinuationOptions.ExecuteSynchronously);
 			
 			return MyTask;
 		}
@@ -128,7 +128,7 @@ namespace Proximity.Utility.Threading
 					var MyRegistration = token.Register(Cancel, NewWaiter);
 					
 					// If we complete and haven't been cancelled, dispose of the registration
-					NewWaiter.Task.ContinueWith((task, state) => ((CancellationTokenRegistration)state).Dispose(), MyRegistration);
+					NewWaiter.Task.ContinueWith((task, state) => ((CancellationTokenRegistration)state).Dispose(), MyRegistration, TaskContinuationOptions.ExecuteSynchronously);
 				}
 				
 				return NewWaiter.Task;

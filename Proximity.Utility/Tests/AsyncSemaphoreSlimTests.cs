@@ -1,5 +1,5 @@
 ﻿/****************************************\
- AsyncSemaphoreTests.cs
+ AsyncSemaphoreSlimTests.cs
  Created: 2014-02-26
 \****************************************/
 using System;
@@ -16,12 +16,12 @@ namespace Proximity.Utility.Tests
 	/// Tests the functionality of the Asynchronous Semaphore
 	/// </summary>
 	[TestFixture]
-	public sealed class AsyncSemaphoreTests
+	public sealed class AsyncSemaphoreSlimTests
 	{
 		[Test, Timeout(1000), Repeat(10)]
 		public async Task SingleLock()
 		{	//****************************************
-			var MyLock = new AsyncSemaphore();
+			var MyLock = new AsyncSemaphoreSlim();
 			bool Resource = false;
 			//****************************************
 			
@@ -41,7 +41,7 @@ namespace Proximity.Utility.Tests
 		[Test, Timeout(1000), Repeat(10)]
 		public async Task LockContend()
 		{	//****************************************
-			var MyLock = new AsyncSemaphore();
+			var MyLock = new AsyncSemaphoreSlim();
 			bool Resource = false;
 			Task<IDisposable> MyWaiter;
 			//****************************************
@@ -70,7 +70,7 @@ namespace Proximity.Utility.Tests
 		[Test, Timeout(1000), Repeat(10)]
 		public async Task MultiContend()
 		{	//****************************************
-			var MyLock = new AsyncSemaphore(2);
+			var MyLock = new AsyncSemaphoreSlim(2);
 			bool Resource = false;
 			Task<IDisposable> MyWaiter1, MyWaiter2;
 			//****************************************
@@ -104,7 +104,7 @@ namespace Proximity.Utility.Tests
 		[Test, Timeout(1000), Repeat(10)]
 		public async Task MultiContendCancel()
 		{	//****************************************
-			var MyLock = new AsyncSemaphore();
+			var MyLock = new AsyncSemaphoreSlim();
 			bool Resource = false;
 			Task<IDisposable> MyWaiter1, MyWaiter2;
 			//****************************************
@@ -142,7 +142,7 @@ namespace Proximity.Utility.Tests
 		[Test, Timeout(1000)]
 		public async Task LockContendTimeout()
 		{	//****************************************
-			var MyLock = new AsyncSemaphore();
+			var MyLock = new AsyncSemaphoreSlim();
 			Task<IDisposable> MyWait;
 			//****************************************
 			
@@ -164,7 +164,7 @@ namespace Proximity.Utility.Tests
 		[Test, Timeout(1000)]
 		public void NoTimeout()
 		{	//****************************************
-			var MyLock = new AsyncSemaphore();
+			var MyLock = new AsyncSemaphoreSlim();
 			Task<IDisposable> MyWait;
 			//****************************************
 			
@@ -183,7 +183,7 @@ namespace Proximity.Utility.Tests
 		[Test, Timeout(2000)]
 		public async Task ConcurrentHoldSingle()
 		{	//****************************************
-			var MyLock = new AsyncSemaphore();
+			var MyLock = new AsyncSemaphoreSlim();
 			int Resource = 0;
 			//****************************************
 			
@@ -215,7 +215,7 @@ namespace Proximity.Utility.Tests
 		[Test, Timeout(1000), Repeat(4)]
 		public async Task ConcurrentHoldMulti([Values(5, 10, 25, 50)] int startCount)
 		{	//****************************************
-			var MyLock = new AsyncSemaphore(startCount);
+			var MyLock = new AsyncSemaphoreSlim(startCount);
 			int Resource = 0;
 			//****************************************
 			
@@ -247,7 +247,7 @@ namespace Proximity.Utility.Tests
 		[Test, Timeout(1000), Repeat(10)]
 		public async Task ConcurrentAll()
 		{	//****************************************
-			var MyLock = new AsyncSemaphore(100);
+			var MyLock = new AsyncSemaphoreSlim(100);
 			int Resource = 0;
 			//****************************************
 			

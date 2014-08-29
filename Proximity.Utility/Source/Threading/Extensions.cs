@@ -143,6 +143,11 @@ namespace Proximity.Utility.Threading
 			return MyCompletionSource.Task;
 		}
 		
+		/// <summary>
+		/// Interleaves an enumeration of tasks, returning them in the order they complete
+		/// </summary>
+		/// <param name="source">The enumeration of tasks to interleave</param>
+		/// <returns>An enumeration that returns the tasks in order of completion</returns>
 		public static IEnumerable<Task<TResult>> Interleave<TResult>(this IEnumerable<Task<TResult>> source)
 		{
 			return new Interleave<TResult>(source);

@@ -88,9 +88,17 @@ namespace Proximity.Terminal
 					else
 						await Task.Run(() => _Method.Invoke(instance, arguments));
 				}
-				catch (TargetInvocationException x)
+				catch (TargetInvocationException e)
 				{
-					Log.Exception(x.InnerException, "Failure running command");
+					Log.Exception(e.InnerException, "Failure running command");
+				}
+				catch (AggregateException e)
+				{
+					Log.Exception(e.InnerException, "Failure running command");
+				}
+				catch (Exception e)
+				{
+					Log.Exception(e, "Internal failure running command");
 				}
 			}
 		}

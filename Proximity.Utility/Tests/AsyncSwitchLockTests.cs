@@ -1,5 +1,5 @@
 ﻿/****************************************\
- AsyncReadWriteLockTests.cs
+ AsyncSwitchLockTests.cs
  Created: 2014-02-26
 \****************************************/
 using System;
@@ -32,6 +32,11 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(Resource, "Block not entered");
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
 		[Test, Timeout(1000)]
@@ -49,6 +54,11 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(Resource, "Block not entered");
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
 		[Test, Timeout(1000), Repeat(10)]
@@ -76,6 +86,11 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.AreEqual(100, Resource, "Block not entered");
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
 		[Test, Timeout(1000), Repeat(10)]
@@ -103,6 +118,11 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.AreEqual(100, Resource, "Block not entered");
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
 		[Test, Timeout(1000)]
@@ -122,6 +142,13 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(MyRight.IsCompleted, "Right not completed");
+			
+			MyRight.Result.Dispose();
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
 		[Test, Timeout(1000)]
@@ -141,6 +168,13 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(MyLeft.IsCompleted, "Left not completed");
+			
+			MyLeft.Result.Dispose();
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
 		[Test, Timeout(1000)]
@@ -166,6 +200,13 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(MyLeft.IsCompleted, "Left not completed");
+			
+			MyLeft.Result.Dispose();
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
 		[Test, Timeout(1000)]
@@ -191,6 +232,13 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(MyRight.IsCompleted, "Right not completed");
+			
+			MyRight.Result.Dispose();
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
 		[Test, Timeout(1000)]
@@ -211,6 +259,15 @@ namespace Proximity.Utility.Tests
 			
 			Assert.IsTrue(MyRight1.IsCompleted, "Right 1 not completed");
 			Assert.IsTrue(MyRight2.IsCompleted, "Right 2 not completed");
+			
+			MyRight1.Result.Dispose();
+			MyRight2.Result.Dispose();
+			MyLeft.Result.Dispose();
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
 		[Test, Timeout(1000)]
@@ -231,6 +288,15 @@ namespace Proximity.Utility.Tests
 			
 			Assert.IsTrue(MyLeft1.IsCompleted, "Left 1 not completed");
 			Assert.IsTrue(MyLeft2.IsCompleted, "Left 2 not completed");
+			
+			MyLeft1.Result.Dispose();
+			MyLeft2.Result.Dispose();
+			MyRight.Result.Dispose();
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
 		[Test, Timeout(1000)]
@@ -254,6 +320,11 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(MyRight.IsCanceled, "Did not cancel");
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
 		[Test, Timeout(1000)]
@@ -277,6 +348,11 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(MyLeft.IsCanceled, "Did not cancel");
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
 		[Test, Timeout(1000)]
@@ -302,6 +378,13 @@ namespace Proximity.Utility.Tests
 			
 			Assert.IsTrue(MyRight1.IsCanceled, "Did not cancel");
 			Assert.IsFalse(MyRight2.IsCanceled, "Cancelled");
+			
+			MyRight2.Result.Dispose();
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
 		[Test, Timeout(1000)]
@@ -327,6 +410,13 @@ namespace Proximity.Utility.Tests
 			
 			Assert.IsTrue(MyLeft1.IsCanceled, "Did not cancel");
 			Assert.IsFalse(MyLeft2.IsCanceled, "Cancelled");
+			
+			MyLeft2.Result.Dispose();
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
 		[Test, Timeout(1000)]
@@ -351,6 +441,13 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(MyLeft.IsCompleted, "Left not completed");
+			
+			MyLeft.Result.Dispose();
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
 		[Test, Timeout(1000)]
@@ -375,6 +472,13 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(MyRight.IsCompleted, "Right not completed");
+			
+			MyRight.Result.Dispose();
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
 		[Test, Timeout(1000)]
@@ -394,6 +498,11 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(MyRight.IsCanceled, "Did not cancel");
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
 		[Test, Timeout(1000)]
@@ -413,6 +522,11 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(MyLeft.IsCanceled, "Did not cancel");
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
 		[Test, Timeout(1000)]
@@ -427,6 +541,13 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(MyLeft.IsCompleted, "Is not completed");
+			
+			MyLeft.Result.Dispose();
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
 		[Test, Timeout(1000)]
@@ -441,6 +562,13 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(MyRight.IsCompleted, "Is not completed");
+			
+			MyRight.Result.Dispose();
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 	}
 }
