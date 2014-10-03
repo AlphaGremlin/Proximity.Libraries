@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Proximity.Utility;
 //****************************************
 
@@ -125,7 +126,7 @@ namespace Proximity.Terminal
 		//********************
 		
 		[TerminalBinding("Execute a list of terminal commands")]
-		public static void Exec(string fileName)
+		public static async Task Exec(string fileName)
 		{
 			var MyContext = TerminalParser.Context;
 			
@@ -134,7 +135,7 @@ namespace Proximity.Terminal
 				if (MyLine == "" || MyLine.StartsWith("#"))
 					continue;
 				
-				TerminalParser.Execute(MyLine, MyContext);
+				await TerminalParser.Execute(MyLine, MyContext);
 			}
 		}
 		

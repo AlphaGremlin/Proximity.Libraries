@@ -242,6 +242,48 @@ namespace Proximity.Utility.Threading
 		}
 		
 		/// <summary>
+		/// Queues a method returning a task at the end of the Stream
+		/// </summary>
+		/// <param name="action">The method to execute at the end of the stream</param>
+		/// <returns>A task representing the completion of the returned task</returns>
+		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
+		public Task<TResult> QueueTask<TResult>(Func<Task<TResult>> action)
+		{
+			return QueueTask(action, CancellationToken.None);
+		}
+
+		/// <summary>
+		/// Queues a method returning a task at the end of the Stream
+		/// </summary>
+		/// <param name="action">The method to execute at the end of the stream</param>
+		/// <param name="cancellationToken">A token to cancel this action</param>
+		/// <returns>A task representing the completion of the returned task</returns>
+		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
+		public Task<TResult> QueueTask<TResult>(Func<Task<TResult>> action, CancellationToken cancellationToken)
+		{	//****************************************
+			Task<TResult> MyTask;
+			//****************************************
+
+			lock (_LockObject)
+			{
+				Interlocked.Increment(ref _PendingActions);
+
+				if (_NextTask == null || _NextTask.IsCompleted)
+				{
+					_NextTask = MyTask = _Factory.StartNew(action, cancellationToken).Unwrap();
+				}
+				else
+				{
+					_NextTask = MyTask = _NextTask.ContinueWith((task, state) => ((Func<Task<TResult>>)state)(), action, cancellationToken).Unwrap();
+				}
+
+				AttachCompleteTask();
+
+				return MyTask;
+			}
+		}
+
+		/// <summary>
 		/// Queues a method taking a value and returning a task at the end of the Stream
 		/// </summary>
 		/// <param name="action">The method to execute at the end of the stream</param>
@@ -282,6 +324,50 @@ namespace Proximity.Utility.Threading
 			}
 		}
 		
+		/// <summary>
+		/// Queues a method taking a value and returning a task at the end of the Stream
+		/// </summary>
+		/// <param name="action">The method to execute at the end of the stream</param>
+		/// <param name="value">The value to pass to the task</param>
+		/// <returns>A task representing the completion of the returned task</returns>
+		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
+		public Task<TResult> QueueTask<TValue, TResult>(Func<TValue, Task<TResult>> action, TValue value)
+		{
+			return QueueTask(action, value, CancellationToken.None);
+		}
+
+		/// <summary>
+		/// Queues a method taking a value and returning a task at the end of the Stream
+		/// </summary>
+		/// <param name="action">The method to execute at the end of the stream</param>
+		/// <param name="value">The value to pass to the task</param>
+		/// <param name="cancellationToken">A token to cancel this action</param>
+		/// <returns>A task representing the completion of the returned task</returns>
+		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
+		public Task<TResult> QueueTask<TValue, TResult>(Func<TValue, Task<TResult>> action, TValue value, CancellationToken cancellationToken)
+		{	//****************************************
+			Task<TResult> MyTask;
+			//****************************************
+
+			lock (_LockObject)
+			{
+				Interlocked.Increment(ref _PendingActions);
+
+				if (_NextTask == null || _NextTask.IsCompleted)
+				{
+					_NextTask = MyTask = _Factory.StartNew(() => action(value), cancellationToken).Unwrap();
+				}
+				else
+				{
+					_NextTask = MyTask = _NextTask.ContinueWith((task) => action(value), cancellationToken).Unwrap();
+				}
+
+				AttachCompleteTask();
+
+				return MyTask;
+			}
+		}
+
 		/// <summary>
 		/// Resets the stream
 		/// </summary>
