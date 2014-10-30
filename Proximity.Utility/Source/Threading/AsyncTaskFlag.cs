@@ -15,9 +15,9 @@ namespace Proximity.Utility.Threading
 	/// <summary>
 	/// Implements a callback that will continue to run as long as the flag is Set
 	/// </summary>
-	public sealed class TaskFlag
+	public sealed class AsyncTaskFlag
 	{	//****************************************
-		private Action _Callback;
+		private Func<Task> _Callback;
 		
 		private TimeSpan _Delay = TimeSpan.Zero;
 		private int _State; // 0 if not running, 1 if flagged to run, 2 if running
@@ -29,7 +29,7 @@ namespace Proximity.Utility.Threading
 		/// Creates a Task Flag
 		/// </summary>
 		/// <param name="callback">The callback to execute</param>
-		public TaskFlag(Action callback)
+		public AsyncTaskFlag(Func<Task> callback)
 		{
 			_Callback = callback;
 		}
@@ -39,7 +39,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="callback">The callback to execute</param>
 		/// <param name="delay">A fixed delay between callback executions</param>
-		public TaskFlag(Action callback, TimeSpan delay)
+		public AsyncTaskFlag(Func<Task> callback, TimeSpan delay)
 		{
 			_Callback = callback;
 		}
@@ -47,7 +47,7 @@ namespace Proximity.Utility.Threading
 		//****************************************
 		
 		/// <summary>
-		/// Sets the flag, causing the callback to run/re-run depending on the status
+		/// Sets the flag, causing the task to run/re-run depending on the status
 		/// </summary>
 		public void Set()
 		{
@@ -91,7 +91,7 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 		
-		private void ProcessTaskFlag(object state)
+		private async void ProcessTaskFlag(object state)
 		{
 			if (_Delay != TimeSpan.Zero)
 				// Wait a bit before acknowledging the flag
@@ -103,7 +103,7 @@ namespace Proximity.Utility.Threading
 			// Capture any requests to wait for this callback
 			var MyWaitTask = Interlocked.Exchange(ref _WaitTask, null);
 			
-			_Callback();
+			await _Callback();
 			
 			// If we captured a wait task, set it
 			if (MyWaitTask != null)

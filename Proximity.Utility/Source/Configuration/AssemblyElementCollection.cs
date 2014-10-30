@@ -30,6 +30,12 @@ namespace Proximity.Utility.Configuration
 		//****************************************
 		
 		/// <inheritdoc />
+		public override bool Equals(object compareTo)
+		{
+			return base.Equals(compareTo) && (compareTo is AssemblyElementCollection<TValue>) && CompareItemsWith((AssemblyElementCollection<TValue>)compareTo);
+		}
+		
+		/// <inheritdoc />
 		protected sealed override void DeserializeElement(XmlReader reader, bool serializeCollectionKey)
 		{
 			base.DeserializeElement(reader, serializeCollectionKey);
@@ -149,6 +155,13 @@ namespace Proximity.Utility.Configuration
 		IEnumerator IEnumerable.GetEnumerator()
 		{
 			return _Items.GetEnumerator();
+		}
+		
+		//****************************************
+		
+		private bool CompareItemsWith(AssemblyElementCollection<TValue> other)
+		{
+			return new HashSet<TValue>(_Items).SetEquals(other._Items);
 		}
 		
 		//****************************************

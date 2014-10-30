@@ -162,6 +162,7 @@
     <Compile Include="Collections\ReadOnlyCollectionTyped.cs" />
     <Compile Include="Collections\ReadOnlyDictionary.cs" />
     <Compile Include="Collections\ReadOnlyDictionaryChild.cs" />
+    <Compile Include="Collections\ReadOnlyDictionaryKeySet.cs" />
     <Compile Include="Collections\ReadOnlyList.cs" />
     <Compile Include="Collections\ReadOnlyListTyped.cs" />
     <Compile Include="Collections\ReadOnlySet.cs" />
@@ -242,6 +243,7 @@
     <Compile Include="Threading\AsyncSwitchLock.cs" />
     <Compile Include="Threading\AsyncSemaphore.cs" />
     <Compile Include="Threading\AsyncReadWriteLock.cs" />
+    <Compile Include="Threading\AsyncTaskFlag.cs" />
     <Compile Include="Threading\DedicatedThreadScheduler.cs" />
     <Compile Include="Threading\Extensions.cs" />
     <Compile Include="Threading\Interleave.cs" />

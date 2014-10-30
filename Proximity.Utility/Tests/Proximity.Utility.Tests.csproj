@@ -78,12 +78,20 @@
     <OutputPath>..\..\..\Tests\</OutputPath>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup Condition=" '$(Platform)' == 'AnyCPU' ">
+    <BaseAddress>4194304</BaseAddress>
+    <PlatformTarget>x86</PlatformTarget>
+    <RegisterForComInterop>False</RegisterForComInterop>
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
+    <FileAlignment>4096</FileAlignment>
+  </PropertyGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
     <Reference Include="nunit.framework">
       <HintPath>..\..\..\Tools\NUnit\nunit.framework.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
@@ -99,7 +107,9 @@
     <None Include="AsyncSemaphoreSlimTests.cs" />
     <Compile Include="AsyncSemaphoreTests.cs" />
     <Compile Include="AsyncSwitchLockTests.cs" />
+    <Compile Include="AsyncTaskFlagTests.cs" />
     <Compile Include="CloneTests.cs" />
+    <Compile Include="ConfigurationTests.cs" />
     <Compile Include="EmitterTests.cs" />
     <Compile Include="EqualityTests.cs" />
     <Compile Include="ListExtensionTests.cs" />

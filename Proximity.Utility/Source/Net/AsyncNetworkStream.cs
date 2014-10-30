@@ -151,7 +151,7 @@ namespace Proximity.Utility.Net
 		{
 			if (cancellationToken.IsCancellationRequested)
 			{
-				return Task.Run(delegate() { }, cancellationToken);
+				return Task.Run(delegate() { return 0; }, cancellationToken);
 			}
 			
 			return ReadData(buffer, offset, count);

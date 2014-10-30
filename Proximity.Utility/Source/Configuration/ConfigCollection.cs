@@ -13,12 +13,23 @@ namespace Proximity.Utility.Configuration
 	/// Generic collection for configuration element collections
 	/// </summary>
 	public abstract class ConfigCollection<TValue> : ConfigurationElementCollection, ICollection<TValue> where TValue : ConfigurationElement, new()
-	{
+	{	//****************************************
+		private readonly ConfigurationElementCollectionType _CollectionType = ConfigurationElementCollectionType.AddRemoveClearMap;
+		//****************************************
+		
 		/// <summary>
 		/// Creates a new configuration element collection
 		/// </summary>
 		protected ConfigCollection() : base()
 		{
+		}
+		
+		/// <summary>
+		/// Creates a new configuration element collection
+		/// </summary>
+		protected ConfigCollection(ConfigurationElementCollectionType collectionType) : base()
+		{
+			_CollectionType = collectionType;
 		}
 		
 		//****************************************
@@ -107,6 +118,12 @@ namespace Proximity.Utility.Configuration
 		bool ICollection<TValue>.IsReadOnly
 		{
 			get { return this.IsReadOnly(); }
+		}
+		
+		/// <inheritdoc />
+		public override ConfigurationElementCollectionType CollectionType
+		{
+			get { return _CollectionType; }
 		}
 	}
 }

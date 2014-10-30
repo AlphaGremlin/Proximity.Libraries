@@ -6,6 +6,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Linq;
 using System.Xml;
 //****************************************
 
@@ -28,11 +29,13 @@ namespace Proximity.Utility.Configuration
 		
 		//****************************************
 		
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="reader"></param>
-		/// <param name="serializeCollectionKey"></param>
+		/// <inheritdoc />
+		public override bool Equals(object compareTo)
+		{
+			return base.Equals(compareTo) && (compareTo is TypedElementCollection<TValue>) && CompareItemsWith((TypedElementCollection<TValue>)compareTo);
+		}
+		
+		/// <inheritdoc />
 		protected sealed override void DeserializeElement(XmlReader reader, bool serializeCollectionKey)
 		{
 			base.DeserializeElement(reader, serializeCollectionKey);
@@ -184,6 +187,13 @@ namespace Proximity.Utility.Configuration
 		IEnumerator IEnumerable.GetEnumerator()
 		{
 			return _Items.GetEnumerator();
+		}
+		
+		//****************************************
+		
+		private bool CompareItemsWith(TypedElementCollection<TValue> other)
+		{
+			return new HashSet<TValue>(_Items).SetEquals(other._Items);
 		}
 		
 		//****************************************

@@ -65,6 +65,12 @@ namespace Proximity.Utility.Configuration
 			return true;
 		}
 		
+		/// <inheritdoc />
+		public override bool Equals(object compareTo)
+		{
+			return base.Equals(compareTo) && (compareTo is ConfigurationTextElement) && ((ConfigurationTextElement)compareTo)._Content == _Content;
+		}
+		
 		//****************************************
 		
 		/// <summary>
