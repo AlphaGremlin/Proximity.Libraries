@@ -131,7 +131,7 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 		
-		private void Release()
+		private void Release(object state)
 		{	//****************************************
 			TaskCompletionSource<IDisposable> NextWaiter = null;
 			//****************************************
@@ -207,7 +207,7 @@ namespace Proximity.Utility.Threading
 			
 			// If we've taken a counter and it hasn't been used, we need to release it
 			if (HasCounter)
-				Release();
+				Release(null);
 		}
 		
 		//****************************************
@@ -272,7 +272,7 @@ namespace Proximity.Utility.Threading
 			public void Dispose()
 			{
 				if (_Source != null)
-					_Source.Release();
+					ThreadPool.UnsafeQueueUserWorkItem(_Source.Release, null);
 			}
 		}
 	}

@@ -36,6 +36,23 @@ namespace Proximity.Utility.Configuration
 		}
 		
 		/// <inheritdoc />
+		public override int GetHashCode()
+		{
+			int hashCode = base.GetHashCode();
+
+			unchecked
+			{
+				foreach (var MyItem in _Items)
+				{
+					if (MyItem != null)
+						hashCode += MyItem.GetHashCode();
+				}
+			}
+
+			return hashCode;
+		}
+
+		/// <inheritdoc />
 		protected sealed override void DeserializeElement(XmlReader reader, bool serializeCollectionKey)
 		{
 			base.DeserializeElement(reader, serializeCollectionKey);

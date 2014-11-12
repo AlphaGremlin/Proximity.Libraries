@@ -42,6 +42,7 @@ namespace Proximity.Utility.Threading
 		public AsyncTaskFlag(Func<Task> callback, TimeSpan delay)
 		{
 			_Callback = callback;
+			_Delay = delay;
 		}
 		
 		//****************************************

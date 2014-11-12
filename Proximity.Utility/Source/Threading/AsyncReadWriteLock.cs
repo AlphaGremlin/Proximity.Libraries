@@ -201,7 +201,7 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 
-		private void ReleaseRead()
+		private void ReleaseRead(object state)
 		{	//****************************************
 			TaskCompletionSource<IDisposable> NextWriter = null;
 			//****************************************
@@ -247,7 +247,7 @@ namespace Proximity.Utility.Threading
 			}
 		}
 
-		private void ReleaseWrite()
+		private void ReleaseWrite(object state)
 		{	//****************************************
 			TaskCompletionSource<IDisposable> NextRelease = null;
 			//****************************************
@@ -320,7 +320,7 @@ namespace Proximity.Utility.Threading
 			
 			// Writer finished between the task cancelling and this continuation running
 			// Need to release the reader
-			ReleaseRead();
+			ThreadPool.UnsafeQueueUserWorkItem(ReleaseRead, null);
 		}
 		
 		//****************************************
@@ -385,7 +385,7 @@ namespace Proximity.Utility.Threading
 			{
 				if (_Source != null && Interlocked.Exchange(ref _Released, 1) == 0)
 				{
-					_Source.ReleaseRead();
+					ThreadPool.UnsafeQueueUserWorkItem(_Source.ReleaseRead, null);
 				}
 			}
 		}
@@ -407,7 +407,7 @@ namespace Proximity.Utility.Threading
 			{
 				if (_Source != null && Interlocked.Exchange(ref _Released, 1) == 0)
 				{
-					_Source.ReleaseWrite();
+					ThreadPool.UnsafeQueueUserWorkItem(_Source.ReleaseWrite, null);
 				}
 			}
 		}

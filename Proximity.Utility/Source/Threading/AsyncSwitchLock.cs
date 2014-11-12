@@ -205,7 +205,15 @@ namespace Proximity.Utility.Threading
 			}
 			
 			// Activate all the Right waiters
-			NextRight.SetResult(VoidStruct.Empty);
+			ThreadPool.UnsafeQueueUserWorkItem(TryRelease, NextRight);
+		}
+		
+		private void TryRelease(object state)
+		{	//****************************************
+			var MyWaiter = (TaskCompletionSource<VoidStruct>)state;
+			//****************************************
+			
+			MyWaiter.SetResult(VoidStruct.Empty);
 		}
 		
 		private void ReleaseRight()
@@ -236,8 +244,8 @@ namespace Proximity.Utility.Threading
 				}
 			}
 			
-			// Activate all the Right waiters
-			NextLeft.SetResult(VoidStruct.Empty);
+			// Activate all the Left waiters
+			ThreadPool.UnsafeQueueUserWorkItem(TryRelease, NextLeft);
 		}
 		
 		private void CancelLeft(Task<IDisposable> task)
@@ -263,7 +271,7 @@ namespace Proximity.Utility.Threading
 			
 			if (NextRight != null)
 			{
-				NextRight.SetResult(VoidStruct.Empty);
+				ThreadPool.UnsafeQueueUserWorkItem(TryRelease, NextRight);
 				
 				return;
 			}
@@ -296,7 +304,7 @@ namespace Proximity.Utility.Threading
 			
 			if (NextLeft != null)
 			{
-				NextLeft.SetResult(VoidStruct.Empty);
+				ThreadPool.UnsafeQueueUserWorkItem(TryRelease, NextLeft);
 				
 				return;
 			}
