@@ -57,7 +57,7 @@ namespace Proximity.Utility.Tests
 			
 			//****************************************
 			
-			Assert.IsTrue(MyWaiter.IsCompleted, "Nested lock not taken");
+			await MyWaiter;
 			
 			Assert.IsTrue(Resource, "Block not entered");
 			
@@ -90,7 +90,7 @@ namespace Proximity.Utility.Tests
 			
 			//****************************************
 			
-			Assert.IsTrue(MyWaiter2.IsCompleted, "Nested lock not taken");
+			await MyWaiter2;
 			
 			Assert.IsTrue(Resource, "Block not entered");
 			
@@ -129,7 +129,7 @@ namespace Proximity.Utility.Tests
 			
 			//****************************************
 			
-			Assert.IsTrue(MyWaiter2.IsCompleted, "Nested lock not taken");
+			await MyWaiter2;
 			
 			Assert.IsTrue(Resource, "Block not entered");
 			
@@ -154,6 +154,8 @@ namespace Proximity.Utility.Tests
 			}
 			
 			//****************************************
+			
+			Thread.Sleep(100); // Release happens on another thread and there's nothing to wait on
 			
 			Assert.IsTrue(MyWait.IsCanceled, "Did not cancel");
 			

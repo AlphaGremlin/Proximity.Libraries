@@ -131,7 +131,7 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 		
-		private void Release(object state)
+		private void Release(bool onThreadPool)
 		{	//****************************************
 			TaskCompletionSource<IDisposable> NextWaiter = null;
 			//****************************************
@@ -153,9 +153,26 @@ namespace Proximity.Utility.Threading
 					NextWaiter = _Waiters.Dequeue();
 				}
 				
+				// If we're not on the threadpool, run TrySetResult on there, so we don't blow the stack if the result calls Release too (and so on)
+				if (!onThreadPool)
+				{
+					ThreadPool.UnsafeQueueUserWorkItem(TryRelease, NextWaiter);
+					
+					return;
+				}
+				
 				// Try to hand the counter over to the next waiter
 				// It may cancel (or have already been cancelled), and if so we loop back and try again
 			} while (!NextWaiter.TrySetResult(_CompleteTask.Result));
+		}
+		
+		private void TryRelease(object state)
+		{	//****************************************
+			var MyWaiter = (TaskCompletionSource<IDisposable>)state;
+			//****************************************
+			
+			if (!MyWaiter.TrySetResult(_CompleteTask.Result))
+				Release(true);
 		}
 		
 		private void Cancel(object state)
@@ -207,7 +224,7 @@ namespace Proximity.Utility.Threading
 			
 			// If we've taken a counter and it hasn't been used, we need to release it
 			if (HasCounter)
-				Release(null);
+				Release(true);
 		}
 		
 		//****************************************
@@ -272,7 +289,7 @@ namespace Proximity.Utility.Threading
 			public void Dispose()
 			{
 				if (_Source != null)
-					ThreadPool.UnsafeQueueUserWorkItem(_Source.Release, null);
+					_Source.Release(false);
 			}
 		}
 	}

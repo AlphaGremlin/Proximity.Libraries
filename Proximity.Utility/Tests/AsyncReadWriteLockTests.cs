@@ -322,6 +322,8 @@ namespace Proximity.Utility.Tests
 			
 			//****************************************
 			
+			Thread.Sleep(100); // Release happens on another thread and there's nothing to wait on
+			
 			Assert.IsTrue(MyWriter.IsCanceled, "Did not cancel");
 			
 			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
@@ -401,6 +403,8 @@ namespace Proximity.Utility.Tests
 			}
 			
 			//****************************************
+			
+			Thread.Sleep(100); // Release happens on another thread and there's nothing to wait on
 			
 			Assert.IsTrue(MyWriter.IsCanceled, "Did not cancel");
 			

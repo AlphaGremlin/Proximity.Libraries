@@ -15,7 +15,7 @@ namespace Proximity.Utility.Tests
 	/// Tests the functionality of the AsyncTaskFlag class
 	/// </summary>
 	[TestFixture()]
-	public sealed class AsyncAsyncTaskFlagTests
+	public sealed class AsyncTaskFlagTests
 	{	//****************************************
 		private int _Counter;
 		//****************************************

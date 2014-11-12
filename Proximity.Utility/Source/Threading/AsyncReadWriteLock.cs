@@ -201,7 +201,7 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 
-		private void ReleaseRead(object state)
+		private void ReleaseRead()
 		{	//****************************************
 			TaskCompletionSource<IDisposable> NextWriter = null;
 			//****************************************
@@ -228,6 +228,14 @@ namespace Proximity.Utility.Threading
 				}
 			}
 			
+			ThreadPool.UnsafeQueueUserWorkItem(TryReleaseRead, NextWriter);
+		}
+		
+		private void TryReleaseRead(object state)
+		{	//****************************************
+			var NextWriter = (TaskCompletionSource<IDisposable>)state;
+			//****************************************
+			
 			// A writer may cancel, so we need to check for that and loop if it fails
 			while (!NextWriter.TrySetResult(new AsyncWriteLockInstance(this)))
 			{
@@ -247,7 +255,7 @@ namespace Proximity.Utility.Threading
 			}
 		}
 
-		private void ReleaseWrite(object state)
+		private void ReleaseWrite(bool onThreadPool)
 		{	//****************************************
 			TaskCompletionSource<IDisposable> NextRelease = null;
 			//****************************************
@@ -291,8 +299,25 @@ namespace Proximity.Utility.Threading
 					break;
 				}
 				
+				// If we're not on the threadpool, run TrySetResult on there, so we don't blow the stack if the result calls Release too (and so on)
+				if (!onThreadPool)
+				{
+					ThreadPool.UnsafeQueueUserWorkItem(TryReleaseWrite, NextRelease);
+					
+					return;
+				}
+				
 				// A writer, however, may cancel, so we need to check for that and loop back if it fails
 			} while (!NextRelease.TrySetResult(new AsyncWriteLockInstance(this)));
+		}
+		
+		private void TryReleaseWrite(object state)
+		{	//****************************************
+			var NextRelease = (TaskCompletionSource<IDisposable>)state;
+			//****************************************
+			
+			if (!NextRelease.TrySetResult(new AsyncWriteLockInstance(this)))
+				ReleaseWrite(true);
 		}
 		
 		private void CancelWrite(object state)
@@ -320,7 +345,7 @@ namespace Proximity.Utility.Threading
 			
 			// Writer finished between the task cancelling and this continuation running
 			// Need to release the reader
-			ThreadPool.UnsafeQueueUserWorkItem(ReleaseRead, null);
+			ReleaseRead();
 		}
 		
 		//****************************************
@@ -385,7 +410,7 @@ namespace Proximity.Utility.Threading
 			{
 				if (_Source != null && Interlocked.Exchange(ref _Released, 1) == 0)
 				{
-					ThreadPool.UnsafeQueueUserWorkItem(_Source.ReleaseRead, null);
+					_Source.ReleaseRead();
 				}
 			}
 		}
@@ -407,7 +432,7 @@ namespace Proximity.Utility.Threading
 			{
 				if (_Source != null && Interlocked.Exchange(ref _Released, 1) == 0)
 				{
-					ThreadPool.UnsafeQueueUserWorkItem(_Source.ReleaseWrite, null);
+					_Source.ReleaseWrite(false);
 				}
 			}
 		}

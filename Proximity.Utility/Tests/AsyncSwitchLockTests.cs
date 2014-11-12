@@ -141,7 +141,7 @@ namespace Proximity.Utility.Tests
 			
 			//****************************************
 			
-			Assert.IsTrue(MyRight.IsCompleted, "Right not completed");
+			await MyRight;
 			
 			MyRight.Result.Dispose();
 			
@@ -167,7 +167,7 @@ namespace Proximity.Utility.Tests
 			
 			//****************************************
 			
-			Assert.IsTrue(MyLeft.IsCompleted, "Left not completed");
+			await MyLeft;
 			
 			MyLeft.Result.Dispose();
 			
@@ -199,7 +199,7 @@ namespace Proximity.Utility.Tests
 			
 			//****************************************
 			
-			Assert.IsTrue(MyLeft.IsCompleted, "Left not completed");
+			await MyLeft;
 			
 			MyLeft.Result.Dispose();
 			
@@ -231,7 +231,7 @@ namespace Proximity.Utility.Tests
 			
 			//****************************************
 			
-			Assert.IsTrue(MyRight.IsCompleted, "Right not completed");
+			await MyRight;
 			
 			MyRight.Result.Dispose();
 			
@@ -257,8 +257,7 @@ namespace Proximity.Utility.Tests
 				MyRight2 = MyLock.LockRight();
 			}
 			
-			Assert.IsTrue(MyRight1.IsCompleted, "Right 1 not completed");
-			Assert.IsTrue(MyRight2.IsCompleted, "Right 2 not completed");
+			await Task.WhenAll(MyRight1, MyRight2);
 			
 			MyRight1.Result.Dispose();
 			MyRight2.Result.Dispose();
@@ -286,8 +285,7 @@ namespace Proximity.Utility.Tests
 				MyLeft2 = MyLock.LockLeft();
 			}
 			
-			Assert.IsTrue(MyLeft1.IsCompleted, "Left 1 not completed");
-			Assert.IsTrue(MyLeft2.IsCompleted, "Left 2 not completed");
+			await Task.WhenAll(MyLeft1, MyLeft2);
 			
 			MyLeft1.Result.Dispose();
 			MyLeft2.Result.Dispose();
@@ -440,7 +438,7 @@ namespace Proximity.Utility.Tests
 			
 			//****************************************
 			
-			Assert.IsTrue(MyLeft.IsCompleted, "Left not completed");
+			await MyLeft;
 			
 			MyLeft.Result.Dispose();
 			
@@ -471,7 +469,7 @@ namespace Proximity.Utility.Tests
 			
 			//****************************************
 			
-			Assert.IsTrue(MyRight.IsCompleted, "Right not completed");
+			await MyRight;
 			
 			MyRight.Result.Dispose();
 			
