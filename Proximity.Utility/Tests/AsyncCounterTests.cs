@@ -201,5 +201,29 @@ namespace Proximity.Utility.Tests
 			
 			Assert.IsTrue(MyTask.IsCanceled, "Wait not cancelled");
 		}
+		
+		[Test]
+		public async Task StackBlow()
+		{	//****************************************
+			var MyLock = new AsyncCounter();
+			int Depth = 0;
+			Task ResultTask;
+			Task[] Results;
+			//****************************************
+
+			Results = Enumerable.Range(1, 40000).Select(
+				async count => 
+				{
+					await MyLock.Decrement();
+					
+					MyLock.Increment();
+				}).ToArray();
+			
+			ResultTask = Results[Results.Length -1].ContinueWith(task => System.Diagnostics.Debug.WriteLine("Done to " + new System.Diagnostics.StackTrace(false).FrameCount.ToString()), TaskContinuationOptions.ExecuteSynchronously);
+
+			MyLock.Increment();
+			
+			await ResultTask;
+		}
 	}
 }

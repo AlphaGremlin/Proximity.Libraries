@@ -277,5 +277,31 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
+		
+		[Test]
+		public async Task StackBlow()
+		{	//****************************************
+			var MyLock = new AsyncSemaphore();
+			int Depth = 0;
+			Task ResultTask;
+			Task[] Results;
+			//****************************************
+
+			using (await MyLock.Wait())
+			{
+				Results = Enumerable.Range(1, 40000).Select(
+					async count => 
+					{
+						using (await MyLock.Wait())
+						{
+							Depth++;
+						}
+					}).ToArray();
+				
+				ResultTask = Results[Results.Length -1].ContinueWith(task => System.Diagnostics.Debug.WriteLine("Done to " + new System.Diagnostics.StackTrace(false).FrameCount.ToString()), TaskContinuationOptions.ExecuteSynchronously);
+			}
+			
+			await ResultTask;
+		}
 	}
 }

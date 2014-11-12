@@ -455,5 +455,31 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
+		
+		[Test]
+		public async Task StackBlow()
+		{	//****************************************
+			var MyLock = new AsyncReadWriteLock();
+			int Depth = 0;
+			Task ResultTask;
+			Task[] Results;
+			//****************************************
+
+			using (await MyLock.LockRead())
+			{
+				Results = Enumerable.Range(1, 40000).Select(
+					async count => 
+					{
+						using (await MyLock.LockWrite())
+						{
+							Depth++;
+						}
+					}).ToArray();
+				
+				ResultTask = Results[Results.Length -1].ContinueWith(task => System.Diagnostics.Debug.WriteLine("Done to " + new System.Diagnostics.StackTrace(false).FrameCount.ToString()), TaskContinuationOptions.ExecuteSynchronously);
+			}
+			
+			await ResultTask;
+		}
 	}
 }

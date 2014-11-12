@@ -568,5 +568,31 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
+		
+		[Test]
+		public async Task StackBlow()
+		{	//****************************************
+			var MyLock = new AsyncSwitchLock();
+			int Depth = 0;
+			Task ResultTask;
+			Task[] Results;
+			//****************************************
+
+			using (await MyLock.LockLeft())
+			{
+				Results = Enumerable.Range(1, 40000).Select(
+					async count => 
+					{
+						using (await (count % 2 == 0 ? MyLock.LockLeft() : MyLock.LockRight()))
+						{
+							Depth++;
+						}
+					}).ToArray();
+				
+				ResultTask = Results[Results.Length -1].ContinueWith(task => System.Diagnostics.Debug.WriteLine("Done to " + new System.Diagnostics.StackTrace(false).FrameCount.ToString()), TaskContinuationOptions.ExecuteSynchronously);
+			}
+			
+			await ResultTask;
+		}
 	}
 }

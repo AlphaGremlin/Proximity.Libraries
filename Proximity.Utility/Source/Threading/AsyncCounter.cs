@@ -139,6 +139,13 @@ namespace Proximity.Utility.Threading
 		/// Increments the Counter
 		/// </summary>
 		public void Increment()
+		{
+			Increment(false);
+		}
+		
+		//****************************************
+		
+		private void Increment(bool onThreadPool)
 		{	//****************************************
 			TaskCompletionSource<VoidStruct> NextWaiter = null;
 			//****************************************
@@ -160,13 +167,27 @@ namespace Proximity.Utility.Threading
 					NextWaiter = _Waiters.Dequeue();
 				}
 				
+				if (!onThreadPool)
+				{
+					ThreadPool.UnsafeQueueUserWorkItem(TryIncrement, NextWaiter);
+					
+					return;
+				}
+				
 				// Try to hand the counter over to the next waiter
 				// It may cancel (or have already been cancelled), and if so we loop back and try again
 			} while (!NextWaiter.TrySetResult(VoidStruct.Empty));
 		}
 		
-		//****************************************
-		
+		private void TryIncrement(object state)
+		{	//****************************************
+			var MyWaiter = (TaskCompletionSource<VoidStruct>)state;
+			//****************************************
+			
+			if (!MyWaiter.TrySetResult(VoidStruct.Empty))
+				Increment(true);
+		}
+			
 		private void Cancel(object state)
 		{	//****************************************
 			var MyWaiter = (TaskCompletionSource<VoidStruct>)state;
