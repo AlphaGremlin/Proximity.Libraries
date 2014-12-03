@@ -66,7 +66,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyCounter.WaitingCount, "Tasks unexpectedly waiting");
 		}
 		
-		[Test]
+		[Test, Timeout(1000)]
 		public void DecrementIncrement()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -80,21 +80,22 @@ namespace Proximity.Utility.Tests
 			
 			//****************************************
 			
-			Assert.IsTrue(MyTask.IsCompleted, "Still waiting to decrement");
+			MyTask.Wait();
 			
 			Assert.AreEqual(0, MyCounter.CurrentCount, "Counter not decremented");
 			Assert.AreEqual(0, MyCounter.WaitingCount, "Tasks unexpectedly waiting");
 		}
 		
-		[Test]
+		[Test, Timeout(1000)]
 		public void DecrementCancel()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
+			Task MyTask;
 			//****************************************
 			
 			using (var MySource = new CancellationTokenSource())
 			{
-				var MyTask = MyCounter.Decrement(MySource.Token);
+				MyTask = MyCounter.Decrement(MySource.Token);
 			
 				Assert.IsFalse(MyTask.IsCompleted, "Decremented too early");
 				
@@ -105,13 +106,15 @@ namespace Proximity.Utility.Tests
 			
 			MyCounter.Increment();
 			
+			Thread.Sleep(100); // Increment happens on another thread and there's nothing to wait on
+			
 			//****************************************
 			
 			Assert.AreEqual(1, MyCounter.CurrentCount, "Counter still decremented");
 			Assert.AreEqual(0, MyCounter.WaitingCount, "Tasks unexpectedly waiting");
 		}
 		
-		[Test]
+		[Test, Timeout(1000)]
 		public void DecrementMultiCancel()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -131,6 +134,8 @@ namespace Proximity.Utility.Tests
 				Assert.IsFalse(MyTask2.IsCanceled, "Wait cancelled");
 				
 				MyCounter.Increment();
+				
+				MyTask2.Wait();
 				
 				Assert.IsTrue(MyTask2.IsCompleted, "Still waiting to decrement");
 			}
@@ -183,7 +188,7 @@ namespace Proximity.Utility.Tests
 			
 			//****************************************
 			
-			Assert.IsTrue(MyTask.IsCompleted, "Still waiting to decrement");
+			MyTask.Wait();
 		}
 		
 		[Test]

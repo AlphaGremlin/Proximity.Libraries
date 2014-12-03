@@ -138,6 +138,7 @@ namespace Proximity.Utility.Threading
 		/// <summary>
 		/// Increments the Counter
 		/// </summary>
+		/// <remarks>The counter is not guaranteed to be incremented when this method returns, as waiters are evaluated on the ThreadPool. It will be incremented 'soon'.</remarks>
 		public void Increment()
 		{
 			Increment(false);
