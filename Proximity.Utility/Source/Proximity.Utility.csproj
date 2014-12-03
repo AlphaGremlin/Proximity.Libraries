@@ -156,6 +156,7 @@
     <Compile Include="Collections\ImmutableCountedStack.cs" />
     <Compile Include="Collections\ImmutableInterlockedEx.cs" />
     <None Include="Collections\AsyncInterleave.cs" />
+    <Compile Include="Collections\LinqExtensions.cs" />
     <Compile Include="Collections\ListExtensions.cs" />
     <Compile Include="Collections\ObservableDictionary.cs" />
     <Compile Include="Collections\ReadOnlyCollection.cs" />

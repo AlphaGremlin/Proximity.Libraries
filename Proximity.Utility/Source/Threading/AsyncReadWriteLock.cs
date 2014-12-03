@@ -22,7 +22,7 @@ namespace Proximity.Utility.Threading
 		
 		private int _ReadersWaiting = 0, _Counter = 0;
 		
-		private bool _IsUnfair = false;
+		private bool _IsUnfair = false, _IsDisposed;
 		//****************************************
 		
 		/// <summary>
@@ -50,6 +50,7 @@ namespace Proximity.Utility.Threading
 		{
 			lock (_Writers)
 			{
+				_IsDisposed = true;
 				_ReadersWaiting = 0;
 				_Counter = 0;
 				
@@ -105,6 +106,9 @@ namespace Proximity.Utility.Threading
 		{
 			lock (_Writers)
 			{
+				if (_IsDisposed)
+					throw new ObjectDisposedException("Lock has been disposed of");
+				
 				// If there are zero or more readers and no waiting writers (or we're in unfair mode)...
 				if (_Counter >=0 && (_IsUnfair || _Writers.Count == 0))
 				{
@@ -171,6 +175,9 @@ namespace Proximity.Utility.Threading
 		{
 			lock (_Writers)
 			{
+				if (_IsDisposed)
+					throw new ObjectDisposedException("Lock has been disposed of");
+				
 				// If there are no readers or writers...
 				if (_Counter == 0)
 				{
@@ -208,6 +215,9 @@ namespace Proximity.Utility.Threading
 			
 			lock (_Writers)
 			{
+				if (_IsDisposed)
+					return;
+				
 				if (_Counter <= 0)
 					throw new InvalidOperationException("No reader lock is currently held");
 				
@@ -241,6 +251,9 @@ namespace Proximity.Utility.Threading
 			{
 				lock (_Writers)
 				{
+					if (_IsDisposed)
+						return;
+					
 					// If there are no more writers, we can abort
 					if (_Writers.Count == 0)
 					{
@@ -264,6 +277,9 @@ namespace Proximity.Utility.Threading
 			{
 				lock (_Writers)
 				{
+					if (_IsDisposed)
+						return;
+				
 					if (_Counter != -1)
 						throw new InvalidOperationException("No writer lock is currently held");
 					
@@ -333,6 +349,9 @@ namespace Proximity.Utility.Threading
 		{
 			lock (_Writers)
 			{
+				if (_IsDisposed)
+					return;
+				
 				// A waiting Reader was cancelled. Is it still waiting?
 				if (_Counter < 0)
 				{

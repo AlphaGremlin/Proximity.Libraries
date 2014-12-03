@@ -102,10 +102,20 @@ namespace Proximity.Utility.Threading
 					
 					if (innerTask.IsFaulted)
 						MySource.SetException(innerTask.Exception.InnerException);
+					else if (innerTask.IsCanceled)
+						MySource.SetCanceled();
 					else
 						MySource.SetResult(VoidStruct.Empty);
 				},
 				MyCompletionSource, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current
+			).ContinueWith(
+				(innerTask, state) =>
+				{
+					var MySource = (TaskCompletionSource<VoidStruct>)state;
+					
+					MySource.SetCanceled();
+				},
+				MyCompletionSource, TaskContinuationOptions.OnlyOnCanceled | TaskContinuationOptions.ExecuteSynchronously
 			);
 			
 			return MyCompletionSource.Task;
@@ -138,6 +148,14 @@ namespace Proximity.Utility.Threading
 						MySource.SetResult(innerTask.Result);
 				},
 				MyCompletionSource, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current
+			).ContinueWith(
+				(innerTask, state) =>
+				{
+					var MySource = (TaskCompletionSource<TResult>)state;
+					
+					MySource.SetCanceled();
+				},
+				MyCompletionSource, TaskContinuationOptions.OnlyOnCanceled | TaskContinuationOptions.ExecuteSynchronously
 			);
 			
 			return MyCompletionSource.Task;

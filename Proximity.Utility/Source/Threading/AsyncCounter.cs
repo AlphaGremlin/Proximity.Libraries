@@ -154,6 +154,9 @@ namespace Proximity.Utility.Threading
 			{
 				lock (_Waiters)
 				{
+					if (_IsDisposed)
+						return;
+					
 					// Is there anybody waiting, or has MaxCount been dropped below the currently held number?
 					if (_Waiters.Count == 0 || _CurrentCount < 0)
 					{

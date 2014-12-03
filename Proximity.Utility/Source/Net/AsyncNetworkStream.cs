@@ -20,10 +20,14 @@ namespace Proximity.Utility.Net
 	{	//****************************************
 		private readonly Socket _Socket;
 		
-		public readonly SocketAsyncEventArgs _WriteEventArgs = new SocketAsyncEventArgs(), _ReadEventArgs = new SocketAsyncEventArgs();
-		public readonly SocketAwaitable _WriteAwaitable, _ReadAwaitable;
+		private readonly SocketAsyncEventArgs _WriteEventArgs = new SocketAsyncEventArgs(), _ReadEventArgs = new SocketAsyncEventArgs();
+		private readonly SocketAwaitable _WriteAwaitable, _ReadAwaitable;
 		//****************************************
 
+		/// <summary>
+		/// Creates a new Async Network Stream
+		/// </summary>
+		/// <param name="socket">The socket to wrap</param>
 		public AsyncNetworkStream(Socket socket)
 		{
 			_Socket = socket;
@@ -58,7 +62,7 @@ namespace Proximity.Utility.Net
 			}
 		}
 		
-		public Task<int> ReadData(byte[] buffer, int index, int count, AsyncCallback callback = null, object state = null)
+		private Task<int> ReadData(byte[] buffer, int index, int count, AsyncCallback callback = null, object state = null)
 		{
 			// Prepare a receive buffer
 			_ReadEventArgs.SetBuffer(buffer, index, count);
@@ -316,7 +320,7 @@ namespace Proximity.Utility.Net
 		/// <summary>
 		/// Gets the socket this AsyncNetworkStream is wrapping
 		/// </summary>
-		protected Socket Socket
+		public Socket Socket
 		{
 			get { return _Socket; }
 		}

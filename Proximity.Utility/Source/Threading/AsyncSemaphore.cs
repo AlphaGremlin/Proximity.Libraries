@@ -19,6 +19,7 @@ namespace Proximity.Utility.Threading
 		private readonly Task<IDisposable> _CompleteTask;
 		private readonly Queue<TaskCompletionSource<IDisposable>> _Waiters = new Queue<TaskCompletionSource<IDisposable>>();
 		private int _MaxCount, _CurrentCount;
+		private bool _IsDisposed;
 		//****************************************
 		
 		/// <summary>
@@ -51,6 +52,8 @@ namespace Proximity.Utility.Threading
 		{
 			lock (_Waiters)
 			{
+				_IsDisposed = true;
+				
 				while (_Waiters.Count > 0)
 				{
 					_Waiters.Dequeue().TrySetCanceled();
@@ -101,6 +104,9 @@ namespace Proximity.Utility.Threading
 		{
 			lock (_Waiters)
 			{
+				if (_IsDisposed)
+					throw new ObjectDisposedException("Semaphore has been disposed of");
+				
 				// Is there a free counter?
 				if (_CurrentCount > 0)
 				{
@@ -140,6 +146,9 @@ namespace Proximity.Utility.Threading
 			{
 				lock (_Waiters)
 				{
+					if (_IsDisposed)
+						return;
+					
 					// Is there anybody waiting, or has MaxCount been dropped below the currently held number?
 					if (_Waiters.Count == 0 || _CurrentCount < 0)
 					{
@@ -194,6 +203,9 @@ namespace Proximity.Utility.Threading
 			{
 				lock (_Waiters)
 				{
+					if (_IsDisposed)
+						return;
+					
 					// Is there anybody waiting?
 					if (_Waiters.Count == 0)
 						break;

@@ -15,7 +15,7 @@ namespace Proximity.Utility.Threading
 	/// <summary>
 	/// Provides a lock that switches between concurrent left and right for async/await, and a disposable model for releasing
 	/// </summary>
-	public sealed class AsyncSwitchLock
+	public sealed class AsyncSwitchLock : IDisposable
 	{	//****************************************
 		private object _LockObject = new object();
 		private TaskCompletionSource<VoidStruct> _Left= new TaskCompletionSource<VoidStruct>();
@@ -23,7 +23,7 @@ namespace Proximity.Utility.Threading
 		
 		private int _Counter = 0;
 		private int _LeftWaiting = 0, _RightWaiting = 0;
-		private bool _IsUnfair = false;
+		private bool _IsUnfair = false, _IsDisposed;
 		//****************************************
 		
 		/// <summary>
@@ -43,6 +43,23 @@ namespace Proximity.Utility.Threading
 		}
 		
 		//****************************************
+		
+		/// <summary>
+		/// Disposes of the switch lock, cancelling any waiters
+		/// </summary>
+		public void Dispose()
+		{
+			lock (_LockObject)
+			{
+				_IsDisposed = true;
+				_Counter = 0;
+				_LeftWaiting = 0;
+				_RightWaiting = 0;
+				
+				_Left.SetCanceled();
+				_Right.SetCanceled();
+			}
+		}
 		
 		/// <summary>
 		/// Take a left lock, running concurrently with other left locks
@@ -87,6 +104,9 @@ namespace Proximity.Utility.Threading
 		{
 			lock (_LockObject)
 			{
+				if (_IsDisposed)
+					throw new ObjectDisposedException("Lock has been disposed of");
+				
 				// If there are zero or more lefts and no waiting rights (or we're in unfair mode)...
 				if (_Counter >= 0 && (_IsUnfair || _RightWaiting == 0))
 				{
@@ -152,6 +172,9 @@ namespace Proximity.Utility.Threading
 		{
 			lock (_LockObject)
 			{
+				if (_IsDisposed)
+					throw new ObjectDisposedException("Lock has been disposed of");
+				
 				// If there are zero or more rights and no waiting lefts (or we're in unfair mode)...
 				if (_Counter <= 0 && (_IsUnfair || _LeftWaiting == 0))
 				{
@@ -183,6 +206,9 @@ namespace Proximity.Utility.Threading
 			
 			lock (_LockObject)
 			{
+				if (_IsDisposed)
+					return;
+				
 				if (_Counter <= 0)
 					throw new InvalidOperationException("No left lock is currently held");
 				
@@ -223,6 +249,9 @@ namespace Proximity.Utility.Threading
 			
 			lock (_LockObject)
 			{
+				if (_IsDisposed)
+					return;
+				
 				if (_Counter >= 0)
 					throw new InvalidOperationException("No right lock is currently held");
 				
@@ -255,6 +284,9 @@ namespace Proximity.Utility.Threading
 			
 			lock (_LockObject)
 			{
+				if (_IsDisposed)
+					return;
+				
 				// A waiting Left was cancelled. Is it still waiting?
 				if (_Counter < 0)
 				{
@@ -288,6 +320,9 @@ namespace Proximity.Utility.Threading
 			
 			lock (_LockObject)
 			{
+				if (_IsDisposed)
+					return;
+				
 				// A waiting Right was cancelled. Is it still waiting?
 				if (_Counter > 0)
 				{

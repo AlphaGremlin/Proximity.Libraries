@@ -92,7 +92,7 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 		
-		private async void ProcessTaskFlag(object state)
+		private void ProcessTaskFlag(object state)
 		{
 			if (_Delay != TimeSpan.Zero)
 				// Wait a bit before acknowledging the flag
@@ -104,7 +104,13 @@ namespace Proximity.Utility.Threading
 			// Capture any requests to wait for this callback
 			var MyWaitTask = Interlocked.Exchange(ref _WaitTask, null);
 			
-			await _Callback();
+			// Raise the callback and queue the task continuation 
+			_Callback().ContinueWith(CompleteProcessTask, (object)MyWaitTask);
+		}
+		
+		private void CompleteProcessTask(Task ancestor, object state)
+		{
+			var MyWaitTask = (TaskCompletionSource<bool>)state;
 			
 			// If we captured a wait task, set it
 			if (MyWaitTask != null)
