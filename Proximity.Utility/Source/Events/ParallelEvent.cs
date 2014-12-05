@@ -43,7 +43,7 @@ namespace Proximity.Utility.Events
 			
 			//****************************************
 			
-			Parallel.ForEach(MyReceivers, handler => ((EventHandler<TEventArgs>)handler)(sender, e));
+			Parallel.ForEach(MyReceivers, new RaiseInstance<TEventArgs>(sender, e).Raise);
 		}
 		
 		/// <summary>
@@ -57,7 +57,7 @@ namespace Proximity.Utility.Events
 		/// </remarks>
 		public static void RaiseAll<TEventArgs>(object sender, TEventArgs e, params EventHandler<TEventArgs>[] eventHandlers) where TEventArgs : EventArgs
 		{
-			Parallel.ForEach(eventHandlers, handlerSet => Raise(handlerSet, sender, e));
+			Parallel.ForEach(eventHandlers, new RaiseInstance<TEventArgs>(sender, e).RaiseAll);
 		}
 		
 		/// <summary>
@@ -70,6 +70,33 @@ namespace Proximity.Utility.Events
 		public static void RaiseAll<TEventArgs>(this EventHandler<TEventArgs> eventHandler, object sender, TEventArgs e) where TEventArgs : EventArgs
 		{
 			Raise(eventHandler, sender, e);
+		}
+		
+		//****************************************
+		
+		private class RaiseInstance<TEventArgs> where TEventArgs : EventArgs
+		{	//****************************************
+			private readonly object _Sender;
+			private readonly TEventArgs _Args;
+			//****************************************
+			
+			public RaiseInstance(object sender, TEventArgs args)
+			{
+				_Sender = sender;
+				_Args = args;
+			}
+			
+			//****************************************
+			
+			public void Raise(Delegate handler)
+			{
+				((EventHandler<TEventArgs>)handler)(_Sender, _Args);
+			}
+			
+			public void RaiseAll(EventHandler<TEventArgs> handler)
+			{
+				handler(_Sender, _Args);
+			}
 		}
 	}
 }

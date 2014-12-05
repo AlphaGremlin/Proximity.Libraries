@@ -39,6 +39,10 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 		
+		/// <summary>
+		/// Gets an enumerator providing interleaved tasks
+		/// </summary>
+		/// <returns>The current list of tasks</returns>
 		public IEnumerator<Task<TResult>> GetEnumerator()
 		{
 			if (Environment.CurrentManagedThreadId == _StartingThreadID)
@@ -61,6 +65,10 @@ namespace Proximity.Utility.Threading
 		{
 		}
 		
+		/// <summary>
+		/// Tries to move to the next waiting task
+		/// </summary>
+		/// <returns>True if there's another task to wait on, otherwise False</returns>
 		public bool MoveNext()
 		{
 			lock (this)
@@ -150,6 +158,9 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 		
+		/// <summary>
+		/// Gets the currently waiting task
+		/// </summary>
 		public Task<TResult> Current
 		{
 			get { return _Current; }

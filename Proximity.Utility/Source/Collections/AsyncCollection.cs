@@ -109,7 +109,7 @@ namespace Proximity.Utility.Collections
 			}
 			
 			// Ensure we cleanup the cancellation source once we're done
-			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), MySource);
+			MyTask.ContinueWith(CleanupCancelSource, MySource);
 			
 			return MyTask;
 		}
@@ -217,7 +217,7 @@ namespace Proximity.Utility.Collections
 			}
 			
 			// Ensure we cleanup the cancellation source once we're done
-			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), MySource);
+			MyTask.ContinueWith(CleanupCancelSource, MySource);
 			
 			return MyTask;
 		}
@@ -416,6 +416,11 @@ namespace Proximity.Utility.Collections
 				_UsedSlots.Dispose();
 			
 			return MyItem;
+		}
+		
+		private static void CleanupCancelSource(Task task, object state)
+		{
+			((CancellationTokenSource)state).Dispose();
 		}
 		
 		//****************************************

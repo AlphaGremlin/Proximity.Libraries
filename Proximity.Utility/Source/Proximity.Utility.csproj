@@ -159,6 +159,10 @@
     <Compile Include="Collections\LinqExtensions.cs" />
     <Compile Include="Collections\ListExtensions.cs" />
     <Compile Include="Collections\ObservableDictionary.cs" />
+    <Compile Include="Collections\PagedSet.cs" />
+    <Compile Include="Collections\PagedSetBase.cs" />
+    <Compile Include="Collections\PagedSetItem.cs" />
+    <Compile Include="Collections\PagedSetPage.cs" />
     <Compile Include="Collections\ReadOnlyCollection.cs" />
     <Compile Include="Collections\ReadOnlyCollectionTyped.cs" />
     <Compile Include="Collections\ReadOnlyDictionary.cs" />
@@ -246,9 +250,11 @@
     <Compile Include="Threading\AsyncReadWriteLock.cs" />
     <Compile Include="Threading\AsyncTaskFlag.cs" />
     <Compile Include="Threading\DedicatedThreadScheduler.cs" />
-    <Compile Include="Threading\Extensions.cs" />
+    <Compile Include="Threading\LinkedCancellationToken.cs" />
+    <Compile Include="Threading\TaskExtensions.cs" />
     <Compile Include="Threading\Interleave.cs" />
     <Compile Include="Threading\OperationCollection.cs" />
+    <Compile Include="Threading\ReaderWriterLockSlimExtensions.cs" />
     <Compile Include="Threading\ReadLock.cs" />
     <Compile Include="Threading\RemoteCancellationToken.cs" />
     <Compile Include="Threading\RemoteCancellationTokenSource.cs" />
@@ -262,6 +268,7 @@
     <Compile Include="Threading\TaskStream.cs" />
     <Compile Include="Threading\UnsafeTask.cs" />
     <Compile Include="Threading\VoidStruct.cs" />
+    <Compile Include="Threading\WaitHandleExtensions.cs" />
     <Compile Include="Threading\WorkingEnumerator.cs" />
     <Compile Include="Threading\WorkingList.cs" />
     <Compile Include="Threading\WriteLock.cs" />

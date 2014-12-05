@@ -27,7 +27,7 @@ namespace Proximity.Utility.Threading
 		/// </remarks>
 		public static void Invoke(IEnumerable<Action> actions)
 		{
-			ForEach(actions, delegate(Action action) { action(); }, 0);
+			ForEach(actions, RaiseAction, 0);
 		}
 		
 		/// <summary>
@@ -41,7 +41,7 @@ namespace Proximity.Utility.Threading
 		/// </remarks>
 		public static void Invoke(IEnumerable<Action> actions, int maxParallelism)
 		{
-			ForEach(actions, delegate(Action action) { action(); }, maxParallelism);
+			ForEach(actions, RaiseAction, maxParallelism);
 		}
 		
 		/// <summary>
@@ -143,6 +143,13 @@ namespace Proximity.Utility.Threading
 			// If we had any exceptions, throw them all at once
 			if (MyExceptions.Count > 0)
 				throw new AggregateException(MyExceptions);
+		}
+		
+		//****************************************
+		
+		private static void RaiseAction(Action action)
+		{
+			action();
 		}
 	}
 }

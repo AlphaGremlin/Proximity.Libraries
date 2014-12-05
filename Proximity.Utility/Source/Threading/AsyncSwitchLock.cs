@@ -90,7 +90,7 @@ namespace Proximity.Utility.Threading
 			}
 			
 			// Ensure we cleanup the cancellation source once we're done
-			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), MySource);
+			MyTask.ContinueWith(CleanupCancelSource, MySource);
 			
 			return MyTask;
 		}
@@ -158,7 +158,7 @@ namespace Proximity.Utility.Threading
 			}
 			
 			// Ensure we cleanup the cancellation source once we're done
-			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), MySource);
+			MyTask.ContinueWith(CleanupCancelSource, MySource);
 			
 			return MyTask;
 		}
@@ -234,7 +234,7 @@ namespace Proximity.Utility.Threading
 			ThreadPool.UnsafeQueueUserWorkItem(TryRelease, NextRight);
 		}
 		
-		private void TryRelease(object state)
+		private static void TryRelease(object state)
 		{	//****************************************
 			var MyWaiter = (TaskCompletionSource<VoidStruct>)state;
 			//****************************************
@@ -347,6 +347,11 @@ namespace Proximity.Utility.Threading
 			// Left finished between the task cancelling and this continuation running
 			// Need to release the Right
 			ReleaseRight();
+		}
+		
+		private static void CleanupCancelSource(Task task, object state)
+		{
+			((CancellationTokenSource)state).Dispose();
 		}
 		
 		//****************************************

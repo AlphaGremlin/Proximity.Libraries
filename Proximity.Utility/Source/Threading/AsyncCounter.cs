@@ -192,7 +192,7 @@ namespace Proximity.Utility.Threading
 				Increment(true);
 		}
 			
-		private void Cancel(object state)
+		private static void Cancel(object state)
 		{	//****************************************
 			var MyWaiter = (TaskCompletionSource<VoidStruct>)state;
 			//****************************************

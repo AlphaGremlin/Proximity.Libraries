@@ -46,7 +46,7 @@ namespace Proximity.Utility.Threading
 		/// <param name="dueTime">The number of milliseconds before the methods will begin executing</param>
 		public static void DelayedInvoke(IEnumerable<Action> actions, int dueTime)
 		{
-			new SafeTimerMulti<Action>(actions, delegate(Action action) { action(); }, dueTime, 0);
+			new SafeTimerMulti<Action>(actions, RaiseAction, dueTime, 0);
 		}
 		
 		/// <summary>
@@ -57,7 +57,7 @@ namespace Proximity.Utility.Threading
 		/// <param name="maxParallelism">The maximum number of ThreadPool threads to execute at any one time</param>
 		public static void DelayedInvoke(IEnumerable<Action> actions, int dueTime, int maxParallelism)
 		{
-			new SafeTimerMulti<Action>(actions, delegate(Action action) { action(); }, dueTime, maxParallelism);
+			new SafeTimerMulti<Action>(actions, RaiseAction, dueTime, maxParallelism);
 		}
 		
 		/// <summary>
@@ -81,6 +81,13 @@ namespace Proximity.Utility.Threading
 		public static void DelayedForEach<TSource>(IEnumerable<TSource> source, Action<TSource> action, int dueTime, int maxParallelism)
 		{
 			new SafeTimerMulti<TSource>(source, action, dueTime, maxParallelism);
+		}
+		
+		//****************************************
+		
+		private static void RaiseAction(Action action)
+		{
+			action();
 		}
 		
 		//****************************************

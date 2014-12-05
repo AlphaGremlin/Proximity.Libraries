@@ -92,7 +92,7 @@ namespace Proximity.Utility.Threading
 			}
 			
 			// Ensure we cleanup the cancellation source once we're done
-			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), MySource);
+			MyTask.ContinueWith(CleanupCancelSource, MySource);
 			
 			return MyTask;
 		}
@@ -161,7 +161,7 @@ namespace Proximity.Utility.Threading
 			}
 			
 			// Ensure we cleanup the cancellation source once we're done
-			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), MySource);
+			MyTask.ContinueWith(CleanupCancelSource, MySource);
 			
 			return MyTask;
 		}
@@ -336,15 +336,6 @@ namespace Proximity.Utility.Threading
 				ReleaseWrite(true);
 		}
 		
-		private void CancelWrite(object state)
-		{	//****************************************
-			var MyWaiter = (TaskCompletionSource<IDisposable>)state;
-			//****************************************
-			
-			// Try and cancel our task. If it fails, we've already activate and been removed from the Writers list
-			MyWaiter.TrySetCanceled();
-		}
-		
 		private void CancelRead(Task<IDisposable> task)
 		{
 			lock (_Writers)
@@ -365,6 +356,20 @@ namespace Proximity.Utility.Threading
 			// Writer finished between the task cancelling and this continuation running
 			// Need to release the reader
 			ReleaseRead();
+		}
+		
+		private static void CancelWrite(object state)
+		{	//****************************************
+			var MyWaiter = (TaskCompletionSource<IDisposable>)state;
+			//****************************************
+			
+			// Try and cancel our task. If it fails, we've already activate and been removed from the Writers list
+			MyWaiter.TrySetCanceled();
+		}
+		
+		private static void CleanupCancelSource(Task task, object state)
+		{
+			((CancellationTokenSource)state).Dispose();
 		}
 		
 		//****************************************

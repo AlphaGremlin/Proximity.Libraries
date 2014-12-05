@@ -22,6 +22,8 @@ namespace Proximity.Utility.Net
 		
 		private readonly SocketAsyncEventArgs _WriteEventArgs = new SocketAsyncEventArgs(), _ReadEventArgs = new SocketAsyncEventArgs();
 		private readonly SocketAwaitable _WriteAwaitable, _ReadAwaitable;
+		
+		private Task _LastWrite;
 		//****************************************
 
 		/// <summary>
@@ -38,58 +40,6 @@ namespace Proximity.Utility.Net
 
 		//****************************************
 		
-		private Task SendData(byte[] array, int offset, int count, AsyncCallback callback = null, object state = null)
-		{
-			_WriteEventArgs.BufferList = null;
-			_WriteEventArgs.SetBuffer(array, offset, count);
-
-			try
-			{
-				var Awaiter = _Socket.SendAsync(_WriteAwaitable);
-
-				return WaitForSend(callback, state);
-			}
-			catch (Exception e)
-			{
-				var MyTaskSource = new TaskCompletionSource<VoidStruct>(state);
-	
-				MyTaskSource.SetException(e);
-	
-				if (callback != null)
-					callback(MyTaskSource.Task);
-	
-				return MyTaskSource.Task;
-			}
-		}
-		
-		private Task<int> ReadData(byte[] buffer, int index, int count, AsyncCallback callback = null, object state = null)
-		{
-			// Prepare a receive buffer
-			_ReadEventArgs.SetBuffer(buffer, index, count);
-
-			try
-			{
-				// Start waiting for some data
-				var Awaiter = _Socket.ReceiveAsync(_ReadAwaitable);
-
-				return WaitForReceive(callback, state);
-			}
-			catch (Exception e)
-			{
-				// Ensure the completed task we return has the appropriate state
-				var MyTaskSource = new TaskCompletionSource<int>(state);
-	
-				MyTaskSource.SetException(e);
-	
-				if (callback != null)
-					callback(MyTaskSource.Task);
-	
-				return MyTaskSource.Task;
-			}
-		}
-		
-		//****************************************
-
 		/// <inheritdoc />
 		protected override void Dispose(bool disposing)
 		{
@@ -192,7 +142,7 @@ namespace Proximity.Utility.Net
 			if (count == 0)
 				return;
 
-			SendData(buffer, offset, count).Wait();
+			SendData(buffer, offset, count); // No need to wait on the task, as we queue the write until later
 		}
 
 		/// <inheritdoc />
@@ -209,27 +159,47 @@ namespace Proximity.Utility.Net
 		/// <inheritdoc />
 		public override void WriteByte(byte value)
 		{
-			SendData(new byte[] { value }, 0, 1).Wait();
+			SendData(new byte[] { value }, 0, 1);
 		}
 
 		//****************************************
 		
-		private Task<int> WaitForReceive(AsyncCallback callback, object state)
-		{
+		private Task<int> ReadData(byte[] buffer, int index, int count, AsyncCallback callback = null, object state = null)
+		{	//****************************************
 			var MyTaskSource = new TaskCompletionSource<int>(state);
+			//****************************************
+			
+			// Prepare a receive buffer
+			_ReadEventArgs.SetBuffer(buffer, index, count);
 
-			if (_ReadAwaitable.IsCompleted)
+			try
 			{
-				ProcessCompletedReceive(MyTaskSource, callback);
+				// Start waiting for some data
+				var Awaiter = _Socket.ReceiveAsync(_ReadAwaitable);
+	
+				if (_ReadAwaitable.IsCompleted)
+				{
+					ProcessCompletedReceive(MyTaskSource, callback);
+				}
+				else
+				{
+					((INotifyCompletion)_ReadAwaitable).OnCompleted(() => ProcessCompletedReceive(MyTaskSource, callback));
+				}
+	
+				return MyTaskSource.Task;
 			}
-			else
+			catch (Exception e)
 			{
-				((INotifyCompletion)_ReadAwaitable).OnCompleted(() => ProcessCompletedReceive(MyTaskSource, callback));
+				// Ensure the completed task we return has the appropriate state
+				MyTaskSource.SetException(e);
+	
+				if (callback != null)
+					callback(MyTaskSource.Task);
+	
+				return MyTaskSource.Task;
 			}
-
-			return MyTaskSource.Task;
 		}
-
+		
 		private void ProcessCompletedReceive(TaskCompletionSource<int> source, AsyncCallback callback)
 		{
 			try
@@ -250,22 +220,56 @@ namespace Proximity.Utility.Net
 				callback(source.Task);
 		}
 
-		private Task WaitForSend(AsyncCallback callback, object state)
-		{
-			var MyTaskSource = new TaskCompletionSource<VoidStruct>(state);
-
-			if (_WriteAwaitable.IsCompleted)
+		private Task SendData(byte[] buffer, int offset, int count, AsyncCallback callback = null, object state = null)
+		{	//****************************************
+			var MyCompletionSource = new TaskCompletionSource<VoidStruct>(state);
+			//****************************************
+			
+			// Swap out the previous write task with ours
+			var OldTask = Interlocked.Exchange(ref _LastWrite, MyCompletionSource.Task);
+			
+			// Has that write completed?
+			if (OldTask == null || OldTask.IsCompleted)
 			{
-				ProcessCompletedSend(MyTaskSource, callback);
+				// Yes, directly queue it
+				QueueSendData(buffer, offset, count, callback, MyCompletionSource);
 			}
 			else
 			{
-				((INotifyCompletion)_WriteAwaitable).OnCompleted(() => ProcessCompletedSend(MyTaskSource, callback));
+				// No, wait until it finishes to queue our write
+				OldTask.ContinueWith((innerTask) => QueueSendData(buffer, offset, count, callback, MyCompletionSource));
 			}
 
-			return MyTaskSource.Task;
+			return MyCompletionSource.Task;
 		}
 
+		private void QueueSendData(byte[] array, int offset, int count, AsyncCallback callback, TaskCompletionSource<VoidStruct> completionSource)
+		{
+			_WriteEventArgs.BufferList = null;
+			_WriteEventArgs.SetBuffer(array, offset, count);
+
+			try
+			{
+				var Awaiter = _Socket.SendAsync(_WriteAwaitable);
+
+				if (_WriteAwaitable.IsCompleted)
+				{
+					ProcessCompletedSend(completionSource, callback);
+				}
+				else
+				{
+					((INotifyCompletion)_WriteAwaitable).OnCompleted(() => ProcessCompletedSend(completionSource, callback));
+				}
+			}
+			catch (Exception e)
+			{
+				completionSource.SetException(e);
+	
+				if (callback != null)
+					callback(completionSource.Task);
+			}
+		}
+		
 		private void ProcessCompletedSend(TaskCompletionSource<VoidStruct> source, AsyncCallback callback)
 		{
 			try
