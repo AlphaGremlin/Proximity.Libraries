@@ -18,60 +18,48 @@ namespace Proximity.Utility.Tests
 	[TestFixture]
 	public sealed class AsyncSemaphoreTests
 	{
-		[Test, Timeout(1000), Repeat(10)]
-		public async Task SingleLock()
+		[Test, Timeout(1000)]
+		public void Lock()
 		{	//****************************************
 			var MyLock = new AsyncSemaphore();
-			bool Resource = false;
 			//****************************************
 			
-			using (await MyLock.Wait())
-			{
-				Resource = true;
-			}
+			var MyWait = MyLock.Wait();
+			
+			MyWait.Result.Dispose();
 			
 			//****************************************
-			
-			Assert.IsTrue(Resource, "Block not entered");
 			
 			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
-		public async Task LockContend()
+		[Test, Timeout(1000)]
+		public void LockLock()
 		{	//****************************************
 			var MyLock = new AsyncSemaphore();
-			bool Resource = false;
-			Task<IDisposable> MyWaiter;
 			//****************************************
 			
-			using (await MyLock.Wait())
-			{
-				MyWaiter = MyLock.Wait();
-				
-				Assert.IsFalse(MyWaiter.IsCompleted, "Nested lock taken");
-				
-				Resource = true;
-			}
+			var MyWait1 = MyLock.Wait();
 			
+			var MyWait2 = MyLock.Wait();
+			
+			Assert.IsFalse(MyWait2.IsCompleted, "Nested lock taken");
+
 			//****************************************
 			
-			await MyWaiter;
+			MyWait1.Result.Dispose();
 			
-			Assert.IsTrue(Resource, "Block not entered");
-			
-			MyWaiter.Result.Dispose();
+			MyWait2.Result.Dispose();
 			
 			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
-		public async Task MultiContend()
+		[Test, Timeout(1000)]
+		public async Task LockLockLock()
 		{	//****************************************
 			var MyLock = new AsyncSemaphore(2);
-			bool Resource = false;
 			Task<IDisposable> MyWaiter1, MyWaiter2;
 			//****************************************
 			
@@ -84,15 +72,11 @@ namespace Proximity.Utility.Tests
 				Assert.IsTrue(MyWaiter1.IsCompleted, "Nested lock not taken");
 				
 				Assert.IsFalse(MyWaiter2.IsCompleted, "Nested lock taken");
-				
-				Resource = true;
 			}
 			
 			//****************************************
 			
 			await MyWaiter2;
-			
-			Assert.IsTrue(Resource, "Block not entered");
 			
 			MyWaiter1.Result.Dispose();
 			MyWaiter2.Result.Dispose();
@@ -102,7 +86,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000), Repeat(10)]
-		public async Task MultiContendCancel()
+		public async Task LockCancelLockLock()
 		{	//****************************************
 			var MyLock = new AsyncSemaphore();
 			bool Resource = false;
@@ -140,7 +124,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000)]
-		public async Task LockContendTimeout()
+		public async Task LockTimeoutLock()
 		{	//****************************************
 			var MyLock = new AsyncSemaphore();
 			Task<IDisposable> MyWait;
@@ -164,7 +148,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000)]
-		public void NoTimeout()
+		public void NoTimeoutLock()
 		{	//****************************************
 			var MyLock = new AsyncSemaphore();
 			Task<IDisposable> MyWait;
@@ -302,6 +286,75 @@ namespace Proximity.Utility.Tests
 			}
 			
 			await ResultTask;
+		}
+		
+		[Test, Timeout(1000)]
+		public void LockDispose()
+		{	//****************************************
+			var MyLock = new AsyncSemaphore();
+			//****************************************
+			
+			var MyWait = MyLock.Wait().Result;
+			
+			MyLock.Dispose();
+			
+			MyWait.Dispose();
+			
+			//****************************************
+			
+			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
+			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
+		}
+		
+		[Test, Timeout(1000)]
+		public void LockLockDispose()
+		{	//****************************************
+			var MyLock = new AsyncSemaphore();
+			//****************************************
+			
+			var MyWait1 = MyLock.Wait();
+			
+			var MyWait2 = MyLock.Wait();
+			
+			MyLock.Dispose();
+			
+			try
+			{
+				MyWait2.Result.Dispose();
+			}
+			catch (AggregateException e)
+			{
+				Assert.IsInstanceOf(typeof(ObjectDisposedException), e.InnerException, "Inner exception not as expected");
+			}
+			
+			MyWait1.Result.Dispose();
+			
+			//****************************************
+			
+			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
+			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
+		}
+		
+		[Test, Timeout(1000)]
+		public void DisposeLock()
+		{	//****************************************
+			var MyLock = new AsyncSemaphore();
+			//****************************************
+			
+			MyLock.Dispose();
+			
+			try
+			{
+				MyLock.Wait().Result.Dispose();
+			}
+			catch (ObjectDisposedException)
+			{
+			}
+			
+			//****************************************
+			
+			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
+			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 	}
 }

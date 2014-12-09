@@ -159,6 +159,11 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(MyTask.IsCanceled, "Wait not cancelled");
+			
+			MyCounter.Dispose();
+			
+			Assert.AreEqual(0, MyCounter.WaitingCount, "Waiter still registered");
+			Assert.AreEqual(0, MyCounter.CurrentCount, "Count not zero");
 		}
 		
 		[Test, Timeout(1000)]
@@ -174,6 +179,9 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.IsTrue(MyTask.IsCompleted, "Still waiting to decrement");
+			
+			Assert.AreEqual(0, MyCounter.WaitingCount, "Waiter still registered");
+			Assert.AreEqual(0, MyCounter.CurrentCount, "Count not zero");
 		}
 		
 		[Test, Timeout(1000)]
@@ -189,29 +197,108 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			MyTask.Wait();
+			
+			//****************************************
+			
+			Assert.AreEqual(0, MyCounter.WaitingCount, "Waiter still registered");
+			Assert.AreEqual(0, MyCounter.CurrentCount, "Count not zero");
 		}
 		
 		[Test]
-		public void Dispose()
+		public void DisposeDecrement()
 		{	//****************************************
-			Task MyTask;
+			var MyLock = new AsyncCounter();
 			//****************************************
 			
-			using (var MyCounter = new AsyncCounter())
+			MyLock.Dispose();
+			
+			try
 			{
-				MyTask = MyCounter.Decrement();
+				var MyTask = MyLock.Decrement();
+				
+				Assert.Fail("Should never reach this point");
+			}
+			catch (ObjectDisposedException)
+			{
 			}
 			
 			//****************************************
 			
-			Assert.IsTrue(MyTask.IsCanceled, "Wait not cancelled");
+			Assert.AreEqual(0, MyLock.WaitingCount, "Waiter still registered");
+			Assert.AreEqual(0, MyLock.CurrentCount, "Count not zero");
+		}
+		
+		[Test]
+		public void DisposeIncrement()
+		{	//****************************************
+			var MyLock = new AsyncCounter();
+			//****************************************
+			
+			MyLock.Dispose();
+			
+			try
+			{
+				MyLock.Increment();
+				
+				Assert.Fail("Should never reach this point");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
+			
+			//****************************************
+			
+			Assert.AreEqual(0, MyLock.WaitingCount, "Waiter still registered");
+			Assert.AreEqual(0, MyLock.CurrentCount, "Count not zero");
+		}
+		
+		[Test]
+		public void DecrementDispose()
+		{	//****************************************
+			var MyLock = new AsyncCounter();
+			//****************************************
+			
+			var MyTask = MyLock.Decrement();
+			
+			MyLock.Dispose();
+			
+			try
+			{
+				MyTask.Wait();
+				
+				Assert.Fail("Should never reach this point");
+			}
+			catch (AggregateException e)
+			{
+				Assert.IsInstanceOf(typeof(ObjectDisposedException), e.InnerException, "Inner exception not as expected");
+			}
+			
+			//****************************************
+			
+			Assert.AreEqual(0, MyLock.WaitingCount, "Waiter still registered");
+			Assert.AreEqual(0, MyLock.CurrentCount, "Count not zero");
+		}
+		
+		[Test]
+		public void IncrementDispose()
+		{	//****************************************
+			var MyLock = new AsyncCounter();
+			//****************************************
+			
+			MyLock.Increment();
+			
+			MyLock.Dispose();
+			
+			//****************************************
+			
+			Assert.AreEqual(0, MyLock.WaitingCount, "Waiter still registered");
+			Assert.AreEqual(0, MyLock.CurrentCount, "Count not zero");
 		}
 		
 		[Test]
 		public async Task StackBlow()
 		{	//****************************************
 			var MyLock = new AsyncCounter();
-			int Depth = 0;
 			Task ResultTask;
 			Task[] Results;
 			//****************************************

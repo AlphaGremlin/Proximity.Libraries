@@ -22,7 +22,8 @@ namespace Proximity.Utility.Threading
 		private TaskCompletionSource<VoidStruct> _Right= new TaskCompletionSource<VoidStruct>();
 		
 		private int _Counter = 0;
-		private int _LeftWaiting = 0, _RightWaiting = 0;
+		private readonly HashSet<AsyncSwitchLeftInstance> _LeftWaiting = new HashSet<AsyncSwitchLeftInstance>();
+		private readonly HashSet<AsyncSwitchRightInstance> _RightWaiting = new HashSet<AsyncSwitchRightInstance>();
 		private bool _IsUnfair = false, _IsDisposed;
 		//****************************************
 		
@@ -53,8 +54,8 @@ namespace Proximity.Utility.Threading
 			{
 				_IsDisposed = true;
 				_Counter = 0;
-				_LeftWaiting = 0;
-				_RightWaiting = 0;
+				_LeftWaiting.Clear();
+				_RightWaiting.Clear();
 				
 				_Left.SetCanceled();
 				_Right.SetCanceled();
@@ -108,7 +109,7 @@ namespace Proximity.Utility.Threading
 					throw new ObjectDisposedException("Lock has been disposed of");
 				
 				// If there are zero or more lefts and no waiting rights (or we're in unfair mode)...
-				if (_Counter >= 0 && (_IsUnfair || _RightWaiting == 0))
+				if (_Counter >= 0 && (_IsUnfair || _RightWaiting.Count == 0))
 				{
 					// Add another left and return a completed task the caller can use to release the lock
 					Interlocked.Increment(ref _Counter);
@@ -117,13 +118,15 @@ namespace Proximity.Utility.Threading
 				}
 				
 				// There's a right task running or waiting, add ourselves to the left queue
-				Interlocked.Increment(ref _LeftWaiting);
+				var MyInstance = new AsyncSwitchLeftInstance(this);
 				
-				var MyTask = _Left.Task.ContinueWith(t => (IDisposable)new AsyncSwitchLeftInstance(this), token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
+				_LeftWaiting.Add(MyInstance);
+				
+				var MyTask = _Left.Task.ContinueWith((Func<Task<VoidStruct>, IDisposable>)MyInstance.LockLeft, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
 				
 				// If we can be cancelled, queue a task that runs if we get cancelled to release the waiter
 				if (token.CanBeCanceled)
-					MyTask.ContinueWith(CancelLeft, TaskContinuationOptions.OnlyOnCanceled | TaskContinuationOptions.ExecuteSynchronously);
+					MyTask.ContinueWith(MyInstance.CancelLeft, TaskContinuationOptions.OnlyOnCanceled | TaskContinuationOptions.ExecuteSynchronously);
 				
 				return MyTask;
 			}
@@ -176,7 +179,7 @@ namespace Proximity.Utility.Threading
 					throw new ObjectDisposedException("Lock has been disposed of");
 				
 				// If there are zero or more rights and no waiting lefts (or we're in unfair mode)...
-				if (_Counter <= 0 && (_IsUnfair || _LeftWaiting == 0))
+				if (_Counter <= 0 && (_IsUnfair || _LeftWaiting.Count == 0))
 				{
 					// Add another right and return a completed task the caller can use to release the lock
 					Interlocked.Decrement(ref _Counter);
@@ -185,13 +188,15 @@ namespace Proximity.Utility.Threading
 				}
 				
 				// There's a left task running or waiting, add ourselves to the right queue
-				Interlocked.Increment(ref _RightWaiting);
+				var MyInstance = new AsyncSwitchRightInstance(this);
 				
-				var MyTask = _Right.Task.ContinueWith(t => (IDisposable)new AsyncSwitchRightInstance(this), token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
+				_RightWaiting.Add(MyInstance);
+				
+				var MyTask = _Right.Task.ContinueWith((Func<Task<VoidStruct>, IDisposable>)MyInstance.LockRight, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
 				
 				// If we can be cancelled, queue a task that runs if we get cancelled to release the waiter
 				if (token.CanBeCanceled)
-					MyTask.ContinueWith(CancelRight, TaskContinuationOptions.OnlyOnCanceled | TaskContinuationOptions.ExecuteSynchronously);
+					MyTask.ContinueWith(MyInstance.CancelRight, TaskContinuationOptions.OnlyOnCanceled | TaskContinuationOptions.ExecuteSynchronously);
 				
 				return MyTask;
 			}
@@ -215,13 +220,14 @@ namespace Proximity.Utility.Threading
 				Interlocked.Decrement(ref _Counter);
 				
 				// If there are no more lefts and one or more rights waiting...
-				if (_Counter == 0 && _RightWaiting > 0)
+				if (_Counter == 0 && _RightWaiting.Count > 0)
 				{
 					// Yes, let's take the existing Right tasks (so we can activate them)
 					NextRight = Interlocked.Exchange(ref _Right, new TaskCompletionSource<VoidStruct>());
 					
 					// Swap the waiting rights with zero and update the counter (Right is negative, so negate the result)
-					_Counter = -Interlocked.Exchange(ref _RightWaiting, 0);
+					_Counter = -_RightWaiting.Count;
+					_RightWaiting.Clear();
 				}
 				else
 				{
@@ -258,13 +264,14 @@ namespace Proximity.Utility.Threading
 				Interlocked.Increment(ref _Counter);
 				
 				// If there are no more rights and one or more left waiting...
-				if (_Counter == 0 && _LeftWaiting > 0)
+				if (_Counter == 0 && _LeftWaiting.Count > 0)
 				{
 					// Yes, let's take the existing Right tasks (so we can activate them)
 					NextLeft = Interlocked.Exchange(ref _Left, new TaskCompletionSource<VoidStruct>());
 					
 					// Swap the waiting lefts with zero and update the counter (Left is positive, so we don't negate the result)
-					_Counter = Interlocked.Exchange(ref _LeftWaiting, 0);
+					_Counter = _LeftWaiting.Count;
+					_LeftWaiting.Clear();
 				}
 				else
 				{
@@ -277,7 +284,7 @@ namespace Proximity.Utility.Threading
 			ThreadPool.UnsafeQueueUserWorkItem(TryRelease, NextLeft);
 		}
 		
-		private void CancelLeft(Task<IDisposable> task)
+		private void CancelLeft(AsyncSwitchLeftInstance instance)
 		{	//****************************************
 			TaskCompletionSource<VoidStruct> NextRight= null;
 			//****************************************
@@ -287,17 +294,18 @@ namespace Proximity.Utility.Threading
 				if (_IsDisposed)
 					return;
 				
-				// A waiting Left was cancelled. Is it still waiting?
-				if (_Counter < 0)
+				// A waiting Left was cancelled. Remove it if it's still waiting
+				if (_LeftWaiting.Remove(instance))
 				{
-					// A Right is still working, so we can just decrement the waiting lefts count
-					if (Interlocked.Decrement(ref _LeftWaiting) != 0 || _RightWaiting == 0)
+					// If this is the last waiting Left, we may have been holding up Rights in fair mode
+					if (_Counter >= 0 || _LeftWaiting.Count > 0 || _RightWaiting.Count == 0)
 						return;
 					
 					// There are rights waiting and no more lefts, so we can release them
 					NextRight = Interlocked.Exchange(ref _Right, new TaskCompletionSource<VoidStruct>());
 					
-					Interlocked.Add(ref _Counter, -Interlocked.Exchange(ref _RightWaiting, 0));
+					_Counter -= _RightWaiting.Count;
+					_RightWaiting.Clear();
 				}
 			}
 			
@@ -313,7 +321,7 @@ namespace Proximity.Utility.Threading
 			ReleaseLeft();
 		}
 		
-		private void CancelRight(Task<IDisposable> task)
+		private void CancelRight(AsyncSwitchRightInstance instance)
 		{	//****************************************
 			TaskCompletionSource<VoidStruct> NextLeft = null;
 			//****************************************
@@ -323,17 +331,18 @@ namespace Proximity.Utility.Threading
 				if (_IsDisposed)
 					return;
 				
-				// A waiting Right was cancelled. Is it still waiting?
-				if (_Counter > 0)
+				// A waiting Right was cancelled. Remove it if it's still waiting
+				if (_RightWaiting.Remove(instance))
 				{
-					// A Left is still working, so we can decrement the waiting rights count
-					if (Interlocked.Decrement(ref _RightWaiting) != 0 || _LeftWaiting == 0)
+					// If this is the last waiting Right, we may have been holding up Lefts in fair mode
+					if (_Counter <= 0 || _RightWaiting.Count > 0 || _LeftWaiting.Count == 0)
 						return;
 					
 					// There are lefts waiting and no more rights, so we can release them
 					NextLeft = Interlocked.Exchange(ref _Left, new TaskCompletionSource<VoidStruct>());
 					
-					Interlocked.Add(ref _Counter, Interlocked.Exchange(ref _LeftWaiting, 0));
+					_Counter += _LeftWaiting.Count;
+					_LeftWaiting.Clear();
 				}
 			}
 			
@@ -361,7 +370,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		public int WaitingLeft
 		{
-			get { return _LeftWaiting; }
+			get { return _LeftWaiting.Count; }
 		}
 		
 		/// <summary>
@@ -369,7 +378,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		public int WaitingRight
 		{
-			get { return _RightWaiting; }
+			get { return _RightWaiting.Count; }
 		}
 		
 		/// <summary>
@@ -412,6 +421,19 @@ namespace Proximity.Utility.Threading
 			
 			//****************************************
 			
+			public IDisposable LockLeft(Task<VoidStruct> task)
+			{
+				if (task.IsCanceled)
+					throw new ObjectDisposedException("Lock has been disposed of");
+				
+				return this;
+			}
+			
+			public void CancelLeft(Task<IDisposable> task)
+			{
+				_Source.CancelLeft(this);
+			}
+			
 			public void Dispose()
 			{
 				if (_Source != null && Interlocked.Exchange(ref _Released, 1) == 0)
@@ -434,6 +456,19 @@ namespace Proximity.Utility.Threading
 			}
 			
 			//****************************************
+			
+			public IDisposable LockRight(Task<VoidStruct> task)
+			{
+				if (task.IsCanceled)
+					throw new ObjectDisposedException("Lock has been disposed of");
+				
+				return this;
+			}
+			
+			public void CancelRight(Task<IDisposable> task)
+			{
+				_Source.CancelRight(this);
+			}
 			
 			public void Dispose()
 			{

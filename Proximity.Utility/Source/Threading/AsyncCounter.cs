@@ -54,9 +54,10 @@ namespace Proximity.Utility.Threading
 			{
 				while (_Waiters.Count > 0)
 				{
-					_Waiters.Dequeue().TrySetCanceled();
+					_Waiters.Dequeue().TrySetException(new ObjectDisposedException("Counter has been disposed of"));
 				}
 				
+				_CurrentCount = 0;
 				_IsDisposed = true;
 			}
 		}
@@ -105,7 +106,7 @@ namespace Proximity.Utility.Threading
 			lock (_Waiters)
 			{
 				if (_IsDisposed)
-					throw new OperationCanceledException("Counter has been disposed of");
+					throw new ObjectDisposedException("Counter has been disposed of");
 				
 				// Is there a free counter?
 				if (_CurrentCount > 0)
@@ -156,7 +157,12 @@ namespace Proximity.Utility.Threading
 				lock (_Waiters)
 				{
 					if (_IsDisposed)
+					{
+						if (!onThreadPool)
+							throw new ObjectDisposedException("Counter has been disposed of");
+						
 						return;
+					}
 					
 					// Is there anybody waiting, or has MaxCount been dropped below the currently held number?
 					if (_Waiters.Count == 0 || _CurrentCount < 0)

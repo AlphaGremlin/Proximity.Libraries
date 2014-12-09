@@ -449,6 +449,45 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000)]
+		public async Task LeftRightCancelLeft()
+		{	//****************************************
+			var MyLock = new AsyncSwitchLock();
+			Task<IDisposable> MyLeft, MyRight;
+			//****************************************
+			
+			using (var MySource = new CancellationTokenSource())
+			{
+				MySource.Cancel();
+				
+				using (await MyLock.LockLeft())
+				{
+					MyRight = MyLock.LockRight();
+					
+					MyLeft = MyLock.LockLeft(MySource.Token);
+				}
+			}
+			
+			//****************************************
+			
+			try
+			{
+				await MyLeft;
+				
+				Assert.Fail("Should not reach here");
+			}
+			catch (OperationCanceledException)
+			{
+			}
+			
+			(await MyRight).Dispose();
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
+		}
+		
+		[Test, Timeout(1000)]
 		public async Task RightCancelLeftRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -472,6 +511,45 @@ namespace Proximity.Utility.Tests
 			await MyRight;
 			
 			MyRight.Result.Dispose();
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
+		}
+		
+		[Test, Timeout(1000)]
+		public async Task RightLeftCancelRight()
+		{	//****************************************
+			var MyLock = new AsyncSwitchLock();
+			Task<IDisposable> MyLeft, MyRight;
+			//****************************************
+			
+			using (var MySource = new CancellationTokenSource())
+			{
+				MySource.Cancel();
+				
+				using (await MyLock.LockRight())
+				{
+					MyLeft = MyLock.LockLeft();
+					
+					MyRight = MyLock.LockRight(MySource.Token);
+				}
+			}
+			
+			//****************************************
+			
+			try
+			{
+				await MyRight;
+				
+				Assert.Fail("Should not reach here");
+			}
+			catch (OperationCanceledException)
+			{
+			}
+			
+			(await MyLeft).Dispose();
 			
 			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
 			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
@@ -593,6 +671,224 @@ namespace Proximity.Utility.Tests
 			}
 			
 			await ResultTask;
+		}
+		
+		[Test, Timeout(1000)]
+		public void LeftDispose()
+		{	//****************************************
+			var MyLock = new AsyncSwitchLock();
+			//****************************************
+			
+			var MyLeft = MyLock.LockLeft();
+			
+			MyLock.Dispose();
+			
+			MyLeft.Result.Dispose();
+			
+			//****************************************
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
+		}
+		
+		[Test, Timeout(1000)]
+		public void LeftDisposeLeft()
+		{	//****************************************
+			var MyLock = new AsyncSwitchLock();
+			//****************************************
+			
+			var MyLeft = MyLock.LockLeft();
+			
+			MyLock.Dispose();
+			
+			try
+			{
+				MyLock.LockLeft().Result.Dispose();
+				
+				Assert.Fail("Should never reach this point");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
+			
+			MyLeft.Result.Dispose();
+			
+			//****************************************
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
+		}
+		
+		[Test, Timeout(1000)]
+		public void LeftRightDispose()
+		{	//****************************************
+			var MyLock = new AsyncSwitchLock();
+			//****************************************
+			
+			var MyLeft = MyLock.LockLeft();
+			
+			var MyRight = MyLock.LockRight();
+			
+			MyLock.Dispose();
+			
+			try
+			{
+				MyRight.Result.Dispose();
+				
+				Assert.Fail("Should never reach this point");
+			}
+			catch (AggregateException e)
+			{
+				Assert.IsInstanceOf(typeof(ObjectDisposedException), e.InnerException, "Inner exception not as expected");
+			}
+			
+			MyLeft.Result.Dispose();
+			
+			//****************************************
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
+		}
+		
+		[Test, Timeout(1000)]
+		public void RightDispose()
+		{	//****************************************
+			var MyLock = new AsyncSwitchLock();
+			//****************************************
+			
+			var MyRight = MyLock.LockRight();
+			
+			MyLock.Dispose();
+			
+			MyRight.Result.Dispose();
+			
+			//****************************************
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
+		}
+		
+		[Test, Timeout(1000)]
+		public void RightDisposeRight()
+		{	//****************************************
+			var MyLock = new AsyncSwitchLock();
+			//****************************************
+			
+			var MyRight = MyLock.LockRight();
+			
+			MyLock.Dispose();
+			
+			try
+			{
+				MyLock.LockRight().Result.Dispose();
+				
+				Assert.Fail("Should never reach this point");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
+			
+			MyRight.Result.Dispose();
+			
+			//****************************************
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
+		}
+		
+		[Test, Timeout(1000)]
+		public void RightLeftDispose()
+		{	//****************************************
+			var MyLock = new AsyncSwitchLock();
+			//****************************************
+			
+			var MyRight = MyLock.LockRight();
+			
+			var MyLeft = MyLock.LockLeft();
+			
+			MyLock.Dispose();
+			
+			try
+			{
+				MyLeft.Result.Dispose();
+				
+				Assert.Fail("Should never reach this point");
+			}
+			catch (AggregateException e)
+			{
+				Assert.IsInstanceOf(typeof(ObjectDisposedException), e.InnerException, "Inner exception not as expected");
+			}
+			
+			MyRight.Result.Dispose();
+			
+			//****************************************
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
+		}
+		
+		[Test, Timeout(1000)]
+		public void DisposeLeft()
+		{	//****************************************
+			var MyLock = new AsyncSwitchLock();
+			//****************************************
+			
+			MyLock.Dispose();
+			
+			try
+			{
+				MyLock.LockLeft().Result.Dispose();
+				
+				Assert.Fail("Should never reach this point");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
+			
+			//****************************************
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
+		}
+		
+		[Test, Timeout(1000)]
+		public void DisposeRight()
+		{	//****************************************
+			var MyLock = new AsyncSwitchLock();
+			//****************************************
+			
+			MyLock.Dispose();
+			
+			try
+			{
+				MyLock.LockRight().Result.Dispose();
+				
+				Assert.Fail("Should never reach this point");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
+			
+			//****************************************
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 	}
 }

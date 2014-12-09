@@ -24,6 +24,7 @@ namespace Proximity.Utility.Net
 		private readonly SocketAwaitable _WriteAwaitable, _ReadAwaitable;
 		
 		private Task _LastWrite;
+		private byte[] _WriteBuffer;
 		//****************************************
 
 		/// <summary>
@@ -141,8 +142,14 @@ namespace Proximity.Utility.Net
 		{
 			if (count == 0)
 				return;
+			
+			// The caller may manipulate buffer after we exit, so we need to copy it
+			if (_WriteBuffer == null || _WriteBuffer.Length < count)
+				_WriteBuffer = new byte[count];
+			
+			Array.Copy(buffer, offset, _WriteBuffer, 0, count);
 
-			SendData(buffer, offset, count); // No need to wait on the task, as we queue the write until later
+			SendData(_WriteBuffer, 0, count); // No need to wait on the task, as we queue the write until later
 		}
 
 		/// <inheritdoc />

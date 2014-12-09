@@ -56,8 +56,11 @@ namespace Proximity.Utility.Threading
 				
 				while (_Waiters.Count > 0)
 				{
-					_Waiters.Dequeue().TrySetCanceled();
+					_Waiters.Dequeue().TrySetException(new ObjectDisposedException("Semaphore has been disposed of"));
 				}
+				
+				_CurrentCount = 0;
+				_MaxCount = 0;
 			}
 		}
 		
