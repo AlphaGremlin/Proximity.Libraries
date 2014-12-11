@@ -159,6 +159,7 @@
     <Compile Include="Collections\LinqExtensions.cs" />
     <Compile Include="Collections\ListExtensions.cs" />
     <Compile Include="Collections\ObservableDictionary.cs" />
+    <Compile Include="Collections\ObservableList.cs" />
     <Compile Include="Collections\PagedSet.cs" />
     <Compile Include="Collections\PagedSetBase.cs" />
     <Compile Include="Collections\PagedSetItem.cs" />

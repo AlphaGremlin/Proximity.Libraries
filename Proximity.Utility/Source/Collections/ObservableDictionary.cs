@@ -3,11 +3,11 @@
  Created: 2014-03-21
 \****************************************/
 using System;
-using System.Linq;
-using System.ComponentModel;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Linq;
 //****************************************
 
 namespace Proximity.Utility.Collections
@@ -26,6 +26,8 @@ namespace Proximity.Utility.Collections
 		private readonly SortedList<TKey, TValue> _Dictionary;
 		private readonly ObservableDictionaryCollection<TKey> _Keys;
 		private readonly ObservableDictionaryCollection<TValue> _Values;
+		
+		private int _UpdateCount = 0;
 		//****************************************
 
 		/// <summary>
@@ -34,8 +36,8 @@ namespace Proximity.Utility.Collections
 		public ObservableDictionary()
 		{
 			_Dictionary = new SortedList<TKey, TValue>();
-			_Keys = new ObservableDictionaryCollection<TKey>(this, _Dictionary.Keys);
-			_Values = new ObservableDictionaryCollection<TValue>(this, _Dictionary.Values);
+			_Keys = new ObservableDictionaryCollection<TKey>(_Dictionary.Keys);
+			_Values = new ObservableDictionaryCollection<TValue>(_Dictionary.Values);
 		}
 
 		/// <summary>
@@ -45,8 +47,8 @@ namespace Proximity.Utility.Collections
 		public ObservableDictionary(IDictionary<TKey, TValue> dictionary)
 		{
 			_Dictionary = new SortedList<TKey, TValue>(dictionary);
-			_Keys = new ObservableDictionaryCollection<TKey>(this, _Dictionary.Keys);
-			_Values = new ObservableDictionaryCollection<TValue>(this, _Dictionary.Values);
+			_Keys = new ObservableDictionaryCollection<TKey>(_Dictionary.Keys);
+			_Values = new ObservableDictionaryCollection<TValue>(_Dictionary.Values);
 		}
 
 		/// <summary>
@@ -56,8 +58,8 @@ namespace Proximity.Utility.Collections
 		public ObservableDictionary(int capacity)
 		{
 			_Dictionary = new SortedList<TKey, TValue>(capacity);
-			_Keys = new ObservableDictionaryCollection<TKey>(this, _Dictionary.Keys);
-			_Values = new ObservableDictionaryCollection<TValue>(this, _Dictionary.Values);
+			_Keys = new ObservableDictionaryCollection<TKey>(_Dictionary.Keys);
+			_Values = new ObservableDictionaryCollection<TValue>(_Dictionary.Values);
 		}
 		
 		/// <summary>
@@ -67,8 +69,8 @@ namespace Proximity.Utility.Collections
 		public ObservableDictionary(IComparer<TKey> comparer)
 		{
 			_Dictionary = new SortedList<TKey, TValue>(comparer);
-			_Keys = new ObservableDictionaryCollection<TKey>(this, _Dictionary.Keys);
-			_Values = new ObservableDictionaryCollection<TValue>(this, _Dictionary.Values);
+			_Keys = new ObservableDictionaryCollection<TKey>(_Dictionary.Keys);
+			_Values = new ObservableDictionaryCollection<TValue>(_Dictionary.Values);
 		}
 
 		/// <summary>
@@ -79,8 +81,8 @@ namespace Proximity.Utility.Collections
 		public ObservableDictionary(IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer)
 		{
 			_Dictionary = new SortedList<TKey, TValue>(dictionary, comparer);
-			_Keys = new ObservableDictionaryCollection<TKey>(this, _Dictionary.Keys);
-			_Values = new ObservableDictionaryCollection<TValue>(this, _Dictionary.Values);
+			_Keys = new ObservableDictionaryCollection<TKey>(_Dictionary.Keys);
+			_Values = new ObservableDictionaryCollection<TValue>(_Dictionary.Values);
 		}
 
 		/// <summary>
@@ -91,8 +93,8 @@ namespace Proximity.Utility.Collections
 		public ObservableDictionary(int capacity, IComparer<TKey> comparer)
 		{
 			_Dictionary = new SortedList<TKey, TValue>(capacity, comparer);
-			_Keys = new ObservableDictionaryCollection<TKey>(this, _Dictionary.Keys);
-			_Values = new ObservableDictionaryCollection<TValue>(this, _Dictionary.Values);
+			_Keys = new ObservableDictionaryCollection<TKey>(_Dictionary.Keys);
+			_Values = new ObservableDictionaryCollection<TValue>(_Dictionary.Values);
 		}
 		
 		//****************************************
@@ -134,6 +136,15 @@ namespace Proximity.Utility.Collections
 
 				OnCollectionChanged(NotifyCollectionChangedAction.Add, items);
 			}
+		}
+
+		/// <summary>
+		/// Begins a major update operation, suspending change notifications
+		/// </summary>
+		/// <remarks>Maintains a reference count. Each call to <see cref="BeginUpdate"/> must be matched with a call to <see cref="EndUpdate"/></remarks>
+		public void BeginUpdate()
+		{
+			_UpdateCount++;
 		}
 
 		/// <summary>
@@ -181,6 +192,21 @@ namespace Proximity.Utility.Collections
 			}
 
 			//_Dictionary.CopyTo(array, arrayIndex);
+		}
+
+		/// <summary>
+		/// Ends a major update operation, resuming change notifications
+		/// </summary>
+		/// <remarks>Maintains a reference count. Each call to <see cref="BeginUpdate"/> must be matched with a call to <see cref="EndUpdate"/></remarks>
+		public void EndUpdate()
+		{
+			if (_UpdateCount == 0)
+				return;
+
+			_UpdateCount--;
+
+			// Raise changes (only if we're zero)
+			OnCollectionChanged();
 		}
 
 		/// <summary>
@@ -247,7 +273,8 @@ namespace Proximity.Utility.Collections
 		/// <param name="propertyName">The name of the property that has changed</param>
 		protected virtual void OnPropertyChanged(string propertyName)
 		{
-			if (PropertyChanged != null) PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+			if (_UpdateCount == 0 && PropertyChanged != null)
+				PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
 		}
 
 		//****************************************
@@ -283,6 +310,9 @@ namespace Proximity.Utility.Collections
 
 		private void OnCollectionChanged()
 		{
+			if (_UpdateCount != 0)
+				return;
+
 			OnPropertyChanged();
 
 			if (CollectionChanged != null)
@@ -294,6 +324,9 @@ namespace Proximity.Utility.Collections
 
 		private void OnCollectionChanged(NotifyCollectionChangedAction action, KeyValuePair<TKey, TValue> changedItem)
 		{
+			if (_UpdateCount != 0)
+				return;
+
 			OnPropertyChanged();
 
 			if (CollectionChanged != null)
@@ -305,6 +338,9 @@ namespace Proximity.Utility.Collections
 
 		private void OnCollectionChanged(NotifyCollectionChangedAction action, KeyValuePair<TKey, TValue> changedItem, int index)
 		{
+			if (_UpdateCount != 0)
+				return;
+
 			OnPropertyChanged();
 
 			if (CollectionChanged != null)
@@ -316,6 +352,9 @@ namespace Proximity.Utility.Collections
 
 		private void OnCollectionChanged(NotifyCollectionChangedAction action, KeyValuePair<TKey, TValue> newItem, KeyValuePair<TKey, TValue> oldItem, int index)
 		{
+			if (_UpdateCount != 0)
+				return;
+
 			OnPropertyChanged();
 
 			if (CollectionChanged != null)
@@ -327,6 +366,9 @@ namespace Proximity.Utility.Collections
 
 		private void OnCollectionChanged(NotifyCollectionChangedAction action, IDictionary<TKey, TValue> newItems)
 		{
+			if (_UpdateCount != 0)
+				return;
+
 			OnPropertyChanged();
 
 			if (CollectionChanged != null)
@@ -415,13 +457,11 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		public sealed class ObservableDictionaryCollection<TSource> : ICollection<TSource>, INotifyCollectionChanged, INotifyPropertyChanged
 		{	//****************************************
-			private readonly ObservableDictionary<TKey, TValue> _Owner;
 			private readonly ICollection<TSource> _Source;
 			//****************************************
 
-			internal ObservableDictionaryCollection(ObservableDictionary<TKey, TValue> owner, ICollection<TSource> source)
+			internal ObservableDictionaryCollection(ICollection<TSource> source)
 			{
-				_Owner = owner;
 				_Source = source;
 			}
 
@@ -460,7 +500,7 @@ namespace Proximity.Utility.Collections
 
 			internal void OnCollectionChanged()
 			{
-				OnPropertyChanged("Count");
+				OnPropertyChanged(CountString);
 
 				if (CollectionChanged != null)
 					CollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
@@ -468,7 +508,7 @@ namespace Proximity.Utility.Collections
 
 			internal void OnCollectionChanged(NotifyCollectionChangedAction action, TSource changedItem)
 			{
-				OnPropertyChanged("Count");
+				OnPropertyChanged(CountString);
 
 				if (CollectionChanged != null)
 					CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, changedItem));
@@ -476,7 +516,7 @@ namespace Proximity.Utility.Collections
 
 			internal void OnCollectionChanged(NotifyCollectionChangedAction action, TSource changedItem, int index)
 			{
-				OnPropertyChanged("Count");
+				OnPropertyChanged(CountString);
 
 				if (CollectionChanged != null)
 					CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, changedItem, index));
@@ -484,7 +524,7 @@ namespace Proximity.Utility.Collections
 
 			internal void OnCollectionChanged(NotifyCollectionChangedAction action, TSource newItem, TSource oldItem, int index)
 			{
-				OnPropertyChanged("Count");
+				OnPropertyChanged(CountString);
 
 				if (CollectionChanged != null)
 					CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItem, oldItem, index));
@@ -492,7 +532,7 @@ namespace Proximity.Utility.Collections
 
 			internal void OnCollectionChanged(NotifyCollectionChangedAction action, ICollection<TSource> newItems)
 			{
-				OnPropertyChanged("Count");
+				OnPropertyChanged(CountString);
 
 				if (CollectionChanged != null)
 					CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItems.ToArray()));
@@ -545,7 +585,7 @@ namespace Proximity.Utility.Collections
 			/// </summary>
 			public int Count
 			{
-				get { return _Owner.Count; }
+				get { return _Source.Count; }
 			}
 
 			/// <summary>
