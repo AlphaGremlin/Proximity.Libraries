@@ -1,13 +1,10 @@
 ﻿/****************************************\
- TaskFlag.cs
+ AsyncTaskFlag.cs
  Created: 2012-09-13
 \****************************************/
 using System;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Proximity.Utility;
-using Proximity.Utility.Collections;
 //****************************************
 
 namespace Proximity.Utility.Threading

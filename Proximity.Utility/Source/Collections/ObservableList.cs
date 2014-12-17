@@ -31,7 +31,7 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		public ObservableList() : base()
 		{
-			_Items = new List<TValue>()
+			_Items = new List<TValue>();
 		}
 
 		/// <summary>

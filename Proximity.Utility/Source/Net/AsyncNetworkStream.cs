@@ -20,8 +20,7 @@ namespace Proximity.Utility.Net
 	{	//****************************************
 		private readonly Socket _Socket;
 		
-		private readonly SocketAsyncEventArgs _WriteEventArgs = new SocketAsyncEventArgs(), _ReadEventArgs = new SocketAsyncEventArgs();
-		private readonly SocketAwaitable _WriteAwaitable, _ReadAwaitable;
+		private readonly SocketAwaitableEventArgs _WriteEventArgs = new SocketAwaitableEventArgs(), _ReadEventArgs = new SocketAwaitableEventArgs();
 		
 		private Task _LastWrite;
 		private byte[] _WriteBuffer;
@@ -34,9 +33,6 @@ namespace Proximity.Utility.Net
 		public AsyncNetworkStream(Socket socket)
 		{
 			_Socket = socket;
-			
-			_WriteAwaitable = new SocketAwaitable(_WriteEventArgs);
-			_ReadAwaitable = new SocketAwaitable(_ReadEventArgs);
 		}
 
 		//****************************************
@@ -182,15 +178,15 @@ namespace Proximity.Utility.Net
 			try
 			{
 				// Start waiting for some data
-				var Awaiter = _Socket.ReceiveAsync(_ReadAwaitable);
+				_ReadEventArgs.ReceiveAsync(_Socket);
 	
-				if (_ReadAwaitable.IsCompleted)
+				if (_ReadEventArgs.IsCompleted)
 				{
 					ProcessCompletedReceive(MyTaskSource, callback);
 				}
 				else
 				{
-					((INotifyCompletion)_ReadAwaitable).OnCompleted(() => ProcessCompletedReceive(MyTaskSource, callback));
+					((INotifyCompletion)_ReadEventArgs).OnCompleted(() => ProcessCompletedReceive(MyTaskSource, callback));
 				}
 	
 				return MyTaskSource.Task;
@@ -209,18 +205,10 @@ namespace Proximity.Utility.Net
 		
 		private void ProcessCompletedReceive(TaskCompletionSource<int> source, AsyncCallback callback)
 		{
-			try
-			{
-				_ReadAwaitable.GetResult();
-
-				//System.Diagnostics.Debug.WriteLine("Received: " + BitConverter.ToString(state._ReadEventArgs.Buffer, 0, state._ReadEventArgs.BytesTransferred));
-
+			if (_ReadEventArgs.SocketError == SocketError.Success)
 				source.SetResult(_ReadEventArgs.BytesTransferred);
-			}
-			catch (Exception e)
-			{
-				source.SetException(e);
-			}
+			else
+				source.SetException(new SocketException((int)_ReadEventArgs.SocketError));
 
 			// Raise the async callback (if any)
 			if (callback != null)
@@ -257,15 +245,15 @@ namespace Proximity.Utility.Net
 
 			try
 			{
-				var Awaiter = _Socket.SendAsync(_WriteAwaitable);
+				_WriteEventArgs.SendAsync(_Socket);
 
-				if (_WriteAwaitable.IsCompleted)
+				if (_WriteEventArgs.IsCompleted)
 				{
 					ProcessCompletedSend(completionSource, callback);
 				}
 				else
 				{
-					((INotifyCompletion)_WriteAwaitable).OnCompleted(() => ProcessCompletedSend(completionSource, callback));
+					((INotifyCompletion)_WriteEventArgs).OnCompleted(() => ProcessCompletedSend(completionSource, callback));
 				}
 			}
 			catch (Exception e)
@@ -279,16 +267,10 @@ namespace Proximity.Utility.Net
 		
 		private void ProcessCompletedSend(TaskCompletionSource<VoidStruct> source, AsyncCallback callback)
 		{
-			try
-			{
-				_WriteAwaitable.GetResult();
-
+			if (_WriteEventArgs.SocketError == SocketError.Success)
 				source.SetResult(VoidStruct.Empty);
-			}
-			catch (Exception e)
-			{
-				source.SetException(e);
-			}
+			else
+				source.SetException(new SocketException((int)_WriteEventArgs.SocketError));
 
 			// Raise the async callback (if any)
 			if (callback != null)

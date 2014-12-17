@@ -79,6 +79,10 @@ namespace Proximity.Utility.Logging.Outputs
 			catch (OperationCanceledException)
 			{
 			}
+			catch (ObjectDisposedException)
+			{
+				
+			}
 		}
 		
 		/// <inheritdoc />
@@ -169,6 +173,9 @@ namespace Proximity.Utility.Logging.Outputs
 				}
 			}
 			catch (OperationCanceledException)
+			{
+			}
+			catch (ObjectDisposedException)
 			{
 			}
 			finally

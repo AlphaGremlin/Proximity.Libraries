@@ -229,8 +229,10 @@
     <None Include="Logging\Outputs\XmlFileOutputElement.cs" />
     <Compile Include="Logging\Severity.cs" />
     <Compile Include="Logging\TraceLogEntry.cs" />
+    <Compile Include="Net\AsyncNetworkListener.cs" />
     <Compile Include="Net\AsyncNetworkStream.cs" />
     <Compile Include="Net\SocketAwaitable.cs" />
+    <Compile Include="Net\SocketAwaitableEventArgs.cs" />
     <Compile Include="Net\SocketExtensions.cs" />
     <Compile Include="OptionCodeAttribute.cs" />
     <Compile Include="Platform.cs" />
