@@ -204,7 +204,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyCounter.CurrentCount, "Count not zero");
 		}
 		
-		[Test]
+		[Test, Timeout(1000)]
 		public void DisposeDecrement()
 		{	//****************************************
 			var MyLock = new AsyncCounter();
@@ -228,7 +228,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.CurrentCount, "Count not zero");
 		}
 		
-		[Test]
+		[Test, Timeout(1000)]
 		public void DisposeIncrement()
 		{	//****************************************
 			var MyLock = new AsyncCounter();
@@ -252,7 +252,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.CurrentCount, "Count not zero");
 		}
 		
-		[Test]
+		[Test, Timeout(1000)]
 		public void DecrementDispose()
 		{	//****************************************
 			var MyLock = new AsyncCounter();
@@ -279,7 +279,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.CurrentCount, "Count not zero");
 		}
 		
-		[Test]
+		[Test, Timeout(1000)]
 		public void IncrementDispose()
 		{	//****************************************
 			var MyLock = new AsyncCounter();
@@ -292,7 +292,7 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.AreEqual(0, MyLock.WaitingCount, "Waiter still registered");
-			Assert.AreEqual(0, MyLock.CurrentCount, "Count not zero");
+			Assert.AreEqual(1, MyLock.CurrentCount, "Count not one");
 		}
 		
 		[Test]

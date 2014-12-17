@@ -60,16 +60,38 @@ namespace Proximity.Utility.Threading
 			return MyCompletionSource.Task;
 		}
 		
+		/// <summary>
+		/// Wraps the given task, waiting for it to complete or the given timeout to occur
+		/// </summary>
+		/// <param name="task">The task to wait to complete</param>
+		/// <param name="milliseconds">The number of millisecond before we abort waiting for the original task</param>
+		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
+		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" /></remarks>
 		public static Task When(this Task task, int milliseconds)
 		{
 			return task.When(TimeSpan.FromMilliseconds(milliseconds), CancellationToken.None);
 		}
 		
+		/// <summary>
+		/// Wraps the given task, waiting for it to complete or the given timeout to occur
+		/// </summary>
+		/// <param name="task">The task to wait to complete</param>
+		/// <param name="timeout">The time before we abort waiting for the original task</param>
+		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
+		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" /></remarks>
 		public static Task When(this Task task, TimeSpan timeout)
 		{
 			return task.When(timeout, CancellationToken.None);
 		}
 		
+		/// <summary>
+		/// Wraps the given task, waiting for it to complete, the given timeout to occur, or the given token to cancel
+		/// </summary>
+		/// <param name="task">The task to wait to complete</param>
+		/// <param name="timeout">The time before we abort waiting for the original task</param>
+		/// <param name="token">The cancellation token to abort waiting for the original task</param>
+		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
+		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" /></remarks>
 		public static Task When(this Task task, TimeSpan timeout, CancellationToken token)
 		{	//****************************************
 			CancellationTokenSource MyCancelSource;
@@ -98,16 +120,38 @@ namespace Proximity.Utility.Threading
 			return task;
 		}
 		
+		/// <summary>
+		/// Wraps the given task, waiting for it to complete or the given timeout to occur
+		/// </summary>
+		/// <param name="task">The task to wait to complete</param>
+		/// <param name="milliseconds">The number of millisecond before we abort waiting for the original task</param>
+		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
+		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" /></remarks>
 		public static Task<TResult> When<TResult>(this Task<TResult> task, int milliseconds)
 		{
 			return task.When(TimeSpan.FromMilliseconds(milliseconds), CancellationToken.None);
 		}
 		
+		/// <summary>
+		/// Wraps the given task, waiting for it to complete or the given timeout to occur
+		/// </summary>
+		/// <param name="task">The task to wait to complete</param>
+		/// <param name="timeout">The time before we abort waiting for the original task</param>
+		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
+		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" /></remarks>
 		public static Task<TResult> When<TResult>(this Task<TResult> task, TimeSpan timeout)
 		{
 			return task.When(timeout, CancellationToken.None);
 		}
 		
+		/// <summary>
+		/// Wraps the given task, waiting for it to complete, the given timeout to occur, or the given token to cancel
+		/// </summary>
+		/// <param name="task">The task to wait to complete</param>
+		/// <param name="timeout">The time before we abort waiting for the original task</param>
+		/// <param name="token">The cancellation token to abort waiting for the original task</param>
+		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
+		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" /></remarks>
 		public static Task<TResult> When<TResult>(this Task<TResult> task, TimeSpan timeout, CancellationToken token)
 		{	//****************************************
 			CancellationTokenSource MyCancelSource;

@@ -219,8 +219,8 @@ namespace Proximity.Utility.Tests
 		
 		//****************************************
 		
-		[Test]
-		public void TakeComplete()
+		[Test, Timeout(1000)]
+		public async Task TakeComplete()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
 			//****************************************
@@ -233,7 +233,15 @@ namespace Proximity.Utility.Tests
 			
 			//****************************************
 			
-			Assert.IsTrue(MyTask.IsCanceled, "Take did not cancel");
+			try
+			{
+				await MyTask;
+				
+				Assert.Fail("Should not reach here");
+			}
+			catch (OperationCanceledException)
+			{
+			}
 			
 			Assert.IsTrue(MyCollection.IsAddingCompleted, "Adding not completed");
 			Assert.IsTrue(MyCollection.IsCompleted, "Collection not completed");
@@ -253,7 +261,15 @@ namespace Proximity.Utility.Tests
 			
 			//****************************************
 			
-			Assert.IsTrue(MyTask.IsCanceled, "Add did not cancel");
+			try
+			{
+				await MyTask;
+				
+				Assert.Fail("Should not reach here");
+			}
+			catch (OperationCanceledException)
+			{
+			}
 			
 			Assert.AreEqual(1, MyCollection.Count, "Count not as expected");
 			

@@ -71,7 +71,6 @@ namespace Proximity.Utility.Net
 		/// Performs an asynchronous operation to accept a socket connection
 		/// </summary>
 		/// <param name="socket">The socket receiving the connection</param>
-		/// <param name="awaitable">An awaitable around the arguments object we're using</param>
 		/// <returns>The passed in awaitable</returns>
 		/// <remarks>See <see cref="Socket.AcceptAsync" /> for more information</remarks>
 		public SocketAwaitableEventArgs AcceptAsync(Socket socket)
@@ -88,7 +87,6 @@ namespace Proximity.Utility.Net
 		/// Performs an asynchronous operation to connect to a socket
 		/// </summary>
 		/// <param name="socket">The socket to begin connecting</param>
-		/// <param name="awaitable">An awaitable around the arguments object we're using</param>
 		/// <returns>The passed in awaitable</returns>
 		/// <remarks>See <see cref="Socket.ConnectAsync(SocketAsyncEventArgs)" /> for more information</remarks>
 		public SocketAwaitableEventArgs ConnectAsync(Socket socket)
@@ -105,7 +103,6 @@ namespace Proximity.Utility.Net
 		/// Begins an asynchronous operation to disconnect to a socket
 		/// </summary>
 		/// <param name="socket">The socket to disconnect</param>
-		/// <param name="awaitable">An awaitable around the arguments object we're using</param>
 		/// <returns>The passed in awaitable</returns>
 		/// <remarks>See <see cref="Socket.DisconnectAsync" /> for more information</remarks>
 		public SocketAwaitableEventArgs DisconnectAsync(Socket socket)
@@ -122,7 +119,6 @@ namespace Proximity.Utility.Net
 		/// Begins an asynchronous operation to receive data from a socket
 		/// </summary>
 		/// <param name="socket">The socket to receive data on</param>
-		/// <param name="awaitable">An awaitable around the arguments object we're using</param>
 		/// <returns>The passed in awaitable</returns>
 		/// <remarks>See <see cref="Socket.ReceiveAsync" /> for more information</remarks>
 		public SocketAwaitableEventArgs ReceiveAsync(Socket socket)
@@ -139,7 +135,6 @@ namespace Proximity.Utility.Net
 		/// Begins an asynchronous operation to receive data from a socket from a specific device
 		/// </summary>
 		/// <param name="socket">The socket to receive data on</param>
-		/// <param name="awaitable">An awaitable around the arguments object we're using</param>
 		/// <returns>The passed in awaitable</returns>
 		/// <remarks>See <see cref="Socket.ReceiveFromAsync" /> for more information</remarks>
 		public SocketAwaitableEventArgs ReceiveFromAsync(Socket socket)
@@ -156,7 +151,6 @@ namespace Proximity.Utility.Net
 		/// Begins an asynchronous operation to receive data from a socket
 		/// </summary>
 		/// <param name="socket">The socket to receive data on</param>
-		/// <param name="awaitable">An awaitable around the arguments object we're using</param>
 		/// <returns>The passed in awaitable</returns>
 		/// <remarks>See <see cref="Socket.ReceiveMessageFromAsync" /> for more information</remarks>
 		public SocketAwaitableEventArgs ReceiveMessageFromAsync(Socket socket)
@@ -173,7 +167,6 @@ namespace Proximity.Utility.Net
 		/// Begins an asynchronous operation to send data over a socket
 		/// </summary>
 		/// <param name="socket">The socket to send data to</param>
-		/// <param name="awaitable">An awaitable around the arguments object we're using</param>
 		/// <returns>The passed in awaitable</returns>
 		/// <remarks>See <see cref="Socket.SendAsync" /> for more information</remarks>
 		public SocketAwaitableEventArgs SendAsync(Socket socket)
@@ -190,7 +183,6 @@ namespace Proximity.Utility.Net
 		/// Begins an asynchronous operation to send a collection of data over a socket
 		/// </summary>
 		/// <param name="socket">The socket to send data to</param>
-		/// <param name="awaitable">An awaitable around the arguments object we're using</param>
 		/// <returns>The passed in awaitable</returns>
 		/// <remarks>See <see cref="Socket.SendPacketsAsync" /> for more information</remarks>
 		public SocketAwaitableEventArgs SendPacketsAsync(Socket socket)
@@ -207,7 +199,6 @@ namespace Proximity.Utility.Net
 		/// Begins an asynchronous operation to send data over a socket to a specific device
 		/// </summary>
 		/// <param name="socket">The socket to send data to</param>
-		/// <param name="awaitable">An awaitable around the arguments object we're using</param>
 		/// <returns>The passed in awaitable</returns>
 		/// <remarks>See <see cref="Socket.SendToAsync" /> for more information</remarks>
 		public SocketAwaitableEventArgs SendToAsync(Socket socket)
@@ -230,6 +221,7 @@ namespace Proximity.Utility.Net
 			}
 		}
 		
+		/// <inheritdoc />
 		protected override void OnCompleted(SocketAsyncEventArgs e)
 		{
 			var MyContinuation = _Continuation ?? Interlocked.CompareExchange<Action>(ref _Continuation, HasCompleted, null);

@@ -248,7 +248,7 @@ namespace Proximity.Utility.Collections
 				throw new InvalidOperationException("Item was not returned by the underlying collection");
 			
 			// Is there a maximum size?
-			if (_FreeSlots != null)
+			if (_FreeSlots != null && !_IsCompleted)
 			{
 				// We've removed an item, so release any Adders
 				_FreeSlots.Increment();
@@ -326,6 +326,8 @@ namespace Proximity.Utility.Collections
 				if (!MyTask.IsCompleted)
 				{
 					// No, wait for it to arrive
+					//MyTask.ContinueWith(InternalObserveFault, TaskContinuationOptions.OnlyOnFaulted);
+					
 					yield return MyTask.ContinueWith((Func<Task, TItem>)InternalTake, token, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Current);
 					
 					continue;
@@ -360,7 +362,12 @@ namespace Proximity.Utility.Collections
 			//****************************************
 			
 			if (task.IsFaulted)
+			{
+				if (task.Exception.InnerException is ObjectDisposedException)
+					throw new TaskCanceledException("Collection has completed");
+				
 				throw new InvalidOperationException("Failed to decrement free counter", task.Exception);
+			}
 			
 			// Try and add our item to the collection
 			if (!_Collection.TryAdd(MyItem))
@@ -376,7 +383,12 @@ namespace Proximity.Utility.Collections
 			//****************************************
 			
 			if (task.IsFaulted)
+			{
+				if (task.Exception.InnerException is ObjectDisposedException)
+					throw new TaskCanceledException("Collection has completed");
+				
 				throw new InvalidOperationException("Failed to decrement free counter", task.Exception);
+			}
 			
 			// Free slot, now cancel anyone else trying to add
 			_FreeSlots.Dispose();
@@ -398,7 +410,12 @@ namespace Proximity.Utility.Collections
 			//****************************************
 			
 			if (task.IsFaulted)
-				throw new InvalidOperationException("Failed to decrement used counter", task.Exception);
+			{
+				if (task.Exception.InnerException is ObjectDisposedException)
+					throw new TaskCanceledException("Collection has completed");
+				
+				throw new InvalidOperationException("Failed to decrement used counter", task.Exception.InnerException);
+			}
 			
 			// Try and remove an item from the collection
 			if (!_Collection.TryTake(out MyItem))

@@ -57,7 +57,7 @@ namespace Proximity.Utility.Threading
 					_Waiters.Dequeue().TrySetException(new ObjectDisposedException("Counter has been disposed of"));
 				}
 				
-				_CurrentCount = 0;
+				//_CurrentCount = 0;
 				_IsDisposed = true;
 			}
 		}
@@ -105,9 +105,6 @@ namespace Proximity.Utility.Threading
 		{
 			lock (_Waiters)
 			{
-				if (_IsDisposed)
-					throw new ObjectDisposedException("Counter has been disposed of");
-				
 				// Is there a free counter?
 				if (_CurrentCount > 0)
 				{
@@ -117,7 +114,11 @@ namespace Proximity.Utility.Threading
 					return _CompleteTask;
 				}
 				
-				// No free counters, add ourselves to the queue waiting on a counter
+				// No free counters, are we disposed?
+				if (_IsDisposed)
+					throw new ObjectDisposedException("Counter has been disposed of");
+				
+				// Still active, add ourselves to the queue waiting on a counter
 				var NewWaiter = new TaskCompletionSource<VoidStruct>();
 				
 				_Waiters.Enqueue(NewWaiter);
