@@ -93,6 +93,38 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(1, MyCollection.WaitingToAdd, "Waiting adders not as expected");
 		}
 		
+		[Test, Timeout(1000)]
+		public async Task AddMaximumCancel()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>(1);
+			
+			Task MyTask;
+			//****************************************
+			
+			await MyCollection.Add(42);
+			
+			using (var MyCancelSource = new CancellationTokenSource())
+			{
+				MyTask = MyCollection.Add(84, MyCancelSource.Token);
+				
+				MyCancelSource.Cancel();
+			}
+			
+			try
+			{
+				await MyTask;
+				
+				Assert.Fail("Should not reach here");
+			}
+			catch (OperationCanceledException)
+			{
+			}
+			
+			//****************************************
+			
+			Assert.AreEqual(1, MyCollection.Count, "Count not as expected");
+		}
+		
 		[Test, Timeout(1000), Repeat(10)]
 		public async Task AddMaximumTake()
 		{	//****************************************
@@ -217,10 +249,98 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyCollection.WaitingToAdd, "Tasks unexpectedly waiting");
 		}
 		
+		[Test, Timeout(1000)]
+		public void AddComplete()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>();
+			//****************************************
+			
+			var MyTask = MyCollection.AddComplete(42);
+			
+			//****************************************
+			
+			Assert.IsTrue(MyTask.IsCompleted, "Still waiting to add");
+			
+			Assert.AreEqual(1, MyCollection.Count, "Count not as expected");
+			
+			Assert.IsTrue(MyCollection.IsAddingCompleted, "Not completed");
+		}
+		
+		[Test, Timeout(1000)]
+		public async Task AddCompleteTake()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>();
+			//****************************************
+			
+			await MyCollection.AddComplete(42);
+			
+			var MyTask = MyCollection.Take();
+			
+			//****************************************
+			
+			Assert.IsTrue(MyTask.IsCompleted, "Still waiting to take");
+			
+			Assert.AreEqual(0, MyCollection.Count, "Count not as expected");
+			
+			Assert.IsTrue(MyCollection.IsCompleted, "Not completed");
+		}
+		
+		[Test, Timeout(1000)]
+		public async Task AddCompleteAdd()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>();
+			//****************************************
+			
+			await MyCollection.AddComplete(42);
+			
+			try
+			{
+				await MyCollection.Add(84);
+				
+				Assert.Fail("Should not reach here");
+			}
+			catch (InvalidOperationException)
+			{
+			}
+			
+			//****************************************
+			
+			Assert.AreEqual(1, MyCollection.Count, "Count not as expected");
+			
+			Assert.IsTrue(MyCollection.IsAddingCompleted, "Not completed");
+		}
+		
+		[Test, Timeout(1000)]
+		public async Task AddCompleteTakeTake()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>();
+			//****************************************
+			
+			await MyCollection.AddComplete(42);
+			
+			var Result = await MyCollection.Take();
+			
+			try
+			{
+				await MyCollection.Take();
+				
+				Assert.Fail("Should not reach here");
+			}
+			catch (InvalidOperationException)
+			{
+			}
+			
+			//****************************************
+			
+			Assert.AreEqual(0, MyCollection.Count, "Count not as expected");
+			
+			Assert.IsTrue(MyCollection.IsCompleted, "Not completed");
+		}
+		
 		//****************************************
 		
 		[Test, Timeout(1000)]
-		public async Task TakeComplete()
+		public async Task TakeThenComplete()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
 			//****************************************
@@ -239,7 +359,7 @@ namespace Proximity.Utility.Tests
 				
 				Assert.Fail("Should not reach here");
 			}
-			catch (OperationCanceledException)
+			catch (InvalidOperationException)
 			{
 			}
 			
@@ -248,7 +368,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000)]
-		public async Task AddMaximumComplete()
+		public async Task AddMaximumThenComplete()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(1);
 			//****************************************
@@ -267,7 +387,7 @@ namespace Proximity.Utility.Tests
 				
 				Assert.Fail("Should not reach here");
 			}
-			catch (OperationCanceledException)
+			catch (InvalidOperationException)
 			{
 			}
 			
@@ -278,7 +398,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000)]
-		public async Task AddMaximumCompleteTake()
+		public async Task AddMaximumThenCompleteTake()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(1);
 			//****************************************
@@ -300,7 +420,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000), Repeat(10)]
-		public async Task TakeAddComplete()
+		public async Task TakeAddThenComplete()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
 			//****************************************
@@ -371,14 +491,12 @@ namespace Proximity.Utility.Tests
 					TotalItems++;
 				}
 			}
-			catch (OperationCanceledException)
+			catch (InvalidOperationException)
 			{
 				// Cancelled
 			}
 			
 			return TotalItems;
 		}
-		
-		
 	}
 }

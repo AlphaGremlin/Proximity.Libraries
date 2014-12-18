@@ -79,9 +79,8 @@ namespace Proximity.Utility.Logging.Outputs
 			catch (OperationCanceledException)
 			{
 			}
-			catch (ObjectDisposedException)
+			catch (InvalidOperationException)
 			{
-				
 			}
 		}
 		
@@ -97,6 +96,9 @@ namespace Proximity.Utility.Logging.Outputs
 				MyCompletionSource.Task.Wait();
 			}
 			catch (OperationCanceledException)
+			{
+			}
+			catch (InvalidOperationException)
 			{
 			}
 		}
@@ -175,7 +177,7 @@ namespace Proximity.Utility.Logging.Outputs
 			catch (OperationCanceledException)
 			{
 			}
-			catch (ObjectDisposedException)
+			catch (InvalidOperationException)
 			{
 			}
 			finally
