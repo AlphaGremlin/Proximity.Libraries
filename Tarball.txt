@@ -3,8 +3,6 @@
 *.pdb
 *.lnk
 *.suo
-Installer/NeoJournal.exe
-Release
-PocketPC
+Build
 .svn
 */NDepend

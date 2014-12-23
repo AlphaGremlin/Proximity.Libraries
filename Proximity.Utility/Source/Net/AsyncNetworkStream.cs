@@ -169,7 +169,7 @@ namespace Proximity.Utility.Net
 		
 		private Task<int> ReadData(byte[] buffer, int index, int count, AsyncCallback callback = null, object state = null)
 		{	//****************************************
-			var MyTaskSource = new TaskCompletionSource<int>(state);
+			var MyOperation = new ReadOperation(this, callback, state);
 			//****************************************
 			
 			// Prepare a receive buffer
@@ -182,101 +182,70 @@ namespace Proximity.Utility.Net
 	
 				if (_ReadEventArgs.IsCompleted)
 				{
-					ProcessCompletedReceive(MyTaskSource, callback);
+					MyOperation.ProcessCompletedReceive();
 				}
 				else
 				{
-					((INotifyCompletion)_ReadEventArgs).OnCompleted(() => ProcessCompletedReceive(MyTaskSource, callback));
+					((INotifyCompletion)_ReadEventArgs).OnCompleted(MyOperation.ProcessCompletedReceive);
 				}
 	
-				return MyTaskSource.Task;
+				return MyOperation.Task;
 			}
 			catch (Exception e)
 			{
-				// Ensure the completed task we return has the appropriate state
-				MyTaskSource.SetException(e);
-	
-				if (callback != null)
-					callback(MyTaskSource.Task);
-	
-				return MyTaskSource.Task;
+				MyOperation.Fail(e);
+				
+				return MyOperation.Task;
 			}
 		}
 		
-		private void ProcessCompletedReceive(TaskCompletionSource<int> source, AsyncCallback callback)
-		{
-			if (_ReadEventArgs.SocketError == SocketError.Success)
-				source.SetResult(_ReadEventArgs.BytesTransferred);
-			else
-				source.SetException(new SocketException((int)_ReadEventArgs.SocketError));
-
-			// Raise the async callback (if any)
-			if (callback != null)
-				callback(source.Task);
-		}
-
 		private Task SendData(byte[] buffer, int offset, int count, AsyncCallback callback = null, object state = null)
 		{	//****************************************
-			var MyCompletionSource = new TaskCompletionSource<VoidStruct>(state);
+			var MyOperation = new SendOperation(this, buffer, offset, count, callback, state);
 			//****************************************
 			
 			// Swap out the previous write task with ours
-			var OldTask = Interlocked.Exchange(ref _LastWrite, MyCompletionSource.Task);
+			var OldTask = Interlocked.Exchange(ref _LastWrite, MyOperation.Task);
 			
 			// Has that write completed?
 			if (OldTask == null || OldTask.IsCompleted)
 			{
 				// Yes, directly queue it
-				QueueSendData(buffer, offset, count, callback, MyCompletionSource);
+				DoSendData(MyOperation);
 			}
 			else
 			{
 				// No, wait until it finishes to queue our write
-				OldTask.ContinueWith((innerTask) => QueueSendData(buffer, offset, count, callback, MyCompletionSource));
+				OldTask.ContinueWith(MyOperation.DoSendData);
 			}
 
-			return MyCompletionSource.Task;
+			return MyOperation.Task;
 		}
 
-		private void QueueSendData(byte[] array, int offset, int count, AsyncCallback callback, TaskCompletionSource<VoidStruct> completionSource)
+		private void DoSendData(SendOperation operation)
 		{
 			_WriteEventArgs.BufferList = null;
-			_WriteEventArgs.SetBuffer(array, offset, count);
-
+			operation.Apply();
+			
 			try
 			{
 				_WriteEventArgs.SendAsync(_Socket);
 
 				if (_WriteEventArgs.IsCompleted)
 				{
-					ProcessCompletedSend(completionSource, callback);
+					operation.ProcessCompletedSend();
 				}
 				else
 				{
-					((INotifyCompletion)_WriteEventArgs).OnCompleted(() => ProcessCompletedSend(completionSource, callback));
+					((INotifyCompletion)_WriteEventArgs).OnCompleted(operation.ProcessCompletedSend);
 				}
 			}
 			catch (Exception e)
 			{
-				completionSource.SetException(e);
-	
-				if (callback != null)
-					callback(completionSource.Task);
+				operation.Fail(e);
 			}
 		}
 		
-		private void ProcessCompletedSend(TaskCompletionSource<VoidStruct> source, AsyncCallback callback)
-		{
-			if (_WriteEventArgs.SocketError == SocketError.Success)
-				source.SetResult(VoidStruct.Empty);
-			else
-				source.SetException(new SocketException((int)_WriteEventArgs.SocketError));
-
-			// Raise the async callback (if any)
-			if (callback != null)
-				callback(source.Task);
-		}
-
 		//****************************************
 
 		/// <inheritdoc />
@@ -316,6 +285,101 @@ namespace Proximity.Utility.Net
 		public Socket Socket
 		{
 			get { return _Socket; }
+		}
+		
+		//****************************************
+		
+		private sealed class ReadOperation : TaskCompletionSource<int>
+		{	//****************************************
+			private readonly AsyncNetworkStream _Stream;
+			private readonly AsyncCallback _Callback;
+			//****************************************
+			
+			internal ReadOperation(AsyncNetworkStream stream, AsyncCallback callback, object state) : base(state)
+			{
+				_Stream = stream;
+				_Callback = callback;
+			}
+			
+			//****************************************
+			
+			internal void ProcessCompletedReceive()
+			{	//****************************************
+				var EventArgs = _Stream._ReadEventArgs;
+				//****************************************
+				
+				if (EventArgs.SocketError == SocketError.Success)
+					SetResult(EventArgs.BytesTransferred);
+				else
+					SetException(new SocketException((int)EventArgs.SocketError));
+	
+				// Raise the async callback (if any)
+				if (_Callback != null)
+					_Callback(Task);
+			}
+			
+			internal void Fail(Exception e)
+			{
+				// Ensure the completed task we return has the appropriate state
+				SetException(e);
+	
+				if (_Callback != null)
+					_Callback(Task);
+			}
+		}
+		
+		private sealed class SendOperation : TaskCompletionSource<VoidStruct>
+		{	//****************************************
+			private readonly AsyncNetworkStream _Stream;
+			private readonly byte[] _Buffer;
+			private readonly int _Offset, _Count;
+			private readonly AsyncCallback _Callback;
+			//****************************************
+			
+			internal SendOperation(AsyncNetworkStream stream, byte[] buffer, int offset, int count, AsyncCallback callback, object state) : base(state)
+			{
+				_Stream = stream;
+				_Buffer = buffer;
+				_Offset = offset;
+				_Count = count;
+				_Callback = callback;
+			}
+			
+			//****************************************
+			
+			internal void DoSendData(Task ancestor)
+			{
+				_Stream.DoSendData(this);
+			}
+			
+			internal void Apply(SocketAwaitableEventArgs eventArgs)
+			{
+				_Stream._WriteEventArgs.SetBuffer(_Buffer, _Offset, _Count);
+			}
+			
+			internal void Fail(Exception e)
+			{
+				// Ensure the completed task we return has the appropriate state
+				SetException(e);
+	
+				if (_Callback != null)
+					_Callback(Task);
+			}
+			
+			internal void ProcessCompletedSend()
+			{	//****************************************
+				var MyError = _Stream._WriteEventArgs.SocketError;
+				//****************************************
+				
+				if (MyError == SocketError.Success)
+					SetResult(VoidStruct.Empty);
+				else
+					SetException(new SocketException((int)MyError));
+				
+				// Raise the async callback (if any)
+				if (_Callback != null)
+					_Callback(Task);
+			}
 		}
 	}
 }
