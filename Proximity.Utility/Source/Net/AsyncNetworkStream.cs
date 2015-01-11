@@ -3,6 +3,7 @@
  Created: 2014-10-02
 \****************************************/
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
@@ -23,7 +24,6 @@ namespace Proximity.Utility.Net
 		private readonly SocketAwaitableEventArgs _WriteEventArgs = new SocketAwaitableEventArgs(), _ReadEventArgs = new SocketAwaitableEventArgs();
 		
 		private Task _LastWrite;
-		private byte[] _WriteBuffer;
 		//****************************************
 
 		/// <summary>
@@ -83,7 +83,7 @@ namespace Proximity.Utility.Net
 		/// <inheritdoc />
 		public override Task FlushAsync(CancellationToken cancellationToken)
 		{
-			return Task.FromResult<VoidStruct>(VoidStruct.Empty);
+			return VoidStruct.EmptyTask;
 		}
 
 		/// <inheritdoc />
@@ -92,9 +92,7 @@ namespace Proximity.Utility.Net
 			if (count == 0)
 				return 0;
 
-			var MyTask = ReadData(buffer, offset, count);
-
-			return MyTask.Result;
+			return ReadData(buffer, offset, count).Result;
 		}
 		
 		/// <inheritdoc />
@@ -139,13 +137,7 @@ namespace Proximity.Utility.Net
 			if (count == 0)
 				return;
 			
-			// The caller may manipulate buffer after we exit, so we need to copy it
-			if (_WriteBuffer == null || _WriteBuffer.Length < count)
-				_WriteBuffer = new byte[count];
-			
-			Array.Copy(buffer, offset, _WriteBuffer, 0, count);
-
-			SendData(_WriteBuffer, 0, count); // No need to wait on the task, as we queue the write until later
+			SendData(buffer, offset, count).Wait();
 		}
 
 		/// <inheritdoc />
@@ -169,7 +161,7 @@ namespace Proximity.Utility.Net
 		
 		private Task<int> ReadData(byte[] buffer, int index, int count, AsyncCallback callback = null, object state = null)
 		{	//****************************************
-			var MyOperation = new ReadOperation(this, callback, state);
+			var MyOperation = new ReadOperation(this, callback, state); // 2 allocations (TaskCompletionSource and Task)
 			//****************************************
 			
 			// Prepare a receive buffer
@@ -186,7 +178,7 @@ namespace Proximity.Utility.Net
 				}
 				else
 				{
-					((INotifyCompletion)_ReadEventArgs).OnCompleted(MyOperation.ProcessCompletedReceive);
+					((INotifyCompletion)_ReadEventArgs).OnCompleted(MyOperation.ProcessCompletedReceive); // 1 allocation (Action)
 				}
 	
 				return MyOperation.Task;
@@ -201,7 +193,7 @@ namespace Proximity.Utility.Net
 		
 		private Task SendData(byte[] buffer, int offset, int count, AsyncCallback callback = null, object state = null)
 		{	//****************************************
-			var MyOperation = new SendOperation(this, buffer, offset, count, callback, state);
+			var MyOperation = new SendOperation(this, buffer, offset, count, callback, state); // 2 allocations (TaskCompletionSource and Task)
 			//****************************************
 			
 			// Swap out the previous write task with ours
@@ -216,7 +208,7 @@ namespace Proximity.Utility.Net
 			else
 			{
 				// No, wait until it finishes to queue our write
-				OldTask.ContinueWith(MyOperation.DoSendData);
+				OldTask.ContinueWith(MyOperation.DoSendData); // 2 allocations (Task and Action)
 			}
 
 			return MyOperation.Task;
@@ -237,7 +229,7 @@ namespace Proximity.Utility.Net
 				}
 				else
 				{
-					((INotifyCompletion)_WriteEventArgs).OnCompleted(operation.ProcessCompletedSend);
+					((INotifyCompletion)_WriteEventArgs).OnCompleted(operation.ProcessCompletedSend); // 1 allocation (Action)
 				}
 			}
 			catch (Exception e)
@@ -352,7 +344,7 @@ namespace Proximity.Utility.Net
 				_Stream.DoSendData(this);
 			}
 			
-			internal void Apply(SocketAwaitableEventArgs eventArgs)
+			internal void Apply()
 			{
 				_Stream._WriteEventArgs.SetBuffer(_Buffer, _Offset, _Count);
 			}

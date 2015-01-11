@@ -14,6 +14,7 @@ namespace Proximity.Utility.Net
 	/// <summary>
 	/// Provides a SocketAsyncEventArgs that can be awaited
 	/// </summary>
+	/// <remarks>Based on the code by Stephen Taub at http://blogs.msdn.com/b/pfxteam/archive/2011/12/15/10248293.aspx</remarks>
 	public sealed class SocketAwaitableEventArgs : SocketAsyncEventArgs, INotifyCompletion
 	{	//****************************************
 		private readonly static Action HasCompleted = () => { };
@@ -249,7 +250,6 @@ namespace Proximity.Utility.Net
 		public bool IsCompleted
 		{
 			get { return _IsCompleted; }
-			internal set { _IsCompleted = value; }
 		}
 	}
 }
