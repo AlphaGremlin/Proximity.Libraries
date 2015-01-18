@@ -19,14 +19,23 @@ namespace Proximity.Utility.Threading
 		private TimeSpan _Delay = TimeSpan.Zero;
 		private int _State; // 0 if not running, 1 if flagged to run, 2 if running
 
-		private TaskCompletionSource<bool> _WaitTask;
+		private TaskCompletionSource<bool> _WaitTask, _PendingWaitTask;
+		
+		private WaitCallback _ProcessTaskFlag;
+		private Action _CompleteProcessTask;
 		//****************************************
+		
+		private AsyncTaskFlag()
+		{
+			_ProcessTaskFlag = ProcessTaskFlag;
+			_CompleteProcessTask = CompleteProcessTask;
+		}
 		
 		/// <summary>
 		/// Creates a Task Flag
 		/// </summary>
 		/// <param name="callback">The callback to execute</param>
-		public AsyncTaskFlag(Func<Task> callback)
+		public AsyncTaskFlag(Func<Task> callback) : this()
 		{
 			_Callback = callback;
 		}
@@ -36,7 +45,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="callback">The callback to execute</param>
 		/// <param name="delay">A fixed delay between callback executions</param>
-		public AsyncTaskFlag(Func<Task> callback, TimeSpan delay)
+		public AsyncTaskFlag(Func<Task> callback, TimeSpan delay) : this()
 		{
 			_Callback = callback;
 			_Delay = delay;
@@ -53,7 +62,7 @@ namespace Proximity.Utility.Threading
 			if (Interlocked.Exchange(ref _State, 1) == 0)
 			{
 				// If the previous state was 0 (not flagged), we need to start it executing
-				ThreadPool.UnsafeQueueUserWorkItem(ProcessTaskFlag, null);
+				ThreadPool.UnsafeQueueUserWorkItem(_ProcessTaskFlag, null);
 			}
 			
 			// If the previous state was 1 (flagged) or 2 (executing), then ProcessTaskFlag will take care of it
@@ -99,15 +108,29 @@ namespace Proximity.Utility.Threading
 			Interlocked.Exchange(ref _State, 2);
 	
 			// Capture any requests to wait for this callback
-			var MyWaitTask = Interlocked.Exchange(ref _WaitTask, null);
+			_PendingWaitTask = Interlocked.Exchange(ref _WaitTask, null);
 			
-			// Raise the callback and queue the task continuation 
-			_Callback().ContinueWith(CompleteProcessTask, (object)MyWaitTask);
+			// Raise the callback and get an awaiter
+			// Using GetAwaiter results in less allocations (TaskContinuation) than using ContinueWith (Task and TaskContinuation)
+			var MyResultAwaiter = _Callback().GetAwaiter();
+			
+			// If the operation finished, run the callback
+			if (MyResultAwaiter.IsCompleted)
+				CompleteProcessTask(true);
+			else
+				// Still pending, queue the completion task
+				MyResultAwaiter.OnCompleted(_CompleteProcessTask);
 		}
 		
-		private void CompleteProcessTask(Task ancestor, object state)
+		private void CompleteProcessTask()
 		{
-			var MyWaitTask = (TaskCompletionSource<bool>)state;
+			CompleteProcessTask(false);
+		}
+		
+		private void CompleteProcessTask(bool isNested)
+		{	//****************************************
+			var MyWaitTask = Interlocked.Exchange(ref _PendingWaitTask, null);
+			//****************************************
 			
 			// If we captured a wait task, set it
 			if (MyWaitTask != null)
@@ -117,9 +140,16 @@ namespace Proximity.Utility.Threading
 			if (Interlocked.CompareExchange(ref _State, 0, 2) == 1)
 			{
 				// Queue the callback again if the previous value is 1 (flagged)
-				
-				// We don't just use a while loop so we don't hold the ThreadPool thread
-				ThreadPool.UnsafeQueueUserWorkItem(ProcessTaskFlag, null);
+				if (isNested)
+				{
+					// We're called directly from ProcessTaskFlag, so call it again on the ThreadPool rather than risking blowing the stack
+					ThreadPool.UnsafeQueueUserWorkItem(_ProcessTaskFlag, null);
+				}
+				else
+				{
+					// Called from the Awaiter completion, so it's safe to call back to ProcessTaskFlag
+					ProcessTaskFlag(null);
+				}
 			}
 		}
 		

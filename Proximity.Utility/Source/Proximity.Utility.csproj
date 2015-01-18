@@ -151,6 +151,7 @@
     <None Include="Collections\AsyncLinq.cs" />
     <Compile Include="Collections\BiDictionary.cs" />
     <Compile Include="Collections\ConcurrentExtensions.cs" />
+    <Compile Include="Collections\ConcurrentWeakDictionary.cs" />
     <Compile Include="Collections\IAsyncEnumerable.cs" />
     <Compile Include="Collections\IAsyncEnumerator.cs" />
     <Compile Include="Collections\ImmutableCountedStack.cs" />

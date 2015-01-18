@@ -147,10 +147,7 @@ namespace Proximity.Utility.Collections
 			// Yes, is the reference valid?
 			value = (TValue)MyHandle.Target;
 			
-			if (value != null)
-				return true;
-			
-			return false;
+			return value != null;
 		}
 		
 		/// <summary>

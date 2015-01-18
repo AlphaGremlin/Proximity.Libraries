@@ -212,15 +212,19 @@ namespace Proximity.Utility.Net
 			return this;
 		}
 		
-		//****************************************
-		
-		void INotifyCompletion.OnCompleted(Action continuation)
+		/// <summary>
+		/// Sets an action to run when the socket operation is completed
+		/// </summary>
+		/// <param name="continuation">The continuation to call</param>
+		public void OnCompleted(Action continuation)
 		{
 			if (_Continuation == HasCompleted || Interlocked.CompareExchange(ref _Continuation, continuation, null) == HasCompleted)
 			{
 				Task.Run(continuation);
 			}
 		}
+		
+		//****************************************
 		
 		/// <inheritdoc />
 		protected override void OnCompleted(SocketAsyncEventArgs e)

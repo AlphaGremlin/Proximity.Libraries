@@ -329,7 +329,11 @@ namespace Proximity.Utility.Collections
 					// Is there an item to take?
 					MyTask = _UsedSlots.Decrement(token);
 				}
-				catch (OperationCanceledException) // Adding has completed while we were requesting
+				catch (ObjectDisposedException) // Adding has completed while we were requesting
+				{
+					yield break;
+				}
+				catch (OperationCanceledException) // Cancellation token was raised
 				{
 					yield break;
 				}
