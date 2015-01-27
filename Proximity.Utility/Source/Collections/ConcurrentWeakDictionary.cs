@@ -172,7 +172,7 @@ namespace Proximity.Utility.Collections
 				
 				// Try and add it to the dictionary
 				if (_Dictionary.TryAdd(key, NewHandle))
-					return value; // Success, return the result
+					return NewValue; // Success, return the result
 				
 				// Key was added concurrently, free the handle we no longer need
 				NewHandle.Free();
@@ -254,7 +254,7 @@ namespace Proximity.Utility.Collections
 				
 				// Try and add it to the dictionary
 				if (_Dictionary.TryAdd(key, NewHandle))
-					return value; // Success, return the result
+					return NewValue; // Success, return the result
 				
 				// Key was added concurrently, free the handle we no longer need
 				NewHandle.Free();
@@ -284,7 +284,7 @@ namespace Proximity.Utility.Collections
 				throw new ArgumentNullException("Cannot have a null in a Weak Dictionary");
 			
 			// Is this key in the dictionary?
-			if (!_Dictionary.TryGetValue(key, MyHandle))
+			if (!_Dictionary.TryGetValue(key, out MyHandle))
 				return false;
 			
 			MyValue = (TValue)MyHandle.Target;
@@ -324,7 +324,7 @@ namespace Proximity.Utility.Collections
 					
 					// Try and add it to the dictionary
 					if (_Dictionary.TryAdd(key, NewHandle))
-						return value; // Success, return the result
+						return true; // Success, return the result
 					
 					// Key was added concurrently, free the handle we no longer need
 					NewHandle.Free();
@@ -393,12 +393,11 @@ namespace Proximity.Utility.Collections
 		public bool TryRemove(TKey key, out TValue value)
 		{	//****************************************
 			GCHandle MyHandle;
-			TValue MyValue;
 			//****************************************
 			
 			if (_Dictionary.TryRemove(key, out MyHandle))
 			{
-				value = MyHandle.Target;
+				value = (TValue)MyHandle.Target;
 				
 				MyHandle.Free();
 				
@@ -414,18 +413,15 @@ namespace Proximity.Utility.Collections
 		/// Updates an item if it exists in the dictionary
 		/// </summary>
 		/// <param name="key">The key of the item to update</param>
-		/// <param name="update">A callback that performs the update</param>
+		/// <param name="updateCallback">A callback that performs the update</param>
 		/// <param name="newValue">Receives the new value if the dictionary was updated</param>
 		/// <returns>True if the item was updated, False if it does not exist or the reference expired</returns>
-		public bool TryUpdate<TKey, TValue>(TKey key, Func<TKey, TValue, TValue> update, out TValue newValue)
+		public bool TryUpdate(TKey key, Func<TKey, TValue, TValue> updateCallback, out TValue newValue)
 		{	//****************************************
 			GCHandle MyHandle, NewHandle;
 			
 			TValue OldValue, NewValue;
 			//****************************************
-			
-			if (oldValue == null)
-				throw new ArgumentNullException("Cannot have a null in a Weak Dictionary");
 			
 			for (; ;)
 			{
@@ -455,7 +451,7 @@ namespace Proximity.Utility.Collections
 				
 				// Yes. If the old and new references are the same, no need to change anything
 				// Check now, rather than earlier, so we can return true if it was 'updated' correctly
-				if (object.ReferenceEquals(OldValue, newValue))
+				if (object.ReferenceEquals(OldValue, NewValue))
 				{
 					newValue = NewValue;
 					
@@ -484,16 +480,16 @@ namespace Proximity.Utility.Collections
 		/// <summary>
 		/// Updates an item in the dictionary
 		/// </summary>
-		/// <param name="TKey">The key of the item to update</param>
+		/// <param name="key">The key of the item to update</param>
 		/// <param name="newValue">The new value of the item</param>
 		/// <param name="oldValue">The old value we expect to replace</param>
 		/// <returns>True if the key exists and old value was replaced with new value, otherwise false</returns>
 		/// <remarks>Will return false if the reference has expired</remarks>
-		public bool TryUpdate(TKey, TValue newValue, TValue oldValue)
+		public bool TryUpdate(TKey key, TValue newValue, TValue oldValue)
 		{	//****************************************
 			GCHandle MyHandle, NewHandle;
 			
-			TValue OldValue, NewValue;
+			TValue OldValue;
 			//****************************************
 			
 			if (newValue == null)
