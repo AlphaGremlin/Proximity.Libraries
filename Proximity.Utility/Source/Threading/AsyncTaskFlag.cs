@@ -14,19 +14,25 @@ namespace Proximity.Utility.Threading
 	/// </summary>
 	public sealed class AsyncTaskFlag
 	{	//****************************************
-		private Func<Task> _Callback;
+		private readonly Func<Task> _Callback;
+		
+		private readonly WaitCallback _ProcessTaskFlag;
+		private readonly Action _CompleteProcessTask;
 		
 		private TimeSpan _Delay = TimeSpan.Zero;
 		private int _State; // 0 if not running, 1 if flagged to run, 2 if running
+		private Timer _DelayTimer;
 
 		private TaskCompletionSource<bool> _WaitTask, _PendingWaitTask;
-		
-		private WaitCallback _ProcessTaskFlag;
-		private Action _CompleteProcessTask;
 		//****************************************
 		
-		private AsyncTaskFlag()
+		/// <summary>
+		/// Creates a Task Flag
+		/// </summary>
+		/// <param name="callback">The callback to execute</param>
+		public AsyncTaskFlag(Func<Task> callback)
 		{
+			_Callback = callback;
 			_ProcessTaskFlag = ProcessTaskFlag;
 			_CompleteProcessTask = CompleteProcessTask;
 		}
@@ -35,20 +41,33 @@ namespace Proximity.Utility.Threading
 		/// Creates a Task Flag
 		/// </summary>
 		/// <param name="callback">The callback to execute</param>
-		public AsyncTaskFlag(Func<Task> callback) : this()
+		/// <param name="delay">A fixed delay between callback executions</param>
+		public AsyncTaskFlag(Func<Task> callback, TimeSpan delay)
 		{
 			_Callback = callback;
+			
+			if (delay == TimeSpan.Zero)
+			{
+				_ProcessTaskFlag = ProcessTaskFlag;
+			}
+			else
+			{
+				_Delay = delay;
+				_ProcessTaskFlag = ProcessDelayTaskFlag;
+				_DelayTimer = new Timer(ProcessTaskFlag);
+			}
+			
+			_CompleteProcessTask = CompleteProcessTask;
 		}
 		
-		/// <summary>
-		/// Creates a Task Flag
-		/// </summary>
-		/// <param name="callback">The callback to execute</param>
-		/// <param name="delay">A fixed delay between callback executions</param>
-		public AsyncTaskFlag(Func<Task> callback, TimeSpan delay) : this()
+		//****************************************
+		
+		public void Dispose()
 		{
-			_Callback = callback;
-			_Delay = delay;
+			var MyTimer = Interlocked.Exchange(ref _DelayTimer, null);
+			
+			if (MyTimer != null)
+				MyTimer.Dispose();
 		}
 		
 		//****************************************
@@ -98,12 +117,14 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 		
+		private void ProcessDelayTaskFlag(object state)
+		{
+			// Wait a bit before acknowledging the flag
+			_DelayTimer.Change(_Delay, Timeout.InfiniteTimeSpan);
+		}
+		
 		private void ProcessTaskFlag(object state)
 		{
-			if (_Delay != TimeSpan.Zero)
-				// Wait a bit before acknowledging the flag
-				Thread.Sleep(_Delay);
-			
 			// Set the processing state to 2, showing we've acknowledged this flag
 			Interlocked.Exchange(ref _State, 2);
 	
@@ -148,7 +169,8 @@ namespace Proximity.Utility.Threading
 				else
 				{
 					// Called from the Awaiter completion, so it's safe to call back to ProcessTaskFlag
-					ProcessTaskFlag(null);
+					// Use the delegate, since we may be raising the timer
+					_ProcessTaskFlag(null);
 				}
 			}
 		}

@@ -270,6 +270,7 @@
     <Compile Include="Threading\StreamTaskScheduler.cs" />
     <Compile Include="Threading\TaskFlag.cs" />
     <Compile Include="Threading\TaskStream.cs" />
+    <None Include="Threading\TaskStreamSlim.cs" />
     <Compile Include="Threading\UnsafeTask.cs" />
     <Compile Include="Threading\VoidStruct.cs" />
     <Compile Include="Threading\WaitHandleExtensions.cs" />

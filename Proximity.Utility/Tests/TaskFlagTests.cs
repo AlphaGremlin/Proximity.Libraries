@@ -42,6 +42,26 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(1, _Counter, "Counter is not as expected");
 		}
 		
+		[Test(), Timeout(1500)]
+		public async Task SetAndWaitDelay()
+		{
+			var MyFlag = new TaskFlag(WaitHalfSecond, new TimeSpan(0, 0, 0, 0, 100));
+			
+			var StartTime = DateTime.Now;
+			
+			var MyTask = MyFlag.SetAndWait();
+			
+			Thread.Sleep(50);
+			
+			Assert.AreEqual(0, _Counter, "Raised early");
+			
+			await MyTask;
+			
+			Assert.That(DateTime.Now.Subtract(StartTime).TotalMilliseconds, Is.InRange(500.0, 700.0));
+			
+			Assert.AreEqual(1, _Counter, "Counter is not as expected");
+		}
+		
 		[Test(), Timeout(2500)]
 		public async Task SetAndWaitTwice()
 		{

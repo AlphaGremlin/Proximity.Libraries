@@ -42,6 +42,26 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(1, _Counter, "Counter is not as expected");
 		}
 		
+		[Test(), Timeout(1500)]
+		public async Task SetAndWaitDelay()
+		{
+			var MyFlag = new AsyncTaskFlag(WaitHalfSecond, new TimeSpan(0, 0, 0, 0, 100));
+			
+			var StartTime = DateTime.Now;
+			
+			var MyTask = MyFlag.SetAndWait();
+			
+			Thread.Sleep(50);
+			
+			Assert.AreEqual(0, _Counter, "Raised early");
+			
+			await MyTask;
+			
+			Assert.That(DateTime.Now.Subtract(StartTime).TotalMilliseconds, Is.InRange(500.0, 700.0));
+			
+			Assert.AreEqual(1, _Counter, "Counter is not as expected");
+		}
+		
 		[Test(), Timeout(2500)]
 		public async Task SetAndWaitTwice()
 		{
@@ -56,6 +76,24 @@ namespace Proximity.Utility.Tests
 			await MyFlag.SetAndWait();
 			
 			Assert.That(DateTime.Now.Subtract(StartTime).TotalMilliseconds, Is.InRange(900.0, 1100.0));
+			
+			Assert.AreEqual(2, _Counter, "Counter is not as expected");
+		}
+		
+		[Test(), Timeout(2500)]
+		public async Task SetAndWaitTwiceDelay()
+		{
+			var MyFlag = new AsyncTaskFlag(WaitHalfSecond, new TimeSpan(0, 0, 0, 0, 100));
+			
+			var StartTime = DateTime.Now;
+			
+			MyFlag.Set();
+			
+			Thread.Sleep(200);
+			
+			await MyFlag.SetAndWait();
+			
+			Assert.That(DateTime.Now.Subtract(StartTime).TotalMilliseconds, Is.InRange(1100.0, 1300.0));
 			
 			Assert.AreEqual(2, _Counter, "Counter is not as expected");
 		}

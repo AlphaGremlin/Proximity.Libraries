@@ -17,18 +17,23 @@ namespace Proximity.Utility.Threading
 	/// </summary>
 	public sealed class TaskFlag
 	{	//****************************************
-		private Action _Callback;
+		private readonly Action _Callback;
+		private readonly WaitCallback _ProcessTaskFlag;
 		
 		private TimeSpan _Delay = TimeSpan.Zero;
 		private int _State; // 0 if not running, 1 if flagged to run, 2 if running
+		private Timer _DelayTimer;
 
 		private TaskCompletionSource<bool> _WaitTask;
-		
-		private WaitCallback _ProcessTaskFlag;
 		//****************************************
 		
-		private TaskFlag()
+		/// <summary>
+		/// Creates a Task Flag
+		/// </summary>
+		/// <param name="callback">The callback to execute</param>
+		public TaskFlag(Action callback)
 		{
+			_Callback = callback;
 			_ProcessTaskFlag = ProcessTaskFlag;
 		}
 		
@@ -36,18 +41,20 @@ namespace Proximity.Utility.Threading
 		/// Creates a Task Flag
 		/// </summary>
 		/// <param name="callback">The callback to execute</param>
-		public TaskFlag(Action callback) : this()
-		{
-			_Callback = callback;
-		}
-		
-		/// <summary>
-		/// Creates a Task Flag
-		/// </summary>
-		/// <param name="callback">The callback to execute</param>
 		/// <param name="delay">A fixed delay between callback executions</param>
-		public TaskFlag(Action callback, TimeSpan delay) : this()
+		public TaskFlag(Action callback, TimeSpan delay)
 		{
+			if (delay == TimeSpan.Zero)
+			{
+				_ProcessTaskFlag = ProcessTaskFlag;
+			}
+			else
+			{
+				_Delay = delay;
+				_ProcessTaskFlag = ProcessDelayTaskFlag;
+				_DelayTimer = new Timer(ProcessTaskFlag);
+			}
+			
 			_Callback = callback;
 		}
 		
@@ -98,12 +105,14 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 		
+		private void ProcessDelayTaskFlag(object state)
+		{
+			// Wait a bit before acknowledging the flag
+			_DelayTimer.Change(_Delay, Timeout.InfiniteTimeSpan);
+		}
+		
 		private void ProcessTaskFlag(object state)
 		{
-			if (_Delay != TimeSpan.Zero)
-				// Wait a bit before acknowledging the flag
-				Thread.Sleep(_Delay);
-			
 			// Set the processing state to 2, showing we've acknowledged this flag
 			Interlocked.Exchange(ref _State, 2);
 	

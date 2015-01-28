@@ -17,11 +17,11 @@ namespace Proximity.Utility.Threading
 		/// <summary>
 		/// Provides an empty structure
 		/// </summary>
-		public static VoidStruct Empty = default(VoidStruct);
+		public static readonly VoidStruct Empty = default(VoidStruct);
 		
 		/// <summary>
 		/// Provides an empty completed task
 		/// </summary>
-		public static Task<VoidStruct> EmptyTask = Task.FromResult<VoidStruct>(VoidStruct.Empty);
+		public static readonly Task<VoidStruct> EmptyTask = Task.FromResult<VoidStruct>(VoidStruct.Empty);
 	}
 }

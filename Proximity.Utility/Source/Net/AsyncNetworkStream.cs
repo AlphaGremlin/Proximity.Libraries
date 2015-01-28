@@ -66,13 +66,15 @@ namespace Proximity.Utility.Net
 		/// <inheritdoc />
 		public override int EndRead(IAsyncResult asyncResult)
 		{
-			return ((Task<int>)asyncResult).Result;
+			// Use GetResult() so exceptions are thrown without being wrapped in AggregateException
+			return ((Task<int>)asyncResult).GetAwaiter().GetResult();
 		}
 
 		/// <inheritdoc />
 		public override void EndWrite(IAsyncResult asyncResult)
 		{
-			((Task)asyncResult).Wait();
+			// Use GetResult() so exceptions are thrown without being wrapped in AggregateException
+			((Task)asyncResult).GetAwaiter().GetResult();
 		}
 		
 		/// <inheritdoc />
@@ -92,7 +94,8 @@ namespace Proximity.Utility.Net
 			if (count == 0)
 				return 0;
 
-			return ReadData(buffer, offset, count).Result;
+			// Use GetResult() so exceptions are thrown without being wrapped in AggregateException
+			return ReadData(buffer, offset, count).GetAwaiter().GetResult();
 		}
 		
 		/// <inheritdoc />
@@ -100,7 +103,7 @@ namespace Proximity.Utility.Net
 		{
 			if (cancellationToken.IsCancellationRequested)
 			{
-				return Task.Run(delegate() { return 0; }, cancellationToken);
+				return Task.Run(() => 0, cancellationToken);
 			}
 			
 			return ReadData(buffer, offset, count);
@@ -137,7 +140,8 @@ namespace Proximity.Utility.Net
 			if (count == 0)
 				return;
 			
-			SendData(buffer, offset, count).Wait();
+			// Use GetResult() so exceptions are thrown without being wrapped in AggregateException
+			SendData(buffer, offset, count).GetAwaiter().GetResult();
 		}
 
 		/// <inheritdoc />
@@ -145,7 +149,7 @@ namespace Proximity.Utility.Net
 		{
 			if (cancellationToken.IsCancellationRequested)
 			{
-				return Task.Run(delegate() { }, cancellationToken);
+				return Task.Run(() => { }, cancellationToken);
 			}
 			
 			return SendData(buffer, offset, count);

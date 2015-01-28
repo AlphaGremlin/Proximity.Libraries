@@ -54,84 +54,87 @@ namespace Proximity.Utility.Net
 		{
 			_Socket.Listen(maxPending);
 			
-			BeginAcceptConnection(false);
+			_IsListening = true;
+			
+			AcceptConnection(false);
 		}
 		
 		//****************************************
 		
-		private void BeginAcceptConnection(bool inAccept)
-		{
-			try
-			{
-				_EventArgs.AcceptSocket = null;
-				_EventArgs.AcceptAsync(_Socket);
-				_IsListening = true;
-	
-				if (_EventArgs.IsCompleted)
-				{
-					// If we've come directly from ProcessComplete, don't call directly again since we can blow the stack
-					if (inAccept)
-						ThreadPool.QueueUserWorkItem((state) => ProcessCompleteAccept(false));
-					else
-						ProcessCompleteAccept(true);
-				}
-				else
-				{
-					((INotifyCompletion)_EventArgs).OnCompleted(() => ProcessCompleteAccept(false));
-				}
-			}
-			catch (ObjectDisposedException)
-			{
-				_IsListening = false;
-			}
-			catch (Exception)
-			{
-				// TODO: Exception handling
-				_IsListening = false;
-			}
-		}
-		
-		private void ProcessCompleteAccept(bool inAccept)
+		private void AcceptConnection(bool inComplete)
 		{	//****************************************
 			Socket MySocket = null;
 			//****************************************
 			
-			switch (_EventArgs.SocketError)
+			while (_IsListening)
 			{
-			case SocketError.Success:
-				MySocket = _EventArgs.AcceptSocket;
-				break;
-				
-			case SocketError.OperationAborted: // Listener is shutting down
-				_IsListening = false;
-				return;
-				
-			case SocketError.ConnectionReset: // Can happen due to a port-scan
-			default: // What about other errors?
-				break;
-			}
+				// If we're not coming from a completion, then call Accept
+				if (!inComplete)
+				{
+					try
+					{
+						_EventArgs.AcceptSocket = null;
+						_EventArgs.AcceptAsync(_Socket);
 			
+						// If we don't get a new connection immediately, queue the continuation and return
+						if (!_EventArgs.IsCompleted)
+						{
+							((INotifyCompletion)_EventArgs).OnCompleted(ProcessCompleteAccept);
+							
+							return;
+						}
+					}
+					catch (ObjectDisposedException)
+					{
+						_IsListening = false;
+						
+						return;
+					}
+					catch (Exception)
+					{
+						// TODO: Exception handling
+						_IsListening = false;
+						
+						return;
+					}
+				}
+				
+				// Either we've come from the completion, or we called Accept and it immediately succeeded
+				switch (_EventArgs.SocketError)
+				{
+				case SocketError.Success:
+					// Got a connection
+					ThreadPool.UnsafeQueueUserWorkItem(ProcessConnection, _EventArgs.AcceptSocket);
+					break;
+					
+				case SocketError.OperationAborted: // Listener is shutting down
+					_IsListening = false;
+					return;
+					
+				case SocketError.ConnectionReset: // Can happen due to a port-scan
+				default: // TODO: What about other errors?
+					break;
+				}
+				
+				// Now loop back and call accept again
+				inComplete = false;
+			}
+		}
+		
+		private void ProcessCompleteAccept()
+		{
+			AcceptConnection(true);
+		}
+		
+		private void ProcessConnection(object state)
+		{	//****************************************
+			var MySocket = (Socket)state;
 			//****************************************
 			
-			// Start accepting again
-			if (inAccept)
-			{
-				// We're within BeginAccept already, so push that to another thread
-				ThreadPool.QueueUserWorkItem((state) => BeginAcceptConnection(false), null);
-			}
-			else
-			{
-				// Call BeginAccept immediately, in non-re-entrant mode
-				BeginAcceptConnection(true);
-			}
-			
-			//****************************************
-			
-			// Handle the new connection
 			if (MySocket != null)
 				_Callback(this, MySocket);
 		}
-
+		
 		//****************************************
 		
 		/// <summary>
