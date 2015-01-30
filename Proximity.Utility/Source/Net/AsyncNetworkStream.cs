@@ -307,7 +307,7 @@ namespace Proximity.Utility.Net
 				if (EventArgs.SocketError == SocketError.Success)
 					SetResult(EventArgs.BytesTransferred);
 				else
-					SetException(new SocketException((int)EventArgs.SocketError));
+					SetException(new IOException("Receive failed", new SocketException((int)EventArgs.SocketError)));
 	
 				// Raise the async callback (if any)
 				if (_Callback != null)
@@ -370,7 +370,7 @@ namespace Proximity.Utility.Net
 				if (MyError == SocketError.Success)
 					SetResult(VoidStruct.Empty);
 				else
-					SetException(new SocketException((int)MyError));
+					SetException(new IOException("Send failed", new SocketException((int)MyError)));
 				
 				// Raise the async callback (if any)
 				if (_Callback != null)

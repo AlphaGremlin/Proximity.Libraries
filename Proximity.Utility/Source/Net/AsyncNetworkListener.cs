@@ -62,10 +62,7 @@ namespace Proximity.Utility.Net
 		//****************************************
 		
 		private void AcceptConnection(bool inComplete)
-		{	//****************************************
-			Socket MySocket = null;
-			//****************************************
-			
+		{
 			while (_IsListening)
 			{
 				// If we're not coming from a completion, then call Accept

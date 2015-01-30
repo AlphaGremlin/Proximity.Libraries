@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 //****************************************
@@ -71,7 +72,16 @@ namespace Proximity.Utility.Threading
 			
 			return MyTaskSource.Task;
 		}
-		
+
+		/// <summary>
+		/// Yields the thread in an unsafe way, breaking the execution context
+		/// </summary>
+		/// <returns>An awaitable that when awaited, continues in an unsafe context</returns>
+		public static UnsafeYieldAwaitable Yield()
+		{
+			return new UnsafeYieldAwaitable();
+		}
+
 		//****************************************
 		
 		private static void ExecuteAction(object state)
@@ -141,6 +151,52 @@ namespace Proximity.Utility.Threading
 			{
 				_Action = action;
 				_TaskSource = taskSource;
+			}
+		}
+
+		//****************************************
+
+		public struct UnsafeYieldAwaitable : INotifyCompletion, ICriticalNotifyCompletion
+		{
+			internal UnsafeYieldAwaitable()
+			{
+			}
+
+			//****************************************
+
+			public UnsafeYieldAwaitable GetAwaiter()
+			{
+				return this;
+			}
+
+			public void GetResult()
+			{
+			}
+
+			[SecuritySafeCritical]
+			void INotifyCompletion.OnCompleted(Action continuation)
+			{
+				throw new SecurityException("Cannot yield unsafe");
+			}
+
+			[SecurityCritical]
+			public void UnsafeOnCompleted(Action continuation)
+			{
+				ThreadPool.UnsafeQueueUserWorkItem(OnContinue, continuation);
+			}
+
+			//****************************************
+
+			private static void OnContinue(object state)
+			{
+				((Action)state)();
+			}
+
+			//****************************************
+
+			public bool IsCompleted
+			{
+				get { return false; }
 			}
 		}
 	}
