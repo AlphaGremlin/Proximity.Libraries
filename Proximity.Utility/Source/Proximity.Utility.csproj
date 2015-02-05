@@ -150,6 +150,7 @@
     <None Include="Collections\AsyncEnumerable.cs" />
     <None Include="Collections\AsyncLinq.cs" />
     <Compile Include="Collections\BiDictionary.cs" />
+    <Compile Include="Collections\CastEnumerator.cs" />
     <Compile Include="Collections\ConcurrentExtensions.cs" />
     <Compile Include="Collections\ConcurrentWeakDictionary.cs" />
     <Compile Include="Collections\IAsyncEnumerable.cs" />
@@ -166,6 +167,7 @@
     <Compile Include="Collections\PagedSetItem.cs" />
     <Compile Include="Collections\PagedSetPage.cs" />
     <Compile Include="Collections\ReadOnlyCollection.cs" />
+    <Compile Include="Collections\ReadOnlyCollectionCast.cs" />
     <Compile Include="Collections\ReadOnlyCollectionTyped.cs" />
     <Compile Include="Collections\ReadOnlyDictionary.cs" />
     <Compile Include="Collections\ReadOnlyDictionaryChild.cs" />
@@ -282,13 +284,5 @@
     <None Include="Logging\Style.xsl" />
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Collections\Reverse" />
-    <Folder Include="Configuration" />
-    <Folder Include="Events" />
-    <Folder Include="Net" />
-    <Folder Include="Diagnostics" />
-    <Folder Include="Reflection" />
-    <Folder Include="Threading" />
-  </ItemGroup>
+  <ItemGroup />
 </Project>

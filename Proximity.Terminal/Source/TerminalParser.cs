@@ -344,6 +344,10 @@ namespace Proximity.Terminal
 				else
 				{
 					MyInstance = MyTypeSet.GetNamedInstance(InstanceName);
+
+					if (MyInstance == null)
+						return Prefix + partialCommand;
+
 					InstanceName = string.Format("{0}.{1}", MyTypeSet.TypeName, MyInstance.Name);
 				}
 				

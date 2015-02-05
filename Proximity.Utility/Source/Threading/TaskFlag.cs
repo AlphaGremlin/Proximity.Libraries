@@ -102,6 +102,19 @@ namespace Proximity.Utility.Threading
 			
 			return MyWaitTask.Task;
 		}
+
+		//****************************************
+
+		/// <summary>
+		/// Disposes of the asynchronous task flag
+		/// </summary>
+		public void Dispose()
+		{
+			var MyTimer = Interlocked.Exchange(ref _DelayTimer, null);
+
+			if (MyTimer != null)
+				MyTimer.Dispose();
+		}
 		
 		//****************************************
 		

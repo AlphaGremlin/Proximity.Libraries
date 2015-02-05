@@ -59,6 +59,11 @@ namespace Proximity.Utility.Collections
 		
 		//****************************************
 		
+		/// <summary>
+		/// Adds or replaces a key/value pair
+		/// </summary>
+		/// <param name="key">The key to add or replace</param>
+		/// <param name="value">The value to associate with the key</param>
 		public void AddOrReplace(TKey key, TValue value)
 		{	//****************************************
 			GCHandle MyHandle, NewHandle;
@@ -109,7 +114,14 @@ namespace Proximity.Utility.Collections
 				// Loop back and try again
 			}
 		}
-		
+
+		/// <summary>
+		/// Adds or updates a key/value pair
+		/// </summary>
+		/// <param name="key">The key to add or replace</param>
+		/// <param name="valueCallback">A callback providing the new value</param>
+		/// <param name="updateCallback">A callback updating an existing value</param>
+		/// <returns>The added or updated value</returns>
 		public TValue AddOrUpdate(TKey key, Func<TKey, TValue> valueCallback, Func<TKey, TValue, TValue> updateCallback)
 		{	//****************************************
 			GCHandle MyHandle, NewHandle;
@@ -180,7 +192,14 @@ namespace Proximity.Utility.Collections
 				// Loop back and try again
 			}
 		}
-		
+
+		/// <summary>
+		/// Adds or updates a key/value pair
+		/// </summary>
+		/// <param name="key">The key to add or replace</param>
+		/// <param name="value">The value to associate if the key doesn't exist</param>
+		/// <param name="updateCallback">A callback updating an existing value</param>
+		/// <returns>The added or updated value</returns>
 		public TValue AddOrUpdate(TKey key, TValue value, Func<TKey, TValue, TValue> updateCallback)
 		{
 			if (value == null)
@@ -203,6 +222,12 @@ namespace Proximity.Utility.Collections
 			}
 		}
 		
+		/// <summary>
+		/// Adds or retrieves a value based on the key
+		/// </summary>
+		/// <param name="key">The key to add or retrieve</param>
+		/// <param name="valueCallback">A callback providing the new value if the key doesn't exist</param>
+		/// <returns>The new or existing value</returns>
 		public TValue GetOrAdd(TKey key, Func<TKey, TValue> valueCallback)
 		{	//****************************************
 			GCHandle MyHandle, NewHandle;
@@ -262,7 +287,13 @@ namespace Proximity.Utility.Collections
 				// Loop back and try again
 			}
 		}
-		
+
+		/// <summary>
+		/// Adds or retrieves a value based on the key
+		/// </summary>
+		/// <param name="key">The key to add or retrieve</param>
+		/// <param name="value">A value to associate if the key doesn't exist</param>
+		/// <returns>The new or existing value</returns>
 		public TValue GetOrAdd(TKey key, TValue value)
 		{
 			return GetOrAdd(key, (innerKey) => value);

@@ -152,5 +152,13 @@ namespace Proximity.Utility.Net
 		{
 			get { return _IsListening; }
 		}
+
+		/// <summary>
+		/// Gets the endpoint being listened to
+		/// </summary>
+		public EndPoint EndPoint
+		{
+			get { return _EndPoint; }
+		}
 	}
 }

@@ -156,19 +156,23 @@ namespace Proximity.Utility.Threading
 
 		//****************************************
 
+		/// <summary>
+		/// Provides an awaitable object that breaks execution context
+		/// </summary>
 		public struct UnsafeYieldAwaitable : INotifyCompletion, ICriticalNotifyCompletion
 		{
-			internal UnsafeYieldAwaitable()
-			{
-			}
-
-			//****************************************
-
+			/// <summary>
+			/// Gets the awaitable
+			/// </summary>
+			/// <returns>The unsafe awaiter</returns>
 			public UnsafeYieldAwaitable GetAwaiter()
 			{
 				return this;
 			}
 
+			/// <summary>
+			/// Retrieves the result of the awaitable
+			/// </summary>
 			public void GetResult()
 			{
 			}
@@ -179,6 +183,10 @@ namespace Proximity.Utility.Threading
 				throw new SecurityException("Cannot yield unsafe");
 			}
 
+			/// <summary>
+			/// Queues the continuation on the threadpool in an unsafe manner
+			/// </summary>
+			/// <param name="continuation">The continuation to queue</param>
 			[SecurityCritical]
 			public void UnsafeOnCompleted(Action continuation)
 			{
@@ -194,6 +202,9 @@ namespace Proximity.Utility.Threading
 
 			//****************************************
 
+			/// <summary>
+			/// Gets whether the awaitable is completed. Always false
+			/// </summary>
 			public bool IsCompleted
 			{
 				get { return false; }

@@ -62,6 +62,9 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 		
+		/// <summary>
+		/// Disposes of the asynchronous task flag
+		/// </summary>
 		public void Dispose()
 		{
 			var MyTimer = Interlocked.Exchange(ref _DelayTimer, null);
