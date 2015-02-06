@@ -15,20 +15,29 @@ namespace Proximity.Utility.Collections
 	/// </summary>
 	public class ReadOnlyCollectionTyped<TSource, TTarget> : ICollection<TTarget>, IReadOnlyCollection<TTarget> where TSource : class, TTarget where TTarget : class
 	{	//****************************************
-		private readonly ICollection<TSource> _Collection;
+		private readonly IReadOnlyCollection<TSource> _Collection;
 		//****************************************
-		
+
 		/// <summary>
 		/// Creates a new read-only wrapper around a collection that converts to a base type
 		/// </summary>
 		/// <param name="collection">The collection to wrap as read-only</param>
 		public ReadOnlyCollectionTyped(ICollection<TSource> collection)
 		{
+			_Collection = new ReadOnlyCollection<TSource>(collection);
+		}
+		
+		/// <summary>
+		/// Creates a new read-only wrapper around a collection that converts to a base type
+		/// </summary>
+		/// <param name="collection">The collection to wrap as read-only</param>
+		public ReadOnlyCollectionTyped(IReadOnlyCollection<TSource> collection)
+		{
 			_Collection = collection;
 		}
 		
 		//****************************************
-		
+
 		/// <summary>
 		/// Determines whether the collection contains a specific item
 		/// </summary>
@@ -39,9 +48,12 @@ namespace Proximity.Utility.Collections
 			if (!(item is TSource))
 				return false;
 			
-			return _Collection.Contains((TSource)item);
+			if (_Collection is ICollection<TSource>)
+				return ((ICollection<TSource>)_Collection).Contains((TSource)item);
+
+			return System.Linq.Enumerable.Contains(_Collection, (TSource)item);
 		}
-		
+
 		/// <summary>
 		/// Copies the elements of the collection to a given array, starting at a specified index
 		/// </summary>
@@ -49,9 +61,21 @@ namespace Proximity.Utility.Collections
 		/// <param name="arrayIndex">The index into the array to start writing</param>
 		public void CopyTo(TTarget[] array, int arrayIndex)
 		{
-			_Collection.CopyTo((TSource[])array, arrayIndex);
+			if (_Collection is ICollection<TSource>)
+			{
+				((ICollection<TSource>)_Collection).CopyTo((TSource[])array, arrayIndex);
+
+				return;
+			}
+
+			int Index = arrayIndex;
+
+			foreach (var MyItem in _Collection)
+			{
+				array[Index++] = (TTarget)MyItem;
+			}
 		}
-		
+
 		/// <summary>
 		/// Returns an enumerator that iterates through the collection
 		/// </summary>

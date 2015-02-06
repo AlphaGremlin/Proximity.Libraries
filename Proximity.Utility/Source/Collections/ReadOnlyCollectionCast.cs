@@ -17,7 +17,7 @@ namespace Proximity.Utility.Collections
 		where TSource : class
 		where TTarget : class, TSource
 	{	//****************************************
-		private readonly ICollection<TSource> _Collection;
+		private readonly IReadOnlyCollection<TSource> _Collection;
 		//****************************************
 
 		/// <summary>
@@ -25,6 +25,15 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="collection">The collection to wrap as read-only</param>
 		public ReadOnlyCollectionCast(ICollection<TSource> collection)
+		{
+			_Collection = new ReadOnlyCollection<TSource>(collection);
+		}
+
+		/// <summary>
+		/// Creates a new read-only wrapper around a collection that casts to a derived type
+		/// </summary>
+		/// <param name="collection">The collection to wrap as read-only</param>
+		public ReadOnlyCollectionCast(IReadOnlyCollection<TSource> collection)
 		{
 			_Collection = collection;
 		}
@@ -38,7 +47,10 @@ namespace Proximity.Utility.Collections
 		/// <returns>True if the item is in the list, otherwise false</returns>
 		public bool Contains(TTarget item)
 		{
-			return _Collection.Contains(item);
+			if (_Collection is ICollection<TSource>)
+				return ((ICollection<TSource>)_Collection).Contains(item);
+
+			return System.Linq.Enumerable.Contains(_Collection, item);
 		}
 
 		/// <summary>
@@ -48,7 +60,19 @@ namespace Proximity.Utility.Collections
 		/// <param name="arrayIndex">The index into the array to start writing</param>
 		public void CopyTo(TTarget[] array, int arrayIndex)
 		{
-			_Collection.CopyTo(array, arrayIndex);
+			if (_Collection is ICollection<TSource>)
+			{
+				((ICollection<TSource>)_Collection).CopyTo(array, arrayIndex);
+
+				return;
+			}
+
+			int Index = arrayIndex;
+
+			foreach (var MyItem in _Collection)
+			{
+				array[Index++] = (TTarget)MyItem;
+			}
 		}
 
 		/// <summary>

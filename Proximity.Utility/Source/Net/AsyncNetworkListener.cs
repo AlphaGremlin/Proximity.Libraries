@@ -154,11 +154,19 @@ namespace Proximity.Utility.Net
 		}
 
 		/// <summary>
+		/// Gets the original endpoint passed in
+		/// </summary>
+		public EndPoint OriginalEndPoint
+		{
+			get { return _EndPoint; }
+		}
+
+		/// <summary>
 		/// Gets the endpoint being listened to
 		/// </summary>
 		public EndPoint EndPoint
 		{
-			get { return _EndPoint; }
+			get { return _Socket.LocalEndPoint; }
 		}
 	}
 }
