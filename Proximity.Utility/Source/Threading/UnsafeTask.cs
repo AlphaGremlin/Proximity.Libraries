@@ -39,8 +39,8 @@ namespace Proximity.Utility.Threading
 		public static Task Run(Func<Task> action)
 		{
 			var MyTaskSource = new TaskCompletionSource<Task>();
-			
-			ThreadPool.UnsafeQueueUserWorkItem(ExecuteAction, new TaskDef<Task>(action, MyTaskSource));
+
+			ThreadPool.UnsafeQueueUserWorkItem(ExecuteFunc<Task>, new TaskDef<Task>(action, MyTaskSource));
 			
 			return MyTaskSource.Task.Unwrap();
 		}
@@ -53,8 +53,8 @@ namespace Proximity.Utility.Threading
 		public static Task Run<TResult>(Func<Task<TResult>> action)
 		{
 			var MyTaskSource = new TaskCompletionSource<Task<TResult>>();
-			
-			ThreadPool.UnsafeQueueUserWorkItem(ExecuteAction, new TaskDef<Task<TResult>>(action, MyTaskSource));
+
+			ThreadPool.UnsafeQueueUserWorkItem(ExecuteFunc<Task<TResult>>, new TaskDef<Task<TResult>>(action, MyTaskSource));
 			
 			return MyTaskSource.Task.Unwrap();
 		}
@@ -67,8 +67,8 @@ namespace Proximity.Utility.Threading
 		public static Task Run<TResult>(Func<TResult> action)
 		{
 			var MyTaskSource = new TaskCompletionSource<TResult>();
-			
-			ThreadPool.UnsafeQueueUserWorkItem(ExecuteAction, new TaskDef<TResult>(action, MyTaskSource));
+
+			ThreadPool.UnsafeQueueUserWorkItem(ExecuteFunc<TResult>, new TaskDef<TResult>(action, MyTaskSource));
 			
 			return MyTaskSource.Task;
 		}

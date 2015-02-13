@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Xml;
@@ -97,8 +98,11 @@ namespace Proximity.Utility.Logging.Outputs
 			{
 				var DeclaringType = entry.Source.DeclaringType;
 				
-				if (DeclaringType.IsNestedPrivate)
+				while (DeclaringType != null && DeclaringType.IsNestedPrivate && DeclaringType.GetCustomAttributes(typeof(CompilerGeneratedAttribute), false).Length != 0)
 					DeclaringType = DeclaringType.DeclaringType;
+
+				if (DeclaringType == null)
+					DeclaringType = entry.Source.DeclaringType;
 				
 				SourceAssembly = DeclaringType.Assembly.GetName().Name;
 				SourceFullType = DeclaringType.FullName;
