@@ -36,6 +36,14 @@ namespace Proximity.Utility.Logging
 		/// </summary>
 		public static void Start()
 		{
+			Start(LoggingConfig.OpenConfig());
+		}
+		
+		/// <summary>
+		/// Starts the logging framework
+		/// </summary>
+		public static void Start(LoggingConfig config)
+		{
 			if (!Directory.Exists(_OutputPath))
 				Directory.CreateDirectory(_OutputPath);
 			
@@ -49,7 +57,7 @@ namespace Proximity.Utility.Logging
 				MyOutput.Start();
 			}
 			
-			foreach (var MyConfig in LoggingConfig.OpenConfig().Outputs)
+			foreach (var MyConfig in config.Outputs)
 			{
 				AddOutput(MyConfig.ToOutput());
 			}
@@ -135,8 +143,12 @@ namespace Proximity.Utility.Logging
 		/// </summary>
 		public static void Finish()
 		{
-			foreach(LogOutput MyOutput in _Outputs)
+			var OldOutputs = Interlocked.Exchange(ref _Outputs, ImmutableList<LogOutput>.Empty);
+			
+			foreach(LogOutput MyOutput in OldOutputs)
 				MyOutput.Finish();
+			
+			_IsStarted = false;
 		}
 
 		//****************************************

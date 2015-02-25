@@ -6,6 +6,7 @@ using System;
 using System.Diagnostics;
 using System.Reflection;
 using System.Xml;
+using Proximity.Utility.Configuration;
 using Proximity.Utility.Logging.Config;
 //****************************************
 
@@ -14,6 +15,7 @@ namespace Proximity.Utility.Logging.Outputs
 	/// <summary>
 	/// Writes log entries to the Diagnostics Trace
 	/// </summary>
+	[TypedElement(typeof(TraceOutputElement))]
 	public sealed class TraceOutput : LogOutput
 	{	//****************************************
 		private bool _DebuggerOnly;

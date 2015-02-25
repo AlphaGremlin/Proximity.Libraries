@@ -30,11 +30,22 @@ namespace Proximity.Terminal
 		
 		//****************************************
 		
+		/// <summary>
+		/// Gets the value of a variable
+		/// </summary>
+		/// <param name="instance">The instance object in question</param>
+		/// <returns>The variable value</returns>
 		public object GetValue(object instance)
 		{
 			return _Property.GetValue(instance);
 		}
 		
+		/// <summary>
+		/// Attempts to set the value of a variable
+		/// </summary>
+		/// <param name="instance">The instance object in question</param>
+		/// <param name="argumentText">The value entered on the terminal</param>
+		/// <returns>True if the property was set correctly, otherwise false</returns>
 		public bool SetValue(object instance, string argumentText)
 		{	//****************************************
 			TypeConverter MyConverter;
@@ -77,6 +88,11 @@ namespace Proximity.Terminal
 			return _Name;
 		}
 		
+		/// <summary>
+		/// Compares this variable with another
+		/// </summary>
+		/// <param name="other">The other variable to compare agains</param>
+		/// <returns>Positive if this name is greater, negative if it's lesser, zero if they're identical</returns>
 		public int CompareTo(TerminalVariable other)
 		{
 			return _Name.CompareTo(other._Name);

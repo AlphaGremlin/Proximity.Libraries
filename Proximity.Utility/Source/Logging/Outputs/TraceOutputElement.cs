@@ -13,6 +13,7 @@ namespace Proximity.Utility.Logging.Outputs
 	/// <summary>
 	/// Describes the configuration for the Trace Output Logger
 	/// </summary>
+	[TypedElement(typeof(TraceOutput))]
 	public class TraceOutputElement : OutputElement
 	{
 		/// <summary>

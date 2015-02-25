@@ -85,6 +85,12 @@
     <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
     <FileAlignment>4096</FileAlignment>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
+    <OutputPath>..\..\Build\Tests\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
+    <OutputPath>..\..\Build\Tests\</OutputPath>
+  </PropertyGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
     <Reference Include="nunit.framework">
@@ -114,8 +120,9 @@
     <Compile Include="EqualityTests.cs" />
     <Compile Include="LinqExtensionTests.cs" />
     <Compile Include="ListExtensionTests.cs" />
+    <Compile Include="LoggingTests.cs" />
     <Compile Include="RemoteTaskTests.cs" />
-    <Compile Include="SafeThreadPoolTests.cs" />
+    <None Include="SafeThreadPoolTests.cs" />
     <Compile Include="SafeTimerTests.cs" />
     <Compile Include="TaskExtensionTests.cs" />
     <Compile Include="TaskFlagTests.cs" />

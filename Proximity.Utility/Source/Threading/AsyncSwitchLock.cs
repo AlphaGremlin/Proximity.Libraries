@@ -17,7 +17,7 @@ namespace Proximity.Utility.Threading
 	/// </summary>
 	public sealed class AsyncSwitchLock : IDisposable
 	{	//****************************************
-		private object _LockObject = new object();
+		private readonly object _LockObject = new object();
 		private TaskCompletionSource<VoidStruct> _Left= new TaskCompletionSource<VoidStruct>();
 		private TaskCompletionSource<VoidStruct> _Right= new TaskCompletionSource<VoidStruct>();
 		
@@ -102,7 +102,11 @@ namespace Proximity.Utility.Threading
 		/// <param name="token">The cancellation token to abort waiting for the lock</param>
 		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
 		public Task<IDisposable> LockLeft(CancellationToken token)
-		{
+		{	//****************************************
+			AsyncSwitchLeftInstance NewInstance;
+			Task<IDisposable> NewTask;
+			//****************************************
+			
 			lock (_LockObject)
 			{
 				if (_IsDisposed)
@@ -118,18 +122,18 @@ namespace Proximity.Utility.Threading
 				}
 				
 				// There's a right task running or waiting, add ourselves to the left queue
-				var MyInstance = new AsyncSwitchLeftInstance(this);
+				NewInstance = new AsyncSwitchLeftInstance(this);
 				
-				_LeftWaiting.Add(MyInstance);
+				_LeftWaiting.Add(NewInstance);
 				
-				var MyTask = _Left.Task.ContinueWith((Func<Task<VoidStruct>, IDisposable>)MyInstance.LockLeft, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
-				
-				// If we can be cancelled, queue a task that runs if we get cancelled to release the waiter
-				if (token.CanBeCanceled)
-					MyTask.ContinueWith(MyInstance.CancelLeft, TaskContinuationOptions.OnlyOnCanceled | TaskContinuationOptions.ExecuteSynchronously);
-				
-				return MyTask;
+				NewTask = _Left.Task.ContinueWith((Func<Task<VoidStruct>, IDisposable>)NewInstance.LockLeft, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
 			}
+			
+			// If we can be cancelled, queue a task that runs if we get cancelled to release the waiter
+			if (token.CanBeCanceled)
+				NewTask.ContinueWith(NewInstance.CancelLeft, TaskContinuationOptions.OnlyOnCanceled | TaskContinuationOptions.ExecuteSynchronously);
+			
+			return NewTask;
 		}
 		
 		/// <summary>
@@ -172,7 +176,11 @@ namespace Proximity.Utility.Threading
 		/// <param name="token">The cancellation token to abort waiting for the lock</param>
 		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
 		public Task<IDisposable> LockRight(CancellationToken token)
-		{
+		{	//****************************************
+			AsyncSwitchRightInstance NewInstance;
+			Task<IDisposable> NewTask;
+			//****************************************
+			
 			lock (_LockObject)
 			{
 				if (_IsDisposed)
@@ -188,18 +196,18 @@ namespace Proximity.Utility.Threading
 				}
 				
 				// There's a left task running or waiting, add ourselves to the right queue
-				var MyInstance = new AsyncSwitchRightInstance(this);
+				NewInstance = new AsyncSwitchRightInstance(this);
 				
-				_RightWaiting.Add(MyInstance);
+				_RightWaiting.Add(NewInstance);
 				
-				var MyTask = _Right.Task.ContinueWith((Func<Task<VoidStruct>, IDisposable>)MyInstance.LockRight, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
-				
-				// If we can be cancelled, queue a task that runs if we get cancelled to release the waiter
-				if (token.CanBeCanceled)
-					MyTask.ContinueWith(MyInstance.CancelRight, TaskContinuationOptions.OnlyOnCanceled | TaskContinuationOptions.ExecuteSynchronously);
-				
-				return MyTask;
+				NewTask = _Right.Task.ContinueWith((Func<Task<VoidStruct>, IDisposable>)NewInstance.LockRight, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
 			}
+			
+			// If we can be cancelled, queue a task that runs if we get cancelled to release the waiter
+			if (token.CanBeCanceled)
+				NewTask.ContinueWith(NewInstance.CancelRight, TaskContinuationOptions.OnlyOnCanceled | TaskContinuationOptions.ExecuteSynchronously);
+			
+			return NewTask;
 		}
 		
 		//****************************************

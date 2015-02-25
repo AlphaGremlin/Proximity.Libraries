@@ -104,7 +104,11 @@ namespace Proximity.Utility.Threading
 		/// <param name="token">The cancellation token to abort waiting for the lock</param>
 		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
 		public Task<IDisposable> LockRead(CancellationToken token)
-		{
+		{	//****************************************
+			AsyncReadLockInstance NewInstance;
+			Task<IDisposable> NewTask;
+			//****************************************
+			
 			lock (_Writers)
 			{
 				if (_IsDisposed)
@@ -120,19 +124,19 @@ namespace Proximity.Utility.Threading
 				}
 				
 				// There's a writer in progress, or one waiting
-				var MyInstance = new AsyncReadLockInstance(this);
+				NewInstance = new AsyncReadLockInstance(this);
 				
-				_ReadersWaiting.Add(MyInstance);
+				_ReadersWaiting.Add(NewInstance);
 				
 				// Return a reader task the caller can wait on. This is a continuation, so readers don't run serialised
-				var MyTask = _Reader.Task.ContinueWith((Func<Task<IDisposable>, IDisposable>)MyInstance.LockRead, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
-				
-				// If we can be cancelled, queue a task that runs if we get cancelled to release the waiter
-				if (token.CanBeCanceled)
-					MyTask.ContinueWith(MyInstance.CancelRead, TaskContinuationOptions.OnlyOnCanceled | TaskContinuationOptions.ExecuteSynchronously);
-				
-				return MyTask;
+				NewTask = _Reader.Task.ContinueWith((Func<Task<IDisposable>, IDisposable>)NewInstance.LockRead, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
 			}
+			
+			// If we can be cancelled, queue a task that runs if we get cancelled to release the waiter
+			if (token.CanBeCanceled)
+				NewTask.ContinueWith(NewInstance.CancelRead, TaskContinuationOptions.OnlyOnCanceled | TaskContinuationOptions.ExecuteSynchronously);
+			
+			return NewTask;
 		}
 		
 		/// <summary>
@@ -175,7 +179,10 @@ namespace Proximity.Utility.Threading
 		/// <param name="token">The cancellation token to abort waiting for the lock</param>
 		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
 		public Task<IDisposable> LockWrite(CancellationToken token)
-		{
+		{	//****************************************
+			TaskCompletionSource<IDisposable> NewWaiter;
+			//****************************************
+			
 			lock (_Writers)
 			{
 				if (_IsDisposed)
@@ -191,22 +198,22 @@ namespace Proximity.Utility.Threading
 				}
 				
 				// There's a reader or another writer working, add ourselves to the writer queue
-				var MyWaiter = new TaskCompletionSource<IDisposable>();
+				NewWaiter = new TaskCompletionSource<IDisposable>();
 				
-				_Writers.Enqueue(MyWaiter);
-				
-				// Check if we can get cancelled
-				if (token.CanBeCanceled)
-				{
-					// Register for cancellation
-					var MyRegistration = token.Register(CancelWrite, MyWaiter);
-					
-					// When we complete, dispose of the registration
-					MyWaiter.Task.ContinueWith((task, state) => ((CancellationTokenRegistration)state).Dispose(), MyRegistration, TaskContinuationOptions.ExecuteSynchronously);
-				}
-				
-				return MyWaiter.Task;
+				_Writers.Enqueue(NewWaiter);
 			}
+			
+			// Check if we can get cancelled
+			if (token.CanBeCanceled)
+			{
+				// Register for cancellation
+				var MyRegistration = token.Register(CancelWrite, NewWaiter);
+				
+				// When we complete, dispose of the registration
+				NewWaiter.Task.ContinueWith((task, state) => ((CancellationTokenRegistration)state).Dispose(), MyRegistration, TaskContinuationOptions.ExecuteSynchronously);
+			}
+			
+			return NewWaiter.Task;
 		}
 		
 		//****************************************

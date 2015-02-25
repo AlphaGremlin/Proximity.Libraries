@@ -23,13 +23,21 @@ namespace Proximity.Terminal
 		private readonly ThreadLocal<StringBuilder> _OutputBuilder;
 		//****************************************
 		
+		/// <summary>
+		/// Creates a new terminal log outputter
+		/// </summary>
 		public TerminalLogOutput() : base()
 		{
 			_History = new List<ConsoleRecord>();
 			_OutputBuilder = new ThreadLocal<StringBuilder>(() => new StringBuilder());
 		}
-		
-		public TerminalLogOutput(int maxHistoryRecords) : this()
+
+		/// <summary>
+		/// Creates a new terminal log outputter
+		/// </summary>
+		/// <param name="maxHistoryRecords">Determines how many records are kept as history</param>
+		public TerminalLogOutput(int maxHistoryRecords)
+			: this()
 		{
 			_MaxHistoryRecords = maxHistoryRecords;
 		}
@@ -170,6 +178,9 @@ namespace Proximity.Terminal
 		
 		private void ThresholdWrite(ConsoleRecord newRecord)
 		{
+			if (_MaxHistoryRecords == 0)
+				return;
+
 			lock (_History)
 			{
 				if (_History.Count == _MaxHistoryRecords)

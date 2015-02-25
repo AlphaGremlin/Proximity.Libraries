@@ -177,7 +177,7 @@ namespace Proximity.Utility.Logging.Outputs
 			catch (OperationCanceledException)
 			{
 			}
-			catch (InvalidOperationException)
+			catch (InvalidOperationException e)
 			{
 			}
 			finally
@@ -230,6 +230,7 @@ namespace Proximity.Utility.Logging.Outputs
 					break;
 					
 				case RolloverType.Startup:
+				case RolloverType.Fixed:
 				default:
 					// Do nothing
 					break;
@@ -252,6 +253,11 @@ namespace Proximity.Utility.Logging.Outputs
 			case RolloverType.Weekly:
 			case RolloverType.Monthly:
 				FullPath = string.Format("{0} {1:yyyyMMdd}.{2}", _FileName, CurrentTime, GetExtension());
+				CanAppend = true;
+				break;
+				
+			case RolloverType.Fixed:
+				FullPath = _FileName; // No timestamp or extension
 				CanAppend = true;
 				break;
 				

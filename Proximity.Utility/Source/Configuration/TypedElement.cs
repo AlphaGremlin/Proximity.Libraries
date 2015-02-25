@@ -4,6 +4,7 @@
 \****************************************/
 using System;
 using System.Configuration;
+using System.Reflection;
 using System.Xml;
 //****************************************
 
@@ -44,7 +45,26 @@ namespace Proximity.Utility.Configuration
 		[ConfigurationProperty("Type", IsRequired=true)]
 		public string Type
 		{
-			get { return (string)base["Type"]; }
+			get
+			{
+				var Result = (string)base["Type"];
+				
+				// Will be empty if we've manually constructed this type (eg: testing)
+				if (string.IsNullOrEmpty(Result))
+				{
+					var MyAttribute = GetType().GetCustomAttribute<TypedElementAttribute>(false);
+					
+					if (MyAttribute != null)
+					{
+						_InstanceType = MyAttribute.ConfigType;
+						
+						Result = _InstanceType.AssemblyQualifiedName;
+						SetPropertyValue(Properties["Type"], Result, true);
+					}
+				}
+				
+				return Result;
+			}
 		}
 		
 		/// <summary>
@@ -52,7 +72,22 @@ namespace Proximity.Utility.Configuration
 		/// </summary>
 		public Type InstanceType
 		{
-			get { return _InstanceType; }
+			get
+			{
+				if (_InstanceType == null)
+				{
+					var MyAttribute = GetType().GetCustomAttribute<TypedElementAttribute>(false);
+					
+					if (MyAttribute != null)
+					{
+						_InstanceType = MyAttribute.ConfigType;
+						
+						SetPropertyValue(Properties["Type"], _InstanceType.AssemblyQualifiedName, true);
+					}
+				}
+				
+				return _InstanceType;
+			}
 			internal set { _InstanceType = value; }
 		}
 	}

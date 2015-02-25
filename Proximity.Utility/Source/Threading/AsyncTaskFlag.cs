@@ -18,23 +18,33 @@ namespace Proximity.Utility.Threading
 		
 		private readonly WaitCallback _ProcessTaskFlag;
 		private readonly Action _CompleteProcessTask;
+		private readonly Action _CompleteSecondTask;
+		private readonly TaskScheduler _Scheduler;
 		
 		private TimeSpan _Delay = TimeSpan.Zero;
 		private int _State; // 0 if not running, 1 if flagged to run, 2 if running
 		private Timer _DelayTimer;
 
 		private TaskCompletionSource<bool> _WaitTask, _PendingWaitTask;
+		
+		private bool _WaitSecond;
+		private Task _CurrentTask;
 		//****************************************
 		
 		/// <summary>
 		/// Creates a Task Flag
 		/// </summary>
 		/// <param name="callback">The callback to execute</param>
-		public AsyncTaskFlag(Func<Task> callback)
+		public AsyncTaskFlag(Func<Task> callback) : this(callback, TimeSpan.Zero, TaskScheduler.Current)
 		{
-			_Callback = callback;
-			_ProcessTaskFlag = ProcessTaskFlag;
-			_CompleteProcessTask = CompleteProcessTask;
+		}
+		
+		/// <summary>
+		/// Creates a Task Flag
+		/// </summary>
+		/// <param name="callback">The callback to execute</param>
+		public AsyncTaskFlag(Func<Task> callback, TaskScheduler scheduler) : this(callback, TimeSpan.Zero, scheduler)
+		{
 		}
 		
 		/// <summary>
@@ -42,9 +52,19 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="callback">The callback to execute</param>
 		/// <param name="delay">A fixed delay between callback executions</param>
-		public AsyncTaskFlag(Func<Task> callback, TimeSpan delay)
+		public AsyncTaskFlag(Func<Task> callback, TimeSpan delay) : this(callback, delay, TaskScheduler.Current)
+		{
+		}
+		
+		/// <summary>
+		/// Creates a Task Flag
+		/// </summary>
+		/// <param name="callback">The callback to execute</param>
+		/// <param name="delay">A fixed delay between callback executions</param>
+		public AsyncTaskFlag(Func<Task> callback, TimeSpan delay, TaskScheduler scheduler)
 		{
 			_Callback = callback;
+			_Scheduler = scheduler;
 			
 			if (delay == TimeSpan.Zero)
 			{
@@ -58,6 +78,7 @@ namespace Proximity.Utility.Threading
 			}
 			
 			_CompleteProcessTask = CompleteProcessTask;
+			_CompleteSecondTask = CompleteSecondTask;
 		}
 		
 		//****************************************
@@ -135,15 +156,16 @@ namespace Proximity.Utility.Threading
 			_PendingWaitTask = Interlocked.Exchange(ref _WaitTask, null);
 			
 			// Raise the callback and get an awaiter
-			// Using GetAwaiter results in less allocations (TaskContinuation) than using ContinueWith (Task and TaskContinuation)
-			var MyResultAwaiter = _Callback().GetAwaiter();
+			var MyResult = Task.Factory.StartNew(_Callback, CancellationToken.None, TaskCreationOptions.None, _Scheduler);
 			
-			// If the operation finished, run the callback
-			if (MyResultAwaiter.IsCompleted)
+			_WaitSecond = false;
+			_CurrentTask = MyResult;
+			
+			// Using GetAwaiter results in less allocations (TaskContinuation) than using ContinueWith (Task and TaskContinuation)
+			if (MyResult.IsCompleted)
 				CompleteProcessTask(true);
 			else
-				// Still pending, queue the completion task
-				MyResultAwaiter.OnCompleted(_CompleteProcessTask);
+				MyResult.ConfigureAwait(false).GetAwaiter().OnCompleted(_CompleteProcessTask);
 		}
 		
 		private void CompleteProcessTask()
@@ -152,6 +174,37 @@ namespace Proximity.Utility.Threading
 		}
 		
 		private void CompleteProcessTask(bool isNested)
+		{	//****************************************
+			var FirstTask = (Task<Task>)_CurrentTask;
+			//****************************************
+			
+			if (FirstTask.IsFaulted)
+			{
+				CompleteSecondTask(isNested);
+			}
+			else if (FirstTask.IsCanceled)
+			{
+				CompleteSecondTask(isNested);
+			}
+			else
+			{
+				_CurrentTask = FirstTask.Result;
+				
+				// Is it complete?
+				if (_CurrentTask.IsCompleted)
+					CompleteSecondTask(true);
+				else
+					// No, wait for it then
+					_CurrentTask.ConfigureAwait(false).GetAwaiter().OnCompleted(_CompleteSecondTask); // 2 (TaskCompletion and Action)
+			}
+		}
+		
+		private void CompleteSecondTask()
+		{
+			CompleteSecondTask(false);
+		}
+		
+		private void CompleteSecondTask(bool isNested)
 		{	//****************************************
 			var MyWaitTask = Interlocked.Exchange(ref _PendingWaitTask, null);
 			//****************************************

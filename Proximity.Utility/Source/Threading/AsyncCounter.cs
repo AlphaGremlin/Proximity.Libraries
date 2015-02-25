@@ -102,7 +102,10 @@ namespace Proximity.Utility.Threading
 		/// <param name="token">A cancellation token that can be used to abort waiting on the lock</param>
 		/// <returns>A task that completes when we were able to decrement the counter</returns>
 		public Task Decrement(CancellationToken token)
-		{
+		{	//****************************************
+			TaskCompletionSource<VoidStruct> NewWaiter;
+			//****************************************
+			
 			lock (_Waiters)
 			{
 				// Is there a free counter?
@@ -119,22 +122,22 @@ namespace Proximity.Utility.Threading
 					throw new ObjectDisposedException("Counter has been disposed of");
 				
 				// Still active, add ourselves to the queue waiting on a counter
-				var NewWaiter = new TaskCompletionSource<VoidStruct>();
+				NewWaiter = new TaskCompletionSource<VoidStruct>();
 				
 				_Waiters.Enqueue(NewWaiter);
-				
-				// Check if we can get cancelled
-				if (token.CanBeCanceled)
-				{
-					// Register for cancellation
-					var MyRegistration = token.Register(Cancel, NewWaiter);
-					
-					// If we complete and haven't been cancelled, dispose of the registration
-					NewWaiter.Task.ContinueWith((task, state) => ((CancellationTokenRegistration)state).Dispose(), MyRegistration, TaskContinuationOptions.ExecuteSynchronously);
-				}
-				
-				return NewWaiter.Task;
 			}
+			
+			// Check if we can get cancelled
+			if (token.CanBeCanceled)
+			{
+				// Register for cancellation
+				var MyRegistration = token.Register(Cancel, NewWaiter);
+				
+				// If we complete and haven't been cancelled, dispose of the registration
+				NewWaiter.Task.ContinueWith((task, state) => ((CancellationTokenRegistration)state).Dispose(), MyRegistration, TaskContinuationOptions.ExecuteSynchronously);
+			}
+			
+			return NewWaiter.Task;
 		}
 		
 		/// <summary>

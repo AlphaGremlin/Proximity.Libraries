@@ -54,8 +54,12 @@ namespace Proximity.Terminal
 						Scan(NewType);
 					}
 				}
-				catch (ReflectionTypeLoadException)
+				catch (ReflectionTypeLoadException e)
 				{
+					foreach (Type NewType in e.Types)
+					{
+						Scan(NewType);
+					}
 				}
 			}
 		}
@@ -289,8 +293,12 @@ namespace Proximity.Terminal
 					Scan(NewType);
 				}
 			}
-			catch (ReflectionTypeLoadException)
+			catch (ReflectionTypeLoadException e)
 			{
+				foreach (Type NewType in e.Types)
+				{
+					Scan(NewType);
+				}
 			}
 		}
 		

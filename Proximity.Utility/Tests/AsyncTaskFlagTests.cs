@@ -29,6 +29,14 @@ namespace Proximity.Utility.Tests
 		//****************************************
 		
 		[Test(), Timeout(1500)]
+		public async Task SetNoWait()
+		{
+			var MyFlag = new AsyncTaskFlag(() => VoidStruct.EmptyTask);
+			
+			await MyFlag.SetAndWait();
+		}
+		
+		[Test(), Timeout(1500)]
 		public async Task SetAndWait()
 		{
 			var MyFlag = new AsyncTaskFlag(WaitHalfSecond);
@@ -116,6 +124,29 @@ namespace Proximity.Utility.Tests
 			await MyFlag.SetAndWait();
 			
 			Assert.AreNotEqual(0, _Counter);
+		}
+		
+		[Test(), Timeout(1500)]
+		public async Task SetScheduler()
+		{
+			bool OnCorrectScheduler = false;
+			
+			using (var MyScheduler = new DedicatedThreadScheduler("AsyncTaskFlag"))
+			{
+				var MyFlag = new AsyncTaskFlag(
+					() =>
+					{
+						if (MyScheduler == TaskScheduler.Current)
+							OnCorrectScheduler = true;
+						
+						return Task.Delay(50);
+						
+					}, MyScheduler);
+				
+				await MyFlag.SetAndWait();
+			}
+			
+			Assert.IsTrue(OnCorrectScheduler, "Did not run on the correct scheduler");
 		}
 		
 		//****************************************

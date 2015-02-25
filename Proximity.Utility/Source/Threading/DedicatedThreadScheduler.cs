@@ -15,7 +15,7 @@ namespace Proximity.Utility.Threading
 	/// <summary>
 	/// Represents a scheduler placing everything on one thread
 	/// </summary>
-	public sealed class DedicatedThreadScheduler : TaskScheduler
+	public sealed class DedicatedThreadScheduler : TaskScheduler, IDisposable
 	{	//****************************************
 		private BlockingCollection<Task> _Tasks;
 		private readonly Thread _Thread;

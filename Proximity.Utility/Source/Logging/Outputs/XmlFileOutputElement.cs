@@ -12,6 +12,7 @@ namespace Proximity.Utility.Logging.Outputs
 	/// <summary>
 	/// Describes the configuration for the XML File Output Logger
 	/// </summary>
+	[TypedElement(typeof(XmlFileOutput))]
 	public class XmlFileOutputElement : FileOutputElement
 	{
 		public XmlFileOutputElement()

@@ -36,6 +36,11 @@ namespace Proximity.Utility.Logging.Outputs
 		/// A new log file is created when the local time ticks over to a new month
 		/// </summary>
 		/// <remarks>The file suffix is the date the file was created</remarks>
-		Monthly
+		Monthly,
+		/// <summary>
+		/// A new log file is only created once
+		/// </summary>
+		/// <remarks>There is no file suffix or extension added</remarks>
+		Fixed
 	}
 }

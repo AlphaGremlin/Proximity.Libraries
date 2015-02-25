@@ -16,7 +16,7 @@ namespace Proximity.Utility.Configuration
 	/// </summary>
 	public class ConfigurationTextElement : ConfigurationElement
 	{	//****************************************
-		private string _Content;
+		private static ConfigurationProperty _ContentProperty = new ConfigurationProperty("__Content", typeof(string));
 		//****************************************
 		
 		/// <summary>
@@ -24,6 +24,7 @@ namespace Proximity.Utility.Configuration
 		/// </summary>
 		public ConfigurationTextElement() : base()
 		{
+			Properties.Add(_ContentProperty);
 		}
 		
 		//****************************************
@@ -42,51 +43,38 @@ namespace Proximity.Utility.Configuration
 			
 			if (reader.IsEmptyElement)
 			{
-				_Content = null;
+				SetPropertyValue(_ContentProperty, null, true);
 			}
 			else
 			{
-				_Content = reader.ReadElementContentAsString();
+				SetPropertyValue(_ContentProperty, reader.ReadElementContentAsString(), true);
 			}
 		}
 		
 		/// <inheritdoc />
 		protected override bool SerializeElement(XmlWriter writer, bool serializeCollectionKey)
 		{
+			if (writer == null) // Null when it does a validation pass?
+				return true;
+			
+			object ContentValue = null;
+			
 			foreach(ConfigurationProperty MyProperty in Properties)
 			{
 				var MyResult = this[MyProperty];
 				
-				if (MyResult != null)
+				if (MyProperty.Name == _ContentProperty.Name)
+					ContentValue = MyResult;
+				else if (MyResult != null)
 					writer.WriteAttributeString(MyProperty.Name, MyResult.ToString());
 			}
 			
-			if (_Content != null)
-				writer.WriteString(_Content);
+			if (ContentValue != null)
+				writer.WriteString(ContentValue.ToString());
 			
 			return true;
 		}
 		
-		/// <inheritdoc />
-		public override bool Equals(object compareTo)
-		{
-			return base.Equals(compareTo) && (compareTo is ConfigurationTextElement) && ((ConfigurationTextElement)compareTo)._Content == _Content;
-		}
-		
-		/// <inheritdoc />
-		public override int GetHashCode()
-		{
-			int hashCode = base.GetHashCode();
-
-			unchecked
-			{
-				if (_Content != null)
-					hashCode += _Content.GetHashCode();
-			}
-
-			return hashCode;
-		}
-
 		//****************************************
 		
 		/// <summary>
@@ -94,8 +82,8 @@ namespace Proximity.Utility.Configuration
 		/// </summary>
 		public string Content
 		{
-			get { return _Content; }
-			set { _Content = value; }
+			get { return (string)base[_ContentProperty]; }
+			set { SetPropertyValue(_ContentProperty, value, false); }
 		}
 	}
 	
@@ -104,9 +92,8 @@ namespace Proximity.Utility.Configuration
 	/// </summary>
 	public class ConfigurationTextElement<TValue> : ConfigurationElement
 	{	//****************************************
+		private static ConfigurationProperty _ContentProperty = new ConfigurationProperty("__Content", typeof(TValue));
 		private static TypeConverter _Converter = TypeDescriptor.GetConverter(typeof(TValue));
-		//****************************************
-		private TValue _Content;
 		//****************************************
 		
 		/// <summary>
@@ -132,55 +119,42 @@ namespace Proximity.Utility.Configuration
 			
 			if (reader.IsEmptyElement)
 			{
-				_Content = default(TValue);
+				SetPropertyValue(_ContentProperty, default(TValue), true);
 			}
 			else
 			{
 				var TempContent = reader.ReadElementContentAsString();
 				
-				_Content = (TValue)_Converter.ConvertFromInvariantString(TempContent);
+				SetPropertyValue(_ContentProperty, _Converter.ConvertFromInvariantString(TempContent), true);
 			}
 		}
 		
 		/// <inheritdoc />
 		protected override bool SerializeElement(XmlWriter writer, bool serializeCollectionKey)
 		{
+			if (writer == null) // Null when it does a validation pass?
+				return true;
+			
+			TValue ContentValue = default(TValue);
+			
 			foreach (ConfigurationProperty MyProperty in Properties)
 			{
 				var MyResult = this[MyProperty];
-
-				if (MyResult != null)
+				
+				if (MyProperty.Name == _ContentProperty.Name)
+					ContentValue = (TValue)MyResult;
+				else if (MyResult != null)
 					writer.WriteAttributeString(MyProperty.Name, MyResult.ToString());
 			}
 
-			if (!EqualityComparer<TValue>.Default.Equals(_Content, default(TValue)))
+			if (!EqualityComparer<TValue>.Default.Equals(ContentValue, default(TValue)))
 			{
-				var TempContent = _Converter.ConvertToInvariantString(_Content);
+				var TempContent = _Converter.ConvertToInvariantString(ContentValue);
 
 				writer.WriteString(TempContent);
 			}
 
 			return true;
-		}
-
-		/// <inheritdoc />
-		public override bool Equals(object compareTo)
-		{
-			return base.Equals(compareTo) && (compareTo is ConfigurationTextElement<TValue>) && EqualityComparer<TValue>.Default.Equals(((ConfigurationTextElement<TValue>)compareTo)._Content, _Content);
-		}
-		
-		/// <inheritdoc />
-		public override int GetHashCode()
-		{
-			int hashCode = base.GetHashCode();
-
-			unchecked
-			{
-				if (_Content != null)
-					hashCode += _Content.GetHashCode();
-			}
-
-			return hashCode;
 		}
 
 		//****************************************
@@ -190,8 +164,8 @@ namespace Proximity.Utility.Configuration
 		/// </summary>
 		public TValue Content
 		{
-			get { return _Content; }
-			set { _Content = value; }
+			get { return (TValue)base[_ContentProperty]; }
+			set { SetPropertyValue(_ContentProperty, value, false); }
 		}
 	}
 }

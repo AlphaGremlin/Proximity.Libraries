@@ -476,6 +476,12 @@ namespace Proximity.Utility.Tests
 			await MyTask;
 		}
 		
+		public async Task ConsumeKill()
+		{
+			
+		
+		}
+		
 		//****************************************
 		
 		private async Task<int> Consumer<TItem>(AsyncCollection<TItem> collection)

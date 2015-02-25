@@ -267,7 +267,7 @@
     <Compile Include="Threading\RemoteTask.cs" />
     <Compile Include="Threading\RemoteTaskCompletionSource.cs" />
     <Compile Include="Threading\RemoteTaskExtensions.cs" />
-    <Compile Include="Threading\SafeThreadPool.cs" />
+    <None Include="Threading\SafeThreadPool.cs" />
     <Compile Include="Threading\SafeTimer.cs" />
     <Compile Include="Threading\StreamTaskScheduler.cs" />
     <Compile Include="Threading\TaskFlag.cs" />

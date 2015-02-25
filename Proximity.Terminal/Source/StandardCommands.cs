@@ -26,6 +26,9 @@ namespace Proximity.Terminal
 		//****************************************
 		// Standard console commands
 		
+		/// <summary>
+		/// Outputs base-level command help
+		/// </summary>
 		[TerminalBinding("Output a list of available commands, variables and instances")]
 		public static void Help()
 		{	//****************************************
@@ -76,6 +79,10 @@ namespace Proximity.Terminal
 			}
 		}
 		
+		/// <summary>
+		/// Outputs help on a specific command
+		/// </summary>
+		/// <param name="command">The command text</param>
 		[TerminalBinding("Output brief information about a command, variable or instance")]
 		public static void Help(string command)
 		{	//****************************************
@@ -94,6 +101,9 @@ namespace Proximity.Terminal
 		
 		//********************
 	
+		/// <summary>
+		/// Outputs the loaded assemblies
+		/// </summary>
 		[TerminalBinding("Displays the full names of every loaded assembly")]
 		public static void Assemblies()
 		{
@@ -106,6 +116,9 @@ namespace Proximity.Terminal
 			}
 		}
 		
+		/// <summary>
+		/// Outputs platform details
+		/// </summary>
 		[TerminalBinding("Displays information about the current platform")]
 		public static void Platform()
 		{
@@ -117,6 +130,11 @@ namespace Proximity.Terminal
 		
 		//********************
 		
+		/// <summary>
+		/// Outputs text to the console
+		/// </summary>
+		/// <param name="text">The text to print</param>
+		/// <remarks>Used for Exec scripts</remarks>
 		[TerminalBinding("Prints text to the log and console")]
 		public static void Echo(string text)
 		{
@@ -125,6 +143,11 @@ namespace Proximity.Terminal
 		
 		//********************
 		
+		/// <summary>
+		/// Executes a file containing a set of commands
+		/// </summary>
+		/// <param name="fileName">The local file path</param>
+		/// <returns>A task representing execution progress</returns>
 		[TerminalBinding("Execute a list of terminal commands")]
 		public static async Task Exec(string fileName)
 		{
@@ -142,6 +165,9 @@ namespace Proximity.Terminal
 		//****************************************
 		// Resource Management
 		
+		/// <summary>
+		/// Outputs memory statistics
+		/// </summary>
 		[TerminalBinding("Displays statistics about the current memory usage")]
 		public static void MemStatus()
 		{	//****************************************
@@ -153,6 +179,9 @@ namespace Proximity.Terminal
 			Log.Info("Total Virtual Memory: {0:N}", MyProcess.VirtualMemorySize64);
 		}
 				
+		/// <summary>
+		/// Outputs CPU statistics
+		/// </summary>
 		[TerminalBinding("Displays statistics about the current CPU usage")]
 		public static void CpuStatus()
 		{	//****************************************
@@ -179,6 +208,9 @@ namespace Proximity.Terminal
 			Log.Info("Thread Pool: {0} of {1} workers free, {2} of {3} IO free", FreeWorkerThreads, MaxWorkerThreads, FreeIOThreads, MaxIOThreads);
 		}
 		
+		/// <summary>
+		/// Outputs process details
+		/// </summary>
 		[TerminalBinding("Displays statistics about the current Process")]
 		public static void ProcessStatus()
 		{	//****************************************
@@ -194,12 +226,18 @@ namespace Proximity.Terminal
 
 		//****************************************
 		
+		/// <summary>
+		/// Throws an exception to be immediately caught by the parser
+		/// </summary>
 		[TerminalBinding("Throws an exception")]
 		public static void Throw()
 		{
 			throw new ApplicationException("Requested Exception");
 		}
 		
+		/// <summary>
+		/// Clears the local terminal
+		/// </summary>
 		public static void Clear()
 		{
 			TerminalManager.Clear();
