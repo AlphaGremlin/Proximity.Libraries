@@ -177,7 +177,7 @@ namespace Proximity.Utility.Logging.Outputs
 			catch (OperationCanceledException)
 			{
 			}
-			catch (InvalidOperationException e)
+			catch (InvalidOperationException)
 			{
 			}
 			finally

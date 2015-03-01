@@ -338,7 +338,6 @@ namespace Proximity.Utility.Collections
 		public bool TryAdd(TKey key, TValue value)
 		{	//****************************************
 			GCHandle MyHandle, NewHandle;
-			TValue NewValue;
 			//****************************************
 		
 			if (value == null)
