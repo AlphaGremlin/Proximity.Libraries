@@ -63,6 +63,18 @@ namespace Proximity.Utility.Net
 			return SendData(buffer, offset, count, callback, state);
 		}
 
+		/// <summary>
+		/// Asynchronously writes a set of buffers to the Socket
+		/// </summary>
+		/// <param name="buffers">The set of buffers to write</param>
+		/// <param name="callback">A callback to raise when writing has completed</param>
+		/// <param name="state">A state object to identify this callback</param>
+		/// <returns>An async result representing the write operation</returns>
+		public IAsyncResult BeginWrite(IList<ArraySegment<byte>> buffers, AsyncCallback callback, object state)
+		{
+			return SendData(buffers, callback, state);
+		}
+
 		/// <inheritdoc />
 		public override int EndRead(IAsyncResult asyncResult)
 		{
@@ -144,6 +156,19 @@ namespace Proximity.Utility.Net
 			SendData(buffer, offset, count).GetAwaiter().GetResult();
 		}
 
+		/// <summary>
+		/// Synchronously writes a set of buffers to the Socket
+		/// </summary>
+		/// <param name="buffers">The set of buffers to write</param>
+		public void Write(IList<ArraySegment<byte>> buffers)
+		{
+			if (buffers.Count == 0)
+				return;
+			
+			// Use GetResult() so exceptions are thrown without being wrapped in AggregateException
+			SendData(buffers).GetAwaiter().GetResult();
+		}
+
 		/// <inheritdoc />
 		public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
 		{
@@ -153,6 +178,22 @@ namespace Proximity.Utility.Net
 			}
 			
 			return SendData(buffer, offset, count);
+		}
+		
+		/// <summary>
+		/// Asynchronously writes a set of buffers to the Socket
+		/// </summary>
+		/// <param name="buffers">The set of buffers to write</param>
+		/// <param name="cancellationToken">A cancellation token to abort the write operation</param>
+		/// <returns>A task representing the write operation</returns>
+		public Task WriteAsync(IList<ArraySegment<byte>> buffers, CancellationToken cancellationToken)
+		{
+			if (cancellationToken.IsCancellationRequested)
+			{
+				return Task.Run(() => { }, cancellationToken);
+			}
+			
+			return SendData(buffers);
 		}
 		
 		/// <inheritdoc />
@@ -195,6 +236,29 @@ namespace Proximity.Utility.Net
 			}
 		}
 		
+		private Task SendData(IList<ArraySegment<byte>> buffers, AsyncCallback callback = null, object state = null)
+		{	//****************************************
+			var MyOperation = new SendBulkOperation(this, buffers, callback, state); // 2 allocations (TaskCompletionSource and Task)
+			//****************************************
+			
+			// Swap out the previous write task with ours
+			var OldTask = Interlocked.Exchange(ref _LastWrite, MyOperation.Task);
+			
+			// Has that write completed?
+			if (OldTask == null || OldTask.IsCompleted)
+			{
+				// Yes, directly queue it
+				DoSendData(MyOperation);
+			}
+			else
+			{
+				// No, wait until it finishes to queue our write
+				OldTask.ContinueWith(MyOperation.DoSendData); // 2 allocations (Task and Action)
+			}
+
+			return MyOperation.Task;
+		}
+		
 		private Task SendData(byte[] buffer, int offset, int count, AsyncCallback callback = null, object state = null)
 		{	//****************************************
 			var MyOperation = new SendOperation(this, buffer, offset, count, callback, state); // 2 allocations (TaskCompletionSource and Task)
@@ -221,6 +285,30 @@ namespace Proximity.Utility.Net
 		private void DoSendData(SendOperation operation)
 		{
 			_WriteEventArgs.BufferList = null;
+			operation.Apply();
+			
+			try
+			{
+				_WriteEventArgs.SendAsync(_Socket);
+
+				if (_WriteEventArgs.IsCompleted)
+				{
+					operation.ProcessCompletedSend();
+				}
+				else
+				{
+					((INotifyCompletion)_WriteEventArgs).OnCompleted(operation.ProcessCompletedSend); // 1 allocation (Action)
+				}
+			}
+			catch (Exception e)
+			{
+				operation.Fail(e);
+			}
+		}
+		
+		private void DoSendData(SendBulkOperation operation)
+		{
+			_WriteEventArgs.SetBuffer(null, 0, 0);
 			operation.Apply();
 			
 			try
@@ -324,34 +412,19 @@ namespace Proximity.Utility.Net
 			}
 		}
 		
-		private sealed class SendOperation : TaskCompletionSource<VoidStruct>
+		private abstract class BaseSendOperation : TaskCompletionSource<VoidStruct>
 		{	//****************************************
 			private readonly AsyncNetworkStream _Stream;
-			private readonly byte[] _Buffer;
-			private readonly int _Offset, _Count;
 			private readonly AsyncCallback _Callback;
 			//****************************************
 			
-			internal SendOperation(AsyncNetworkStream stream, byte[] buffer, int offset, int count, AsyncCallback callback, object state) : base(state)
+			internal BaseSendOperation(AsyncNetworkStream stream, AsyncCallback callback, object state) : base(state)
 			{
 				_Stream = stream;
-				_Buffer = buffer;
-				_Offset = offset;
-				_Count = count;
 				_Callback = callback;
 			}
 			
 			//****************************************
-			
-			internal void DoSendData(Task ancestor)
-			{
-				_Stream.DoSendData(this);
-			}
-			
-			internal void Apply()
-			{
-				_Stream._WriteEventArgs.SetBuffer(_Buffer, _Offset, _Count);
-			}
 			
 			internal void Fail(Exception e)
 			{
@@ -375,6 +448,62 @@ namespace Proximity.Utility.Net
 				// Raise the async callback (if any)
 				if (_Callback != null)
 					_Callback(Task);
+			}
+			
+			//****************************************
+			
+			protected AsyncNetworkStream Stream
+			{
+				get { return _Stream; }
+			}
+		}
+		
+		private sealed class SendOperation : BaseSendOperation
+		{	//****************************************
+			private readonly byte[] _Buffer;
+			private readonly int _Offset, _Count;
+			//****************************************
+			
+			internal SendOperation(AsyncNetworkStream stream, byte[] buffer, int offset, int count, AsyncCallback callback, object state) : base(stream, callback, state)
+			{
+				_Buffer = buffer;
+				_Offset = offset;
+				_Count = count;
+			}
+			
+			//****************************************
+			
+			internal void DoSendData(Task ancestor)
+			{
+				Stream.DoSendData(this);
+			}
+			
+			internal void Apply()
+			{
+				Stream._WriteEventArgs.SetBuffer(_Buffer, _Offset, _Count);
+			}
+		}
+		
+		private sealed class SendBulkOperation : BaseSendOperation
+		{	//****************************************
+			private readonly IList<ArraySegment<byte>> _Buffers;
+			//****************************************
+			
+			internal SendBulkOperation(AsyncNetworkStream stream, IList<ArraySegment<byte>> buffers, AsyncCallback callback, object state) : base(stream, callback, state)
+			{
+				_Buffers = buffers;
+			}
+			
+			//****************************************
+			
+			internal void DoSendData(Task ancestor)
+			{
+				Stream.DoSendData(this);
+			}
+			
+			internal void Apply()
+			{
+				Stream._WriteEventArgs.BufferList = _Buffers;
 			}
 		}
 	}

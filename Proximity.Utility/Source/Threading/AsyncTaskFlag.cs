@@ -27,7 +27,6 @@ namespace Proximity.Utility.Threading
 
 		private TaskCompletionSource<bool> _WaitTask, _PendingWaitTask;
 		
-		private bool _WaitSecond;
 		private Task _CurrentTask;
 		//****************************************
 		
@@ -43,6 +42,7 @@ namespace Proximity.Utility.Threading
 		/// Creates a Task Flag
 		/// </summary>
 		/// <param name="callback">The callback to execute</param>
+		/// <param name="scheduler">The task scheduler to schedule the callback on</param>
 		public AsyncTaskFlag(Func<Task> callback, TaskScheduler scheduler) : this(callback, TimeSpan.Zero, scheduler)
 		{
 		}
@@ -61,6 +61,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="callback">The callback to execute</param>
 		/// <param name="delay">A fixed delay between callback executions</param>
+		/// <param name="scheduler">The task scheduler to schedule the callback on</param>
 		public AsyncTaskFlag(Func<Task> callback, TimeSpan delay, TaskScheduler scheduler)
 		{
 			_Callback = callback;
