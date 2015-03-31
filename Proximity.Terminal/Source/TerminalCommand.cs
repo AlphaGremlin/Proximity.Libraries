@@ -38,7 +38,12 @@ namespace Proximity.Terminal
 		}
 		
 		//****************************************
-		
+
+		/// <summary>
+		/// Synchronously invokes a command
+		/// </summary>
+		/// <param name="instance">The instance this command should be called on, if any</param>
+		/// <param name="arguments">The arguments to pass to the command</param>
 		public void Invoke(object instance, object[] arguments)
 		{
 			if (instance != null && !_Method.DeclaringType.IsInstanceOfType(instance))
@@ -67,6 +72,12 @@ namespace Proximity.Terminal
 			}
 		}
 		
+		/// <summary>
+		/// Asynchronously invokes a command
+		/// </summary>
+		/// <param name="instance">The instance this command should be called on, if any</param>
+		/// <param name="arguments">The arguments to pass to the command</param>
+		/// <returns>A task that completes with the result of the command</returns>
 		public async Task InvokeAsync(object instance, object[] arguments)
 		{
 			if (instance != null && !_Method.DeclaringType.IsInstanceOfType(instance))

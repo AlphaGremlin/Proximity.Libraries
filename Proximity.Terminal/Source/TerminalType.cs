@@ -77,6 +77,11 @@ namespace Proximity.Terminal
 		
 		//****************************************
 		
+		/// <summary>
+		/// Looks up a command by name
+		/// </summary>
+		/// <param name="commandName">The name to lookup</param>
+		/// <returns>The command set matching this name</returns>
 		public TerminalCommandSet FindCommand(string commandName)
 		{	//****************************************
 			TerminalCommandSet MyCommand;
@@ -88,6 +93,11 @@ namespace Proximity.Terminal
 			return null;
 		}
 		
+		/// <summary>
+		/// Looks up a variable by name
+		/// </summary>
+		/// <param name="variableName">The name to lookup</param>
+		/// <returns>The variable matching this name</returns>
 		public TerminalVariable FindVariable(string variableName)
 		{	//****************************************
 			TerminalVariable MyVariable;

@@ -102,7 +102,7 @@ namespace Proximity.Utility.Reflection
 	{	//****************************************
 		private static Func<TObject, TObject> _CloneMethod, _SmartCloneMethod;
 		private static Action<TObject, TObject> _CloneTargetWithReadOnlyMethod, _CloneTargetMethod;
-		private static Func<TObject, IDictionary<TObject, TObject>, TObject> _DeepCloneMethod, _DeepSmartCloneMethod;
+		private static Func<TObject, IDictionary<TObject, TObject>, TObject> _DeepCloneMethod;
 		
 		private static DynamicMethod _DeepCloneSource;
 		//****************************************
@@ -592,7 +592,7 @@ namespace Proximity.Utility.Reflection
 	
 	internal static class DeepClone<TValueType> where TValueType : struct
 	{	//****************************************
-		private static DynamicMethod _DeepCloneSource;
+		private static DynamicMethod _DeepCloneSource = null;
 		//****************************************
 		
 		private static DynamicMethod GetDeepCloneMethod()

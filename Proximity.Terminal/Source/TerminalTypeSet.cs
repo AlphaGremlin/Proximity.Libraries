@@ -55,6 +55,11 @@ namespace Proximity.Terminal
 			return _TypeName;
 		}
 		
+		/// <summary>
+		/// Compares this type set to another for the purposes of sorting
+		/// </summary>
+		/// <param name="other">The type set to compare to</param>
+		/// <returns>The result of the comparison</returns>
 		public int CompareTo(TerminalTypeSet other)
 		{
 			return _TypeName.CompareTo(other._TypeName);

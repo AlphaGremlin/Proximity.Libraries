@@ -125,8 +125,9 @@
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="System.Collections.Immutable">
-      <HintPath>..\..\packages\Microsoft.Bcl.Immutable.1.0.30\lib\portable-net45+win8+wp8\System.Collections.Immutable.dll</HintPath>
+    <Reference Include="System.Collections.Immutable, Version=1.0.34.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\packages\Microsoft.Bcl.Immutable.1.0.34\lib\portable-net45+win8+wp8+wpa81\System.Collections.Immutable.dll</HintPath>
     </Reference>
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core">
@@ -153,8 +154,8 @@
     <Compile Include="Collections\CastEnumerator.cs" />
     <Compile Include="Collections\ConcurrentExtensions.cs" />
     <Compile Include="Collections\ConcurrentWeakDictionary.cs" />
-    <Compile Include="Collections\IAsyncEnumerable.cs" />
-    <Compile Include="Collections\IAsyncEnumerator.cs" />
+    <None Include="Collections\IAsyncEnumerable.cs" />
+    <None Include="Collections\IAsyncEnumerator.cs" />
     <Compile Include="Collections\ImmutableCountedStack.cs" />
     <Compile Include="Collections\ImmutableInterlockedEx.cs" />
     <None Include="Collections\AsyncInterleave.cs" />
@@ -251,6 +252,7 @@
     <Compile Include="SteppedTimer.cs" />
     <Compile Include="Threading\AggregateException.cs" />
     <Compile Include="Threading\AsyncCounter.cs" />
+    <None Include="packages.config" />
     <None Include="Threading\AsyncSemaphoreSlim.cs" />
     <Compile Include="Threading\AsyncSwitchLock.cs" />
     <Compile Include="Threading\AsyncSemaphore.cs" />
@@ -283,7 +285,6 @@
     <Compile Include="WeakDelegate.cs" />
     <Compile Include="WeakDelegateSlim.cs" />
     <None Include="Logging\Style.xsl" />
-    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup />
 </Project>

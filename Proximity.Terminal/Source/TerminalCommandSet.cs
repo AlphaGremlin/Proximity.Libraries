@@ -39,6 +39,12 @@ namespace Proximity.Terminal
 		
 		//****************************************
 		
+		/// <summary>
+		/// Looks up a command based on its arguments
+		/// </summary>
+		/// <param name="inArgs">The arguments to parse</param>
+		/// <param name="outArgs">The resulting properly typed arguments</param>
+		/// <returns>The command that best matches, or none if it could not be determined</returns>
 		public TerminalCommand FindCommand(string[] inArgs, out object[] outArgs)
 		{	//****************************************
 			var ParamData = new object[inArgs.Length];
@@ -98,7 +104,12 @@ namespace Proximity.Terminal
 		{
 			return _Name;
 		}
-		
+
+		/// <summary>
+		/// Compares this command to another for the purposes of sorting
+		/// </summary>
+		/// <param name="other">The command to compare to</param>
+		/// <returns>The result of the comparison</returns>
 		public int CompareTo(TerminalCommandSet other)
 		{
 			return _Name.CompareTo(other._Name);

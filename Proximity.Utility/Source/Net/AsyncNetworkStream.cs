@@ -396,19 +396,38 @@ namespace Proximity.Utility.Net
 					SetResult(EventArgs.BytesTransferred);
 				else
 					SetException(new IOException("Receive failed", new SocketException((int)EventArgs.SocketError)));
-	
-				// Raise the async callback (if any)
-				if (_Callback != null)
-					_Callback(Task);
+
+				try
+				{
+					// Raise the async callback (if any)
+					if (_Callback != null)
+						_Callback(Task);
+				}
+				catch (Exception e)
+				{
+					// Callback can raise exceptions. If it's our exception, ignore
+					if (Task.Exception == null || Task.Exception.InnerException != e)
+						throw;
+				}
 			}
 			
 			internal void Fail(Exception e)
 			{
 				// Ensure the completed task we return has the appropriate state
 				SetException(e);
-	
-				if (_Callback != null)
-					_Callback(Task);
+
+				try
+				{
+					// Raise the async callback (if any)
+					if (_Callback != null)
+						_Callback(Task);
+				}
+				catch (Exception ex)
+				{
+					// Callback can raise exceptions. If it's our exception, ignore
+					if (e != ex)
+						throw;
+				}
 			}
 		}
 		
@@ -430,9 +449,19 @@ namespace Proximity.Utility.Net
 			{
 				// Ensure the completed task we return has the appropriate state
 				SetException(e);
-	
-				if (_Callback != null)
-					_Callback(Task);
+
+				try
+				{
+					// Raise the async callback (if any)
+					if (_Callback != null)
+						_Callback(Task);
+				}
+				catch (Exception ex)
+				{
+					// Callback can raise exceptions. If it's our exception, ignore
+					if (e != ex)
+						throw;
+				}
 			}
 			
 			internal void ProcessCompletedSend()
@@ -444,10 +473,19 @@ namespace Proximity.Utility.Net
 					SetResult(VoidStruct.Empty);
 				else
 					SetException(new IOException("Send failed", new SocketException((int)MyError)));
-				
-				// Raise the async callback (if any)
-				if (_Callback != null)
-					_Callback(Task);
+
+				try
+				{
+					// Raise the async callback (if any)
+					if (_Callback != null)
+						_Callback(Task);
+				}
+				catch (Exception e)
+				{
+					// Callback can raise exceptions. If it's our exception, ignore
+					if (Task.Exception == null || Task.Exception.InnerException != e)
+						throw;
+				}
 			}
 			
 			//****************************************

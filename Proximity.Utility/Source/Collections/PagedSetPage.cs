@@ -66,12 +66,18 @@ namespace Proximity.Utility.Collections
 
 		//****************************************
 
+		/// <summary>
+		/// Gets the maximum key on this page
+		/// </summary>
 		public TKey Max
 		{
 			get { return _Items.Max.Key; }
 		}
 
-		internal TKey Min
+		/// <summary>
+		/// Gets the minimum key on this page
+		/// </summary>
+		public TKey Min
 		{
 			get { return _Items.Min.Key; }
 		}

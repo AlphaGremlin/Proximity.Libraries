@@ -159,7 +159,6 @@ namespace Proximity.Utility.Threading
 			// Raise the callback and get an awaiter
 			var MyResult = Task.Factory.StartNew(_Callback, CancellationToken.None, TaskCreationOptions.None, _Scheduler);
 			
-			_WaitSecond = false;
 			_CurrentTask = MyResult;
 			
 			// Using GetAwaiter results in less allocations (TaskContinuation) than using ContinueWith (Task and TaskContinuation)
