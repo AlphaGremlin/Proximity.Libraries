@@ -27,7 +27,7 @@ using System.Runtime.InteropServices;
 
 //****************************************
 
-[assembly: AssemblyVersion("1.0.*")]
+[assembly: AssemblyVersion("15.1.0.0")]
 
 /* Code Acknowledgements:
  * - Mono-Project for the SHA512 hashing

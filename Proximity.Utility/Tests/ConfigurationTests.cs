@@ -112,6 +112,23 @@ namespace Proximity.Utility.Tests
 		}
 
 		[Test]
+		public void ReadCustomCollectionThree()
+		{
+			var RawXML = @"
+<Test>
+	<Text>
+		<add>1</add>
+		<add>2</add>
+		<add>3</add>
+	</Text>
+</Test>";
+			
+			var MySection = CustomCollectionSection.FromString(RawXML);
+			
+			CollectionAssert.AreEquivalent(new int[] { 1, 2, 3 }, MySection.Text.Select(element => element.Content));
+		}
+
+		[Test]
 		public void ReadStringOverride()
 		{
 			var MyMap = new ExeConfigurationFileMap();
@@ -293,11 +310,46 @@ namespace Proximity.Utility.Tests
 			}
 		}
 		
+		public class CustomCollectionSection : ConfigurationSection
+		{
+			public static CustomCollectionSection FromString(string rawXml)
+			{
+				using (var MyStream = new StringReader(rawXml))
+				using (var MyReader = XmlReader.Create(MyStream))
+				{
+					MyReader.Read();
+					
+					var MySection = new CustomCollectionSection();
+					
+					MySection.DeserializeSection(MyReader);
+					
+					return MySection;
+				}
+			}
+			
+			[ConfigurationProperty("Text", IsDefaultCollection = false, IsRequired = true)]
+			public CustomTextElementCollection Text
+			{
+				get { return (CustomTextElementCollection)this["Text"] ?? new CustomTextElementCollection(); }
+			}
+		}
+		
 		public class TextElementCollection : ConfigCollection<ConfigurationTextElement>
 		{
 			public TextElementCollection() : base()
 			{
 			}
+		}
+		
+		public class CustomTextElementCollection : ConfigCollection<CustomTextElement>
+		{
+			public CustomTextElementCollection() : base()
+			{
+			}
+		}
+		
+		public class CustomTextElement : ConfigurationTextElement<int>
+		{
 		}
 	}
 }

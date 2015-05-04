@@ -101,6 +101,7 @@ namespace Proximity.Utility.Configuration
 		/// </summary>
 		public ConfigurationTextElement() : base()
 		{
+			Properties.Add(_ContentProperty);
 		}
 		
 		//****************************************
