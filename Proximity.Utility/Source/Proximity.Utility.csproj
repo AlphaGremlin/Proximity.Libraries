@@ -159,11 +159,14 @@
     <Compile Include="Collections\ImmutableCountedStack.cs" />
     <Compile Include="Collections\ImmutableInterlockedEx.cs" />
     <None Include="Collections\AsyncInterleave.cs" />
+    <Compile Include="Collections\ImmutablePagedSet.cs" />
+    <Compile Include="Collections\ImmutablePagedSetPage.cs" />
     <Compile Include="Collections\LinqExtensions.cs" />
     <Compile Include="Collections\ListExtensions.cs" />
     <Compile Include="Collections\ObservableDictionary.cs" />
     <Compile Include="Collections\ObservableDictionaryCollection.cs" />
     <Compile Include="Collections\ObservableList.cs" />
+    <Compile Include="Collections\ObservableSet.cs" />
     <Compile Include="Collections\PagedSet.cs" />
     <Compile Include="Collections\PagedSetBase.cs" />
     <Compile Include="Collections\PagedSetItem.cs" />

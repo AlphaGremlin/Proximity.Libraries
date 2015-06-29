@@ -16,20 +16,21 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Provides an Observable List supporting BeginUpdate and EndUpdate for batch changes
 	/// </summary>
-	public class ObservableList<TValue> : IList<TValue>, IReadOnlyList<TValue>, IReadOnlyCollection<TValue>, INotifyCollectionChanged, INotifyPropertyChanged
+	public class ObservableList<TValue> : IList<TValue>, IList, INotifyCollectionChanged, INotifyPropertyChanged
 	{	//****************************************
 		private const string CountString = "Count";
 		private const string IndexerName = "Item[]";
 		//****************************************
-		private readonly List<TValue> _Items = new List<TValue>();
+		private readonly List<TValue> _Items;
 
 		private int _UpdateCount = 0;
+		private bool _HasChanged = false;
 		//****************************************
 
 		/// <summary>
 		/// Creates a new Observable List
 		/// </summary>
-		public ObservableList() : base()
+		public ObservableList()
 		{
 			_Items = new List<TValue>();
 		}
@@ -92,7 +93,12 @@ namespace Proximity.Utility.Collections
 		/// <remarks>Maintains a reference count. Each call to <see cref="BeginUpdate"/> must be matched with a call to <see cref="EndUpdate"/></remarks>
 		public void BeginUpdate()
 		{
-			_UpdateCount++;
+			if (_UpdateCount++ == 0)
+			{
+				OnPropertyChanged("IsUpdating");
+
+				_HasChanged = false;
+			}
 		}
 
 		/// <summary>
@@ -137,10 +143,13 @@ namespace Proximity.Utility.Collections
 			if (_UpdateCount == 0)
 				return;
 
-			_UpdateCount--;
+			if (--_UpdateCount == 0)
+			{
+				OnPropertyChanged("IsUpdating");
 
-			// Raise changes (only if we're zero)
-			OnCollectionChanged();
+				if (_HasChanged)
+					OnCollectionChanged();
+			}
 		}
 
 		/// <summary>
@@ -210,6 +219,44 @@ namespace Proximity.Utility.Collections
 			return ((IEnumerable)_Items).GetEnumerator();
 		}
 
+		int IList.Add(object value)
+		{
+			var Count = _Items.Count;
+
+			Insert(Count, (TValue)value, true);
+
+			return Count;
+		}
+
+		bool IList.Contains(object value)
+		{
+			return value is TValue && Contains((TValue)value);
+		}
+
+		int IList.IndexOf(object value)
+		{
+			if (value is TValue)
+				return IndexOf((TValue)value);
+
+			return -1;
+		}
+
+		void IList.Insert(int index, object value)
+		{
+			Insert(index, (TValue)value, false);
+		}
+
+		void IList.Remove(object value)
+		{
+			if (value is TValue)
+				Remove((TValue)value);
+		}
+
+		void ICollection.CopyTo(Array array, int index)
+		{
+			((IList)_Items).CopyTo(array, index);
+		}
+
 		/// <summary>
 		/// Raises the PropertyChanged event
 		/// </summary>
@@ -247,6 +294,8 @@ namespace Proximity.Utility.Collections
 
 		private void OnCollectionChanged()
 		{
+			_HasChanged = true;
+
 			if (_UpdateCount != 0)
 				return;
 
@@ -258,6 +307,8 @@ namespace Proximity.Utility.Collections
 
 		private void OnCollectionChanged(NotifyCollectionChangedAction action, TValue changedItem, int index)
 		{
+			_HasChanged = true;
+
 			if (_UpdateCount != 0)
 				return;
 
@@ -269,6 +320,8 @@ namespace Proximity.Utility.Collections
 
 		private void OnCollectionChanged(NotifyCollectionChangedAction action, TValue newItem, TValue oldItem, int index)
 		{
+			_HasChanged = true;
+
 			if (_UpdateCount != 0)
 				return;
 
@@ -280,6 +333,8 @@ namespace Proximity.Utility.Collections
 
 		private void OnCollectionChanged(NotifyCollectionChangedAction action, IEnumerable<TValue> newItems, int startIndex)
 		{
+			_HasChanged = true;
+
 			if (_UpdateCount != 0)
 				return;
 
@@ -326,14 +381,13 @@ namespace Proximity.Utility.Collections
 		{
 			get { return false; }
 		}
-		
+
 		/// <summary>
-		/// Gets/Sets the current capacity of the list before resizing
+		/// Gets whether an update is in progress via <see cref="BeginUpdate" /> and <see cref="EndUpdate" />
 		/// </summary>
-		public int Capacity
+		public bool IsUpdating
 		{
-			get { return _Items.Capacity; }
-			set { _Items.Capacity = value; }
+			get { return _UpdateCount != 0; }
 		}
 
 		/// <summary>
@@ -342,6 +396,27 @@ namespace Proximity.Utility.Collections
 		protected IList<TValue> Items
 		{
 			get { return _Items; }
+		}
+
+		object IList.this[int index]
+		{
+			get { return _Items[index]; }
+			set { Insert(index, (TValue)value, false); }
+		}
+
+		bool IList.IsFixedSize
+		{
+			get { return false; }
+		}
+
+		bool ICollection.IsSynchronized
+		{
+			get { return false; }
+		}
+
+		object ICollection.SyncRoot
+		{
+			get { return this; }
 		}
 	}
 }

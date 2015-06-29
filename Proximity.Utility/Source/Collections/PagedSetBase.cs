@@ -33,6 +33,12 @@ namespace Proximity.Utility.Collections
 		
 		//****************************************
 
+		/// <summary>
+		/// Adds a range of items to the paged set as a new page, merging with existing overlapping pages
+		/// </summary>
+		/// <param name="items">The set of items to add</param>
+		/// <param name="isStart">Whether this page is the start of the set</param>
+		/// <param name="isFinish">Whether this page is the end of the set</param>
 		public void AddRange(IEnumerable<TItem> items, bool isStart, bool isFinish)
 		{	//****************************************
 			var SortedItems = items.OrderBy(GetKey).ToArray();
@@ -284,6 +290,9 @@ namespace Proximity.Utility.Collections
 
 		//****************************************
 
+		/// <summary>
+		/// Gets a read-only set of the available pages
+		/// </summary>
 		public ISet<PagedSetPage<TKey, TItem>> Pages
 		{
 			get

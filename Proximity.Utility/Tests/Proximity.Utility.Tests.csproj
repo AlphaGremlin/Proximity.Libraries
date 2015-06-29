@@ -97,6 +97,10 @@
       <HintPath>..\..\..\Tools\NUnit\nunit.framework.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Collections.Immutable, Version=1.0.34.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\packages\Microsoft.Bcl.Immutable.1.0.34\lib\portable-net45+win8+wp8+wpa81\System.Collections.Immutable.dll</HintPath>
+    </Reference>
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
@@ -118,10 +122,12 @@
     <Compile Include="ConfigurationTests.cs" />
     <Compile Include="EmitterTests.cs" />
     <Compile Include="EqualityTests.cs" />
+    <Compile Include="ImmutablePagedSetTests.cs" />
     <Compile Include="LinqExtensionTests.cs" />
     <Compile Include="ListExtensionTests.cs" />
     <Compile Include="LoggingTests.cs" />
     <Compile Include="RemoteTaskTests.cs" />
+    <None Include="packages.config" />
     <None Include="SafeThreadPoolTests.cs" />
     <Compile Include="SafeTimerTests.cs" />
     <Compile Include="TaskExtensionTests.cs" />
@@ -138,5 +144,8 @@
       <Project>{B003D333-C349-4713-94E2-7B80095D9C0D}</Project>
       <Name>Proximity.Utility</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
   </ItemGroup>
 </Project>

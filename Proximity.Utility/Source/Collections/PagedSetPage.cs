@@ -15,7 +15,7 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Describes a page in a Paged Set
 	/// </summary>
-	public class PagedSetPage<TKey, TItem> : IComparable<PagedSetPage<TKey, TItem>> where TKey : IComparable<TKey>
+	public class PagedSetPage<TKey, TItem> : IComparable<PagedSetPage<TKey, TItem>>, IEnumerable<TItem> where TKey : IComparable<TKey>
 	{	//****************************************
 		private readonly SortedSet<PagedSetItem<TKey, TItem>> _Items;
 		private bool _IsStart, _IsFinish;
@@ -45,6 +45,16 @@ namespace Proximity.Utility.Collections
 		int IComparable<PagedSetPage<TKey, TItem>>.CompareTo(PagedSetPage<TKey, TItem> other)
 		{
 			return this.Min.CompareTo(other.Min);
+		}
+
+		IEnumerator<TItem> IEnumerable<TItem>.GetEnumerator()
+		{
+			return _Items.Select(FromItem).GetEnumerator();
+		}
+
+		IEnumerator IEnumerable.GetEnumerator()
+		{
+			return _Items.Select(FromItem).GetEnumerator();
 		}
 
 		//****************************************
@@ -82,21 +92,42 @@ namespace Proximity.Utility.Collections
 			get { return _Items.Min.Key; }
 		}
 
-		internal bool IsStart
+		/// <summary>
+		/// Gets whether this Page is marked as the Start page
+		/// </summary>
+		public bool IsStart
 		{
 			get { return _IsStart; }
-			set { _IsStart = value; }
+			internal set { _IsStart = value; }
 		}
 
-		internal bool IsFinish
+		/// <summary>
+		/// Gets whether this Page is marked as the Finish page
+		/// </summary>
+		public bool IsFinish
 		{
 			get { return _IsFinish; }
-			set { _IsFinish = value; }
+			internal set { _IsFinish = value; }
+		}
+
+		/// <summary>
+		/// Gets the number of items in this Page
+		/// </summary>
+		public int Count
+		{
+			get { return _Items.Count; }
 		}
 
 		internal ISet<PagedSetItem<TKey, TItem>> Items
 		{
 			get { return _Items; }
+		}
+		
+		//****************************************
+
+		private static TItem FromItem(PagedSetItem<TKey, TItem> item)
+		{
+			return item.Item;
 		}
 	}
 }
