@@ -317,5 +317,199 @@ namespace Proximity.Utility.Tests
 			
 			await ResultTask;
 		}
+		
+		[Test, Timeout(1000)]
+		public void TryDecrement()
+		{	//****************************************
+			var MyCounter = new AsyncCounter();
+			//****************************************
+			
+			var MyResult = MyCounter.TryDecrement();
+			
+			//****************************************
+			
+			Assert.IsFalse(MyResult, "Decrement succeeded unexpectedly");
+		}
+		
+		[Test, Timeout(1000)]
+		public void TryDecrementSuccess()
+		{	//****************************************
+			var MyCounter = new AsyncCounter();
+			//****************************************
+			
+			MyCounter.Increment();
+			
+			var MyResult = MyCounter.TryDecrement();
+			
+			//****************************************
+			
+			Assert.IsTrue(MyResult, "Decrement failed unexpectedly");
+		}
+		
+		[Test, Timeout(1000)]
+		public void TryDecrementAny()
+		{	//****************************************
+			var MyCounters = new AsyncCounter[] { new AsyncCounter(), new AsyncCounter() };
+			//****************************************
+			
+			var MyResult = AsyncCounter.TryDecrementAny(MyCounters);
+			
+			//****************************************
+			
+			Assert.IsNull(MyResult, "Return an unexpected counter");
+		}
+		
+		[Test, Timeout(1000)]
+		public void TryDecrementAnySuccess([Values(0, 1)] int index)
+		{	//****************************************
+			var MyCounters = new AsyncCounter[] { new AsyncCounter(), new AsyncCounter() };
+			//****************************************
+			
+			MyCounters[index].Increment();
+			
+			var MyResult = AsyncCounter.TryDecrementAny(MyCounters);
+			
+			//****************************************
+			
+			Assert.AreSame(MyCounters[index], MyResult, "Did not return the expected counter");
+		}
+		
+		[Test, Timeout(1000)]
+		public void DecrementAny([Values(0, 1)] int index)
+		{	//****************************************
+			var MyCounters = new AsyncCounter[] { new AsyncCounter(0), new AsyncCounter(0) };
+			//****************************************
+			
+			var MyTask = AsyncCounter.DecrementAny(MyCounters);
+			
+			Assert.IsFalse(MyTask.IsCompleted, "Task unexpectedly completed");
+			
+			MyCounters[index].Increment();
+			
+			Thread.Sleep(100); // Increment happens on another thread and there's nothing to wait on
+			
+			//****************************************
+			
+			Assert.IsTrue(MyTask.IsCompleted, "Still waiting to decrement");
+			Assert.AreEqual(MyCounters[index], MyTask.Result, "Decremented unexpected counter");
+			
+			Assert.AreEqual(0, MyCounters[0].CurrentCount, "Counter not decremented");
+			Assert.AreEqual(0, MyCounters[0].WaitingCount, "Tasks unexpectedly waiting");
+			
+			Assert.AreEqual(0, MyCounters[1].CurrentCount, "Counter decremented");
+			Assert.AreEqual(0, MyCounters[1].WaitingCount, "Tasks unexpectedly waiting");
+		}
+		
+		[Test, Timeout(1000)]
+		public void DecrementAnyInitial()
+		{	//****************************************
+			var MyCounters = new AsyncCounter[] { new AsyncCounter(1), new AsyncCounter(1) };
+			//****************************************
+			
+			var MyTask = AsyncCounter.DecrementAny(MyCounters);
+			
+			//****************************************
+			
+			Assert.IsTrue(MyTask.IsCompleted, "Still waiting to decrement");
+			Assert.AreEqual(MyCounters[0], MyTask.Result, "Decremented unexpected counter");
+			
+			Assert.AreEqual(0, MyCounters[0].CurrentCount, "Counter not decremented");
+			Assert.AreEqual(0, MyCounters[0].WaitingCount, "Tasks unexpectedly waiting");
+			
+			Assert.AreEqual(1, MyCounters[1].CurrentCount, "Counter decremented");
+			Assert.AreEqual(0, MyCounters[1].WaitingCount, "Tasks unexpectedly waiting");
+		}
+		
+		[Test, Timeout(1000)]
+		public void DecrementAnyMulti()
+		{	//****************************************
+			var MyCounters = new AsyncCounter[] { new AsyncCounter(0), new AsyncCounter(0) };
+			//****************************************
+			
+			var MyTask1 = AsyncCounter.DecrementAny(MyCounters);
+			var MyTask2 = AsyncCounter.DecrementAny(MyCounters);
+			
+			Assert.IsFalse(MyTask1.IsCompleted, "Task 1 unexpectedly completed");
+			Assert.IsFalse(MyTask2.IsCompleted, "Task 2 unexpectedly completed");
+			
+			MyCounters[0].Increment();
+			
+			Thread.Sleep(100); // Increment happens on another thread and there's nothing to wait on
+			
+			MyCounters[1].Increment();
+			
+			Thread.Sleep(100); // Increment happens on another thread and there's nothing to wait on
+			
+			//****************************************
+			
+			Assert.IsTrue(MyTask1.IsCompleted, "Still waiting to decrement");
+			Assert.IsTrue(MyTask2.IsCompleted, "Still waiting to decrement");
+			
+			CollectionAssert.Contains(MyCounters, MyTask1.Result, "Decremented unexpected counter");
+			CollectionAssert.Contains(MyCounters, MyTask2.Result, "Decremented unexpected counter");
+			
+			Assert.AreNotSame(MyTask1.Result, MyTask2.Result, "Decremented the same counter");
+			
+			Assert.AreEqual(0, MyCounters[0].CurrentCount, "Counter not decremented");
+			Assert.AreEqual(0, MyCounters[0].WaitingCount, "Tasks unexpectedly waiting");
+			
+			Assert.AreEqual(0, MyCounters[1].CurrentCount, "Counter decremented");
+			Assert.AreEqual(0, MyCounters[1].WaitingCount, "Tasks unexpectedly waiting");
+		}
+		
+		[Test, Timeout(1000)]
+		public void DecrementAnyCancel()
+		{	//****************************************
+			var MyCounters = new AsyncCounter[] { new AsyncCounter(0), new AsyncCounter(0) };
+			Task<AsyncCounter> MyTask;
+			//****************************************
+			
+			using (var MySource = new CancellationTokenSource())
+			{
+				MyTask = AsyncCounter.DecrementAny(MyCounters, MySource.Token);
+				
+				Assert.IsFalse(MyTask.IsCompleted, "Decremented too early");
+				
+				MySource.Cancel();
+				
+				Assert.IsTrue(MyTask.IsCanceled, "Wait not cancelled");
+			}
+			
+			MyCounters[0].Increment();
+			MyCounters[1].Increment();
+			
+			Thread.Sleep(100); // Increment happens on another thread and there's nothing to wait on
+			
+			Assert.AreEqual(1, MyCounters[0].CurrentCount, "Counter decremented");
+			Assert.AreEqual(0, MyCounters[0].WaitingCount, "Tasks unexpectedly waiting");
+			
+			Assert.AreEqual(1, MyCounters[1].CurrentCount, "Counter decremented");
+			Assert.AreEqual(0, MyCounters[1].WaitingCount, "Tasks unexpectedly waiting");
+		}
+		
+		[Test, Timeout(1000)]
+		public void DecrementAnyDispose()
+		{	//****************************************
+			var MyCounters = new AsyncCounter[] { new AsyncCounter(0), new AsyncCounter(0) };
+			//****************************************
+			
+			var MyTask = AsyncCounter.DecrementAny(MyCounters);
+			
+			MyCounters[0].Dispose();
+			
+			Thread.Sleep(100); // Disposal happens on another thread and there's nothing to wait on
+			
+			//****************************************
+			
+			Assert.IsTrue(MyTask.IsCompleted, "Still waiting to decrement");
+			Assert.IsTrue(MyTask.IsFaulted, "Did not throw");
+			//Assert.AreEqual(MyCounters[0], MyTask.Result, "Decremented unexpected counter");
+			
+			Assert.AreEqual(0, MyCounters[0].CurrentCount, "Counter not decremented");
+			Assert.AreEqual(0, MyCounters[0].WaitingCount, "Tasks unexpectedly waiting");
+			
+			Assert.AreEqual(0, MyCounters[1].CurrentCount, "Counter decremented");
+			Assert.AreEqual(0, MyCounters[1].WaitingCount, "Tasks unexpectedly waiting");
+		}
 	}
 }

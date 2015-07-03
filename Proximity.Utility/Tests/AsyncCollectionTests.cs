@@ -125,6 +125,33 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(1, MyCollection.Count, "Count not as expected");
 		}
 		
+		[Test, Timeout(1000)]
+		public async Task AddMaximumTimeout()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>(1);
+			
+			Task MyTask;
+			//****************************************
+			
+			await MyCollection.Add(42);
+			
+			MyTask = MyCollection.Add(84, TimeSpan.FromMilliseconds(50));
+			
+			try
+			{
+				await MyTask;
+				
+				Assert.Fail("Should not reach here");
+			}
+			catch (OperationCanceledException)
+			{
+			}
+			
+			//****************************************
+			
+			Assert.AreEqual(1, MyCollection.Count, "Count not as expected");
+		}
+		
 		[Test, Timeout(1000), Repeat(10)]
 		public async Task AddMaximumTake()
 		{	//****************************************
@@ -191,6 +218,23 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			Assert.AreEqual(0, MyCollection.WaitingToTake, "Tasks unexpectedly waiting");
+		}
+		
+		[Test, Timeout(1000)]
+		public void TakeTimeout()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>();
+			//****************************************
+			
+			var MyTask = MyCollection.Take(TimeSpan.FromMilliseconds(50));
+			
+			Thread.Sleep(100);
+			
+			//****************************************
+			
+			Assert.IsTrue(MyTask.IsCanceled, "Wait not cancelled");
+			
+			Assert.AreEqual(1, MyCollection.WaitingToTake, "Tasks unexpectedly waiting");
 		}
 		
 		[Test, Timeout(1000)]
@@ -337,6 +381,56 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(MyCollection.IsCompleted, "Not completed");
 		}
 		
+		[Test, Timeout(1000)]
+		public async Task AddMaximumAddCompleteTake()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>(1);
+			//****************************************
+			
+			await MyCollection.Add(42);
+			
+			var MyTask = MyCollection.AddComplete(84);
+			
+			var MyResult = await MyCollection.Take();
+			
+			await MyTask;
+			
+			//****************************************
+			
+			Assert.AreEqual(42, MyResult, "Result was not as expected");
+			
+			Assert.AreEqual(1, MyCollection.Count, "Count not as expected");
+			Assert.AreEqual(0, MyCollection.WaitingToAdd, "Waiting adders not as expected");
+			
+			Assert.IsTrue(MyCollection.IsAddingCompleted, "Adding is not completed");
+		}
+		
+		[Test, Timeout(1000)]
+		public async Task AddMaximumAddCompleteTakeTake()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>(1);
+			//****************************************
+			
+			await MyCollection.Add(42);
+			
+			var MyTask = MyCollection.AddComplete(84);
+			
+			await MyCollection.Take();
+			
+			await MyTask;
+			
+			var MyResult = await MyCollection.Take();
+			
+			//****************************************
+			
+			Assert.AreEqual(84, MyResult, "Result was not as expected");
+			
+			Assert.AreEqual(0, MyCollection.Count, "Count not as expected");
+			Assert.AreEqual(0, MyCollection.WaitingToAdd, "Waiting adders not as expected");
+			
+			Assert.IsTrue(MyCollection.IsCompleted, "Collection is not completed");
+		}
+		
 		//****************************************
 		
 		[Test, Timeout(1000)]
@@ -441,6 +535,31 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(MyCollection.IsCompleted, "Collection not completed");
 		}
 		
+		[Test]
+		public void TryTake()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>();
+			int MyResult;
+			//****************************************
+			
+			Assert.IsFalse(MyCollection.TryTake(out MyResult), "Take succeeded unexpectedly");
+		}
+		
+		[Test, Timeout(1000)]
+		public async Task TryTakeSuccess()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>();
+			int MyResult;
+			//****************************************
+			
+			await MyCollection.Add(42);
+			
+			//****************************************
+			
+			Assert.IsTrue(MyCollection.TryTake(out MyResult), "Take failed unexpectedly");
+			Assert.AreEqual(42, MyResult, "Result was not as expected");
+		}
+		
 		//****************************************
 		
 		[Test, Timeout(1000), Repeat(10)]
@@ -476,10 +595,293 @@ namespace Proximity.Utility.Tests
 			await MyTask;
 		}
 		
-		public async Task ConsumeKill()
-		{
-			
+		//****************************************
 		
+		[Test, Timeout(1000)]
+		public void TryAdd()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>();
+			//****************************************
+			
+			Assert.IsTrue(MyCollection.TryAdd(42), "Failed to add");
+		}
+		
+		[Test, Timeout(1000)]
+		public void TryAddMaximum()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>(1);
+			//****************************************
+			
+			MyCollection.TryAdd(42);
+			
+			//****************************************
+			
+			Assert.IsFalse(MyCollection.TryAdd(84), "Add unexpectedly succeeded");
+		}
+		
+		[Test, Timeout(1000)]
+		public void TryAddCompleted()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>(1);
+			//****************************************
+			
+			MyCollection.CompleteAdding();
+			
+			//****************************************
+			
+			Assert.IsFalse(MyCollection.TryAdd(42), "Add unexpectedly succeeded");
+		}
+		
+		[Test, Timeout(1000)]
+		public void TryTakeFromAny()
+		{	//****************************************
+			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
+			//****************************************
+			
+			var MyResult = AsyncCollection<int>.TryTakeFromAny(MyCollections);
+			
+			//****************************************
+			
+			Assert.IsFalse(MyResult.HasItem, "Take succeeded unexpectedly");
+		}
+		
+		[Test, Timeout(1000)]
+		public async Task TryTakeFromAny([Values(0, 1)] int index)
+		{	//****************************************
+			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
+			//****************************************
+			
+			await MyCollections[index].Add(42);
+			
+			var MyResult = AsyncCollection<int>.TryTakeFromAny(MyCollections);
+			
+			//****************************************
+			
+			Assert.IsTrue(MyResult.HasItem, "Take failed unexpectedly");
+			Assert.AreSame(MyCollections[index], MyResult.Source, "Collection was not as expected");
+			Assert.AreEqual(42, MyResult.Item, "Item was not as expected");
+		}
+		
+		//****************************************
+		
+		[Test, Timeout(1000)]
+		public void TakeFromAny()
+		{	//****************************************
+			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
+			//****************************************
+			
+			var MyTask = AsyncCollection<int>.TakeFromAny(MyCollections);
+			
+			//****************************************
+			
+			Assert.IsFalse(MyTask.IsCompleted, "Task completed unexpectedly");
+		}
+		
+		[Test, Timeout(1000)]
+		public async Task TakeFromAnyInitial([Values(0, 1)] int index)
+		{	//****************************************
+			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
+			//****************************************
+			
+			await MyCollections[index].Add(42);
+			
+			var MyTask = AsyncCollection<int>.TakeFromAny(MyCollections);
+			
+			//****************************************
+			
+			Assert.IsTrue(MyTask.IsCompleted, "Task completed unexpectedly");
+			
+			Assert.IsTrue(MyTask.Result.HasItem, "Take result failed unexpectedly");
+			Assert.AreSame(MyCollections[index], MyTask.Result.Source, "Collection was not as expected");
+			Assert.AreEqual(42, MyTask.Result.Item, "Item was not as expected");
+		}
+		
+		[Test, Timeout(1000)]
+		public async Task TakeFromAnySuccess([Values(0, 1)] int index)
+		{	//****************************************
+			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
+			//****************************************
+			
+			var MyTask = AsyncCollection<int>.TakeFromAny(MyCollections);
+			
+			await MyCollections[index].Add(42);
+			
+			//****************************************
+			
+			var MyResult = await MyTask;
+			
+			Assert.IsTrue(MyResult.HasItem, "Take result failed unexpectedly");
+			Assert.AreSame(MyCollections[index], MyResult.Source, "Collection was not as expected");
+			Assert.AreEqual(42, MyResult.Item, "Item was not as expected");
+			
+			Assert.AreEqual(0, MyCollections[0].Count, "Item not removed");
+			Assert.AreEqual(0, MyCollections[0].WaitingToTake, "Tasks unexpectedly waiting");
+			
+			Assert.AreEqual(0, MyCollections[1].Count, "Counter decremented");
+			Assert.AreEqual(0, MyCollections[1].WaitingToTake, "Tasks unexpectedly waiting");
+		}
+		
+		[Test, Timeout(1000)]
+		public async Task TakeFromAnyAddComplete()
+		{	//****************************************
+			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
+			//****************************************
+			
+			var MyTask = AsyncCollection<int>.TakeFromAny(MyCollections);
+			
+			await MyCollections[0].AddComplete(42);
+			
+			//****************************************
+			
+			var MyResult = await MyTask;
+			
+			Assert.IsTrue(MyResult.HasItem, "Take result failed unexpectedly");
+			Assert.AreSame(MyCollections[0], MyResult.Source, "Collection was not as expected");
+			Assert.AreEqual(42, MyResult.Item, "Item was not as expected");
+			
+			Assert.AreEqual(0, MyCollections[0].Count, "Item not removed");
+			Assert.AreEqual(0, MyCollections[0].WaitingToTake, "Tasks unexpectedly waiting");
+			
+			Assert.AreEqual(0, MyCollections[1].Count, "Counter decremented");
+			Assert.AreEqual(0, MyCollections[1].WaitingToTake, "Tasks unexpectedly waiting");
+			
+			Assert.IsTrue(MyCollections[0].IsCompleted, "Not completed");
+		}
+		
+		[Test, Timeout(1000)]
+		public async Task TakeFromAnyCancel()
+		{	//****************************************
+			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
+			Task<AsyncCollection<int>.TakeResult> MyTask;
+			//****************************************
+			
+			using (var MySource = new CancellationTokenSource())
+			{
+				MyTask = AsyncCollection<int>.TakeFromAny(MyCollections, MySource.Token);
+				
+				Assert.IsFalse(MyTask.IsCompleted, "Added too early");
+				
+				MySource.Cancel();
+			}
+			
+			try
+			{
+				var MyResult = await MyTask;
+				
+				Assert.Fail("Task succeeded unexpectedly");
+			}
+			catch (OperationCanceledException)
+			{
+			}
+		}
+		
+		[Test, Timeout(1000)]
+		public async Task TakeFromAnyComplete()
+		{	//****************************************
+			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
+			Task<AsyncCollection<int>.TakeResult> MyTask;
+			//****************************************
+			
+			MyTask = AsyncCollection<int>.TakeFromAny(MyCollections);
+			
+			Assert.IsFalse(MyTask.IsCompleted, "Added too early");
+			
+			MyCollections[0].CompleteAdding();
+			
+			try
+			{
+				var MyResult = await MyTask;
+				
+				Assert.Fail("Task succeeded unexpectedly");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
+		}
+		
+		[Test, Timeout(1000)]
+		public async Task TakeFromAnySingle()
+		{	//****************************************
+			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
+			//****************************************
+			
+			var MyTask1 = AsyncCollection<int>.TakeFromAny(MyCollections);
+			var MyTask2 = AsyncCollection<int>.TakeFromAny(MyCollections);
+			
+			await MyCollections[0].Add(42);
+			
+			var MyTask = await Task.WhenAny(MyTask1, MyTask2);
+			
+			//****************************************
+			
+			Assert.IsTrue(MyTask.Result.HasItem, "No item");
+			CollectionAssert.Contains(MyCollections, MyTask.Result.Source, "Result is not an expected collection");
+			Assert.AreEqual(42, MyTask.Result.Item, "Result item is not as expected");
+		}
+		
+		[Test, Timeout(1000)]
+		public async Task TakeFromAnyMulti()
+		{	//****************************************
+			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
+			//****************************************
+			
+			var MyTask1 = AsyncCollection<int>.TakeFromAny(MyCollections);
+			var MyTask2 = AsyncCollection<int>.TakeFromAny(MyCollections);
+			
+			await MyCollections[0].Add(42);
+			await MyCollections[1].Add(84);
+			
+			var MyResult1 = await MyTask1;
+			var MyResult2 = await MyTask2;
+			
+			//****************************************
+			
+			Assert.IsTrue(MyResult1.HasItem, "No item");
+			CollectionAssert.Contains(MyCollections, MyResult1.Source, "Result is not an expected collection");
+			
+			
+			Assert.IsTrue(MyResult2.HasItem, "No item");
+			CollectionAssert.Contains(MyCollections, MyResult2.Source, "Result is not an expected collection");
+			
+			Assert.AreNotSame(MyResult1.Source, MyResult2.Source, "Same collection for both takes");
+			Assert.AreNotEqual(MyResult1.Item, MyResult2.Item, "Same result for both takes");
+		}
+		
+		[Test, Timeout(1000)]
+		public async Task TakeFromAnyMultiCancel()
+		{	//****************************************
+			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
+			//****************************************
+			
+			using (var MySource = new CancellationTokenSource())
+			{
+				var MyTask1 = AsyncCollection<int>.TakeFromAny(MyCollections, MySource.Token);
+				var MyTask2 = AsyncCollection<int>.TakeFromAny(MyCollections);
+				
+				MySource.Cancel();
+				
+				await MyCollections[0].Add(42);
+				await MyCollections[1].Add(84);
+				
+				try
+				{
+					var MyResult1 = await MyTask1;
+					
+					Assert.Fail("Task succeeded unexpectedly");
+				}
+				catch (OperationCanceledException)
+				{
+				}
+
+				var MyResult2 = await MyTask2;
+				
+				//****************************************
+				
+				Assert.IsTrue(MyResult2.HasItem, "No item");
+				CollectionAssert.Contains(MyCollections, MyResult2.Source, "Result is not an expected collection");
+				
+				Assert.IsFalse(MyCollections[0].Count == 0 && MyCollections[1].Count == 0, "All items were removed");
+			}
 		}
 		
 		//****************************************

@@ -4,6 +4,7 @@
 \****************************************/
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Proximity.Utility;
@@ -16,8 +17,9 @@ namespace Proximity.Utility.Threading
 	/// </summary>
 	public sealed class AsyncCounter : IDisposable
 	{	//****************************************
-		private readonly Task<VoidStruct> _CompleteTask;
+		private readonly Task<AsyncCounter> _CompleteTask;
 		private readonly Queue<TaskCompletionSource<VoidStruct>> _Waiters = new Queue<TaskCompletionSource<VoidStruct>>();
+		private readonly List<TaskCompletionSource<AsyncCounter>> _PeekWaiters = new List<TaskCompletionSource<AsyncCounter>>();
 		private int _CurrentCount;
 		private bool _IsDisposed;
 		//****************************************
@@ -27,7 +29,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		public AsyncCounter()
 		{
-			_CompleteTask = Task.FromResult<VoidStruct>(VoidStruct.Empty);
+			_CompleteTask = Task.FromResult<AsyncCounter>(this);
 			_CurrentCount = 0;
 		}
 		
@@ -55,6 +57,14 @@ namespace Proximity.Utility.Threading
 				while (_Waiters.Count > 0)
 				{
 					_Waiters.Dequeue().TrySetException(new ObjectDisposedException("Counter has been disposed of"));
+				}
+				
+				if (_PeekWaiters.Count > 0)
+				{
+					foreach (var MyWaiter in _PeekWaiters)
+						MyWaiter.TrySetException(new ObjectDisposedException("Counter has been disposed of"));
+					
+					_PeekWaiters.Clear();
 				}
 				
 				//_CurrentCount = 0;
@@ -134,10 +144,31 @@ namespace Proximity.Utility.Threading
 				var MyRegistration = token.Register(Cancel, NewWaiter);
 				
 				// If we complete and haven't been cancelled, dispose of the registration
-				NewWaiter.Task.ContinueWith((task, state) => ((CancellationTokenRegistration)state).Dispose(), MyRegistration, TaskContinuationOptions.ExecuteSynchronously);
+				NewWaiter.Task.ContinueWith(CleanupCancelRegistration, MyRegistration, TaskContinuationOptions.ExecuteSynchronously);
 			}
 			
 			return NewWaiter.Task;
+		}
+		
+		/// <summary>
+		/// Tries to decrement the counter without waiting
+		/// </summary>
+		/// <returns>True if the counter was decremented without waiting, otherwise False</returns>
+		public bool TryDecrement()
+		{
+			lock (_Waiters)
+			{
+				// Is there a free counter?
+				if (_CurrentCount > 0)
+				{
+					// Yes, so we can just subtract one and return true
+					_CurrentCount--;
+					
+					return true;
+				}
+			}
+			
+			return false;
 		}
 		
 		/// <summary>
@@ -149,11 +180,73 @@ namespace Proximity.Utility.Threading
 			Increment(false);
 		}
 		
+		/// <summary>
+		/// Waits until it's possible to decrement this counter
+		/// </summary>
+		/// <returns>A task that completes when the counter is available for immediate decrementing</returns>
+		public Task<AsyncCounter> PeekDecrement()
+		{
+			return PeekDecrement(CancellationToken.None);
+		}
+		
+		/// <summary>
+		/// Waits until it's possible to decrement this counter
+		/// </summary>
+		/// <param name="token">A cancellation token to stop waiting</param>
+		/// <returns>A task that completes when the counter is available for immediate decrementing</returns>
+		/// <remarks>This will only succeed when nobody is waiting on a Decrement operation, so Decrement operations won't be waiting while the counter is non-zero</remarks>
+		public Task<AsyncCounter> PeekDecrement(CancellationToken token)
+		{	//****************************************
+			TaskCompletionSource<AsyncCounter> NewWaiter;
+			//****************************************
+			
+			lock (_Waiters)
+			{
+				// Is there a free counter?
+				if (_CurrentCount > 0)
+				{
+					// Yes, so we can just return immediately
+					return _CompleteTask;
+				}
+				
+				// No free counters, are we disposed?
+				if (_IsDisposed)
+					throw new ObjectDisposedException("Counter has been disposed of");
+				
+				// Create a peek waiter
+				NewWaiter = new TaskCompletionSource<AsyncCounter>();
+				
+				_PeekWaiters.Add(NewWaiter);
+			}
+			
+			// Check if we can get cancelled
+			if (token.CanBeCanceled)
+			{
+				// Register for cancellation
+				var MyRegistration = token.Register(CancelPeekDecrement, NewWaiter);
+				
+				// If we complete and haven't been cancelled, dispose of the registration
+				NewWaiter.Task.ContinueWith(CleanupCancelRegistration, MyRegistration, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.NotOnCanceled);
+			}
+			
+			return NewWaiter.Task;
+		}
+		
+		/// <summary>
+		/// Checks if it's possible to decrement this counter
+		/// </summary>
+		/// <returns>True if the counter can be decremented, otherwise False</returns>
+		public bool TryPeekDecrement()
+		{
+			return Volatile.Read(ref _CurrentCount) > 0;
+		}
+		
 		//****************************************
 		
 		private void Increment(bool onThreadPool)
 		{	//****************************************
 			TaskCompletionSource<VoidStruct> NextWaiter = null;
+			TaskCompletionSource<AsyncCounter>[] NextPeekWaiter = null;
 			//****************************************
 			
 			do
@@ -174,11 +267,34 @@ namespace Proximity.Utility.Threading
 						// No, free a counter for someone else and return
 						_CurrentCount++;
 						
-						return;
-					}
+						// Is there anyone peeking?
+						if (_PeekWaiters.Count == 0)
+							return;
 						
-					// Yes, don't change the counter
-					NextWaiter = _Waiters.Dequeue();
+						// Yes, pull them out and clear the list
+						NextPeekWaiter = _PeekWaiters.ToArray();
+						_PeekWaiters.Clear();
+					}
+					else
+					{
+						// Yes, don't change the counter
+						NextWaiter = _Waiters.Dequeue();
+					}
+				}
+				
+				if (NextPeekWaiter != null)
+				{
+					if (onThreadPool)
+					{
+						foreach (var MyWaiter in NextPeekWaiter)
+							MyWaiter.TrySetResult(this);
+					}
+					else
+					{
+						ThreadPool.UnsafeQueueUserWorkItem(TryPeekDecrement, NextPeekWaiter);
+					}
+					
+					return;
 				}
 				
 				if (!onThreadPool)
@@ -201,6 +317,15 @@ namespace Proximity.Utility.Threading
 			if (!MyWaiter.TrySetResult(VoidStruct.Empty))
 				Increment(true);
 		}
+		
+		private void TryPeekDecrement(object state)
+		{	//****************************************
+			var MyWaiters = (TaskCompletionSource<AsyncCounter>[])state;
+			//****************************************
+
+			foreach (var MyWaiter in MyWaiters)
+				MyWaiter.TrySetResult(this);
+		}
 			
 		private static void Cancel(object state)
 		{	//****************************************
@@ -209,6 +334,20 @@ namespace Proximity.Utility.Threading
 			
 			// Try and cancel our task. If it fails, we've already completed and been removed from the Waiters list.
 			MyWaiter.TrySetCanceled();
+		}
+		
+		private static void CancelPeekDecrement(object state)
+		{	//****************************************
+			var MyWaiter = (TaskCompletionSource<AsyncCounter>)state;
+			//****************************************
+			
+			// Try and cancel our task. If it fails, we've already completed and been removed from the Waiters list.
+			MyWaiter.TrySetCanceled();
+		}
+		
+		private static void CleanupCancelRegistration(Task task, object state)
+		{
+			((CancellationTokenRegistration)state).Dispose();
 		}
 		
 		//****************************************
@@ -227,6 +366,83 @@ namespace Proximity.Utility.Threading
 		public int WaitingCount
 		{
 			get { return _Waiters.Count; }
+		}
+		
+		//****************************************
+		
+		/// <summary>
+		/// Decrements the first available counter
+		/// </summary>
+		/// <param name="counters">The counters to try and decrement</param>
+		/// <returns>A task returning the counter that was decremented</returns>
+		public static Task<AsyncCounter> DecrementAny(params AsyncCounter[] counters)
+		{
+			return DecrementAny(counters, CancellationToken.None);
+		}
+		
+		/// <summary>
+		/// Decrements the first available counter
+		/// </summary>
+		/// <param name="counters">The counters to try and decrement</param>
+		/// <returns>A task returning the counter that was decremented</returns>
+		public static Task<AsyncCounter> DecrementAny(IEnumerable<AsyncCounter> counters)
+		{
+			return DecrementAny(counters, CancellationToken.None);
+		}
+		
+		/// <summary>
+		/// Decrements the first available counter
+		/// </summary>
+		/// <param name="counters">The counters to try and decrement</param>
+		/// <param name="token">A cancellation token to abort decrementing</param>
+		/// <returns>A task returning the counter that was decremented</returns>
+		public static Task<AsyncCounter> DecrementAny(IEnumerable<AsyncCounter> counters, CancellationToken token)
+		{	//****************************************
+			var CounterSet = counters.ToArray();
+			//****************************************
+			
+			// Can we immediately decrement any of the counters?
+			for (int Index = 0; Index < CounterSet.Length; Index++)
+			{
+				if (CounterSet[Index].TryDecrement())
+					return Task.FromResult(CounterSet[Index]);
+			}
+			
+			// No, so assign PeekDecrement on all the counters
+			var MyOperation = new AsyncCounterDecrementAny(token);
+			
+			for (int Index = 0; Index < CounterSet.Length; Index++)
+			{
+				MyOperation.Attach(CounterSet[Index]);
+			}
+			
+			return MyOperation.Task;
+		}
+		
+		/// <summary>
+		/// Tries to decrement one of the given counters without waiting
+		/// </summary>
+		/// <param name="counters">The set of counters to try and decrement</param>
+		/// <returns>The counter that was successfully decremented, or null if none were able to be immediately decremented</returns>
+		public static AsyncCounter TryDecrementAny(params AsyncCounter[] counters)
+		{
+			return TryDecrementAny((IEnumerable<AsyncCounter>)counters);
+		}
+		
+		/// <summary>
+		/// Tries to decrement one of the given counters without waiting
+		/// </summary>
+		/// <param name="counters">The set of counters to try and decrement</param>
+		/// <returns>The counter that was successfully decremented, or null if none were able to be immediately decremented</returns>
+		public static AsyncCounter TryDecrementAny(IEnumerable<AsyncCounter> counters)
+		{
+			foreach (var MyCounter in counters)
+			{
+				if (MyCounter.TryDecrement())
+					return MyCounter;
+			}
+			
+			return null;
 		}
 	}
 }

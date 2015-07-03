@@ -1,5 +1,5 @@
 /****************************************\
- NeoJournal Utility Library
+ Proximity Utility Library
  Copyright (c) Daniel Chandler
  Released under the GNU LGPL 2.1 or later
  ****************************************

@@ -148,8 +148,11 @@
     <Compile Include="ActionNameAttribute.cs" />
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Collections\AsyncCollection.cs" />
+    <Compile Include="Xml\XmlReaderReadExtensions.cs" />
+    <Compile Include="Xml\XmlReaderTryReadExtensions.cs" />
     <None Include="Collections\AsyncEnumerable.cs" />
     <None Include="Collections\AsyncLinq.cs" />
+    <Compile Include="Collections\AsyncCollectionTakeFromAny.cs" />
     <Compile Include="Collections\BiDictionary.cs" />
     <Compile Include="Collections\CastEnumerator.cs" />
     <Compile Include="Collections\ConcurrentExtensions.cs" />
@@ -257,6 +260,7 @@
     <Compile Include="Threading\AsyncCounter.cs" />
     <None Include="packages.config" />
     <None Include="Threading\AsyncSemaphoreSlim.cs" />
+    <Compile Include="Threading\AsyncCounterDecrementAny.cs" />
     <Compile Include="Threading\AsyncSwitchLock.cs" />
     <Compile Include="Threading\AsyncSemaphore.cs" />
     <Compile Include="Threading\AsyncReadWriteLock.cs" />
@@ -289,5 +293,7 @@
     <Compile Include="WeakDelegateSlim.cs" />
     <None Include="Logging\Style.xsl" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="Xml" />
+  </ItemGroup>
 </Project>
