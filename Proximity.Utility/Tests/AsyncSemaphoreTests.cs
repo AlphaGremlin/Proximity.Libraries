@@ -356,5 +356,27 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
+				
+		[Test, Timeout(1000)]
+		public void LockDisposeContinueWithLock()
+		{	//****************************************
+			var MyLock = new AsyncSemaphore();
+			//****************************************
+			
+			var MyCounter = MyLock.Wait().Result;
+			
+			var MyTask = MyLock.Wait();
+			
+			var MyInnerTask = MyTask.ContinueWith((task) => MyLock.Wait(), TaskContinuationOptions.ExecuteSynchronously);
+			
+			MyLock.Dispose();
+			
+			//****************************************
+			
+			Assert.IsTrue(MyTask.IsFaulted, "Lock did not fault");
+			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyTask.Exception.InnerException, "Lock is not disposed");
+			Assert.IsTrue(MyInnerTask.IsFaulted, "Lock did not fault");
+			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyInnerTask.Exception.InnerException, "Lock is not disposed");
+		}
 	}
 }

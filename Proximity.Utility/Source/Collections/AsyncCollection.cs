@@ -382,8 +382,7 @@ namespace Proximity.Utility.Collections
 				_FreeSlots.Dispose();
 			
 			// If the collection is empty, cancel anyone waiting for items
-			if (_Collection.Count == 0)
-				_UsedSlots.Dispose();
+			_UsedSlots.DisposeIfZero();
 		}
 		
 		/// <summary>
@@ -533,8 +532,8 @@ namespace Proximity.Utility.Collections
 			}
 			
 			// If the collection is now empty, cancel anyone waiting for items
-			if (IsCompleted)
-				_UsedSlots.Dispose();
+			if (_IsCompleted)
+				_UsedSlots.DisposeIfZero();
 			
 			return MyItem;
 		}

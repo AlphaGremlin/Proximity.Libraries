@@ -259,7 +259,6 @@
     <Compile Include="Threading\AggregateException.cs" />
     <Compile Include="Threading\AsyncCounter.cs" />
     <None Include="packages.config" />
-    <None Include="Threading\AsyncSemaphoreSlim.cs" />
     <Compile Include="Threading\AsyncCounterDecrementAny.cs" />
     <Compile Include="Threading\AsyncSwitchLock.cs" />
     <Compile Include="Threading\AsyncSemaphore.cs" />

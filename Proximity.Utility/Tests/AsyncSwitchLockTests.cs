@@ -890,5 +890,63 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
+		
+		[Test, Timeout(1000)]
+		public void LeftDisposeContinueWithLeft()
+		{	//****************************************
+			var MyLock = new AsyncSwitchLock();
+			//****************************************
+			
+			var MyRight = MyLock.LockRight().Result;
+			
+			var MyLeftTask = MyLock.LockLeft();
+			
+			var MyInnerTask = MyLeftTask.ContinueWith((task) => MyLock.LockLeft(), TaskContinuationOptions.ExecuteSynchronously);
+			
+			MyLock.Dispose();
+			
+			MyRight.Dispose();
+			
+			//****************************************
+			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
+			
+			Assert.IsTrue(MyLeftTask.IsFaulted, "Left did not fault");
+			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyLeftTask.Exception.InnerException, "Left is not disposed");
+			Assert.IsTrue(MyInnerTask.IsFaulted, "Inner Left did not fault");
+			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyInnerTask.Exception.InnerException, "Inner Left is not disposed");
+		}
+		
+		[Test, Timeout(1000)]
+		public void RightDisposeContinueWithRight()
+		{	//****************************************
+			var MyLock = new AsyncSwitchLock();
+			//****************************************
+			
+			var MyLeft = MyLock.LockLeft().Result;
+			
+			var MyRightTask = MyLock.LockRight();
+			
+			var MyInnerTask = MyRightTask.ContinueWith((task) => MyLock.LockRight(), TaskContinuationOptions.ExecuteSynchronously);
+			
+			MyLock.Dispose();
+			
+			MyLeft.Dispose();
+			
+			//****************************************
+			
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			
+			Assert.IsTrue(MyRightTask.IsFaulted, "Right did not fault");
+			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyRightTask.Exception.InnerException, "Right is not disposed");
+			Assert.IsTrue(MyInnerTask.IsFaulted, "Inner Right did not fault");
+			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyInnerTask.Exception.InnerException, "Inner Right is not disposed");
+		}
 	}
 }

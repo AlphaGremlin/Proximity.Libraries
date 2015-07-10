@@ -777,6 +777,35 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000)]
+		public void ReadDisposeContinueWithRead()
+		{	//****************************************
+			var MyLock = new AsyncReadWriteLock();
+			//****************************************
+			
+			var MyWriter = MyLock.LockWrite().Result;
+			
+			var MyReadTask = MyLock.LockRead();
+			
+			var MyInnerTask = MyReadTask.ContinueWith((task) => MyLock.LockRead(), TaskContinuationOptions.ExecuteSynchronously);
+			
+			MyLock.Dispose();
+			
+			MyWriter.Dispose();
+			
+			//****************************************
+			
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+			
+			Assert.IsTrue(MyReadTask.IsFaulted, "Read did not fault");
+			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyReadTask.Exception.InnerException, "Read is not disposed");
+			Assert.IsTrue(MyInnerTask.IsFaulted, "Inner Read did not fault");
+			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyInnerTask.Exception.InnerException, "Inner Read is not disposed");
+		}
+		
+		[Test, Timeout(1000)]
 		public void ReadWriteDispose()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -857,6 +886,35 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
 			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+		}
+		
+		[Test, Timeout(1000)]
+		public void WriteDisposeContinueWithWrite()
+		{	//****************************************
+			var MyLock = new AsyncReadWriteLock();
+			//****************************************
+			
+			var MyReader = MyLock.LockRead().Result;
+			
+			var MyWriteTask = MyLock.LockWrite();
+			
+			var MyInnerTask = MyWriteTask.ContinueWith((task) => MyLock.LockWrite(), TaskContinuationOptions.ExecuteSynchronously);
+			
+			MyLock.Dispose();
+			
+			MyReader.Dispose();
+			
+			//****************************************
+			
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+			
+			Assert.IsTrue(MyWriteTask.IsFaulted, "Write did not fault");
+			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyWriteTask.Exception.InnerException, "Write is not disposed");
+			Assert.IsTrue(MyInnerTask.IsFaulted, "Inner Write did not fault");
+			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyInnerTask.Exception.InnerException, "Inner Write is not disposed");
 		}
 		
 		[Test, Timeout(1000)]

@@ -49,18 +49,26 @@ namespace Proximity.Utility.Threading
 		/// Disposes of the semaphore, cancelling any waiters
 		/// </summary>
 		public void Dispose()
-		{
+		{	//****************************************
+			TaskCompletionSource<IDisposable>[] Waiters;
+			//****************************************
+			
 			lock (_Waiters)
 			{
 				_IsDisposed = true;
 				
-				while (_Waiters.Count > 0)
-				{
-					_Waiters.Dequeue().TrySetException(new ObjectDisposedException("Semaphore has been disposed of"));
-				}
-				
+				// We must set the task results outside the lock, because otherwise the continuation could run on this thread and modify state within the lock
+				Waiters = new TaskCompletionSource<IDisposable>[_Waiters.Count];
+				_Waiters.CopyTo(Waiters, 0);
+				_Waiters.Clear();
+
 				_CurrentCount = 0;
 				_MaxCount = 0;
+			}
+			
+			foreach (var MyWaiter in Waiters)
+			{
+				MyWaiter.TrySetException(new ObjectDisposedException("Semaphore has been disposed of"));
 			}
 		}
 		

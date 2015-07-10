@@ -49,7 +49,10 @@ namespace Proximity.Utility.Threading
 		/// Disposes of the switch lock, cancelling any waiters
 		/// </summary>
 		public void Dispose()
-		{
+		{	//****************************************
+			TaskCompletionSource<VoidStruct> Left, Right;
+			//****************************************
+			
 			lock (_LockObject)
 			{
 				_IsDisposed = true;
@@ -57,9 +60,13 @@ namespace Proximity.Utility.Threading
 				_LeftWaiting.Clear();
 				_RightWaiting.Clear();
 				
-				_Left.SetCanceled();
-				_Right.SetCanceled();
+				// We must set the task results outside the lock, because otherwise the continuation could run on this thread and modify state within the lock
+				Left = _Left;
+				Right = _Right;
 			}
+			
+			Left.SetCanceled();
+			Right.SetCanceled();
 		}
 		
 		/// <summary>

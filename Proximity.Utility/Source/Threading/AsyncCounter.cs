@@ -50,26 +50,56 @@ namespace Proximity.Utility.Threading
 		/// <summary>
 		/// Disposes of the counter, cancelling any waiters
 		/// </summary>
+		
 		public void Dispose()
+		{	//****************************************
+			TaskCompletionSource<VoidStruct>[] Waiters;
+			TaskCompletionSource<AsyncCounter>[] PeekWaiters;
+			//****************************************
+			
+			lock (_Waiters)
+			{
+				// We must set the task results outside the lock, because otherwise the continuation could run on this thread and modify state within the lock
+				Waiters = new TaskCompletionSource<VoidStruct>[_Waiters.Count];
+				
+				_Waiters.CopyTo(Waiters, 0);
+				_Waiters.Clear();
+				
+				PeekWaiters = new TaskCompletionSource<AsyncCounter>[_PeekWaiters.Count];
+				
+				_PeekWaiters.CopyTo(PeekWaiters, 0);
+				
+				_IsDisposed = true;
+			}
+			
+			foreach (var MyWaiter in Waiters)
+			{
+				MyWaiter.TrySetException(new ObjectDisposedException("Counter has been disposed of"));
+			}
+	
+			foreach (var MyWaiter in PeekWaiters)
+			{
+				MyWaiter.TrySetException(new ObjectDisposedException("Counter has been disposed of"));
+			}
+		}
+
+		/// <summary>
+		/// Disposes of the counter if the count is zero
+		/// </summary>
+		/// <returns>True if the counter was disposed of, otherwise False</returns>
+		public bool DisposeIfZero()
 		{
 			lock (_Waiters)
 			{
-				while (_Waiters.Count > 0)
+				if (_CurrentCount == 0)
 				{
-					_Waiters.Dequeue().TrySetException(new ObjectDisposedException("Counter has been disposed of"));
-				}
-				
-				if (_PeekWaiters.Count > 0)
-				{
-					foreach (var MyWaiter in _PeekWaiters)
-						MyWaiter.TrySetException(new ObjectDisposedException("Counter has been disposed of"));
+					Dispose();
 					
-					_PeekWaiters.Clear();
+					return true;
 				}
-				
-				//_CurrentCount = 0;
-				_IsDisposed = true;
 			}
+			
+			return false;
 		}
 		
 		/// <summary>

@@ -886,6 +886,56 @@ namespace Proximity.Utility.Tests
 		
 		//****************************************
 		
+		[Test, Timeout(1000)]
+		public void TryPeek()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>();
+			//****************************************
+			
+			Assert.IsFalse(MyCollection.TryPeek(), "Peek succeeded unexpectedly");
+		}
+		
+		[Test, Timeout(1000)]
+		public void TryPeekSuccess()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>();
+			//****************************************
+			
+			MyCollection.TryAdd(42);
+			
+			Assert.IsTrue(MyCollection.TryPeek(), "Peek failed unexpectedly");
+		}
+		
+		[Test, Timeout(1000)]
+		public void Peek()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>();
+			//****************************************
+			
+			var MyTask = MyCollection.Peek();
+			
+			//****************************************
+			
+			Assert.IsFalse(MyTask.IsCompleted, "Peek succeeded unexpectedly");
+		}
+		
+		[Test, Timeout(1000)]
+		public void PeekSuccess()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>();
+			//****************************************
+			
+			MyCollection.TryAdd(42);
+			
+			var MyTask = MyCollection.Peek();
+			
+			//****************************************
+			
+			Assert.IsTrue(MyTask.IsCompleted, "Peek failed unexpectedly");
+		}
+		
+		//****************************************
+		
 		private async Task<int> Consumer<TItem>(AsyncCollection<TItem> collection)
 		{
 			int TotalItems = 0;

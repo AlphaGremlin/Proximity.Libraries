@@ -48,20 +48,31 @@ namespace Proximity.Utility.Threading
 		/// Disposes of the reader/writer lock, cancelling any readers and writers
 		/// </summary>
 		public void Dispose()
-		{
+		{	//****************************************
+			TaskCompletionSource<IDisposable>[] Writers;
+			TaskCompletionSource<IDisposable> Reader;
+			//****************************************
+			
 			lock (_Writers)
 			{
 				_IsDisposed = true;
 				_ReadersWaiting.Clear();
 				_Counter = 0;
 				
-				while (_Writers.Count > 0)
-				{
-					_Writers.Dequeue().TrySetException(new ObjectDisposedException("Lock has been disposed of"));
-				}
+				// We must set the task results outside the lock, because otherwise the continuation could run on this thread and modify state within the lock
+				Writers = new TaskCompletionSource<IDisposable>[_Writers.Count];
+				_Writers.CopyTo(Writers, 0);
+				_Writers.Clear();
 				
-				_Reader.TrySetCanceled();
+				Reader = _Reader;
 			}
+			
+			foreach (var MyWriter in Writers)
+			{
+				MyWriter.TrySetException(new ObjectDisposedException("Lock has been disposed of"));
+			}
+			
+			Reader.TrySetCanceled();
 		}
 		
 		/// <summary>
