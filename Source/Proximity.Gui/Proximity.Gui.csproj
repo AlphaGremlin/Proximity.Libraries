@@ -1,0 +1,112 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <ProjectGuid>{F5311886-C6D6-443F-882B-BED1FD77E73A}</ProjectGuid>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Proximity.Gui</RootNamespace>
+    <AssemblyName>Proximity.Gui</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <SourceAnalysisOverrideSettingsFile>"F:\Source\SharpDevelop\bin\..\AddIns\AddIns\Misc\SourceAnalysis\Settings.SourceAnalysis"</SourceAnalysisOverrideSettingsFile>
+    <AllowUnsafeBlocks>False</AllowUnsafeBlocks>
+    <NoStdLib>False</NoStdLib>
+    <WarningLevel>4</WarningLevel>
+    <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
+    <ProductVersion>9.0.21022</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <SignAssembly>True</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\Proximity.snk</AssemblyOriginatorKeyFile>
+    <DelaySign>False</DelaySign>
+    <AssemblyOriginatorKeyMode>File</AssemblyOriginatorKeyMode>
+    <DocumentationFile>..\..\..\Build\Proximity.Gui.xml</DocumentationFile>
+    <TargetFrameworkProfile />
+    <NoWin32Manifest>False</NoWin32Manifest>
+    <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <OutputPath>..\..\..\Build\</OutputPath>
+    <DebugType>Full</DebugType>
+    <Optimize>False</Optimize>
+    <CheckForOverflowUnderflow>True</CheckForOverflowUnderflow>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <BaseIntermediateOutputPath>obj\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <OutputPath>..\..\..\Build\</OutputPath>
+    <DebugType>None</DebugType>
+    <Optimize>True</Optimize>
+    <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
+    <DefineConstants>TRACE</DefineConstants>
+    <BaseIntermediateOutputPath>obj\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Platform)' == 'AnyCPU' ">
+    <RegisterForComInterop>False</RegisterForComInterop>
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
+    <BaseAddress>4194304</BaseAddress>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <FileAlignment>4096</FileAlignment>
+    <Prefer32Bit>False</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugType>Full</DebugType>
+    <Optimize>False</Optimize>
+    <WarningLevel>4</WarningLevel>
+    <CheckForOverflowUnderflow>True</CheckForOverflowUnderflow>
+    <DebugSymbols>true</DebugSymbols>
+    <DocumentationFile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>None</DebugType>
+    <Optimize>True</Optimize>
+    <WarningLevel>4</WarningLevel>
+    <DebugSymbols>false</DebugSymbols>
+    <DocumentationFile />
+  </PropertyGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Data\Converters\BooleanConverter.cs" />
+    <Compile Include="Data\Converters\EnumConverter.cs" />
+    <Compile Include="Data\IGuiConverter.cs" />
+    <Compile Include="Templating\ComponentDef.cs" />
+    <Compile Include="Templating\StyleDef.cs" />
+    <Compile Include="Templating\ToolbarDef.cs" />
+    <Compile Include="Templating\ToolbarItemDef.cs" />
+    <Compile Include="GuiComponent.cs" />
+    <Compile Include="GuiException.cs" />
+    <Compile Include="GuiPresenterAttribute.cs" />
+    <Compile Include="GuiProvider.cs" />
+    <Compile Include="GuiProviderAttribute.cs" />
+    <Compile Include="GuiService.cs" />
+    <Compile Include="Presentation\GuiChildPresenter.cs" />
+    <Compile Include="Presentation\GuiCommandAttribute.cs" />
+    <Compile Include="Presentation\GuiCommandTemplate.cs" />
+    <Compile Include="Presentation\GuiFormPresenter.cs" />
+    <Compile Include="Presentation\GuiPresenter.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Templating\GuiFactory.cs" />
+    <Compile Include="Templating\WidgetDef.cs" />
+    <Compile Include="Templating\Widgets\DudWidget.cs" />
+    <Compile Include="Templating\Widgets\FreeWidget.cs" />
+    <Compile Include="Templating\Widgets\InterfaceWidget.cs" />
+    <Compile Include="Templating\Widgets\StaticWidget.cs" />
+    <Compile Include="Toolkit\GuiToolkit.cs" />
+    <Compile Include="Toolkit\GuiToolkitAttribute.cs" />
+    <Compile Include="View\GuiChildController.cs" />
+    <Compile Include="View\GuiFormController.cs" />
+    <Compile Include="View\GuiViewController.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Proximity.Utility.Net45\Proximity.Utility.Net45.csproj">
+      <Project>{5e14f771-3b14-422d-8b4c-26d50a7657fc}</Project>
+      <Name>Proximity.Utility.Net45</Name>
+    </ProjectReference>
+  </ItemGroup>
+</Project>

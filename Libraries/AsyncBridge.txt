@@ -1,0 +1,7 @@
+As of 2014-08-14, https://www.nuget.org/packages/AsyncBridge uses an out-of-date assembly.
+
+This uses the latest from GitHub with more complete support:
+
+https://github.com/AlphaGremlin/AsyncBridge/tree/0b1638d8aa7582e4ff4f842d6c0785a027a6e26f
+
+TaskEx class has been modified by Paritech to add some missing Task.ContinueWith overloads and CancellationTokenSource.CancelAfter

@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>Proximity.Utility</id>
+    <version>16.3.0.0</version>
+    <title>Proximity Utility Library</title>
+    <authors>Proximity Interactive</authors>
+    <owners>Proximity Interactive</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Proximity Utility Library</description>
+    <releaseNotes></releaseNotes>
+    <copyright>Copyright 2015</copyright>
+    <dependencies>
+      <dependency id="Microsoft.Bcl.Immutable" version="1.0.34" />
+    </dependencies>
+    <tags></tags>
+  </metadata>
+</package>
