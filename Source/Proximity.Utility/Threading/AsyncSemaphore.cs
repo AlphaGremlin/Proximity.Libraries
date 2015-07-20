@@ -72,7 +72,7 @@ namespace Proximity.Utility.Threading
 			
 			foreach (var MyWaiter in Waiters)
 			{
-				MyWaiter.TrySetException(new ObjectDisposedException("Semaphore has been disposed of"));
+				MyWaiter.TrySetException(new ObjectDisposedException("AsyncSemaphore", "Semaphore has been disposed of"));
 			}
 		}
 		
@@ -125,7 +125,7 @@ namespace Proximity.Utility.Threading
 			lock (_Waiters)
 			{
 				if (_IsDisposed)
-					throw new ObjectDisposedException("Semaphore has been disposed of");
+					throw new ObjectDisposedException("AsyncSemaphore", "Semaphore has been disposed of");
 				
 				// Is there a free counter?
 				if (_CurrentCount > 0)

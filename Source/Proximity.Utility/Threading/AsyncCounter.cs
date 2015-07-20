@@ -78,12 +78,12 @@ namespace Proximity.Utility.Threading
 			
 			foreach (var MyWaiter in Waiters)
 			{
-				MyWaiter.TrySetException(new ObjectDisposedException("Counter has been disposed of"));
+				MyWaiter.TrySetException(new ObjectDisposedException("AsyncCounter", "Counter has been disposed of"));
 			}
 	
 			foreach (var MyWaiter in PeekWaiters)
 			{
-				MyWaiter.TrySetException(new ObjectDisposedException("Counter has been disposed of"));
+				MyWaiter.TrySetException(new ObjectDisposedException("AsyncCounter", "Counter has been disposed of"));
 			}
 		}
 
@@ -165,7 +165,7 @@ namespace Proximity.Utility.Threading
 				
 				// No free counters, are we disposed?
 				if (_IsDisposed)
-					throw new ObjectDisposedException("Counter has been disposed of");
+					throw new ObjectDisposedException("AsyncCounter", "Counter has been disposed of");
 				
 				// Still active, add ourselves to the queue waiting on a counter
 				NewWaiter = new TaskCompletionSource<VoidStruct>();
@@ -247,7 +247,7 @@ namespace Proximity.Utility.Threading
 				
 				// No free counters, are we disposed?
 				if (_IsDisposed)
-					throw new ObjectDisposedException("Counter has been disposed of");
+					throw new ObjectDisposedException("AsyncCounter", "Counter has been disposed of");
 				
 				// Create a peek waiter
 				NewWaiter = new TaskCompletionSource<AsyncCounter>();
@@ -292,7 +292,7 @@ namespace Proximity.Utility.Threading
 					if (_IsDisposed)
 					{
 						if (!onThreadPool)
-							throw new ObjectDisposedException("Counter has been disposed of");
+							throw new ObjectDisposedException("AsyncCounter", "Counter has been disposed of");
 						
 						return;
 					}

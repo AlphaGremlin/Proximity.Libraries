@@ -232,30 +232,43 @@ namespace Proximity.Utility.Net
 			
 			return this;
 		}
-		
+
 		/// <summary>
-		/// Sets an action to run when the socket operation is completed
+		/// Queues an action to run when the socket operation is completed
 		/// </summary>
 		/// <param name="continuation">The continuation to call</param>
 		public void OnCompleted(Action continuation)
-		{
-			if (_Continuation == HasCompleted || Interlocked.CompareExchange(ref _Continuation, continuation, null) == HasCompleted)
+		{	//****************************************
+			Action OldContinuation, NewContinuation;
+			//****************************************
+			
+			do
 			{
+				OldContinuation = _Continuation;
+				
+				if (OldContinuation == HasCompleted)
+				{
 #if NET40
-				TaskEx.Run(continuation);
+					TaskEx.Run(continuation);
 #else
-				Task.Run(continuation);
+					Task.Run(continuation);
 #endif
-			}
+					
+					return;
+				}
+				
+				NewContinuation = (Action)Delegate.Combine(OldContinuation, continuation);
+			} while (Interlocked.CompareExchange<Action>(ref _Continuation, NewContinuation, OldContinuation) != OldContinuation);
 		}
 		
 		//****************************************
 		
 		/// <inheritdoc />
 		protected override void OnCompleted(SocketAsyncEventArgs e)
-		{
-			var MyContinuation = _Continuation ?? Interlocked.CompareExchange<Action>(ref _Continuation, HasCompleted, null);
-			
+		{	//****************************************
+			var MyContinuation = Interlocked.Exchange<Action>(ref _Continuation, HasCompleted);
+			//****************************************
+
 			if (MyContinuation != null)
 				MyContinuation();
 			
