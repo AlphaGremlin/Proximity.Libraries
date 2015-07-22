@@ -20,11 +20,12 @@ namespace Proximity.Utility.Threading
 		private readonly object _LockObject = new object();
 		private TaskCompletionSource<VoidStruct> _Left= new TaskCompletionSource<VoidStruct>();
 		private TaskCompletionSource<VoidStruct> _Right= new TaskCompletionSource<VoidStruct>();
+		private TaskCompletionSource<VoidStruct> _Dispose = null;
 		
 		private int _Counter = 0;
 		private readonly HashSet<AsyncSwitchLeftInstance> _LeftWaiting = new HashSet<AsyncSwitchLeftInstance>();
 		private readonly HashSet<AsyncSwitchRightInstance> _RightWaiting = new HashSet<AsyncSwitchRightInstance>();
-		private bool _IsUnfair = false, _IsDisposed;
+		private bool _IsUnfair = false;
 		//****************************************
 		
 		/// <summary>
@@ -46,17 +47,32 @@ namespace Proximity.Utility.Threading
 		//****************************************
 		
 		/// <summary>
-		/// Disposes of the switch lock, cancelling any waiters
+		/// Disposes of the switch lock
 		/// </summary>
-		public void Dispose()
+		/// <returns>A task that completes when all holders of the lock have exited</returns>
+		/// <remarks>All tasks waiting on the lock will throw ObjectDisposedException</remarks>
+		public Task Dispose()
+		{
+			((IDisposable)this).Dispose();
+
+			return _Dispose.Task;
+		}
+
+		void IDisposable.Dispose()
 		{	//****************************************
 			TaskCompletionSource<VoidStruct> Left, Right;
 			//****************************************
 			
 			lock (_LockObject)
 			{
-				_IsDisposed = true;
-				_Counter = 0;
+				if (_Dispose != null)
+					return;
+
+				_Dispose = new TaskCompletionSource<VoidStruct>();
+
+				if (_Counter == 0)
+					_Dispose.SetResult(VoidStruct.Empty);
+
 				_LeftWaiting.Clear();
 				_RightWaiting.Clear();
 				
@@ -118,7 +134,7 @@ namespace Proximity.Utility.Threading
 			
 			lock (_LockObject)
 			{
-				if (_IsDisposed)
+				if (_Dispose != null)
 					throw new ObjectDisposedException("AsyncSwitchLock", "Lock has been disposed of");
 				
 				// If there are zero or more lefts and no waiting rights (or we're in unfair mode)...
@@ -198,7 +214,7 @@ namespace Proximity.Utility.Threading
 			
 			lock (_LockObject)
 			{
-				if (_IsDisposed)
+				if (_Dispose != null)
 					throw new ObjectDisposedException("AsyncSwitchLock", "Lock has been disposed of");
 				
 				// If there are zero or more rights and no waiting lefts (or we're in unfair mode)...
@@ -233,24 +249,29 @@ namespace Proximity.Utility.Threading
 		
 		private void ReleaseLeft()
 		{	//****************************************
-			TaskCompletionSource<VoidStruct> NextRight;
+			TaskCompletionSource<VoidStruct> NextTask;
 			//****************************************
 			
 			lock (_LockObject)
 			{
-				if (_IsDisposed)
-					return;
-				
 				if (_Counter <= 0)
 					throw new InvalidOperationException("No left lock is currently held");
 				
 				Interlocked.Decrement(ref _Counter);
-				
+
+				// If we're disposed, if the counter is zero flag as completed
+				if (_Dispose != null)
+				{
+					if (_Counter != 0)
+						return;
+
+					NextTask = _Dispose;
+				}
 				// If there are no more lefts and one or more rights waiting...
-				if (_Counter == 0 && _RightWaiting.Count > 0)
+				else if (_Counter == 0 && _RightWaiting.Count > 0)
 				{
 					// Yes, let's take the existing Right tasks (so we can activate them)
-					NextRight = Interlocked.Exchange(ref _Right, new TaskCompletionSource<VoidStruct>());
+					NextTask = Interlocked.Exchange(ref _Right, new TaskCompletionSource<VoidStruct>());
 					
 					// Swap the waiting rights with zero and update the counter (Right is negative, so negate the result)
 					_Counter = -_RightWaiting.Count;
@@ -263,11 +284,11 @@ namespace Proximity.Utility.Threading
 				}
 			}
 			
-			// Activate all the Right waiters
+			// Activate the next waiter
 #if PORTABLE
-			TryRelease(NextRight);
+			TryRelease(NextTask);
 #else
-			ThreadPool.UnsafeQueueUserWorkItem(TryRelease, NextRight);
+			ThreadPool.UnsafeQueueUserWorkItem(TryRelease, NextTask);
 #endif
 		}
 		
@@ -281,24 +302,29 @@ namespace Proximity.Utility.Threading
 		
 		private void ReleaseRight()
 		{	//****************************************
-			TaskCompletionSource<VoidStruct> NextLeft;
+			TaskCompletionSource<VoidStruct> NextTask;
 			//****************************************
 			
 			lock (_LockObject)
 			{
-				if (_IsDisposed)
-					return;
-				
 				if (_Counter >= 0)
 					throw new InvalidOperationException("No right lock is currently held");
 				
 				Interlocked.Increment(ref _Counter);
-				
+
+				// If we're disposed, if the counter is zero flag as completed
+				if (_Dispose != null)
+				{
+					if (_Counter != 0)
+						return;
+
+					NextTask = _Dispose;
+				}
 				// If there are no more rights and one or more left waiting...
-				if (_Counter == 0 && _LeftWaiting.Count > 0)
+				else if (_Counter == 0 && _LeftWaiting.Count > 0)
 				{
 					// Yes, let's take the existing Right tasks (so we can activate them)
-					NextLeft = Interlocked.Exchange(ref _Left, new TaskCompletionSource<VoidStruct>());
+					NextTask = Interlocked.Exchange(ref _Left, new TaskCompletionSource<VoidStruct>());
 					
 					// Swap the waiting lefts with zero and update the counter (Left is positive, so we don't negate the result)
 					_Counter = _LeftWaiting.Count;
@@ -311,11 +337,11 @@ namespace Proximity.Utility.Threading
 				}
 			}
 			
-			// Activate all the Left waiters
+			// Activate the next waiter
 #if PORTABLE
-			TryRelease(NextLeft);
+			TryRelease(NextTask);
 #else
-			ThreadPool.UnsafeQueueUserWorkItem(TryRelease, NextLeft);
+			ThreadPool.UnsafeQueueUserWorkItem(TryRelease, NextTask);
 #endif
 		}
 		
@@ -326,7 +352,8 @@ namespace Proximity.Utility.Threading
 			
 			lock (_LockObject)
 			{
-				if (_IsDisposed)
+				// If we're disposed, no need to do anything
+				if (_Dispose != null)
 					return;
 				
 				// A waiting Left was cancelled. Remove it if it's still waiting
@@ -367,9 +394,10 @@ namespace Proximity.Utility.Threading
 			
 			lock (_LockObject)
 			{
-				if (_IsDisposed)
+				// If we're disposed, no need to do anything
+				if (_Dispose != null)
 					return;
-				
+
 				// A waiting Right was cancelled. Remove it if it's still waiting
 				if (_RightWaiting.Remove(instance))
 				{

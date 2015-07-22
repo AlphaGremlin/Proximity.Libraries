@@ -19,11 +19,13 @@ namespace Proximity.Utility.Threading
 	{	//****************************************
 		private readonly Queue<TaskCompletionSource<IDisposable>> _Writers = new Queue<TaskCompletionSource<IDisposable>>();
 		private TaskCompletionSource<IDisposable> _Reader = new TaskCompletionSource<IDisposable>();
+
+		private TaskCompletionSource<IDisposable> _Disposed;
 		
 		private readonly HashSet<AsyncReadLockInstance> _ReadersWaiting = new HashSet<AsyncReadLockInstance>();
 		private int _Counter = 0;
 		
-		private bool _IsUnfair = false, _IsDisposed;
+		private bool _IsUnfair = false;
 		//****************************************
 		
 		/// <summary>
@@ -43,11 +45,20 @@ namespace Proximity.Utility.Threading
 		}
 		
 		//****************************************
-		
+
 		/// <summary>
-		/// Disposes of the reader/writer lock, cancelling any readers and writers
+		/// Disposes of the reader/writer lock
 		/// </summary>
-		public void Dispose()
+		/// <returns>A task that completes when all holders of the lock have exited</returns>
+		/// <remarks>All tasks waiting on the lock will throw ObjectDisposedException</remarks>
+		public Task Dispose()
+		{
+			((IDisposable)this).Dispose();
+
+			return _Disposed.Task;
+		}
+
+		void IDisposable.Dispose()
 		{	//****************************************
 			TaskCompletionSource<IDisposable>[] Writers;
 			TaskCompletionSource<IDisposable> Reader;
@@ -55,9 +66,15 @@ namespace Proximity.Utility.Threading
 			
 			lock (_Writers)
 			{
-				_IsDisposed = true;
+				if (_Disposed != null)
+					return;
+
+				_Disposed = new TaskCompletionSource<IDisposable>();
+
+				if (_Counter == 0)
+					_Disposed.SetResult(null);
+
 				_ReadersWaiting.Clear();
-				_Counter = 0;
 				
 				// We must set the task results outside the lock, because otherwise the continuation could run on this thread and modify state within the lock
 				Writers = new TaskCompletionSource<IDisposable>[_Writers.Count];
@@ -124,7 +141,7 @@ namespace Proximity.Utility.Threading
 			
 			lock (_Writers)
 			{
-				if (_IsDisposed)
+				if (_Disposed != null)
 					throw new ObjectDisposedException("AsyncReadWriteLock", "Lock has been disposed of");
 				
 				// If there are zero or more readers and no waiting writers (or we're in unfair mode)...
@@ -204,7 +221,7 @@ namespace Proximity.Utility.Threading
 			
 			lock (_Writers)
 			{
-				if (_IsDisposed)
+				if (_Disposed != null)
 					throw new ObjectDisposedException("AsyncReadWriteLock", "Lock has been disposed of");
 				
 				// If there are no readers or writers...
@@ -243,26 +260,30 @@ namespace Proximity.Utility.Threading
 
 		private void ReleaseRead()
 		{	//****************************************
-			TaskCompletionSource<IDisposable> NextWriter = null;
+			TaskCompletionSource<IDisposable> NextTask = null;
 			//****************************************
 			
 			lock (_Writers)
 			{
-				if (_IsDisposed)
-					return;
-				
 				if (_Counter <= 0)
 					throw new InvalidOperationException(string.Format("No reader lock is currently held: {0} writers, {1} waiting, writing={2}", _Writers.Count, _ReadersWaiting.Count, _Counter == -1));
 				
 				Interlocked.Decrement(ref _Counter);
-				
+
+				if (_Disposed != null)
+				{
+					if (_Counter > 0)
+						return;
+
+					NextTask = _Disposed;
+				}
 				// If there are no more readers and one or more writers waiting...
-				if (_Counter == 0 && _Writers.Count > 0)
+				else if (_Counter == 0 && _Writers.Count > 0)
 				{
 					// Take the writer spot and find the writer to activate
 					Interlocked.Decrement(ref _Counter);
 					
-					NextWriter = _Writers.Dequeue();
+					NextTask = _Writers.Dequeue();
 				}
 				else
 				{
@@ -272,9 +293,9 @@ namespace Proximity.Utility.Threading
 			}
 			
 #if PORTABLE
-			TryReleaseRead(NextWriter);
+			TryReleaseRead(NextTask);
 #else
-			ThreadPool.UnsafeQueueUserWorkItem(TryReleaseRead, NextWriter);
+			ThreadPool.UnsafeQueueUserWorkItem(TryReleaseRead, NextTask);
 #endif
 		}
 		
@@ -289,9 +310,6 @@ namespace Proximity.Utility.Threading
 			{
 				lock (_Writers)
 				{
-					if (_IsDisposed)
-						return;
-					
 					// If there are no more writers, we can abort
 					if (_Writers.Count == 0)
 					{
@@ -300,6 +318,10 @@ namespace Proximity.Utility.Threading
 						{
 							_Counter = 0;
 							
+							// We might have been disposed while we're processing
+							if (_Disposed != null)
+								_Disposed.SetResult(null);
+
 							return;
 						}
 						
@@ -337,14 +359,18 @@ namespace Proximity.Utility.Threading
 			{
 				lock (_Writers)
 				{
-					if (_IsDisposed)
-						return;
-				
 					if (_Counter != -1)
 						throw new InvalidOperationException("No writer lock is currently held");
-					
+
+					// Have we been disposed of?
+					if (_Disposed != null)
+					{
+						_Counter = 0;
+
+						NextRelease = _Disposed;
+					}
 					// If there are one or more other writers waiting...
-					if (_Writers.Count > 0)
+					else if (_Writers.Count > 0)
 					{
 						// Find the next one to activate and set the result appropriately
 						NextRelease = _Writers.Dequeue();
@@ -363,7 +389,7 @@ namespace Proximity.Utility.Threading
 					{
 						// Nothing waiting, set the counter to zero and exit
 						_Counter = 0;
-						
+
 						return;
 					}
 				}
@@ -402,7 +428,7 @@ namespace Proximity.Utility.Threading
 		{
 			lock (_Writers)
 			{
-				if (_IsDisposed)
+				if (_Disposed != null)
 					return;
 				
 				// Is this reader still waiting?
@@ -423,12 +449,15 @@ namespace Proximity.Utility.Threading
 			var NextRelease = (TaskCompletionSource<IDisposable>)state;
 			//****************************************
 			
-			// Try and cancel our task. If it fails, we've already activate and been removed from the Writers list
+			// Try and cancel our task. If it fails, we've already activated and been removed from the Writers list
 			if (!NextRelease.TrySetCanceled())
 				return;
 			
 			lock (_Writers)
 			{
+				if (_Disposed != null)
+					return;
+
 				// If a writer is already running, they will take care of things when they finish
 				if (_Counter == -1)
 					return;

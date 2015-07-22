@@ -241,7 +241,94 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
-		
+
+		[Test, Timeout(1000)]
+		public async Task ReadWriteRead()
+		{	//****************************************
+			var MyLock = new AsyncReadWriteLock();
+			Task<IDisposable> MyRead, MyWrite;
+			//****************************************
+
+			using (await MyLock.LockRead())
+			{
+				MyWrite = MyLock.LockWrite();
+
+				MyRead = MyLock.LockRead();
+
+				Assert.IsFalse(MyRead.IsCompleted, "Read completed");
+			}
+
+			Assert.IsFalse(MyRead.IsCompleted, "Read completed");
+
+			MyWrite.Result.Dispose();
+
+			//****************************************
+
+			(await MyRead).Dispose();
+
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+		}
+
+		[Test, Timeout(1000)]
+		public async Task ReadWriteReadUnfair()
+		{	//****************************************
+			var MyLock = new AsyncReadWriteLock(true);
+			Task<IDisposable> MyRead, MyWrite;
+			//****************************************
+
+			using (await MyLock.LockRead())
+			{
+				MyWrite = MyLock.LockWrite();
+
+				MyRead = MyLock.LockRead();
+
+				Assert.IsTrue(MyRead.IsCompleted, "Read not completed");
+			}
+
+			MyRead.Result.Dispose();
+
+			//****************************************
+
+			(await MyWrite).Dispose();
+
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+		}
+
+		[Test, Timeout(1000)]
+		public async Task WriteReadWrite()
+		{	//****************************************
+			var MyLock = new AsyncReadWriteLock();
+			Task<IDisposable> MyRead, MyWrite;
+			//****************************************
+
+			using (await MyLock.LockWrite())
+			{
+				MyRead = MyLock.LockRead();
+
+				MyWrite = MyLock.LockWrite();
+
+				Assert.IsFalse(MyWrite.IsCompleted, "Read completed");
+			}
+
+			// Writes always take priority over reads
+			(await MyWrite).Dispose();
+
+			//****************************************
+
+			(await MyRead).Dispose();
+
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+		}
+
 		[Test, Timeout(1000)]
 		public async Task WriteCancelRead()
 		{	//****************************************
@@ -544,7 +631,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
-		
+
 		[Test, Timeout(1000)]
 		public async Task ReadCancelWriteMulti()
 		{	//****************************************
@@ -725,21 +812,67 @@ namespace Proximity.Utility.Tests
 			
 			await ResultTask;
 		}
+
+		[Test, Timeout(1000)]
+		public async Task Dispose()
+		{	//****************************************
+			var MyLock = new AsyncReadWriteLock();
+			//****************************************
+
+			await MyLock.Dispose();
+
+			//****************************************
+
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+		}
 		
 		[Test, Timeout(1000)]
-		public void ReadDispose()
+		public async Task ReadDispose()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
 			//****************************************
 			
 			var MyReader = MyLock.LockRead();
 			
-			MyLock.Dispose();
+			var MyDispose = MyLock.Dispose();
+
+			Assert.IsFalse(MyDispose.IsCompleted, "Dispose completed early");
 			
 			MyReader.Result.Dispose();
 			
 			//****************************************
+
+			await MyDispose;
 			
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+		}
+
+		[Test, Timeout(1000)]
+		public async Task ReadReadDispose()
+		{	//****************************************
+			var MyLock = new AsyncReadWriteLock();
+			//****************************************
+
+			var MyReader1 = MyLock.LockRead();
+			var MyReader2 = MyLock.LockRead();
+
+			var MyDispose = MyLock.Dispose();
+
+			Assert.IsFalse(MyDispose.IsCompleted, "Dispose completed early");
+
+			MyReader1.Result.Dispose();
+			MyReader2.Result.Dispose();
+
+			//****************************************
+
+			await MyDispose;
+
 			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
 			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
 			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
@@ -806,7 +939,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000)]
-		public void ReadWriteDispose()
+		public async Task ReadWriteDispose()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
 			//****************************************
@@ -815,7 +948,7 @@ namespace Proximity.Utility.Tests
 			
 			var MyWriter = MyLock.LockWrite();
 			
-			MyLock.Dispose();
+			var MyDispose = MyLock.Dispose();
 			
 			try
 			{
@@ -831,6 +964,8 @@ namespace Proximity.Utility.Tests
 			MyReader.Result.Dispose();
 			
 			//****************************************
+
+			await MyDispose;
 			
 			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
 			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
@@ -839,18 +974,22 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000)]
-		public void WriteDispose()
+		public async Task WriteDispose()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
 			//****************************************
 			
 			var MyWriter = MyLock.LockWrite();
-			
-			MyLock.Dispose();
+
+			var MyDispose = MyLock.Dispose();
+
+			Assert.IsFalse(MyDispose.IsCompleted, "Dispose completed early");
 			
 			MyWriter.Result.Dispose();
 			
 			//****************************************
+
+			await MyDispose;
 			
 			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
 			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
@@ -918,7 +1057,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000)]
-		public void WriteReadDispose()
+		public async Task WriteReadDispose()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
 			//****************************************
@@ -927,7 +1066,7 @@ namespace Proximity.Utility.Tests
 			
 			var MyReader = MyLock.LockRead();
 			
-			MyLock.Dispose();
+			var MyDispose = MyLock.Dispose();
 			
 			try
 			{
@@ -943,6 +1082,8 @@ namespace Proximity.Utility.Tests
 			MyWriter.Result.Dispose();
 			
 			//****************************************
+
+			await MyDispose;
 			
 			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
 			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");

@@ -193,16 +193,42 @@ namespace Proximity.Utility.Tests
 				Assert.IsFalse(MyLeft.IsCompleted, "Left completed");
 			}
 			
-			Assert.IsFalse(MyLeft.IsCompleted, "Left completed");
+			Assert.IsFalse(MyLeft.IsCompleted, "Left not completed");
 			
 			MyRight.Result.Dispose();
 			
 			//****************************************
 			
-			await MyLeft;
+			(await MyLeft).Dispose();
 			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
+		}
+
+		[Test, Timeout(1000)]
+		public async Task LeftRightLeftUnfair()
+		{	//****************************************
+			var MyLock = new AsyncSwitchLock(true);
+			Task<IDisposable> MyLeft, MyRight;
+			//****************************************
+
+			using (await MyLock.LockLeft())
+			{
+				MyRight = MyLock.LockRight();
+
+				MyLeft = MyLock.LockLeft();
+
+				Assert.IsTrue(MyLeft.IsCompleted, "Left not completed");
+			}
+
+			MyRight.Result.Dispose();
+
+			//****************************************
+
 			MyLeft.Result.Dispose();
-			
+
 			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
 			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
 			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
@@ -231,10 +257,36 @@ namespace Proximity.Utility.Tests
 			
 			//****************************************
 			
-			await MyRight;
+			(await MyRight).Dispose();
 			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
+		}
+
+		[Test, Timeout(1000)]
+		public async Task RightLeftRightUnfair()
+		{	//****************************************
+			var MyLock = new AsyncSwitchLock(true);
+			Task<IDisposable> MyLeft, MyRight;
+			//****************************************
+
+			using (await MyLock.LockRight())
+			{
+				MyLeft = MyLock.LockLeft();
+
+				MyRight = MyLock.LockRight();
+
+				Assert.IsTrue(MyRight.IsCompleted, "Right not completed");
+			}
+
+			MyLeft.Result.Dispose();
+
+			//****************************************
+
 			MyRight.Result.Dispose();
-			
+
 			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
 			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
 			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
@@ -674,19 +726,23 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000)]
-		public void LeftDispose()
+		public async Task LeftDispose()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
 			//****************************************
 			
 			var MyLeft = MyLock.LockLeft();
 			
-			MyLock.Dispose();
+			var MyDispose = MyLock.Dispose();
+
+			Assert.IsFalse(MyDispose.IsCompleted, "Dispose completed early");
 			
 			MyLeft.Result.Dispose();
 			
 			//****************************************
-			
+
+			await MyDispose;
+
 			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
 			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
 			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
@@ -717,6 +773,36 @@ namespace Proximity.Utility.Tests
 			
 			//****************************************
 			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
+		}
+
+		[Test, Timeout(1000)]
+		public async Task LeftLeftDispose()
+		{	//****************************************
+			var MyLock = new AsyncSwitchLock();
+			//****************************************
+
+			var MyLeft1 = MyLock.LockLeft();
+
+			var MyLeft2 = MyLock.LockLeft();
+
+			var MyDispose = MyLock.Dispose();
+
+			Assert.IsFalse(MyDispose.IsCompleted, "Dispose completed early");
+
+			MyLeft1.Result.Dispose();
+
+			Assert.IsFalse(MyDispose.IsCompleted, "Dispose completed early");
+
+			MyLeft2.Result.Dispose();
+
+			//****************************************
+
+			await MyDispose;
+
 			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
 			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
 			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
@@ -757,19 +843,23 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000)]
-		public void RightDispose()
+		public async Task RightDispose()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
 			//****************************************
 			
 			var MyRight = MyLock.LockRight();
 			
-			MyLock.Dispose();
+			var MyDispose = MyLock.Dispose();
+
+			Assert.IsFalse(MyDispose.IsCompleted, "Dispose completed early");
 			
 			MyRight.Result.Dispose();
 			
 			//****************************************
-			
+
+			await MyDispose;
+
 			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
 			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
 			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
@@ -805,6 +895,36 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
+
+		[Test, Timeout(1000)]
+		public async Task RightRightDispose()
+		{	//****************************************
+			var MyLock = new AsyncSwitchLock();
+			//****************************************
+
+			var MyRight1 = MyLock.LockRight();
+
+			var MyRight2 = MyLock.LockRight();
+
+			var MyDispose = MyLock.Dispose();
+
+			Assert.IsFalse(MyDispose.IsCompleted, "Dispose completed early");
+
+			MyRight1.Result.Dispose();
+
+			Assert.IsFalse(MyDispose.IsCompleted, "Dispose completed early");
+
+			MyRight2.Result.Dispose();
+
+			//****************************************
+
+			await MyDispose;
+
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
+		}
 		
 		[Test, Timeout(1000)]
 		public void RightLeftDispose()
@@ -833,6 +953,22 @@ namespace Proximity.Utility.Tests
 			
 			//****************************************
 			
+			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
+			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
+			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
+			Assert.IsFalse(MyLock.IsRight, "Rights still running");
+		}
+
+		[Test, Timeout(1000)]
+		public async Task Dispose()
+		{	//****************************************
+			var MyLock = new AsyncSwitchLock();
+			//****************************************
+
+			await MyLock.Dispose();
+
+			//****************************************
+
 			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
 			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
 			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");

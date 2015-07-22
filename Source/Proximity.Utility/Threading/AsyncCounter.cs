@@ -54,7 +54,6 @@ namespace Proximity.Utility.Threading
 		/// <summary>
 		/// Disposes of the counter, cancelling any waiters
 		/// </summary>
-		
 		public void Dispose()
 		{	//****************************************
 			TaskCompletionSource<VoidStruct>[] Waiters;

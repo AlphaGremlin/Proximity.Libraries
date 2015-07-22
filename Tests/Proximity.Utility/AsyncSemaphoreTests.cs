@@ -289,35 +289,67 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000)]
-		public void LockDispose()
+		public async Task LockDispose()
 		{	//****************************************
 			var MyLock = new AsyncSemaphore();
 			//****************************************
 			
 			var MyWait = MyLock.Wait().Result;
 			
-			MyLock.Dispose();
+			var MyDispose = MyLock.Dispose();
+
+			Assert.IsFalse(MyDispose.IsCompleted, "Dispose completed early");
 			
 			MyWait.Dispose();
 			
 			//****************************************
-			
+
+			await MyDispose;
+
 			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 		
 		[Test, Timeout(1000)]
-		public void LockLockDispose()
+		public async Task LockLockDispose()
 		{	//****************************************
-			var MyLock = new AsyncSemaphore();
+			var MyLock = new AsyncSemaphore(2);
 			//****************************************
 			
 			var MyWait1 = MyLock.Wait();
 			
 			var MyWait2 = MyLock.Wait();
 			
-			MyLock.Dispose();
+			var MyDispose = MyLock.Dispose();
+
+			Assert.IsFalse(MyDispose.IsCompleted, "Dispose completed early");
 			
+			MyWait2.Result.Dispose();
+
+			Assert.IsFalse(MyDispose.IsCompleted, "Dispose completed early");
+			
+			MyWait1.Result.Dispose();
+			
+			//****************************************
+
+			await MyDispose;
+
+			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
+			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
+		}
+
+		[Test, Timeout(1000)]
+		public async Task LockMaxLockDispose()
+		{	//****************************************
+			var MyLock = new AsyncSemaphore();
+			//****************************************
+
+			var MyWait1 = MyLock.Wait();
+
+			var MyWait2 = MyLock.Wait();
+
+			var MyDispose = MyLock.Dispose();
+
 			try
 			{
 				MyWait2.Result.Dispose();
@@ -326,22 +358,38 @@ namespace Proximity.Utility.Tests
 			{
 				Assert.IsInstanceOf(typeof(ObjectDisposedException), e.InnerException, "Inner exception not as expected");
 			}
-			
+
 			MyWait1.Result.Dispose();
-			
+
 			//****************************************
-			
+
+			await MyDispose;
+
 			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
-		
+
 		[Test, Timeout(1000)]
-		public void DisposeLock()
+		public async Task Dispose()
+		{	//****************************************
+			var MyLock = new AsyncSemaphore();
+			//****************************************
+
+			await MyLock.Dispose();
+
+			//****************************************
+
+			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
+			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
+		}
+				
+		[Test, Timeout(1000)]
+		public async Task DisposeLock()
 		{	//****************************************
 			var MyLock = new AsyncSemaphore();
 			//****************************************
 			
-			MyLock.Dispose();
+			var MyDispose = MyLock.Dispose();
 			
 			try
 			{
@@ -352,6 +400,8 @@ namespace Proximity.Utility.Tests
 			}
 			
 			//****************************************
+
+			await MyDispose;
 			
 			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");

@@ -19,7 +19,7 @@ namespace Proximity.Utility.Threading
 		private readonly Task<IDisposable> _CompleteTask;
 		private readonly Queue<TaskCompletionSource<IDisposable>> _Waiters = new Queue<TaskCompletionSource<IDisposable>>();
 		private int _MaxCount, _CurrentCount;
-		private bool _IsDisposed;
+		private TaskCompletionSource<IDisposable> _Dispose;
 		//****************************************
 		
 		/// <summary>
@@ -32,7 +32,8 @@ namespace Proximity.Utility.Threading
 #else
 			_CompleteTask = Task.FromResult<IDisposable>(new AsyncLockInstance(this));
 #endif
-			_CurrentCount = _MaxCount = 1;
+			_CurrentCount = 0;
+			_MaxCount = 1;
 		}
 		
 		/// <summary>
@@ -43,31 +44,44 @@ namespace Proximity.Utility.Threading
 		{
 			if (initialCount <= 1)
 				throw new ArgumentException("Initial Count is invalid");
-			
-			_CurrentCount = _MaxCount = initialCount;
+
+			_CurrentCount = 0;
+			_MaxCount = initialCount;
 		}
 		
 		//****************************************
-		
+
 		/// <summary>
-		/// Disposes of the semaphore, cancelling any waiters
+		/// Disposes of the semaphore
 		/// </summary>
-		public void Dispose()
+		/// <returns>A task that completes when all holders of the lock have exited</returns>
+		/// <remarks>All tasks waiting on the lock will throw ObjectDisposedException</remarks>
+		public Task Dispose()
+		{
+			((IDisposable)this).Dispose();
+
+			return _Dispose.Task;
+		}
+
+		void IDisposable.Dispose()
 		{	//****************************************
 			TaskCompletionSource<IDisposable>[] Waiters;
 			//****************************************
 			
 			lock (_Waiters)
 			{
-				_IsDisposed = true;
+				if (_Dispose != null)
+					return;
+
+				_Dispose = new TaskCompletionSource<IDisposable>();
 				
 				// We must set the task results outside the lock, because otherwise the continuation could run on this thread and modify state within the lock
 				Waiters = new TaskCompletionSource<IDisposable>[_Waiters.Count];
 				_Waiters.CopyTo(Waiters, 0);
 				_Waiters.Clear();
 
-				_CurrentCount = 0;
-				_MaxCount = 0;
+				if (_CurrentCount == 0)
+					_Dispose.SetResult(null);
 			}
 			
 			foreach (var MyWaiter in Waiters)
@@ -124,14 +138,14 @@ namespace Proximity.Utility.Threading
 			
 			lock (_Waiters)
 			{
-				if (_IsDisposed)
+				if (_Dispose != null)
 					throw new ObjectDisposedException("AsyncSemaphore", "Semaphore has been disposed of");
 				
 				// Is there a free counter?
-				if (_CurrentCount > 0)
+				if (_CurrentCount < _MaxCount)
 				{
-					// Yes, so we can just subtract one and return the completed task
-					_CurrentCount--;
+					// Yes, so we can just add one and return the completed task
+					_CurrentCount++;
 					
 					return _CompleteTask;
 				}
@@ -166,20 +180,29 @@ namespace Proximity.Utility.Threading
 			{
 				lock (_Waiters)
 				{
-					if (_IsDisposed)
-						return;
-					
-					// Is there anybody waiting, or has MaxCount been dropped below the currently held number?
-					if (_Waiters.Count == 0 || _CurrentCount < 0)
+					if (_Dispose != null)
 					{
-						// No, free a counter for someone else and return
-						_CurrentCount++;
-						
-						return;
+						_CurrentCount--;
+
+						if (_CurrentCount > 0)
+							return;
+
+						NextWaiter = _Dispose;
 					}
-						
-					// Yes, don't change the counter
-					NextWaiter = _Waiters.Dequeue();
+					else
+					{
+						// Is there anybody waiting, or has MaxCount been dropped below the currently held number?
+						if (_Waiters.Count == 0 || _CurrentCount > _MaxCount)
+						{
+							// No, free a counter for someone else and return
+							_CurrentCount--;
+
+							return;
+						}
+
+						// Yes, don't change the counter
+						NextWaiter = _Waiters.Dequeue();
+					}
 				}
 				
 #if !PORTABLE
@@ -225,7 +248,7 @@ namespace Proximity.Utility.Threading
 			{
 				lock (_Waiters)
 				{
-					if (_IsDisposed)
+					if (_Dispose != null)
 						return;
 					
 					// Is there anybody waiting?
@@ -233,13 +256,13 @@ namespace Proximity.Utility.Threading
 						break;
 
 					// Are there any free counters?
-					if (_CurrentCount <= 0)
+					if (_CurrentCount >= _MaxCount)
 						break;
 						
 					// Yes, take a counter (if necessary) and remove a waiter
 					if (!HasCounter)
 					{
-						_CurrentCount--;
+						_CurrentCount++;
 						
 						HasCounter = true;
 					}
@@ -268,7 +291,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		public int CurrentCount
 		{
-			get { return _CurrentCount; }
+			get { return _MaxCount - _CurrentCount; }
 		}
 		
 		/// <summary>
@@ -295,9 +318,9 @@ namespace Proximity.Utility.Threading
 				
 				lock (_Waiters)
 				{
-					// Adjust the number of slots based on the difference
-					_CurrentCount += (value - _MaxCount);
-					
+					if (_Dispose != null)
+						throw new ObjectDisposedException("AsyncSemaphore", "Object has been disposed");
+
 					_MaxCount = value;
 				}
 				
