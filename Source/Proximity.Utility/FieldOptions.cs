@@ -85,6 +85,9 @@ namespace Proximity.Utility
 				
 				foreach(var MyField in optionType.GetRuntimeFields())
 				{
+					if (!MyField.IsStatic)
+						continue;
+
 					MyValue = (Enum)MyField.GetValue(null);
 					
 					foreach(OptionCodeAttribute MyAttrib in MyField.GetCustomAttributes(typeof(OptionCodeAttribute), false))
