@@ -434,6 +434,14 @@ namespace Proximity.Utility.Collections
 		}
 
 		/// <summary>
+		/// Gets whether an update is in progress via <see cref="BeginUpdate" /> and <see cref="EndUpdate" />
+		/// </summary>
+		public bool IsUpdating
+		{
+			get { return _UpdateCount != 0; }
+		}
+
+		/// <summary>
 		/// Gets the underlying dictionary object
 		/// </summary>
 		protected IDictionary<TKey, TValue> Dictionary
