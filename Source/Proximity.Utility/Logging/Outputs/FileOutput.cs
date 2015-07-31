@@ -188,7 +188,6 @@ namespace Proximity.Utility.Logging.Outputs
 				
 				if (_Stream != null)
 				{
-					_Stream.Flush();
 					_Stream.Close();
 					
 					_Stream = null;
