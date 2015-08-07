@@ -17,7 +17,7 @@ namespace Proximity.Utility.Collections
 	/// Implements an Observable Dictionary for WPF binding
 	/// </summary>
 	/// <remarks>Based on http://blogs.microsoft.co.il/shimmy/2010/12/26/observabledictionarylttkey-tvaluegt-c/, modified to use SortedList and provide observable Keys and Values lists</remarks>
-	public class ObservableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, INotifyCollectionChanged, INotifyPropertyChanged
+	public class ObservableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IList<KeyValuePair<TKey, TValue>>, IList, INotifyCollectionChanged, INotifyPropertyChanged
 	{	//****************************************
 		private const string CountString = "Count";
 		private const string IndexerName = "Item[]";
@@ -209,6 +209,42 @@ namespace Proximity.Utility.Collections
 			// Raise changes (only if we're zero)
 			OnCollectionChanged();
 		}
+		
+		/// <summary>
+		/// Searches for the specified key/value pair and returns the zero-based index within the ObservableDictionary
+		/// </summary>
+		/// <param name="item">The key/value pair to search for</param>
+		/// <returns>True if a matching key/value pair was found, otherwise -1</returns>
+		public int IndexOf(KeyValuePair<TKey, TValue> item)
+		{
+			var MyIndex = _Dictionary.IndexOfKey(item.Key);
+
+			// If we found the Key, make sure the Item matches
+			if (MyIndex != -1 && !Equals(_Dictionary.Values[MyIndex], item.Value))
+				MyIndex = -1;
+
+			return MyIndex;
+		}
+
+		/// <summary>
+		/// Searches for the specified key and returns the zero-based index within the ObservableDictionary
+		/// </summary>
+		/// <param name="key">The key to search for</param>
+		/// <returns>True if a matching key was found, otherwise -1</returns>
+		public int IndexOfKey(TKey key)
+		{
+			return _Dictionary.IndexOfKey(key);
+		}
+
+		/// <summary>
+		/// Searches for the specified value and returns the zero-based index of the first occurrence within the ObservableDictionary
+		/// </summary>
+		/// <param name="value">The value to search for</param>
+		/// <returns>True if a matching value was found, otherwise -1</returns>
+		public int IndexOfValue(TValue value)
+		{
+			return _Dictionary.IndexOfValue(value);
+		}
 
 		/// <summary>
 		/// Removes an element from the collection
@@ -242,6 +278,23 @@ namespace Proximity.Utility.Collections
 		}
 
 		/// <summary>
+		/// Removes the element at the specified index
+		/// </summary>
+		/// <param name="index">The index of the element to remove</param>
+		public void RemoveAt(int index)
+		{
+			if (index < 0 || index >= _Dictionary.Count)
+				throw new ArgumentOutOfRangeException("index");
+
+			var Key = _Dictionary.Keys[index];
+			var Value = _Dictionary.Values[index];
+
+			_Dictionary.RemoveAt(index);
+
+			OnCollectionChanged(NotifyCollectionChangedAction.Remove, new KeyValuePair<TKey, TValue>(Key, Value), index);
+		}
+
+		/// <summary>
 		/// Gets the value associated with the specified key
 		/// </summary>
 		/// <param name="key">The key whose value to get</param>
@@ -266,6 +319,55 @@ namespace Proximity.Utility.Collections
 		IEnumerator IEnumerable.GetEnumerator()
 		{
 			return ((IEnumerable)_Dictionary).GetEnumerator();
+		}
+
+		int IList.Add(object value)
+		{
+			if (value is KeyValuePair<TKey, TValue>)
+			{
+				Add((KeyValuePair<TKey, TValue>)value);
+
+				return _Dictionary.IndexOfKey(((KeyValuePair<TKey, TValue>)value).Key);
+			}
+
+			return -1;
+		}
+
+		bool IList.Contains(object value)
+		{
+			return value is KeyValuePair<TKey, TValue> && Contains((KeyValuePair<TKey, TValue>)value);
+		}
+
+		void ICollection.CopyTo(Array array, int arrayIndex)
+		{
+			for (int Index = 0; Index < _Dictionary.Count; Index++)
+			{
+				array.SetValue(new KeyValuePair<TKey, TValue>(_Dictionary.Keys[Index], _Dictionary.Values[Index]), arrayIndex++);
+			}
+		}
+
+		int IList.IndexOf(object value)
+		{
+			if (value is KeyValuePair<TKey, TValue>)
+				return IndexOf((KeyValuePair<TKey, TValue>)value);
+
+			return -1;
+		}
+
+		void IList<KeyValuePair<TKey, TValue>>.Insert(int index, KeyValuePair<TKey, TValue> item)
+		{
+			throw new NotSupportedException("Cannot insert into a sorted dictionary");
+		}
+
+		void IList.Insert(int index, object value)
+		{
+			throw new NotSupportedException();
+		}
+
+		void IList.Remove(object value)
+		{
+			if (value is KeyValuePair<TKey, TValue>)
+				Remove((KeyValuePair<TKey, TValue>)value);
 		}
 
 		/// <summary>
@@ -457,6 +559,49 @@ namespace Proximity.Utility.Collections
 		ICollection<TValue> IDictionary<TKey, TValue>.Values
 		{
 			get { return _Values; }
+		}
+
+		KeyValuePair<TKey, TValue> IList<KeyValuePair<TKey, TValue>>.this[int index]
+		{
+			get { return new KeyValuePair<TKey, TValue>(_Dictionary.Keys[index], _Dictionary.Values[index]); }
+			set
+			{
+				if (index < 0 || index >= _Dictionary.Count)
+					throw new ArgumentOutOfRangeException("index");
+
+				if (!Equals(_Dictionary.Keys[index], value.Key))
+					throw new InvalidOperationException();
+
+				var OldValue = _Dictionary.Values[index];
+
+				if (Equals(OldValue, value.Value))
+					return;
+
+				_Dictionary[value.Key] = value.Value;
+
+				OnCollectionChanged(NotifyCollectionChangedAction.Replace, value, new KeyValuePair<TKey, TValue>(value.Key, OldValue), index);
+			}
+		}
+
+		object IList.this[int index]
+		{
+			get { return new KeyValuePair<TKey, TValue>(_Dictionary.Keys[index], _Dictionary.Values[index]); }
+			set { throw new NotSupportedException("List is read-only"); }
+		}
+
+		bool IList.IsFixedSize
+		{
+			get { return false; }
+		}
+
+		bool ICollection.IsSynchronized
+		{
+			get { return false; }
+		}
+
+		object ICollection.SyncRoot
+		{
+			get { return this; }
 		}
 	}
 }

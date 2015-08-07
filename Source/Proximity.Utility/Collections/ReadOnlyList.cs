@@ -108,6 +108,7 @@ namespace Proximity.Utility.Collections
 		/// <summary>
 		/// Gets the item at the requested index
 		/// </summary>
+		[System.Runtime.CompilerServices.IndexerName("Item")]
 		public TItem this[int index]
 		{
 			get { return _Source[index]; }

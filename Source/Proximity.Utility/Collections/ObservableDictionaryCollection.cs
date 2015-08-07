@@ -16,14 +16,17 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Provides an observable view of the dictionary's keys and values
 	/// </summary>
-	public sealed class ObservableDictionaryCollection<TSource> : ICollection<TSource>, INotifyCollectionChanged, INotifyPropertyChanged
+	public sealed class ObservableDictionaryCollection<TSource> : IList<TSource>, ICollection<TSource>, IList, INotifyCollectionChanged, INotifyPropertyChanged
+#if !NET40
+, IReadOnlyCollection<TSource>
+#endif
 	{	//****************************************
 		private const string CountString = "Count";
 		//****************************************
-		private readonly ICollection<TSource> _Source;
+		private readonly IList<TSource> _Source;
 		//****************************************
 
-		internal ObservableDictionaryCollection(ICollection<TSource> source)
+		internal ObservableDictionaryCollection(IList<TSource> source)
 		{
 			_Source = source;
 		}
@@ -57,6 +60,16 @@ namespace Proximity.Utility.Collections
 		public IEnumerator<TSource> GetEnumerator()
 		{
 			return _Source.GetEnumerator();
+		}
+
+		/// <summary>
+		/// Searches for the specified value and returns the zero-based index of the first occurrence within the ObservableDictionaryCollection
+		/// </summary>
+		/// <param name="item">The item to search for</param>
+		/// <returns>True if a matching item was found, otherwise -1</returns>
+		public int IndexOf(TSource item)
+		{
+			return _Source.IndexOf(item);
 		}
 
 		//****************************************
@@ -108,12 +121,68 @@ namespace Proximity.Utility.Collections
 			throw new NotSupportedException("Collection is read-only");
 		}
 
+		int IList.Add(object value)
+		{
+			throw new NotSupportedException("Collection is read-only");
+		}
+
 		void ICollection<TSource>.Clear()
 		{
 			throw new NotSupportedException("Collection is read-only");
 		}
 
+		void IList.Clear()
+		{
+			throw new NotSupportedException("Collection is read-only");
+		}
+
+		bool IList.Contains(object value)
+		{
+			return value is TSource && Contains((TSource)value);
+		}
+
+		void ICollection.CopyTo(Array array, int arrayIndex)
+		{
+			for (int Index = 0; Index < _Source.Count; Index++)
+			{
+				array.SetValue(_Source[Index], arrayIndex++);
+			}
+		}
+
+		int IList.IndexOf(object value)
+		{
+			if (value is TSource)
+				return IndexOf((TSource)value);
+
+			return -1;
+		}
+
+		void IList.Insert(int index, object value)
+		{
+			throw new NotSupportedException("Collection is read-only");
+		}
+
+		void IList<TSource>.Insert(int index, TSource item)
+		{
+			throw new NotSupportedException("Collection is read-only");
+		}
+
 		bool ICollection<TSource>.Remove(TSource item)
+		{
+			throw new NotSupportedException("Collection is read-only");
+		}
+
+		void IList.Remove(object value)
+		{
+			throw new NotSupportedException("Collection is read-only");
+		}
+
+		void IList.RemoveAt(int index)
+		{
+			throw new NotSupportedException("Collection is read-only");
+		}
+
+		void IList<TSource>.RemoveAt(int index)
 		{
 			throw new NotSupportedException("Collection is read-only");
 		}
@@ -157,6 +226,42 @@ namespace Proximity.Utility.Collections
 		public bool IsReadOnly
 		{
 			get { return true; }
+		}
+
+		/// <summary>
+		/// Gets the item at the requested index
+		/// </summary>
+		[System.Runtime.CompilerServices.IndexerName("Item")]
+		public TSource this[int index]
+		{
+			get { return _Source[index]; }
+		}
+
+		TSource IList<TSource>.this[int index]
+		{
+			get { return _Source[index]; }
+			set { throw new NotSupportedException("List is read-only"); }
+		}
+
+		object IList.this[int index]
+		{
+			get { return _Source[index]; }
+			set { throw new NotSupportedException("List is read-only"); }
+		}
+
+		bool IList.IsFixedSize
+		{
+			get { return false; }
+		}
+
+		bool ICollection.IsSynchronized
+		{
+			get { return false; }
+		}
+
+		object ICollection.SyncRoot
+		{
+			get { return this; }
 		}
 	}
 }
