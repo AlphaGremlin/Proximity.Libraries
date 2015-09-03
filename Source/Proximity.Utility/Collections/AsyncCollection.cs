@@ -131,10 +131,14 @@ namespace Proximity.Utility.Collections
 			{
 				// Try and find a free slot
 				var MyTask = _FreeSlots.Decrement(token);
-				
+
 				if (!MyTask.IsCompleted)
+				{
 					// No slot, wait for it
-					return MyTask.ContinueWith(InternalAdd, item, token, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Current);
+					// Do not pass the cancellation token, since if the counter is disposed when token cancels,
+					// an ObjectDisposedException could be thrown but never be observed and cause an Unobserved Task Exception
+					return MyTask.ContinueWith(InternalAdd, item, CancellationToken.None, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Current);
+				}
 			}
 			
 			// Try and add our item to the collection
@@ -175,10 +179,14 @@ namespace Proximity.Utility.Collections
 			{
 				// Try and find a free slot
 				var MyTask = _FreeSlots.Decrement(token);
-				
+
 				if (!MyTask.IsCompleted)
+				{
 					// No slot, wait for it
-					return MyTask.ContinueWith(InternalAddComplete, item, token, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Current);
+					// Do not pass the cancellation token, since if the counter is disposed when token cancels,
+					// an ObjectDisposedException could be thrown but never be observed and cause an Unobserved Task Exception
+					return MyTask.ContinueWith(InternalAddComplete, item, CancellationToken.None, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Current);
+				}
 				
 				// Free slot, now cancel anyone else trying to add
 				_FreeSlots.Dispose();
@@ -281,10 +289,14 @@ namespace Proximity.Utility.Collections
 			
 			// Is there an item to take?
 			var MyTask = _UsedSlots.Decrement(token);
-			
+
 			if (!MyTask.IsCompleted)
+			{
 				// No, wait for it to arrive
-				return MyTask.ContinueWith((Func<Task, TItem>)InternalTake, token, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Current);
+				// Do not pass the cancellation token, since if the counter is disposed when token cancels,
+				// an ObjectDisposedException could be thrown but never be observed and cause an Unobserved Task Exception
+				return MyTask.ContinueWith((Func<Task, TItem>)InternalTake, CancellationToken.None, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Current);
+			}
 			
 			// Try and remove an item from the collection
 			if (!_Collection.TryTake(out MyItem))
@@ -437,7 +449,9 @@ namespace Proximity.Utility.Collections
 				if (!MyTask.IsCompleted)
 				{
 					// No, wait for it to arrive
-					yield return MyTask.ContinueWith((Func<Task, TItem>)InternalTake, token, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Current);
+					// Do not pass the cancellation token, since if the counter is disposed when token cancels,
+					// an ObjectDisposedException could be thrown but never be observed and cause an Unobserved Task Exception
+					yield return MyTask.ContinueWith((Func<Task, TItem>)InternalTake, CancellationToken.None, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Current);
 					
 					continue;
 				}
@@ -529,7 +543,7 @@ namespace Proximity.Utility.Collections
 
 				throw new Exception("Failed to decrement used counter", task.Exception.InnerException);
 			}
-			
+
 			// Try and remove an item from the collection
 			if (!_Collection.TryTake(out MyItem))
 				throw new InvalidOperationException("Item was not returned by the underlying collection");
@@ -800,9 +814,5 @@ namespace Proximity.Utility.Collections
 				get { return _Item; }
 			}
 		}
-		
-		//****************************************
-		
-		
 	}
 }

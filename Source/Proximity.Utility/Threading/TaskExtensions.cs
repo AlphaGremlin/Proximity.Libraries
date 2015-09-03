@@ -24,19 +24,22 @@ namespace Proximity.Utility.Threading
 		/// <param name="task">The task to wait to complete</param>
 		/// <param name="token">The cancellation token to abort waiting for the original task</param>
 		/// <returns>A task that completes with the original task, and cancelling if either the original task or the given token cancel</returns>
-		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" /></remarks>
+		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" />, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
 		public static Task When(this Task task, CancellationToken token)
 		{
 			if (!token.CanBeCanceled || task.IsCompleted)
 				return task;
-			
-			var MyCompletionSource = new TaskCompletionSource<VoidStruct>();
-			
-			task
-				.ContinueWith(DoCompleteTaskSource, MyCompletionSource, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current)
-				.ContinueWith(DoCancelTaskSource<VoidStruct>, MyCompletionSource, CancellationToken.None, TaskContinuationOptions.OnlyOnCanceled | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
-			
-			return MyCompletionSource.Task;
+
+			var MySource = new TargetTask<VoidStruct>(task);
+
+			// If the token cancels, we need to abort the task source
+			MySource.Registration = token.Register(DoCancelTaskSource<VoidStruct>, MySource);
+
+			// If the task completes, we need to pass the result (if any) to the task source
+			// If the token cancels first, DoCancelTaskSource will take care of observing any potential exceptions
+			task.ContinueWith(DoCompleteTaskSource, MySource, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
+
+			return MySource.Source.Task;
 		}
 		
 		/// <summary>
@@ -45,19 +48,22 @@ namespace Proximity.Utility.Threading
 		/// <param name="task">The task to wait to complete</param>
 		/// <param name="token">The cancellation token to abort waiting for the original task</param>
 		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
-		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" /></remarks>
+		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" />, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
 		public static Task<TResult> When<TResult>(this Task<TResult> task, CancellationToken token)
 		{
 			if (!token.CanBeCanceled || task.IsCompleted)
 				return task;
-			
-			var MyCompletionSource = new TaskCompletionSource<TResult>();
-			
-			task
-				.ContinueWith(DoCompleteTaskSource<TResult>, MyCompletionSource, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current)
-				.ContinueWith(DoCancelTaskSource<TResult>, MyCompletionSource, CancellationToken.None, TaskContinuationOptions.OnlyOnCanceled | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
-			
-			return MyCompletionSource.Task;
+
+			var MySource = new TargetTask<TResult>(task);
+
+			// If the token cancels, we need to abort the task source
+			MySource.Registration = token.Register(DoCancelTaskSource<TResult>, MySource);
+
+			// If the task completes, we need to pass the result (if any) to the task source
+			// If the token cancels first, DoCancelTaskSource will take care of observing any potential exceptions
+			task.ContinueWith((Action<Task<TResult>, object>)DoCompleteTaskSource, MySource, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
+
+			return MySource.Source.Task;
 		}
 		
 		/// <summary>
@@ -66,7 +72,7 @@ namespace Proximity.Utility.Threading
 		/// <param name="task">The task to wait to complete</param>
 		/// <param name="milliseconds">The number of millisecond before we abort waiting for the original task</param>
 		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
-		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" /></remarks>
+		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" />, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
 		public static Task When(this Task task, int milliseconds)
 		{
 			return task.When(TimeSpan.FromMilliseconds(milliseconds), CancellationToken.None);
@@ -78,7 +84,7 @@ namespace Proximity.Utility.Threading
 		/// <param name="task">The task to wait to complete</param>
 		/// <param name="timeout">The time before we abort waiting for the original task</param>
 		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
-		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" /></remarks>
+		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" />, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
 		public static Task When(this Task task, TimeSpan timeout)
 		{
 			return task.When(timeout, CancellationToken.None);
@@ -91,7 +97,7 @@ namespace Proximity.Utility.Threading
 		/// <param name="timeout">The time before we abort waiting for the original task</param>
 		/// <param name="token">The cancellation token to abort waiting for the original task</param>
 		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
-		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" /></remarks>
+		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" />, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
 		public static Task When(this Task task, TimeSpan timeout, CancellationToken token)
 		{	//****************************************
 			CancellationTokenSource MyCancelSource;
@@ -127,7 +133,7 @@ namespace Proximity.Utility.Threading
 		/// <param name="task">The task to wait to complete</param>
 		/// <param name="milliseconds">The number of millisecond before we abort waiting for the original task</param>
 		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
-		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" /></remarks>
+		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" />, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
 		public static Task<TResult> When<TResult>(this Task<TResult> task, int milliseconds)
 		{
 			return task.When(TimeSpan.FromMilliseconds(milliseconds), CancellationToken.None);
@@ -139,7 +145,7 @@ namespace Proximity.Utility.Threading
 		/// <param name="task">The task to wait to complete</param>
 		/// <param name="timeout">The time before we abort waiting for the original task</param>
 		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
-		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" /></remarks>
+		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" />, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
 		public static Task<TResult> When<TResult>(this Task<TResult> task, TimeSpan timeout)
 		{
 			return task.When(timeout, CancellationToken.None);
@@ -152,7 +158,7 @@ namespace Proximity.Utility.Threading
 		/// <param name="timeout">The time before we abort waiting for the original task</param>
 		/// <param name="token">The cancellation token to abort waiting for the original task</param>
 		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
-		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" /></remarks>
+		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" />, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
 		public static Task<TResult> When<TResult>(this Task<TResult> task, TimeSpan timeout, CancellationToken token)
 		{	//****************************************
 			CancellationTokenSource MyCancelSource;
@@ -190,38 +196,47 @@ namespace Proximity.Utility.Threading
 		{
 			return new Interleave<TResult>(source);
 		}
-		
+
 		//****************************************
 		
 		private static void DoCompleteTaskSource(Task innerTask, object state)
 		{
-			var MySource = (TaskCompletionSource<VoidStruct>)state;
+			var MySource = (TargetTask<VoidStruct>)state;
 			
 			if (innerTask.IsFaulted)
-				MySource.SetException(innerTask.Exception.InnerException);
+				MySource.Source.TrySetException(innerTask.Exception.InnerException);
 			else if (innerTask.IsCanceled)
-				MySource.SetCanceled();
-			else 
-				MySource.SetResult(VoidStruct.Empty);
+				MySource.Source.TrySetCanceled();
+			else
+				MySource.Source.TrySetResult(VoidStruct.Empty);
+
+			MySource.Registration.Dispose();
 		}
 		
 		private static void DoCompleteTaskSource<TResult>(Task<TResult> innerTask, object state)
 		{
-			var MySource = (TaskCompletionSource<TResult>)state;
+			var MySource = (TargetTask<TResult>)state;
 			
 			if (innerTask.IsFaulted)
-				MySource.SetException(innerTask.Exception.InnerException);
+				MySource.Source.TrySetException(innerTask.Exception.InnerException);
 			else if (innerTask.IsCanceled)
-				MySource.SetCanceled();
-			else 
-				MySource.SetResult(innerTask.Result);
+				MySource.Source.TrySetCanceled();
+			else
+				MySource.Source.TrySetResult(innerTask.Result);
+
+			MySource.Registration.Dispose();
 		}
 		
-		private static void DoCancelTaskSource<TResult>(Task innerTask, object state)
+		private static void DoCancelTaskSource<TResult>(object state)
 		{
-			var MySource = (TaskCompletionSource<TResult>)state;
-			
-			MySource.SetCanceled();
+			var MySource = (TargetTask<TResult>)state;
+
+			if (MySource.Source.TrySetCanceled())
+			{
+				// We cancelled our listener. The danger here is, if the wrapped task then throws an exception, it'll go unobserved if there's no other continuations.
+				// Since we want When to be a drop-in replacement for async methods that don't take CancellationToken, we attach a new task to observe the fault, just in case it throws
+				MySource.Task.ContinueWith(DoObserveFault, TaskContinuationOptions.OnlyOnFaulted);
+			}
 		}
 		
 		private static void DoDisposeCancelSource(Task innerTask, object state)
@@ -229,6 +244,46 @@ namespace Proximity.Utility.Threading
 			var MyCancelSource = (CancellationTokenSource)state;
 			
 			MyCancelSource.Dispose();
+		}
+
+		private static void DoObserveFault(Task innerTask)
+		{
+			var MyException = innerTask.Exception;
+		}
+
+		//****************************************
+
+		private class TargetTask<TResult>
+		{	//****************************************
+			private readonly Task _Target;
+			private readonly TaskCompletionSource<TResult> _Source;
+
+			private CancellationTokenRegistration _Registration;
+			//****************************************
+
+			public TargetTask(Task task)
+			{
+				_Target = task;
+				_Source = new TaskCompletionSource<TResult>();
+			}
+
+			//****************************************
+
+			public TaskCompletionSource<TResult> Source
+			{
+				get { return _Source; }
+			}
+
+			public Task Task
+			{
+				get { return _Target; }
+			}
+
+			public CancellationTokenRegistration Registration
+			{
+				get { return _Registration; }
+				set { _Registration = value; }
+			}
 		}
 	}
 }

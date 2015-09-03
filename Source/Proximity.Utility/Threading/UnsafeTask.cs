@@ -51,7 +51,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="action">The code to run</param>
 		/// <returns>A task that represents the action execution</returns>
-		public static Task Run<TResult>(Func<Task<TResult>> action)
+		public static Task<TResult> Run<TResult>(Func<Task<TResult>> action)
 		{
 			var MyTaskSource = new TaskCompletionSource<Task<TResult>>();
 
@@ -65,7 +65,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="action">The code to run</param>
 		/// <returns>A task that represents the action execution</returns>
-		public static Task Run<TResult>(Func<TResult> action)
+		public static Task<TResult> Run<TResult>(Func<TResult> action)
 		{
 			var MyTaskSource = new TaskCompletionSource<TResult>();
 

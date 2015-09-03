@@ -42,6 +42,8 @@ namespace Proximity.Utility.Collections
 		
 		internal void Attach(AsyncCounter counter, AsyncCollection<TItem> collection)
 		{
+			// Do not pass the cancellation token to the continuation, since if the counter is disposed when the token cancels,
+			// an ObjectDisposedException could be thrown but never be observed and cause an Unobserved Task Exception
 			counter.PeekDecrement(_TokenSource.Token).ContinueWith(OnCounterPeek, collection, CancellationToken.None, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Current);
 		}
 		

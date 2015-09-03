@@ -14,6 +14,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)ActionNameAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)AssemblyInfo.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\AsyncCollection.cs" />
+    <None Include="$(MSBuildThisFileDirectory)Diagnostics\ExceptionExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Xml\XmlReaderReadExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Xml\XmlReaderTryReadExtensions.cs" />
     <None Include="$(MSBuildThisFileDirectory)Collections\AsyncEnumerable.cs" />
@@ -141,7 +142,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)Threading\RemoteTask.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\RemoteTaskCompletionSource.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\RemoteTaskExtensions.cs" />
-    <None Include="$(MSBuildThisFileDirectory)Proximity.Utility.nuspec" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\SafeTimer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\StreamTaskScheduler.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\TaskFlag.cs" />

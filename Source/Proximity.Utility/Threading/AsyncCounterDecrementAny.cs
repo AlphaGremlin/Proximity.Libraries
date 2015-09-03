@@ -39,7 +39,9 @@ namespace Proximity.Utility.Threading
 		
 		internal void Attach(AsyncCounter counter)
 		{
-			counter.PeekDecrement().ContinueWith((Action<Task<AsyncCounter>, object>)OnPeekCompleted, counter, _TokenSource.Token);
+			// Do not pass the cancellation token to the continuation, since if the counter is disposed when the token cancels,
+			// an ObjectDisposedException could be thrown but never be observed and cause an Unobserved Task Exception
+			counter.PeekDecrement(_TokenSource.Token).ContinueWith((Action<Task<AsyncCounter>, object>)OnPeekCompleted, counter, CancellationToken.None, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Current);
 		}
 		
 		//****************************************
