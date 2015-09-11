@@ -106,7 +106,7 @@ namespace Proximity.Utility.Collections
 				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItem, oldItem, index));
 		}
 
-		internal void OnCollectionChanged(NotifyCollectionChangedAction action, ICollection<TSource> newItems)
+		internal void OnCollectionChanged(NotifyCollectionChangedAction action, IEnumerable<TSource> newItems)
 		{
 			OnPropertyChanged(CountString);
 

@@ -352,7 +352,7 @@ namespace Proximity.Utility.Collections
 		public event NotifyCollectionChangedEventHandler CollectionChanged;
 
 		/// <summary>
-		/// Raised when a property of the dictionary changes
+		/// Raised when a property of the collection changes
 		/// </summary>
 		public event PropertyChangedEventHandler PropertyChanged;
 
@@ -393,7 +393,7 @@ namespace Proximity.Utility.Collections
 		/// <summary>
 		/// Gets the underlying list object
 		/// </summary>
-		protected IList<TValue> Items
+		protected List<TValue> Items
 		{
 			get { return _Items; }
 		}

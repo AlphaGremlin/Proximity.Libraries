@@ -14,7 +14,7 @@ using System.Linq;
 namespace Proximity.Utility.Collections
 {
 	/// <summary>
-	/// Provides an Observable Set supporting BeginUpdate and EndUpdate for batch changes as well as indexed access for optimal data-binding
+	/// Provides an Observable HashSet supporting BeginUpdate and EndUpdate for batch changes as well as indexed access for optimal data-binding
 	/// </summary>
 	/// <typeparam name="TValue">The type of value within the set</typeparam>
 	public class ObservableSet<TValue> : ISet<TValue>, IList<TValue>, IList, INotifyCollectionChanged, INotifyPropertyChanged
@@ -64,12 +64,14 @@ namespace Proximity.Utility.Collections
 		/// <param name="comparer">The equality comparer to use for the obserable set</param>
 		public ObservableSet(IEnumerable<TValue> collection, IEqualityComparer<TValue> comparer)
 		{
-			_Keys = new int[0];
-			_Values = new TValue[0];
-
 			_Comparer = comparer;
 
 			// Ensure we add all the values in the order sorted by hash code
+#if PORTABLE
+			_Keys = new int[0];
+			_Values = new TValue[0];
+
+			// Can't use Array.Sort(key, value, comparer) since it doesn't exist on portable
 			foreach (var MyPair in collection.Select(value => new KeyValuePair<int, TValue>(comparer.GetHashCode(value), value)).OrderBy(pair => pair.Key))
 			{
 				if (_Size == _Keys.Length)
@@ -80,6 +82,18 @@ namespace Proximity.Utility.Collections
 
 				_Size++;
 			}
+#else
+			_Values = collection.ToArray();
+			_Size = _Values.Length;
+			_Keys = new int[_Size];
+
+			for (int Index = 0; Index < _Values.Length; Index++)
+			{
+				_Keys[Index] = comparer.GetHashCode(_Values[Index]);
+			}
+
+			Array.Sort<int, TValue>(_Keys, _Values, Comparer<int>.Default);
+#endif
 		}
 
 		//****************************************
@@ -175,9 +189,7 @@ namespace Proximity.Utility.Collections
 		/// <returns>True if the item is in the list, otherwise false</returns>
 		public bool Contains(TValue item)
 		{
-			int Key = _Comparer.GetHashCode(item);
-
-			return Array.BinarySearch<int>(_Keys, 0, _Size, Key) >= 0;
+			return IndexOf(item) >= 0;
 		}
 
 		/// <summary>
@@ -321,8 +333,7 @@ namespace Proximity.Utility.Collections
 		/// <returns>True if the item was in the collection and removed, otherwise False</returns>
 		public bool Remove(TValue item)
 		{	//****************************************
-			int Key = _Comparer.GetHashCode(item);
-			int Index = Array.BinarySearch<int>(_Keys, 0, _Size, Key);
+			int Index = IndexOf(item);
 			//****************************************
 
 			if (Index < 0)

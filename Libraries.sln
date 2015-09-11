@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+VisualStudioVersion = 12.0.40629.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Gui", "Gui", "{23885097-BE81-43C6-8F13-B2FDD2DD3DC2}"
 EndProject
@@ -18,6 +18,9 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Terminal", "Source\Proximity.Terminal\Proximity.Terminal.csproj", "{8D2F9F27-59FA-4357-982F-803007388FB7}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Utility", "Utility", "{A288420E-CE92-438D-9DB5-C16C15CACD1F}"
+	ProjectSection(SolutionItems) = preProject
+		Build\Proximity.Utility\Proximity.Utility.nuspec = Build\Proximity.Utility\Proximity.Utility.nuspec
+	EndProjectSection
 EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Proximity.Utility", "Source\Proximity.Utility\Proximity.Utility.shproj", "{8726484B-16D6-487F-84E2-D4EA5BCE46BF}"
 EndProject
