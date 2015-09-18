@@ -9,6 +9,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
+using System.Reflection;
 //****************************************
 
 namespace Proximity.Utility.Collections
@@ -56,6 +57,15 @@ namespace Proximity.Utility.Collections
 		/// <param name="comparer">The comparer to use for sorting</param>
 		public ObservableListView(IList<TValue> source, IComparer<TValue> comparer)
 		{
+#if PORTABLE
+			var MyInfo = typeof(TValue).GetTypeInfo();
+
+			if (!typeof(IComparable<TValue>).GetTypeInfo().IsAssignableFrom(MyInfo) && !typeof(IComparable).GetTypeInfo().IsAssignableFrom(MyInfo))
+#else
+			if (!typeof(IComparable<TValue>).IsAssignableFrom(typeof(TValue)) && !typeof(IComparable).IsAssignableFrom(typeof(TValue)))
+#endif
+				throw new ArgumentException(string.Format("{0} does not implement IComparable or IComparable<>", typeof(TValue).FullName));
+
 			_Source = source;
 			_Comparer = comparer;
 			_Items = new List<TValue>(source.Count);
@@ -104,7 +114,7 @@ namespace Proximity.Utility.Collections
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
 		public IEnumerator<TValue> GetEnumerator()
 		{
-			return _Source.GetEnumerator();
+			return _Items.GetEnumerator();
 		}
 
 		/// <summary>
@@ -362,7 +372,7 @@ namespace Proximity.Utility.Collections
 		[System.Runtime.CompilerServices.IndexerName("Item")]
 		public TValue this[int index]
 		{
-			get { return _Source[index]; }
+			get { return _Items[index]; }
 		}
 
 		/// <summary>
@@ -370,7 +380,7 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		public int Count
 		{
-			get { return _Source.Count; }
+			get { return _Items.Count; }
 		}
 
 		/// <summary>
@@ -383,7 +393,7 @@ namespace Proximity.Utility.Collections
 
 		TValue IList<TValue>.this[int index]
 		{
-			get { return _Source[index]; }
+			get { return _Items[index]; }
 			set { throw new NotSupportedException("List is read-only"); }
 		}
 

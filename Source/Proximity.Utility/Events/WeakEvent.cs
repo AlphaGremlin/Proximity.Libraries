@@ -2,7 +2,7 @@
  WeakEvent.cs
  Created: 2010-07-28
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !PORTABLE
 using System;
 //****************************************
 
@@ -27,7 +27,8 @@ namespace Proximity.Utility.Events
 		}
 		
 		//****************************************
-		
+				// IOS is statically compiled and doesn't do JIT, so we can't make generic types from reflection
+#if !IOS
 		/// <summary>
 		/// Adds a new Weak Event binding
 		/// </summary>
@@ -38,7 +39,18 @@ namespace Proximity.Utility.Events
 			
 			_WeakEventHandler += WeakEventDelegate.Create(eventHandler);
 		}
-		
+#endif
+
+		/// <summary>
+		/// Adds a new Weak Event binding
+		/// </summary>
+		/// <param name="eventHandler">The event handler to call weakly</param>
+		public void Add<TTarget>(EventHandler<TEventArgs> eventHandler) where TTarget : class
+		{
+			WeakEventDelegate.Cleanup(_WeakEventHandler, _UnregisterCallback);
+
+			_WeakEventHandler += WeakEventDelegate.Create<TTarget, TEventArgs>(eventHandler);
+		}
 		/// <summary>
 		/// Removes a Weak Event binding
 		/// </summary>

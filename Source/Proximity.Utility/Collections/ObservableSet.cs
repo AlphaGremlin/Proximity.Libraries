@@ -241,6 +241,10 @@ namespace Proximity.Utility.Collections
 			if (Index < 0)
 				return -1;
 
+			// BinarySearch is not guaranteed to return the first matching value, so we may need to move back
+			while (Index > 0 && _Keys[Index - 1] == Key)
+				Index--;
+
 			for (; ; )
 			{
 				// Do we match this item?
@@ -505,6 +509,10 @@ namespace Proximity.Utility.Collections
 			// Is there a matching hash code?
 			if (Index >= 0)
 			{
+				// BinarySearch is not guaranteed to return the first matching value, so we may need to move back
+				while (Index > 0 && _Keys[Index - 1] == Key)
+					Index--;
+
 				for (; ; )
 				{
 					// Do we match this item?

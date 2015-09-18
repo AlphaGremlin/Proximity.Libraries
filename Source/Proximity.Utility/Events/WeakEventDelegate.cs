@@ -2,11 +2,10 @@
  WeakEventDelegate.cs
  Created: 2012-10-30
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !PORTABLE
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 //****************************************
 
@@ -17,6 +16,8 @@ namespace Proximity.Utility.Events
 	/// </summary>
 	public static class WeakEventDelegate
 	{
+		// IOS is statically compiled and doesn't do JIT, so we can't make generic types from reflection
+#if !IOS
 		/// <summary>
 		/// Creates a new Weak Event Delegate
 		/// </summary>
@@ -36,6 +37,20 @@ namespace Proximity.Utility.Events
 			MyHandler = (IEventDelegate<TEventArgs>)Activator.CreateInstance(TargetType, eventHandler.Target, eventHandler.Method);
 			
 			return MyHandler.Handler;
+		}
+#endif
+
+		/// <summary>
+		/// Creates a new Weak Event Delegate
+		/// </summary>
+		/// <param name="eventHandler">The event handler to weakly bind to</param>
+		/// <returns>A weak delegate that will call EventHandler as long as the object still exists, or <paramref name="eventHandler" /> if the target is a static object</returns>
+		public static EventHandler<TEventArgs> Create<TTarget, TEventArgs>(EventHandler<TEventArgs> eventHandler) where TEventArgs : EventArgs where TTarget : class
+		{
+			if (eventHandler.Target == null) // Ignore weak references for static events
+				return eventHandler;
+
+			return new EventDelegate<TTarget, TEventArgs>((TTarget)eventHandler.Target, eventHandler.Method, null).Handler;
 		}
 		
 		/// <summary>
@@ -73,7 +88,7 @@ namespace Proximity.Utility.Events
 		/// <summary>
 		/// Locates the appropriate Weak Event Delegate that was added to an event delegate
 		/// </summary>
-		/// <param name="source">The multicast event delegate the weak delegate provided by <see cref="Create" /> was added to</param>
+		/// <param name="source">The multicast event delegate the weak delegate provided by <see cref="O:Create" /> was added to</param>
 		/// <param name="target">The method targeted by the weak delegate</param>
 		/// <returns></returns>
 		/// <remarks>To support the += and -= pattern, we must translate the strong delegate given into a weak delegate that can match the value passed to +=, in order to remove via -=</remarks>
@@ -129,12 +144,14 @@ namespace Proximity.Utility.Events
 			
 			private GCHandle _Target;
 			private WeakEventHandler _Handler;
+			private Action<object, EventHandler<TEventArgs>> _Unsubscribe;
 			//****************************************
-			
-			public EventDelegate(TTarget target, MethodInfo method)
+
+			public EventDelegate(TTarget target, MethodInfo method, Action<object, EventHandler<TEventArgs>> unsubscribe)
 			{
 				_Target = GCHandle.Alloc(target, GCHandleType.Weak);
 				_Handler = (WeakEventHandler)Delegate.CreateDelegate(typeof(WeakEventHandler), method);
+				_Unsubscribe = unsubscribe;
 			}
 			
 			~EventDelegate()
@@ -147,13 +164,25 @@ namespace Proximity.Utility.Events
 			
 			public void Handler(object sender, TEventArgs e)
 			{	//****************************************
-				var MyTarget = (TTarget)_Target.Target;
+				var MyTarget = _Target.Target;
 				//****************************************
-				
+
 				if (MyTarget == null)
+				{
+					if (_Unsubscribe != null)
+					{
+						// Our target was disposed of, so remove this event handler
+						_Unsubscribe(sender, Handler);
+
+						// We can then cleanup the GCHandle, which means we don't need to finalize, so suppress that too
+						_Target.Free();
+						GC.SuppressFinalize(this);
+					}
+
 					return;
-				
-				_Handler(MyTarget, sender, e);
+				}
+
+				_Handler((TTarget)MyTarget, sender, e);
 			}
 			
 			//****************************************

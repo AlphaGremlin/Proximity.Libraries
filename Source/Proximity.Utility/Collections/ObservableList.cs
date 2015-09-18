@@ -182,6 +182,33 @@ namespace Proximity.Utility.Collections
 		}
 
 		/// <summary>
+		/// Sorts the contents of this Observable List
+		/// </summary>
+		public void Sort()
+		{
+			if (_Items.Count != 0)
+			{
+				_Items.Sort();
+
+				OnCollectionChanged();
+			}
+		}
+
+		/// <summary>
+		/// Sorts the contents of this Observable List based on a comparer
+		/// </summary>
+		/// <param name="comparer">The comparer to sort by</param>
+		public void Sort(IComparer<TValue> comparer)
+		{
+			if (_Items.Count != 0)
+			{
+				_Items.Sort(comparer);
+
+				OnCollectionChanged();
+			}
+		}
+
+		/// <summary>
 		/// Removes an element from the collection
 		/// </summary>
 		/// <param name="item">The element to remove</param>

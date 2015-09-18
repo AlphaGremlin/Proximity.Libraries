@@ -151,7 +151,7 @@ namespace Proximity.Utility.Collections
 			return VoidStruct.EmptyTask;
 		}
 		
-				/// <summary>
+		/// <summary>
 		/// Attempts to add and complete a collection in one operation
 		/// </summary>
 		/// <param name="item">The item to add</param>
