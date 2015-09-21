@@ -31,13 +31,14 @@ namespace Proximity.Utility.Collections
 		private readonly List<TValue> _Items;
 
 		private readonly IComparer<TValue> _Comparer;
+		private readonly Predicate<TValue> _Filter;
 		//****************************************
 		
 		/// <summary>
 		/// Creates a new Observable List View
 		/// </summary>
 		/// <param name="source">The source list to wrap</param>
-		public ObservableListView(IList<TValue> source) : this(source, Comparer<TValue>.Default)
+		public ObservableListView(IList<TValue> source) : this(source, GetDefaultComparer(), null)
 		{
 		}
 
@@ -46,7 +47,7 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="source">The source list to wrap</param>
 		/// <param name="comparison">A delegate to perform the comparison with</param>
-		public ObservableListView(IList<TValue> source, Comparison<TValue> comparison) : this(source, new ComparisonComparer<TValue>(comparison))
+		public ObservableListView(IList<TValue> source, Comparison<TValue> comparison) : this(source, new ComparisonComparer<TValue>(comparison), null)
 		{
 		}
 
@@ -55,22 +56,52 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="source">The source list to wrap</param>
 		/// <param name="comparer">The comparer to use for sorting</param>
-		public ObservableListView(IList<TValue> source, IComparer<TValue> comparer)
+		public ObservableListView(IList<TValue> source, IComparer<TValue> comparer) : this(source, comparer, null)
 		{
-#if PORTABLE
-			var MyInfo = typeof(TValue).GetTypeInfo();
+		}
 
-			if (!typeof(IComparable<TValue>).GetTypeInfo().IsAssignableFrom(MyInfo) && !typeof(IComparable).GetTypeInfo().IsAssignableFrom(MyInfo))
-#else
-			if (!typeof(IComparable<TValue>).IsAssignableFrom(typeof(TValue)) && !typeof(IComparable).IsAssignableFrom(typeof(TValue)))
-#endif
-				throw new ArgumentException(string.Format("{0} does not implement IComparable or IComparable<>", typeof(TValue).FullName));
+		/// <summary>
+		/// Creates a new Observable List View
+		/// </summary>
+		/// <param name="source">The source list to wrap</param>
+		/// <param name="filter">A filter to apply to the source list</param>
+		public ObservableListView(IList<TValue> source, Predicate<TValue> filter) : this(source, GetDefaultComparer(), filter)
+		{
+		}
 
+		/// <summary>
+		/// Creates a new Observable List View
+		/// </summary>
+		/// <param name="source">The source list to wrap</param>
+		/// <param name="comparison">A delegate to perform the comparison with</param>
+		/// <param name="filter">A filter to apply to the source list</param>
+		public ObservableListView(IList<TValue> source, Comparison<TValue> comparison, Predicate<TValue> filter) : this(source, new ComparisonComparer<TValue>(comparison), filter)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Observable List View
+		/// </summary>
+		/// <param name="source">The source list to wrap</param>
+		/// <param name="comparer">The comparer to use for sorting</param>
+		/// <param name="filter">A filter to apply to the source list</param>
+		public ObservableListView(IList<TValue> source, IComparer<TValue> comparer, Predicate<TValue> filter)
+		{
 			_Source = source;
 			_Comparer = comparer;
+			_Filter = filter;
 			_Items = new List<TValue>(source.Count);
 
-			OnSourceChanged(_Source, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+			// Bring the collection up to date
+			if (source.Count > 0)
+			{
+				if (filter != null)
+					_Items.AddRange(source.Where(FilterItem));
+				else
+					_Items.AddRange(source);
+
+				_Items.Sort(comparer);
+			}
 			
 			if (source is INotifyCollectionChanged)
 				((INotifyCollectionChanged)source).CollectionChanged += OnSourceChanged;
@@ -225,7 +256,12 @@ namespace Proximity.Utility.Collections
 			{
 			case NotifyCollectionChangedAction.Reset:
 				_Items.Clear();
-				_Items.AddRange(_Source);
+
+				if (_Filter != null)
+					_Items.AddRange(_Source.Where(FilterItem));
+				else
+					_Items.AddRange(_Source);
+
 				_Items.Sort(_Comparer);
 
 				OnCollectionChanged();
@@ -235,6 +271,9 @@ namespace Proximity.Utility.Collections
 				for (int Index = 0; Index < e.NewItems.Count; Index++)
 				{
 					var NewItem = (TValue)e.NewItems[Index];
+
+					if (_Filter != null && !_Filter(NewItem))
+						continue;
 
 					// Where should this item go based on the comparer?
 					var InsertIndex = _Items.BinarySearch(NewItem, _Comparer);
@@ -288,6 +327,16 @@ namespace Proximity.Utility.Collections
 					// Has the item changed?
 					if (_Comparer.Compare(OldItem, NewItem) == 0)
 						continue; // Item hasn't changed, so its sorting position won't either
+
+					// Yes, does it still meet the filter?
+					if (_Filter != null && !_Filter(NewItem))
+					{
+						// No, so remove it
+						_Items.RemoveAt(OldIndex);
+						OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItem, OldIndex);
+
+						continue;
+					}
 
 					// Yes, what is its new Index?
 					var NewIndex = _Items.BinarySearch(NewItem, _Comparer);
@@ -354,6 +403,11 @@ namespace Proximity.Utility.Collections
 				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItem, oldItem, index));
 		}
 
+		private bool FilterItem(TValue item)
+		{
+			return _Filter(item);
+		}
+
 		//****************************************
 
 		/// <summary>
@@ -391,6 +445,14 @@ namespace Proximity.Utility.Collections
 			get { return false; }
 		}
 
+		/// <summary>
+		/// Gets the comparer being used by this Observable View
+		/// </summary>
+		public IComparer<TValue> Comparer
+		{
+			get { return _Comparer; }
+		}
+
 		TValue IList<TValue>.this[int index]
 		{
 			get { return _Items[index]; }
@@ -416,6 +478,22 @@ namespace Proximity.Utility.Collections
 		object ICollection.SyncRoot
 		{
 			get { return _Source; }
+		}
+
+		//****************************************
+
+		private static IComparer<TValue> GetDefaultComparer()
+		{
+#if PORTABLE
+			var MyInfo = typeof(TValue).GetTypeInfo();
+
+			if (!typeof(IComparable<TValue>).GetTypeInfo().IsAssignableFrom(MyInfo) && !typeof(IComparable).GetTypeInfo().IsAssignableFrom(MyInfo))
+#else
+			if (!typeof(IComparable<TValue>).IsAssignableFrom(typeof(TValue)) && !typeof(IComparable).IsAssignableFrom(typeof(TValue)))
+#endif
+				throw new ArgumentException(string.Format("{0} does not implement IComparable or IComparable<>", typeof(TValue).FullName));
+
+			return Comparer<TValue>.Default;
 		}
 	}
 }
