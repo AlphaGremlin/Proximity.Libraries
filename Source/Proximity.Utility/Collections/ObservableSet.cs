@@ -199,7 +199,7 @@ namespace Proximity.Utility.Collections
 		/// <param name="arrayIndex">The index into the array to start writing</param>
 		public void CopyTo(TValue[] array, int arrayIndex)
 		{
-			_Values.CopyTo(array, arrayIndex);
+			Array.Copy(_Values, 0, array, arrayIndex, _Size);
 		}
 
 		/// <summary>
@@ -423,7 +423,7 @@ namespace Proximity.Utility.Collections
 
 		void ICollection.CopyTo(Array array, int index)
 		{
-			_Values.CopyTo(array, index);
+			Array.Copy(_Values, 0, array, index, _Size);
 		}
 
 		void ISet<TValue>.ExceptWith(IEnumerable<TValue> other)

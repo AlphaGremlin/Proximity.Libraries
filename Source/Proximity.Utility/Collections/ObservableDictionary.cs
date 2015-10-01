@@ -236,7 +236,7 @@ namespace Proximity.Utility.Collections
 		/// <param name="arrayIndex">The index into the array to start writing</param>
 		public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
 		{
-			_Values.CopyTo(array, arrayIndex);
+			Array.Copy(_Values, 0, array, arrayIndex, _Size);
 		}
 
 		/// <summary>
@@ -460,7 +460,7 @@ namespace Proximity.Utility.Collections
 
 		void ICollection.CopyTo(Array array, int arrayIndex)
 		{
-			_Values.CopyTo(array, arrayIndex);
+			Array.Copy(_Values, 0, array, arrayIndex, _Size);
 		}
 
 		int IList.IndexOf(object value)
@@ -911,10 +911,11 @@ namespace Proximity.Utility.Collections
 			void ICollection<TKey>.CopyTo(TKey[] array, int arrayIndex)
 			{
 				var MyValues = _Parent._Values;
+				var MySize = _Parent._Size;
 
-				for (int Index = 0; Index < MyValues.Length; Index++)
+				for (int Index = 0; Index < MySize; Index++)
 				{
-					array[Index + arrayIndex] = MyValues[Index].Key;
+					array[arrayIndex++] = MyValues[Index].Key;
 				}
 			}
 
@@ -995,10 +996,11 @@ namespace Proximity.Utility.Collections
 			void ICollection<TValue>.CopyTo(TValue[] array, int arrayIndex)
 			{
 				var MyValues = _Parent._Values;
+				var MySize = _Parent._Size;
 
-				for (int Index = 0; Index < MyValues.Length; Index++)
+				for (int Index = 0; Index < MySize; Index++)
 				{
-					array[Index + arrayIndex] = MyValues[Index].Value;
+					array[arrayIndex++] = MyValues[Index].Value;
 				}
 			}
 
