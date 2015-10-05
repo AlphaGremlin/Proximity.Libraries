@@ -2,7 +2,6 @@
  WeakEventDelegate.cs
  Created: 2012-10-30
 \****************************************/
-#if !PORTABLE
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -34,7 +33,11 @@ namespace Proximity.Utility.Events
 			
 			TargetType = typeof(EventDelegate<,>).MakeGenericType(eventHandler.Target.GetType(), typeof(TEventArgs));
 			
+#if PORTABLE
+			MyHandler = (IEventDelegate<TEventArgs>)Activator.CreateInstance(TargetType, eventHandler.Target, eventHandler.GetMethodInfo());
+#else
 			MyHandler = (IEventDelegate<TEventArgs>)Activator.CreateInstance(TargetType, eventHandler.Target, eventHandler.Method);
+#endif
 			
 			return MyHandler.Handler;
 		}
@@ -50,7 +53,11 @@ namespace Proximity.Utility.Events
 			if (eventHandler.Target == null) // Ignore weak references for static events
 				return eventHandler;
 
+#if PORTABLE
+			return new EventDelegate<TTarget, TEventArgs>((TTarget)eventHandler.Target, eventHandler.GetMethodInfo(), null).Handler;
+#else
 			return new EventDelegate<TTarget, TEventArgs>((TTarget)eventHandler.Target, eventHandler.Method, null).Handler;
+#endif
 		}
 		
 		/// <summary>
@@ -111,8 +118,13 @@ namespace Proximity.Utility.Events
 				if (MyTarget == null)
 					continue;
 				
+#if PORTABLE
+				if (MyTarget.Method != target.GetMethodInfo())
+#else
 				if (MyTarget.Method != target.Method)
+#endif
 					continue;
+
 				
 				MyTargetObject = MyTarget.Target;
 				
@@ -140,17 +152,25 @@ namespace Proximity.Utility.Events
 		
 		private class EventDelegate<TTarget, TEventArgs> : IEventDelegate<TEventArgs> where TTarget : class where TEventArgs : EventArgs
 		{	//****************************************
+#if PORTABLE
+			private MethodInfo _Method;
+#else
 			private delegate void WeakEventHandler(TTarget target, object sender, TEventArgs e);
-			
-			private GCHandle _Target;
 			private WeakEventHandler _Handler;
+#endif
+			private GCHandle _Target;
+
 			private Action<object, EventHandler<TEventArgs>> _Unsubscribe;
 			//****************************************
 
 			public EventDelegate(TTarget target, MethodInfo method, Action<object, EventHandler<TEventArgs>> unsubscribe)
 			{
 				_Target = GCHandle.Alloc(target, GCHandleType.Weak);
+#if PORTABLE
+				_Method = method;
+#else
 				_Handler = (WeakEventHandler)Delegate.CreateDelegate(typeof(WeakEventHandler), method);
+#endif
 				_Unsubscribe = unsubscribe;
 			}
 			
@@ -181,8 +201,11 @@ namespace Proximity.Utility.Events
 
 					return;
 				}
-
+#if PORTABLE
+				_Method.Invoke(MyTarget, new object[] { sender, e });
+#else
 				_Handler((TTarget)MyTarget, sender, e);
+#endif
 			}
 			
 			//****************************************
@@ -194,9 +217,12 @@ namespace Proximity.Utility.Events
 			
 			public MethodInfo Method
 			{
+#if PORTABLE
+				get { return _Method; }
+#else
 				get { return _Handler.Method; }
+#endif
 			}
 		}
 	}
 }
-#endif

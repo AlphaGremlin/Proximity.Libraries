@@ -102,6 +102,29 @@ namespace Proximity.Utility.Collections
 		}
 
 		/// <summary>
+		/// Performs a Binary Search for the given item
+		/// </summary>
+		/// <param name="item">The item to search for</param>
+		/// <returns>The index of the item, or the one's complement of the index where it should be inserted</returns>
+		/// <remarks>The list must be sorted before calling this method</remarks>
+		public int BinarySearch(TValue item)
+		{
+			return _Items.BinarySearch(item);
+		}
+
+		/// <summary>
+		/// Performs a Binary Search for the given item
+		/// </summary>
+		/// <param name="item">The item to search for</param>
+		/// <param name="comparer">The comparer to use when searching</param>
+		/// <returns>The index of the item, or the one's complement of the index where it should be inserted</returns>
+		/// <remarks>The list must be sorted before calling this method</remarks>
+		public int BinarySearch(TValue item, IComparer<TValue> comparer)
+		{
+			return _Items.BinarySearch(item, comparer);
+		}
+
+		/// <summary>
 		/// Removes all elements from the collection
 		/// </summary>
 		public void Clear()
