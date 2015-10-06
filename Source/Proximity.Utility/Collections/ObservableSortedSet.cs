@@ -225,7 +225,7 @@ namespace Proximity.Utility.Collections
 		/// <returns>The index of the item if found, otherwise -1</returns>
 		public int IndexOf(TValue item)
 		{	//****************************************
-			int Index = Array.BinarySearch<TValue>(_Items, 0, _Size, item);
+			int Index = Array.BinarySearch<TValue>(_Items, 0, _Size, item, _Comparer);
 			//****************************************
 
 			// Is there a matching hash code?
@@ -471,7 +471,7 @@ namespace Proximity.Utility.Collections
 
 		private bool TryAdd(TValue item, out int insertIndex)
 		{	//****************************************
-			int Index = Array.BinarySearch<TValue>(_Items, 0, _Size, item);
+			int Index = Array.BinarySearch<TValue>(_Items, 0, _Size, item, _Comparer);
 			//****************************************
 
 			// Is there a matching item?

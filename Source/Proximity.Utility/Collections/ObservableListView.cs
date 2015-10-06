@@ -405,7 +405,7 @@ namespace Proximity.Utility.Collections
 
 		private bool FilterItem(TValue item)
 		{
-			return _Filter(item);
+			return _Filter(item); // Enumerable.Where requires an Action, but this is a Predicate, so we wrap it
 		}
 
 		//****************************************
