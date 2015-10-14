@@ -67,6 +67,10 @@ namespace Proximity.Utility.Collections
 					else
 						SetException(new Exception("Failed to decrement any counters", task.Exception.InnerException));
 				}
+
+				// Cancel the other waiters so they don't hold a reference
+				_TokenSource.Cancel();
+				_TokenSource.Dispose();
 				
 				return;
 			}

@@ -20,13 +20,13 @@ namespace Proximity.Utility.Threading
 		private readonly CancellationTokenSource _TokenSource;
 		private readonly CancellationTokenRegistration _Registration;
 		//****************************************
-		
+
 		internal AsyncCounterDecrementAny(CancellationToken token)
 		{
 			if (token.CanBeCanceled)
 			{
 				_TokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
-				
+
 				_Registration = token.Register(OnCancel);
 			}
 			else
@@ -34,75 +34,71 @@ namespace Proximity.Utility.Threading
 				_TokenSource = new CancellationTokenSource();
 			}
 		}
-		
+
 		//****************************************
-		
+
 		internal void Attach(AsyncCounter counter)
 		{
 			// Do not pass the cancellation token to the continuation, since if the counter is disposed when the token cancels,
 			// an ObjectDisposedException could be thrown but never be observed and cause an Unobserved Task Exception
 			counter.PeekDecrement(_TokenSource.Token).ContinueWith((Action<Task<AsyncCounter>, object>)OnPeekCompleted, counter, CancellationToken.None, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Current);
 		}
-		
+
 		//****************************************
-		
+
 		private void OnPeekCompleted(Task task, object state)
 		{	//****************************************
 			var MyCounter = (AsyncCounter)state;
 			//****************************************
-			
+
 			if (task.IsFaulted)
 			{
-				lock (this)
+				bool Result;
+
+				// Register the exception
+				if (task.Exception.InnerException is ObjectDisposedException)
+					Result = TrySetException(new ObjectDisposedException("Counter was disposed", task.Exception.InnerException));
+				else
+					Result = TrySetException(new Exception("Failed to peek any counters", task.Exception.InnerException));
+
+				// Exception registered. Cancel the other waiters so they don't hold a reference
+				if (Result)
 				{
-					if (Task.IsCompleted)
-						return;
-					
-					if (task.Exception.InnerException is ObjectDisposedException)
-						SetException(new ObjectDisposedException("Counter was disposed", task.Exception.InnerException));
-					else
-						SetException(new Exception("Failed to peek any counters", task.Exception.InnerException));
-				
-					_Registration.Dispose();
-				}
-				
-				return;
-			}
-			
-			// Only decrement one at a time
-			lock (this)
-			{
-				// Have we already completed?
-				if (Task.IsCompleted)
-					return; // Yes, so this counter stays disabled
-				
-				// Not complete yet, try and decrement the counter
-				if (MyCounter.TryDecrement())
-				{
-					SetResult(MyCounter);
-					
-					// Cancel the other waiters so they don't hold a reference
 					_TokenSource.Cancel();
 					_TokenSource.Dispose();
-					
+				}
+
+				_Registration.Dispose();
+
+				return;
+			}
+
+			// Can we decrement the counter?
+			if (MyCounter.TryDecrement())
+			{
+				// Can we set the result?
+				if (TrySetResult(MyCounter))
+				{
+					// Success. Cancel the other waiters so they don't hold a reference
+					_TokenSource.Cancel();
+					_TokenSource.Dispose();
+
 					return;
 				}
+
+				// Failed. Might have been cancelled, or been pre-empted by another counter
+				// Restore the counter we incorrectly decremented
+				MyCounter.ForceIncrement();
 			}
-			
+
 			// Failed to increment the counter (pre-empted by someone else peeking), so re-attach
 			Attach(MyCounter);
 		}
-		
+
 		private void OnCancel()
 		{
-			// Make sure we're not decrementing
-			lock (this)
-			{
-				if (Task.IsCompleted)
-					return;
-				
-				SetCanceled();
-			}
+			// Cancel everything
+			TrySetCanceled();
 		}
 	}
 }

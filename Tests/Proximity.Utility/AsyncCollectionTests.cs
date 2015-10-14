@@ -234,7 +234,7 @@ namespace Proximity.Utility.Tests
 			
 			Assert.IsTrue(MyTask.IsCanceled, "Wait not cancelled");
 			
-			Assert.AreEqual(1, MyCollection.WaitingToTake, "Tasks unexpectedly waiting");
+			Assert.AreEqual(0, MyCollection.WaitingToTake, "Tasks unexpectedly waiting");
 		}
 		
 		[Test, Timeout(1000)]
@@ -709,7 +709,11 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			var MyResult = await MyTask;
-			
+
+			await Task.Yield();
+
+			Thread.Sleep(100); // Cancellations happen after the task is completed
+
 			Assert.IsTrue(MyResult.HasItem, "Take result failed unexpectedly");
 			Assert.AreSame(MyCollections[index], MyResult.Source, "Collection was not as expected");
 			Assert.AreEqual(42, MyResult.Item, "Item was not as expected");
@@ -721,7 +725,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyCollections[1].WaitingToTake, "Tasks unexpectedly waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test]//, Timeout(1000)]
 		public async Task TakeFromAnyAddComplete()
 		{	//****************************************
 			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
@@ -734,6 +738,10 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			var MyResult = await MyTask;
+
+			await Task.Yield();
+
+			Thread.Sleep(100); // Cancellations happen after the task is completed
 			
 			Assert.IsTrue(MyResult.HasItem, "Take result failed unexpectedly");
 			Assert.AreSame(MyCollections[0], MyResult.Source, "Collection was not as expected");

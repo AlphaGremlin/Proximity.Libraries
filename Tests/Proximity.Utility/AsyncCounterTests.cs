@@ -537,85 +537,117 @@ namespace Proximity.Utility.Tests
 			
 			Assert.IsFalse(MyTask.IsCompleted, "Peek succeeded unexpectedly");
 		}
-		
+
 		[Test, Timeout(1000)]
-		public void PeekDispose()
+		public async Task PeekDispose()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
 			//****************************************
-			
+
 			var MyTask = MyCounter.PeekDecrement();
-			
+
 			MyCounter.Dispose();
-			
+
 			//****************************************
-			
-			Assert.IsTrue(MyTask.IsCompleted, "Peek did not complete");
-			Assert.IsTrue(MyTask.IsFaulted, "Peek is not faulted");
-			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyTask.Exception.InnerException, "Peek is not disposed");
+
+			try
+			{
+				await MyTask;
+
+				Assert.Fail("Should never reach this point");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
 		}
-		
+
 		[Test, Timeout(1000)]
-		public void PeekCancelDispose()
+		public async Task PeekCancelDispose()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
 			Task MyTask;
 			//****************************************
-			
+
 			using (var MySource = new CancellationTokenSource())
 			{
 				MyTask = MyCounter.PeekDecrement(MySource.Token);
-				
+
 				MyCounter.Dispose();
 			}
-			
+
 			//****************************************
-			
-			Assert.IsTrue(MyTask.IsCompleted, "Peek did not complete");
-			Assert.IsTrue(MyTask.IsFaulted, "Peek is not faulted");
-			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyTask.Exception.InnerException, "Peek is not disposed");
+
+			try
+			{
+				await MyTask;
+
+				Assert.Fail("Should never reach this point");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
 		}
-		
+
 		[Test, Timeout(1000)]
-		public void PeekCancel()
+		public async Task PeekCancel()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
 			Task MyTask;
 			//****************************************
-			
+
 			using (var MySource = new CancellationTokenSource())
 			{
 				MyTask = MyCounter.PeekDecrement(MySource.Token);
-				
+
 				MySource.Cancel();
 			}
-			
+
 			//****************************************
-			
-			Thread.Sleep(100);
-			
-			Assert.IsTrue(MyTask.IsCompleted, "Peek did not complete");
-			Assert.IsTrue(MyTask.IsCanceled, "Peek is not cancelled");
+
+			try
+			{
+				await MyTask;
+
+				Assert.Fail("Should never reach this point");
+			}
+			catch (OperationCanceledException)
+			{
+			}
 		}
-		
+
 		[Test, Timeout(1000)]
-		public void PeekDisposeContinueWithPeek()
+		public async Task PeekDisposeContinueWithPeek()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
 			//****************************************
-			
+
 			var MyTask = MyCounter.PeekDecrement();
-			
+
 			var MyInnerTask = MyTask.ContinueWith((task) => MyCounter.PeekDecrement(), TaskContinuationOptions.ExecuteSynchronously);
-			
+
 			MyCounter.Dispose();
-			
+
 			//****************************************
-			
-			Assert.IsTrue(MyTask.IsFaulted, "Peek did not fault");
-			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyTask.Exception.InnerException, "Peek is not disposed");
-			Assert.IsTrue(MyInnerTask.IsFaulted, "Peek did not fault");
-			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyInnerTask.Exception.InnerException, "Peek is not disposed");
+
+			try
+			{
+				await MyTask;
+
+				Assert.Fail("Should never reach this point");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
+
+			try
+			{
+				await MyInnerTask;
+
+				Assert.Fail("Should never reach this point");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
 		}
 	}
 }
