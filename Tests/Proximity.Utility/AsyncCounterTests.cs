@@ -649,5 +649,280 @@ namespace Proximity.Utility.Tests
 			{
 			}
 		}
+
+		[Test, Timeout(2000)]
+		public async Task ConsumeDual()
+		{	//****************************************
+			var MyCounter = new AsyncCounter();
+			int[] MyResults;
+			//****************************************
+
+			using (var MySource = new CancellationTokenSource(1000))
+			{
+				var Consume1 = Consumer(MyCounter, MySource.Token);
+				var Consume2 = Consumer(MyCounter, MySource.Token);
+
+				var Increment1 = Increment(MyCounter, 10, MySource.Token);
+
+				MyResults = await Task.WhenAll(Consume1, Consume2, Increment1);
+			}
+
+			//****************************************
+
+			Assert.AreEqual(MyResults[2], MyResults.Take(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Take(2).Sum(), MyCounter.CurrentCount);
+		}
+
+		[Test, Timeout(2000)]
+		public async Task ConsumeDualIncrement()
+		{	//****************************************
+			var MyCounter = new AsyncCounter();
+			int[] MyResults;
+			//****************************************
+
+			using (var MySource = new CancellationTokenSource(1000))
+			{
+				var Consume1 = Consumer(MyCounter, MySource.Token);
+				var Consume2 = Consumer(MyCounter, MySource.Token);
+
+				var Increment1 = Increment(MyCounter, 10, MySource.Token);
+				var Increment2 = Increment(MyCounter, 10, MySource.Token);
+
+				MyResults = await Task.WhenAll(Consume1, Consume2, Increment1, Increment2);
+			}
+
+			//****************************************
+
+			Assert.AreEqual(MyResults.Skip(2).Sum(), MyResults.Take(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Take(2).Sum(), MyCounter.CurrentCount);
+		}
+
+		[Test, Timeout(2000)]
+		public async Task ConsumeLots()
+		{	//****************************************
+			var MyCounter = new AsyncCounter();
+			int[] MyResults;
+			//****************************************
+
+			using (var MySource = new CancellationTokenSource(1000))
+			{
+				var Consumers = Enumerable.Range(0, 10).Select(count => Consumer(MyCounter, MySource.Token));
+
+				var Increment1 = Increment(MyCounter, 50, MySource.Token);
+
+				MyResults = await Task.WhenAll(new [] { Increment1 }.Concat(Consumers));
+			}
+
+			//****************************************
+
+			Assert.AreEqual(MyResults[0], MyResults.Skip(1).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Skip(1).Sum(), MyCounter.CurrentCount);
+		}
+
+		[Test, Timeout(2000)]
+		public async Task ConsumeLotsIncrement()
+		{	//****************************************
+			var MyCounter = new AsyncCounter();
+			int[] MyResults;
+			//****************************************
+
+			using (var MySource = new CancellationTokenSource(1000))
+			{
+				var Consumers = Enumerable.Range(0, 10).Select(count => Consumer(MyCounter, MySource.Token));
+
+				var Increment1 = Increment(MyCounter, 50, MySource.Token);
+
+				MyResults = await Task.WhenAll(new[] { Increment1 }.Concat(Consumers));
+			}
+
+			//****************************************
+
+			Assert.AreEqual(MyResults[0], MyResults.Skip(1).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Skip(1).Sum(), MyCounter.CurrentCount);
+		}
+
+		[Test, Timeout(2000)]
+		public async Task ConsumeLotsDualIncrement()
+		{	//****************************************
+			var MyCounter = new AsyncCounter();
+			int[] MyResults;
+			//****************************************
+
+			using (var MySource = new CancellationTokenSource(1000))
+			{
+				var Consumers = Enumerable.Range(0, 10).Select(count => Consumer(MyCounter, MySource.Token));
+
+				var Increment1 = Increment(MyCounter, 50, MySource.Token);
+
+				var Increment2 = Increment(MyCounter, 50, MySource.Token);
+
+				MyResults = await Task.WhenAll(new[] { Increment1, Increment2 }.Concat(Consumers));
+			}
+
+			//****************************************
+
+			Assert.AreEqual(MyResults.Take(2).Sum(), MyResults.Skip(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Skip(2).Sum(), MyCounter.CurrentCount);
+		}
+
+		[Test, Timeout(2000)]
+		public async Task ConsumeLotsIncrementLots()
+		{	//****************************************
+			var MyCounter = new AsyncCounter();
+			int[] MyResults;
+			//****************************************
+
+			using (var MySource = new CancellationTokenSource(1000))
+			{
+				var Consumers = Enumerable.Range(0, 5).Select(count => Consumer(MyCounter, MySource.Token));
+
+				var Incrementers = Enumerable.Range(0, 5).Select(count => Increment(MyCounter, 50, MySource.Token));
+
+				MyResults = await Task.WhenAll(Incrementers.Concat(Consumers));
+			}
+
+			//****************************************
+
+			Assert.AreEqual(MyResults.Take(5).Sum(), MyResults.Skip(5).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Skip(5).Sum(), MyCounter.CurrentCount);
+		}
+
+		[Test, Timeout(2000)]
+		public async Task ConsumeDualCancel()
+		{	//****************************************
+			var MyCounter = new AsyncCounter();
+			int[] MyResults;
+			//****************************************
+
+			using (var MySource = new CancellationTokenSource(1000))
+			{
+				var Consume1 = Consumer(MyCounter, MySource.Token);
+				var Consume2 = ConsumerCancel(MyCounter, MySource.Token);
+
+				var Increment1 = Increment(MyCounter, 10, MySource.Token);
+
+				MyResults = await Task.WhenAll(Consume1, Consume2, Increment1);
+			}
+
+			//****************************************
+
+			Assert.AreEqual(MyResults[2], MyResults.Take(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Take(2).Sum(), MyCounter.CurrentCount);
+		}
+
+		[Test, Timeout(2000)]
+		public async Task ConsumeDualDispose()
+		{	//****************************************
+			var MyCounter = new AsyncCounter();
+			int[] MyResults;
+			//****************************************
+
+			using (var MySource = new CancellationTokenSource(1000))
+			{
+				var Consume1 = Consumer(MyCounter, CancellationToken.None);
+				var Consume2 = Consumer(MyCounter, CancellationToken.None);
+
+				var Increment1 = Increment(MyCounter, 10, CancellationToken.None);
+
+				MySource.Token.Register(MyCounter.Dispose);
+
+				MyResults = await Task.WhenAll(Consume1, Consume2, Increment1);
+			}
+
+			//****************************************
+
+			Assert.AreEqual(MyResults[2], MyResults.Take(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Take(2).Sum(), MyCounter.CurrentCount);
+		}
+
+		[Test, Timeout(2000)]
+		public async Task ConsumeDualCancelDispose()
+		{	//****************************************
+			var MyCounter = new AsyncCounter();
+			int[] MyResults;
+			//****************************************
+
+			using (var MySource = new CancellationTokenSource(1000))
+			{
+				var Consume1 = Consumer(MyCounter, CancellationToken.None);
+				var Consume2 = ConsumerCancel(MyCounter, MySource.Token);
+
+				var Increment1 = Increment(MyCounter, 10, CancellationToken.None);
+
+				MySource.Token.Register(MyCounter.Dispose);
+
+				MyResults = await Task.WhenAll(Consume1, Consume2, Increment1);
+			}
+
+			//****************************************
+
+			Assert.AreEqual(MyResults[2], MyResults.Take(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Take(2).Sum(), MyCounter.CurrentCount);
+		}
+
+		//****************************************
+
+		private async Task<int> Increment(AsyncCounter counter, int threshold, CancellationToken token)
+		{
+			int TotalIncrement = 0;
+
+			try
+			{
+				while (!token.IsCancellationRequested)
+				{
+					while (counter.CurrentCount < threshold)
+					{
+						counter.Increment();
+
+						TotalIncrement++;
+
+						if (TotalIncrement % 16 == 0)
+							await Task.Yield();
+					}
+
+					await Task.Yield();
+				}
+			}
+			catch (ObjectDisposedException)
+			{
+				System.Diagnostics.Debug.WriteLine("Disposed Incrementer");
+			}
+
+			return TotalIncrement;
+		}
+
+		private async Task<int> Consumer(AsyncCounter counter, CancellationToken token)
+		{
+			int TotalDecrement = 0;
+			
+			try
+			{
+				while (!token.IsCancellationRequested)
+				{
+					await counter.Decrement(token);
+
+					TotalDecrement++;
+
+					if (TotalDecrement % 16 == 0)
+						await Task.Yield();
+				}
+			}
+			catch (OperationCanceledException)
+			{
+				System.Diagnostics.Debug.WriteLine("Cancelled Consumer");
+			}
+			catch (ObjectDisposedException)
+			{
+				System.Diagnostics.Debug.WriteLine("Disposed Consumer");
+			}
+
+			return TotalDecrement;
+		}
+
+		private async Task<int> ConsumerCancel(AsyncCounter counter, CancellationToken token)
+		{
+			int TotalDecrement = 0;
+
+			while (!token.IsCancellationRequested)
+			{
+				using (var MySource = new CancellationTokenSource(50))
+				{
+					TotalDecrement += await Consumer(counter, MySource.Token);
+				}
+			}
+
+			return TotalDecrement;
+		}
 	}
 }
