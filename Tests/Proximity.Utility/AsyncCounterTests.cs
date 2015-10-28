@@ -760,7 +760,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyResults.Take(2).Sum(), MyResults.Skip(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Skip(2).Sum(), MyCounter.CurrentCount);
 		}
 
-		[Test, Timeout(2000)]
+		[Test, Repeat(10), Timeout(2000)]
 		public async Task ConsumeLotsIncrementLots()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();

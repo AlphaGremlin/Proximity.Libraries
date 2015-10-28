@@ -195,7 +195,7 @@ namespace Proximity.Utility.Collections
 		/// <param name="count">The number of records to try and read. If omitted, reads as many as are available</param>
 		/// <returns>An enumeration of the desired records, or null if no data is available</returns>
 		/// <remarks>The enumeration may contain more or less than the desired count, depending on availability</remarks>
-		public IEnumerable<TItem> TryReadAfter(TKey key, int? count)
+		public PagedSetResults<TItem> TryReadAfter(TKey key, int? count)
 		{	//****************************************
 			int PageCount;
 			IEnumerable<TItem> PageResults;
@@ -211,22 +211,18 @@ namespace Proximity.Utility.Collections
 						// We have a count specified
 						PageCount = MyPage.TryGetAfter(key, out PageResults);
 
-						if (PageCount == 0)
-							return Enumerable.Empty<TItem>();
-
 						// Are there enough results, or have we reached the end?
 						if (PageCount >= count.Value || MyPage.IsFinish)
 						{
 							//Log.Debug("PagedSet seeking {0} found Page {1} to {2} with {3} of {4} items", key, MyPage.Min, MyPage.Max, Results.Count, count.Value);
 
-							return PageResults;
+							return new PagedSetResults<TItem>(PageResults, true);
 						}
 
 						//Log.Debug("PagedSet seeking {0} found Page {1} to {2} but only found {3} of {4} items", key, MyPage.Min, MyPage.Max, Results.Count, count.Value); 
 
-						// Data is not currently paged in
-						// HACK: Return it anyway, prevents some annyoing bugs with trade history
-						return PageResults;
+						// Data is not fully paged in
+						return new PagedSetResults<TItem>(PageResults, false);
 					}
 					else
 					{
@@ -235,18 +231,15 @@ namespace Proximity.Utility.Collections
 						{
 							PageCount = MyPage.TryGetAfter(key, out PageResults);
 
-							if (PageCount == 0)
-								return Enumerable.Empty<TItem>();
-
 							//Log.Debug("PagedSet seeking {0} found finish Page {1} to {2} with {3} of {4} items", key, MyPage.Min, MyPage.Max, Results.Count, count.Value);
 
-							return PageResults;
+							return new PagedSetResults<TItem>(PageResults, true);
 						}
 
 						//Log.Debug("PagedSet seeking {0} found Page {1} to {2} but it was not the finish page", key, MyPage.Min, MyPage.Max);
 
 						// No, so we don't have everything, which means we need to page it in
-						return null;
+						return PagedSetResults<TItem>.Empty;
 					}
 				}
 			}
@@ -261,7 +254,7 @@ namespace Proximity.Utility.Collections
 				{
 					//Log.Debug("PagedSet seeking {0} was after the Finish page", key);
 
-					return Enumerable.Empty<TItem>();
+					return PagedSetResults<TItem>.EmptyComplete;
 				}
 
 				// Check if there's any data at all
@@ -269,14 +262,14 @@ namespace Proximity.Utility.Collections
 				{
 					//Log.Debug("PagedSet seeking {0} found an empty set", key);
 
-					return Enumerable.Empty<TItem>();
+					return PagedSetResults<TItem>.EmptyComplete;
 				}
 			}
 
 			//Log.Debug("PagedSet seeking {0} found no pages", key);
 
 			// No page that covered our data was found
-			return null;
+			return PagedSetResults<TItem>.Empty;
 		}
 
 		/// <summary>
@@ -285,33 +278,33 @@ namespace Proximity.Utility.Collections
 		/// <param name="count">The number of records to try and retrieve</param>
 		/// <returns>An enumeration of the desired records, or null if no data is available</returns>
 		/// <remarks>The enumeration may contain more or less than the desired count, depending on availability</remarks>
-		public IEnumerable<TItem> TryReadAfter(int? count)
+		public PagedSetResults<TItem> TryReadAfter(int? count)
 		{
 			if (_Pages.Count == 0 || !_Pages.Min.IsStart)
 			{
 				//Log.Debug("PagedSet was empty or did not have a start page");
 
-				return null;
+				return PagedSetResults<TItem>.Empty;
 			}
 
 			if (count.HasValue)
 			{
 				if (_Pages.Min.Count >= count.Value)
-					return _Pages.Min.Items;
+					return new PagedSetResults<TItem>(_Pages.Min.Items, true);
 
 				//Log.Debug("PagedSet found only {0} of {1} items", _Pages.Max.Items.Count, count.Value);
 
-				return null;
+				return new PagedSetResults<TItem>(_Pages.Min.Items, false);
 			}
 
 			if (!_Pages.Min.IsFinish)
 			{
 				//Log.Debug("PagedSet did not have a starting page");
 
-				return null;
+				return new PagedSetResults<TItem>(_Pages.Min.Items, false);
 			}
 
-			return _Pages.Min.Items;
+			return new PagedSetResults<TItem>(_Pages.Min.Items, true);
 		}
 
 		/// <summary>
@@ -321,7 +314,7 @@ namespace Proximity.Utility.Collections
 		/// <param name="count">The number of records to try and read. If omitted, reads as many as are available</param>
 		/// <returns>An enumeration of the desired records, or null if no data is available</returns>
 		/// <remarks>The enumeration may contain more or less than the desired count, depending on availability</remarks>
-		public IEnumerable<TItem> TryReadBefore(TKey key, int? count)
+		public PagedSetResults<TItem> TryReadBefore(TKey key, int? count)
 		{	//****************************************
 			int PageCount;
 			IEnumerable<TItem> PageResults;
@@ -337,22 +330,18 @@ namespace Proximity.Utility.Collections
 						// We have a count specified
 						PageCount = MyPage.TryGetBefore(key, out PageResults);
 
-						if (PageCount == 0)
-							return Enumerable.Empty<TItem>();
-
 						// Are there enough results, or have we reached the start?
 						if (PageCount >= count.Value || MyPage.IsStart)
 						{
 							//Log.Debug("PagedSet seeking {0} found Page {1} to {2} with {3} of {4} items", key, MyPage.Min, MyPage.Max, Results.Count, count.Value);
 
-							return PageResults;
+							return new PagedSetResults<TItem>(PageResults, true);
 						}
 
 						//Log.Debug("PagedSet seeking {0} found Page {1} to {2} but only found {3} of {4} items", key, MyPage.Min, MyPage.Max, Results.Count, count.Value); 
 
-						// Data is not currently paged in
-						// HACK: Return it anyway, prevents some annyoing bugs with trade history
-						return PageResults;
+						// Data is not currently paged in, return what we have
+						return new PagedSetResults<TItem>(PageResults, false);
 					}
 					else
 					{
@@ -361,18 +350,15 @@ namespace Proximity.Utility.Collections
 						{
 							PageCount = MyPage.TryGetBefore(key, out PageResults);
 
-							if (PageCount == 0)
-								return Enumerable.Empty<TItem>();
-
 							//Log.Debug("PagedSet seeking {0} found start Page {1} to {2} with {3} of {4} items", key, MyPage.Min, MyPage.Max, Results.Count, count.Value);
 
-							return PageResults;
+							return new PagedSetResults<TItem>(PageResults, true);
 						}
 
 						//Log.Debug("PagedSet seeking {0} found Page {1} to {2} but it was not the start page", key, MyPage.Min, MyPage.Max);
 
 						// No, so we don't have everything, which means we need to page it in
-						return null;
+						return PagedSetResults<TItem>.Empty;
 					}
 				}
 			}
@@ -387,7 +373,7 @@ namespace Proximity.Utility.Collections
 				{
 					//Log.Debug("PagedSet seeking {0} was before the Start page", key);
 
-					return Enumerable.Empty<TItem>();
+					return PagedSetResults<TItem>.EmptyComplete;
 				}
 
 				// Check if there's any data at all
@@ -395,14 +381,14 @@ namespace Proximity.Utility.Collections
 				{
 					//Log.Debug("PagedSet seeking {0} found an empty set", key);
 
-					return Enumerable.Empty<TItem>();
+					return PagedSetResults<TItem>.EmptyComplete;
 				}
 			}
 
 			//Log.Debug("PagedSet seeking {0} found no pages", key);
 
 			// No page that covered our data was found
-			return null;
+			return PagedSetResults<TItem>.Empty;
 		}
 
 		/// <summary>
@@ -411,33 +397,33 @@ namespace Proximity.Utility.Collections
 		/// <param name="count">The number of records to try and retrieve</param>
 		/// <returns>An enumeration of the desired records, or null if no data is available</returns>
 		/// <remarks>The enumeration may contain more or less than the desired count, depending on availability</remarks>
-		public IEnumerable<TItem> TryReadBefore(int? count)
+		public PagedSetResults<TItem> TryReadBefore(int? count)
 		{
 			if (_Pages.Count == 0 || !_Pages.Max.IsFinish)
 			{
 				//Log.Debug("PagedSet was empty or did not have a finish page");
 
-				return null;
+				return PagedSetResults<TItem>.Empty;
 			}
 
 			if (count.HasValue)
 			{
 				if (_Pages.Max.Count >= count.Value)
-					return _Pages.Max.Items;
+					return new PagedSetResults<TItem>(_Pages.Max.Items, true);
 
 				//Log.Debug("PagedSet found only {0} of {1} items", _Pages.Max.Items.Count, count.Value);
 
-				return null;
+				return new PagedSetResults<TItem>(_Pages.Max.Items, false);
 			}
 
 			if (!_Pages.Max.IsStart)
 			{
 				//Log.Debug("PagedSet did not have a starting page");
 
-				return null;
+				return new PagedSetResults<TItem>(_Pages.Max.Items, false);
 			}
 
-			return _Pages.Max.Items;
+			return new PagedSetResults<TItem>(_Pages.Max.Items, true);
 		}
 
 		//****************************************
@@ -499,6 +485,9 @@ namespace Proximity.Utility.Collections
 			target.Remove(oldItem);
 			target.Add(newItem);
 		}
+
+		//****************************************
+
 	}
 }
 #endif

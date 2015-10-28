@@ -115,6 +115,7 @@
     <Compile Include="AsyncCollectionTests.cs" />
     <Compile Include="AsyncCounterTests.cs" />
     <Compile Include="AsyncReadWriteLockTests.cs" />
+    <Compile Include="AsyncSemaphoreSlimTests.cs" />
     <Compile Include="AsyncSemaphoreTests.cs" />
     <Compile Include="AsyncSwitchLockTests.cs" />
     <Compile Include="AsyncTaskFlagTests.cs" />

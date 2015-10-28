@@ -130,7 +130,7 @@ namespace Proximity.Utility.Tests
 
 			MySet = MySet.AddRange(MyContents, true, true);
 
-			var MyResults = MySet.TryReadAfter(MyContents[Index].Item1, null).ToArray();
+			var MyResults = MySet.TryReadAfter(MyContents[Index].Item1, null).Results.ToArray();
 
 			//****************************************
 
@@ -149,7 +149,7 @@ namespace Proximity.Utility.Tests
 
 			MySet = MySet.AddRange(MyContents, true, true);
 
-			var MyResults = MySet.TryReadBefore(MyContents[Index].Item1, null).ToArray();
+			var MyResults = MySet.TryReadBefore(MyContents[Index].Item1, null).Results.ToArray();
 
 			//****************************************
 
