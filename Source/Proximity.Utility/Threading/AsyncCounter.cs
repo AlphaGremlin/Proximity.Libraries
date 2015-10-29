@@ -203,7 +203,11 @@ namespace Proximity.Utility.Threading
 			// Try and retrieve a waiter
 			while (_Waiters.TryDequeue(out NextWaiter))
 			{
-				// Yes. Don't want to activate waiters on the calling thread though, since it can cause a stack overflow if Increment gets called from a Decrement continuation
+				// Is it completed?
+				if (NextWaiter.Task.IsCompleted)
+					continue; // Yes, so find another
+
+				// Don't want to activate waiters on the calling thread though, since it can cause a stack overflow if Increment gets called from a Decrement continuation
 #if PORTABLE
 				Task.Factory.StartNew(ReleaseWaiter, NextWaiter);
 #else
@@ -214,7 +218,7 @@ namespace Proximity.Utility.Threading
 
 			//****************************************
 
-			// Nobody is waiting. Try and increment the counter
+			// Nobody is waiting, so we can try and increment the counter. This will release anybody peeking
 			if (!TryIncrement())
 				throw new ObjectDisposedException("AsyncCounter", "Counter has been disposed of");
 
@@ -224,9 +228,10 @@ namespace Proximity.Utility.Threading
 
 			// Someone is waiting. Try and take the counter back
 			if (!InternalTryDecrement())
-				return; // Failed to take the counter back, so we're done
+				return; // Failed to take the counter back (pre-empted by a peek waiter or concurrent decrement), so we're done
 
 			// Success. Forcibly increment, even if we've been disposed
+			// This will attempt to pass the counter to a waiter and if it fails, will put it back even if we dispose
 			ForceIncrement();
 		}
 
@@ -247,7 +252,7 @@ namespace Proximity.Utility.Threading
 		/// <remarks>This will only succeed when nobody is waiting on a Decrement operation, so Decrement operations won't be waiting while the counter is non-zero</remarks>
 		public Task<AsyncCounter> PeekDecrement(CancellationToken token)
 		{	//****************************************
-			TaskCompletionSource<AsyncCounter> NewWaiter, NextWaiter;
+			TaskCompletionSource<AsyncCounter> NewWaiter;
 			//****************************************
 
 			int MyCount = _CurrentCount;
@@ -271,8 +276,7 @@ namespace Proximity.Utility.Threading
 			if (TryPeekDecrement())
 			{
 				// Let any peekers know they can try and take a counter
-				while (_PeekWaiters.TryDequeue(out NextWaiter))
-					NextWaiter.TrySetResult(this);
+				ReleasePeekers();
 			}
 
 			return PrepareWaiter(NewWaiter, token);
@@ -305,7 +309,11 @@ namespace Proximity.Utility.Threading
 				// Try and retrieve a waiter
 				while (_Waiters.TryDequeue(out NextWaiter))
 				{
-					// Yes. Don't want to activate waiters on the calling thread though, since it can cause a stack overflow if Increment gets called from a Decrement continuation
+					// Is it completed?
+					if (NextWaiter.Task.IsCompleted)
+						continue; // Yes, so find another
+
+					// Don't want to activate waiters on the calling thread though, since it can cause a stack overflow if Increment gets called from a Decrement continuation
 #if PORTABLE
 					Task.Factory.StartNew(ReleaseWaiter, NextWaiter);
 #else
@@ -452,9 +460,10 @@ namespace Proximity.Utility.Threading
 			TaskCompletionSource<AsyncCounter> NextWaiter;
 			//****************************************
 
-			// Let any peekers know they can try and take a counter
-			while (_PeekWaiters.TryDequeue(out NextWaiter))
+			// Is there a Peek Waiter?
+			if (_PeekWaiters.TryDequeue(out NextWaiter))
 			{
+				// Yes, release it on another thread so we don't hold up the caller
 #if PORTABLE
 				Task.Factory.StartNew(ReleasePeeker, NextWaiter);
 #else
@@ -475,11 +484,35 @@ namespace Proximity.Utility.Threading
 
 		private void ReleasePeeker(object state)
 		{	//****************************************
-			var MyWaiter = (TaskCompletionSource<AsyncCounter>)state;
+			var FirstWaiter = (TaskCompletionSource<AsyncCounter>)state;
+			TaskCompletionSource<AsyncCounter> NextWaiter;
+			List<TaskCompletionSource<AsyncCounter>> MyWaiters;
 			//****************************************
 
-			// Release our Peek Waiter
-			MyWaiter.TrySetResult(this);
+			// If there are more peek waiters, release them too
+			if (_PeekWaiters.TryDequeue(out NextWaiter))
+			{
+				// We want to avoid a situation where the peek continuation queues another peek waiter, causing an infinite loop
+				MyWaiters = new List<TaskCompletionSource<AsyncCounter>>();
+
+				MyWaiters.Add(NextWaiter);
+				
+				// If they run synchronously, this also lets peek waiters have an order to run their continuations in
+				while (_PeekWaiters.TryDequeue(out NextWaiter))
+					MyWaiters.Add(NextWaiter);
+
+				// Now the queue is empty, it's safe to release our first Peek Waiter
+				FirstWaiter.TrySetResult(this);
+
+				// Release the rest of them
+				foreach (var MyWaiter in MyWaiters)
+					MyWaiter.TrySetResult(this);
+			}
+			else
+			{
+				// Release our Peek Waiter
+				FirstWaiter.TrySetResult(this);
+			}
 		}
 
 		private static void Cancel(object state)

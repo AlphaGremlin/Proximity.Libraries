@@ -104,9 +104,8 @@ namespace Proximity.Utility.Tests
 				Assert.IsTrue(MyTask.IsCanceled, "Wait not cancelled");
 			}
 			
+			// Since there are no waiters that aren't cancelled, this should succeed immediately
 			MyCounter.Increment();
-			
-			Thread.Sleep(100); // Increment happens on another thread and there's nothing to wait on
 			
 			//****************************************
 			
@@ -147,20 +146,24 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000)]
-		public void DecrementTimeout()
+		public async Task DecrementTimeout()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
 			//****************************************
 			
-			var MyTask = MyCounter.Decrement(TimeSpan.FromMilliseconds(50));
-			
-			Thread.Sleep(100);
-			
+			try
+			{
+				await MyCounter.Decrement(TimeSpan.FromMilliseconds(10));
+
+				Assert.Fail("Task did not cancel");
+			}
+			catch (OperationCanceledException)
+			{
+			}
+
 			//****************************************
 			
-			Assert.IsTrue(MyTask.IsCanceled, "Wait not cancelled");
-			
-			MyCounter.Dispose();
+			//MyCounter.Dispose();
 			
 			Assert.AreEqual(0, MyCounter.WaitingCount, "Waiter still registered");
 			Assert.AreEqual(0, MyCounter.CurrentCount, "Count not zero");
@@ -375,7 +378,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000)]
-		public void DecrementAny([Values(0, 1)] int index)
+		public async Task DecrementAny([Values(0, 1)] int index)
 		{	//****************************************
 			var MyCounters = new AsyncCounter[] { new AsyncCounter(0), new AsyncCounter(0) };
 			//****************************************
@@ -385,12 +388,11 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyTask.IsCompleted, "Task unexpectedly completed");
 			
 			MyCounters[index].Increment();
-			
-			Thread.Sleep(100); // Increment happens on another thread and there's nothing to wait on
+
+			await MyTask;
 			
 			//****************************************
 			
-			Assert.IsTrue(MyTask.IsCompleted, "Still waiting to decrement");
 			Assert.AreEqual(MyCounters[index], MyTask.Result, "Decremented unexpected counter");
 			
 			Assert.AreEqual(0, MyCounters[0].CurrentCount, "Counter not decremented");
@@ -421,7 +423,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000)]
-		public void DecrementAnyMulti()
+		public async Task DecrementAnyMulti()
 		{	//****************************************
 			var MyCounters = new AsyncCounter[] { new AsyncCounter(0), new AsyncCounter(0) };
 			//****************************************
@@ -433,12 +435,12 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyTask2.IsCompleted, "Task 2 unexpectedly completed");
 			
 			MyCounters[0].Increment();
-			
-			Thread.Sleep(100); // Increment happens on another thread and there's nothing to wait on
+
+			await MyTask1; // Since it was the first registered, it should be the first to complete
 			
 			MyCounters[1].Increment();
-			
-			Thread.Sleep(100); // Increment happens on another thread and there's nothing to wait on
+
+			await MyTask2;
 			
 			//****************************************
 			
@@ -474,12 +476,11 @@ namespace Proximity.Utility.Tests
 				
 				Assert.IsTrue(MyTask.IsCanceled, "Wait not cancelled");
 			}
-			
+
+			// Since there are no waiters that aren't cancelled, these should succeed immediately
 			MyCounters[0].Increment();
 			MyCounters[1].Increment();
-			
-			Thread.Sleep(100); // Increment happens on another thread and there's nothing to wait on
-			
+
 			Assert.AreEqual(1, MyCounters[0].CurrentCount, "Counter decremented");
 			Assert.AreEqual(0, MyCounters[0].WaitingCount, "Tasks unexpectedly waiting");
 			
@@ -496,12 +497,13 @@ namespace Proximity.Utility.Tests
 			var MyTask = AsyncCounter.DecrementAny(MyCounters);
 			
 			MyCounters[0].Dispose();
-			
-			Thread.Sleep(100); // Disposal happens on another thread and there's nothing to wait on
+
+			// Wait for the DecrementAny task to cancel
+			while (!MyTask.IsCompleted)
+				Thread.Sleep(10);
 			
 			//****************************************
 			
-			Assert.IsTrue(MyTask.IsCompleted, "Still waiting to decrement");
 			Assert.IsTrue(MyTask.IsFaulted, "Did not throw");
 			//Assert.AreEqual(MyCounters[0], MyTask.Result, "Decremented unexpected counter");
 			
@@ -673,6 +675,28 @@ namespace Proximity.Utility.Tests
 		}
 
 		[Test, Timeout(2000)]
+		public async Task ConsumeDualPeek()
+		{	//****************************************
+			var MyCounter = new AsyncCounter();
+			int[] MyResults;
+			//****************************************
+
+			using (var MySource = new CancellationTokenSource(1000))
+			{
+				var Consume1 = Consumer(MyCounter, MySource.Token);
+				var Consume2 = ConsumerPeek(MyCounter, MySource.Token);
+
+				var Increment1 = Increment(MyCounter, 10, MySource.Token);
+
+				MyResults = await Task.WhenAll(Consume1, Consume2, Increment1);
+			}
+
+			//****************************************
+
+			Assert.AreEqual(MyResults[2], MyResults.Take(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Take(2).Sum(), MyCounter.CurrentCount);
+		}
+
+		[Test, Timeout(2000)]
 		public async Task ConsumeDualIncrement()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -683,6 +707,29 @@ namespace Proximity.Utility.Tests
 			{
 				var Consume1 = Consumer(MyCounter, MySource.Token);
 				var Consume2 = Consumer(MyCounter, MySource.Token);
+
+				var Increment1 = Increment(MyCounter, 10, MySource.Token);
+				var Increment2 = Increment(MyCounter, 10, MySource.Token);
+
+				MyResults = await Task.WhenAll(Consume1, Consume2, Increment1, Increment2);
+			}
+
+			//****************************************
+
+			Assert.AreEqual(MyResults.Skip(2).Sum(), MyResults.Take(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Take(2).Sum(), MyCounter.CurrentCount);
+		}
+
+		[Test, Timeout(2000)]
+		public async Task ConsumeDualIncrementPeek()
+		{	//****************************************
+			var MyCounter = new AsyncCounter();
+			int[] MyResults;
+			//****************************************
+
+			using (var MySource = new CancellationTokenSource(1000))
+			{
+				var Consume1 = Consumer(MyCounter, MySource.Token);
+				var Consume2 = ConsumerPeek(MyCounter, MySource.Token);
 
 				var Increment1 = Increment(MyCounter, 10, MySource.Token);
 				var Increment2 = Increment(MyCounter, 10, MySource.Token);
@@ -760,7 +807,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyResults.Take(2).Sum(), MyResults.Skip(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Skip(2).Sum(), MyCounter.CurrentCount);
 		}
 
-		[Test, Repeat(10), Timeout(2000)]
+		[Test, Repeat(2), Timeout(2000)]
 		public async Task ConsumeLotsIncrementLots()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -770,6 +817,27 @@ namespace Proximity.Utility.Tests
 			using (var MySource = new CancellationTokenSource(1000))
 			{
 				var Consumers = Enumerable.Range(0, 5).Select(count => Consumer(MyCounter, MySource.Token));
+
+				var Incrementers = Enumerable.Range(0, 5).Select(count => Increment(MyCounter, 50, MySource.Token));
+
+				MyResults = await Task.WhenAll(Incrementers.Concat(Consumers));
+			}
+
+			//****************************************
+
+			Assert.AreEqual(MyResults.Take(5).Sum(), MyResults.Skip(5).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Skip(5).Sum(), MyCounter.CurrentCount);
+		}
+
+		[Test, Repeat(2), Timeout(2000)]
+		public async Task ConsumeLotsIncrementLotsPeek()
+		{	//****************************************
+			var MyCounter = new AsyncCounter();
+			int[] MyResults;
+			//****************************************
+
+			using (var MySource = new CancellationTokenSource(1000))
+			{
+				var Consumers = Enumerable.Range(0, 5).Select(count => count % 2 == 0 ? Consumer(MyCounter, MySource.Token) : ConsumerPeek(MyCounter, MySource.Token));
 
 				var Incrementers = Enumerable.Range(0, 5).Select(count => Increment(MyCounter, 50, MySource.Token));
 
@@ -804,6 +872,28 @@ namespace Proximity.Utility.Tests
 		}
 
 		[Test, Timeout(2000)]
+		public async Task ConsumeDualCancelPeek()
+		{	//****************************************
+			var MyCounter = new AsyncCounter();
+			int[] MyResults;
+			//****************************************
+
+			using (var MySource = new CancellationTokenSource(1000))
+			{
+				var Consume1 = Consumer(MyCounter, MySource.Token);
+				var Consume2 = ConsumerCancelPeek(MyCounter, MySource.Token);
+
+				var Increment1 = Increment(MyCounter, 10, MySource.Token);
+
+				MyResults = await Task.WhenAll(Consume1, Consume2, Increment1);
+			}
+
+			//****************************************
+
+			Assert.AreEqual(MyResults[2], MyResults.Take(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Take(2).Sum(), MyCounter.CurrentCount);
+		}
+
+		[Test, Timeout(2000)]
 		public async Task ConsumeDualDispose()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -814,6 +904,30 @@ namespace Proximity.Utility.Tests
 			{
 				var Consume1 = Consumer(MyCounter, CancellationToken.None);
 				var Consume2 = Consumer(MyCounter, CancellationToken.None);
+
+				var Increment1 = Increment(MyCounter, 10, CancellationToken.None);
+
+				MySource.Token.Register(MyCounter.Dispose);
+
+				MyResults = await Task.WhenAll(Consume1, Consume2, Increment1);
+			}
+
+			//****************************************
+
+			Assert.AreEqual(MyResults[2], MyResults.Take(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Take(2).Sum(), MyCounter.CurrentCount);
+		}
+
+		[Test, Timeout(2000)]
+		public async Task ConsumeDualDisposePeek()
+		{	//****************************************
+			var MyCounter = new AsyncCounter();
+			int[] MyResults;
+			//****************************************
+
+			using (var MySource = new CancellationTokenSource(1000))
+			{
+				var Consume1 = Consumer(MyCounter, CancellationToken.None);
+				var Consume2 = ConsumerPeek(MyCounter, CancellationToken.None);
 
 				var Increment1 = Increment(MyCounter, 10, CancellationToken.None);
 
@@ -856,6 +970,7 @@ namespace Proximity.Utility.Tests
 		private async Task<int> Increment(AsyncCounter counter, int threshold, CancellationToken token)
 		{
 			int TotalIncrement = 0;
+			var MyWait = new SpinWait();
 
 			try
 			{
@@ -871,7 +986,7 @@ namespace Proximity.Utility.Tests
 							await Task.Yield();
 					}
 
-					await Task.Yield();
+					MyWait.SpinOnce();
 				}
 			}
 			catch (ObjectDisposedException)
@@ -910,6 +1025,37 @@ namespace Proximity.Utility.Tests
 			return TotalDecrement;
 		}
 
+		private async Task<int> ConsumerPeek(AsyncCounter counter, CancellationToken token)
+		{
+			int TotalDecrement = 0;
+
+			try
+			{
+				while (!token.IsCancellationRequested)
+				{
+					await counter.PeekDecrement(token);
+
+					if (!counter.TryDecrement())
+						continue;
+
+					TotalDecrement++;
+
+					if (TotalDecrement % 16 == 0)
+						await Task.Yield();
+				}
+			}
+			catch (OperationCanceledException)
+			{
+				System.Diagnostics.Debug.WriteLine("Cancelled Consumer");
+			}
+			catch (ObjectDisposedException)
+			{
+				System.Diagnostics.Debug.WriteLine("Disposed Consumer");
+			}
+
+			return TotalDecrement;
+		}
+
 		private async Task<int> ConsumerCancel(AsyncCounter counter, CancellationToken token)
 		{
 			int TotalDecrement = 0;
@@ -919,6 +1065,21 @@ namespace Proximity.Utility.Tests
 				using (var MySource = new CancellationTokenSource(50))
 				{
 					TotalDecrement += await Consumer(counter, MySource.Token);
+				}
+			}
+
+			return TotalDecrement;
+		}
+
+		private async Task<int> ConsumerCancelPeek(AsyncCounter counter, CancellationToken token)
+		{
+			int TotalDecrement = 0;
+
+			while (!token.IsCancellationRequested)
+			{
+				using (var MySource = new CancellationTokenSource(50))
+				{
+					TotalDecrement += await ConsumerPeek(counter, MySource.Token);
 				}
 			}
 

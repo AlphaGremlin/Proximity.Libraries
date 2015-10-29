@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Proximity.Utility;
@@ -62,7 +63,11 @@ namespace Proximity.Utility.Threading
 			if (_Dispose != null || Interlocked.CompareExchange(ref _Dispose, new TaskCompletionSource<AsyncSemaphoreSlim>(), null) != null)
 				return;
 
-			CheckWaiters();
+			DisposeWaiters();
+
+			// If there's no counters, we can complete the dispose task
+			if (_CurrentCount == 0)
+				_Dispose.TrySetResult(this);
 		}
 
 		/// <summary>
@@ -108,8 +113,12 @@ namespace Proximity.Utility.Threading
 		/// <returns>A task that completes when a counter is taken, giving an IDisposable to release the counter</returns>
 		public Task<IDisposable> Wait(CancellationToken token)
 		{
-			// Try and take a counter as long as nobody is waiting on it
-			if (TryIncrement(true))
+			// Are we disposed?
+			if (_Dispose != null)
+				throw new ObjectDisposedException("AsyncSemaphoreSlim", "Semaphore has been disposed of");
+
+			// Try and add a counter as long as nobody is waiting on it
+			if (_Waiters.IsEmpty && TryIncrement())
 			{
 #if NET40
 				return TaskEx.FromResult<IDisposable>(new AsyncLockInstance(this));
@@ -118,16 +127,14 @@ namespace Proximity.Utility.Threading
 #endif
 			}
 			
-			// Are we disposed?
-			if (_Dispose != null)
-				throw new ObjectDisposedException("AsyncSemaphoreSlim", "Semaphore has been disposed of");
-
 			// No free counters, add ourselves to the queue waiting on a counter
 			var NewWaiter = new TaskCompletionSource<IDisposable>();
 
 			_Waiters.Enqueue(NewWaiter);
 
-			CheckWaiters();
+			// Did a counter become available while we were busy?
+			if (TryIncrement())
+				Decrement();
 
 			// Check if we can get cancelled
 			if (token.CanBeCanceled)
@@ -144,7 +151,7 @@ namespace Proximity.Utility.Threading
 
 		//****************************************
 
-		private bool TryIncrement(bool checkWaiters)
+		private bool TryIncrement()
 		{	//****************************************
 			var MyWait = new SpinWait();
 
@@ -153,33 +160,15 @@ namespace Proximity.Utility.Threading
 
 			for (; ; )
 			{
-				// Are we disposed?
-				if (_Dispose != null)
-					return false;
-
 				OldCount = _CurrentCount;
 
 				// Are there any free counters?
 				if (OldCount >= _MaxCount)
 					return false;
 
-				// There's a free counter, but if someone is waiting, we shouldn't take it. The thread that did the free will handle the waiter
-				if (checkWaiters && !_Waiters.IsEmpty)
-					return false;
-
 				// Free counter, attempt to take it
 				if (Interlocked.CompareExchange(ref _CurrentCount, OldCount + 1, OldCount) == OldCount)
-				{
-					// If we got disposed of, release it immediately
-					if (_Dispose != null)
-					{
-						Decrement();
-
-						return false;
-					}
-
 					return true;
-				}
 
 				// Failed. Spin and try again
 				MyWait.SpinOnce();
@@ -187,24 +176,42 @@ namespace Proximity.Utility.Threading
 		}
 
 		private void Decrement()
-		{
-			// Is there anybody waiting?
-			if (_Waiters.IsEmpty)
+		{	//****************************************
+			TaskCompletionSource<IDisposable> NextWaiter;
+			int NewCount;
+			//****************************************
+
+			do
 			{
-				// Release a counter
-				Interlocked.Decrement(ref _CurrentCount);
+				// Try and retrieve a waiter while we're not disposed
+				while (_Waiters.TryDequeue(out NextWaiter))
+				{
+					// Is it completed?
+					if (NextWaiter.Task.IsCompleted)
+						continue; // Yes, so find another
 
-				CheckWaiters();
-
-				return;
-			}
-
-			// Somebody is waiting
+					// Don't want to activate waiters on the calling thread though, since it can cause a stack overflow if Increment gets called from a Decrement continuation
 #if PORTABLE
-			Task.Factory.StartNew(ReleaseWaiters, true);
+					Task.Factory.StartNew(ReleaseWaiter, NextWaiter);
 #else
-			ThreadPool.UnsafeQueueUserWorkItem(ReleaseWaiters, true);
+					ThreadPool.UnsafeQueueUserWorkItem(ReleaseWaiter, NextWaiter);
 #endif
+					return;
+				}
+
+				// Release a counter
+				NewCount = Interlocked.Decrement(ref _CurrentCount);
+
+				// Is there anybody waiting?
+				if (_Waiters.IsEmpty)
+					break;
+
+				// Someone is waiting. Try and put the counter back. If it fails, someone else can take care of the waiter
+			} while (TryIncrement());
+
+			// If we've disposed and there's no counters, we can complete the dispose task
+			if (_Dispose != null && NewCount == 0)
+				_Dispose.TrySetResult(this);
 		}
 
 		private void Cancel(object state)
@@ -216,86 +223,16 @@ namespace Proximity.Utility.Threading
 			MyWaiter.TrySetCanceled();
 		}
 
-		private void CheckWaiters()
-		{
-			// Is there anybody waiting?
-			if (_Waiters.IsEmpty)
-			{
-				// If we've disposed and there's no waiters or counters, we can complete the dispose task
-				if (_Dispose != null && _CurrentCount == 0)
-					_Dispose.TrySetResult(this);
-
-				return;
-			}
-
-#if PORTABLE
-			Task.Factory.StartNew(ReleaseWaiters, false);
-#else
-			ThreadPool.UnsafeQueueUserWorkItem(ReleaseWaiters, false);
-#endif
-		}
-
-		private void ReleaseWaiters(object state)
+		private void ReleaseWaiter(object state)
 		{	//****************************************
-			TaskCompletionSource<IDisposable> NextWaiter = null;
-			AsyncLockInstance MyInstance = null;
-			bool IsSemaphoreHeld = (bool)state;
+			var MyWaiter = (TaskCompletionSource<IDisposable>)state;
 			//****************************************
 
-			for (; ; )
-			{
-				// Are there any waiters?
-				if (_Waiters.IsEmpty)
-				{
-					// No, do we hold a counter?
-					if (IsSemaphoreHeld)
-						Decrement(); // Yes, so release it first. Will set disposed if necessary
-
-					return;
-				}
-
-				if (IsSemaphoreHeld)
-				{
-					// Have we been disposed?
-					if (_Dispose != null)
-					{
-						DisposeWaiters(); // Dump all the waiters first
-
-						Decrement(); // Now release our counter
-
-						return;
-					}
-				}
-				// Can we take a semaphore?
-				else if (!TryIncrement(false))
-				{
-					// Were we disposed?
-					if (_Dispose != null)
-						DisposeWaiters();
-
-					// Can't take a semaphore, so leave the waiters to someone else
-					return;
-				}
-
-				// Try and retrieve a waiter
-				while (_Waiters.TryDequeue(out NextWaiter))
-				{
-					if (MyInstance == null)
-						MyInstance = new AsyncLockInstance(this);
-
-					// Got a waiter. Can we complete it?
-					if (NextWaiter.TrySetResult(MyInstance))
-						return; // Success, semaphore has been passed on. We're done
-
-					// No, so it was cancelled. Try to get another
-				}
-
-				// The waiter was stolen by another thread.
-				// Loop back and try again
-				IsSemaphoreHeld = true;
-			}
+			// Release our Waiter
+			if (!MyWaiter.TrySetResult(new AsyncLockInstance(this)))
+				Decrement(); // Failed so it was cancelled. Make sure we remove the counter
 		}
-			
+
 		private void DisposeWaiters()
 		{	//****************************************
 			TaskCompletionSource<IDisposable> MyWaiter;
@@ -321,7 +258,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		public int WaitingCount
 		{
-			get { return _Waiters.Count; }
+			get { return _Waiters.Count(waiter => !waiter.Task.IsCompleted); }
 		}
 
 		/// <summary>
@@ -344,7 +281,8 @@ namespace Proximity.Utility.Threading
 				_MaxCount = value;
 
 				// Release any waiters that might now have free slots
-				CheckWaiters();
+				if (!_Waiters.IsEmpty && TryIncrement())
+					Decrement();
 			}
 		}
 

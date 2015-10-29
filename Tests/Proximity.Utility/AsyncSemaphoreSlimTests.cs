@@ -132,16 +132,20 @@ namespace Proximity.Utility.Tests
 
 			using (await MyLock.Wait())
 			{
-				MyWait = MyLock.Wait(TimeSpan.FromMilliseconds(50));
+				MyWait = MyLock.Wait(TimeSpan.FromMilliseconds(10));
 
-				Thread.Sleep(100);
+				try
+				{
+					await MyWait;
+
+					Assert.Fail("Wait did not cancel");
+				}
+				catch (OperationCanceledException)
+				{
+				}
 			}
 
 			//****************************************
-
-			Thread.Sleep(100); // Release happens on another thread and there's nothing to wait on
-
-			Assert.IsTrue(MyWait.IsCanceled, "Did not cancel");
 
 			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
@@ -193,6 +197,48 @@ namespace Proximity.Utility.Tests
 			//****************************************
 
 			Assert.AreEqual(100, Resource, "Block not entered");
+
+			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
+			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
+		}
+
+		[Test, Timeout(3000)]
+		public async Task ConcurrentContest()
+		{	//****************************************
+			var MyLock = new AsyncSemaphoreSlim();
+			int Resource = 0;
+			//****************************************
+
+			using (var MyCancelSource = new CancellationTokenSource(2000))
+			{
+				await Task.WhenAll(
+					Enumerable.Range(0, 16).Select(
+						async count =>
+						{
+							var MySpinWait = new SpinWait();
+
+							await Task.Yield(); // Yield, so it doesn't serialise
+
+							while (!MyCancelSource.Token.IsCancellationRequested)
+							{
+								using (var MyWait = await MyLock.Wait())
+								{
+									Assert.AreEqual(1, Interlocked.Increment(ref Resource), "Concurrent Entry");
+
+									Assert.AreEqual(0, Interlocked.Decrement(ref Resource), "Concurrent Exit");
+								}
+
+								MySpinWait.SpinOnce();
+							}
+
+							return;
+						})
+				);
+			}
+
+			//****************************************
+
+			Assert.AreEqual(0, Resource, "Block still entered");
 
 			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
