@@ -14,24 +14,33 @@ using System.Runtime.InteropServices;
 namespace Proximity.Utility.Collections
 {
 	/// <summary>
-	/// Represents a dictionary that holds only weak references to its values
+	/// Represents a concurrent dictionary that holds only weak references to its values
 	/// </summary>
 	/// <remarks>This class does not implement IDictionary or ICollection, as many of the methods have no meaning until you have strong references to the contents</remarks>
 	public class ConcurrentWeakDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>> where TValue : class
 	{	//****************************************
 		private readonly ConcurrentDictionary<TKey, GCHandle> _Dictionary;
+		private GCHandle _DictionaryHandle;
 		//****************************************
-		
-		/// <summary>
-		/// Creates a new WeakDictionary
-		/// </summary>
-		public ConcurrentWeakDictionary()
+
+		private ConcurrentWeakDictionary(ConcurrentDictionary<TKey, GCHandle> dictionary)
 		{
-			_Dictionary = new ConcurrentDictionary<TKey, GCHandle>();
+			_Dictionary = dictionary;
+
+			// If the ConcurrentWeakDictionary is garbage collected, we need to ensure we free the weak references
+			// So, we take a GC Handle of the dictionary which we can use to enumerate the dictionary upon finalisation
+			_DictionaryHandle = GCHandle.Alloc(dictionary, GCHandleType.Normal);
 		}
 		
 		/// <summary>
-		/// Creates a new WeakDictionary of references to the contents of the collection
+		/// Creates a new Concurrent Weak Dictionary
+		/// </summary>
+		public ConcurrentWeakDictionary() : this(new ConcurrentDictionary<TKey, GCHandle>())
+		{
+		}
+		
+		/// <summary>
+		/// Creates a new Concurrent Weak Dictionary of references to the contents of the collection
 		/// </summary>
 		/// <param name="collection">The collection holding the key/value pairs to add</param>
 		public ConcurrentWeakDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection) : this(collection, null)
@@ -39,26 +48,35 @@ namespace Proximity.Utility.Collections
 		}
 		
 		/// <summary>
-		/// Creates a new WeakDictionary with the given equality comparer
+		/// Creates a new Concurrent Weak Dictionary with the given equality comparer
 		/// </summary>
 		/// <param name="comparer">The equality comparer to use when comparing keys</param>
-		public ConcurrentWeakDictionary(IEqualityComparer<TKey> comparer)
+		public ConcurrentWeakDictionary(IEqualityComparer<TKey> comparer) : this(new ConcurrentDictionary<TKey, GCHandle>(comparer))
 		{
-			_Dictionary = new ConcurrentDictionary<TKey, GCHandle>(comparer);
 		}
 		
 		/// <summary>
-		/// Creates a new WeakDictionary of references to the contents of the collection with the given equality comparer
+		/// Creates a new Concurrent Weak Dictionary of references to the contents of the collection with the given equality comparer
 		/// </summary>
 		/// <param name="collection">The collection holding the key/value pairs to add</param>
 		/// <param name="comparer">The equality comparer to use when comparing keys</param>
-		public ConcurrentWeakDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey> comparer)
+		public ConcurrentWeakDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey> comparer) : this(new ConcurrentDictionary<TKey, GCHandle>(collection.Select((value) => new KeyValuePair<TKey, GCHandle>(value.Key, CreateFrom(value.Value))), comparer))
 		{
-			_Dictionary = new ConcurrentDictionary<TKey, GCHandle>(collection.Select((value) => new KeyValuePair<TKey, GCHandle>(value.Key, CreateFrom(value.Value))), comparer);
 		}
 		
 		//****************************************
-		
+
+		/// <summary>
+		/// Finalises the dictionary, releasing all Weak References
+		/// </summary>
+		~ConcurrentWeakDictionary()
+		{
+			if (_DictionaryHandle.IsAllocated)
+				Dispose(false);
+		}
+
+		//****************************************
+
 		/// <summary>
 		/// Adds or replaces a key/value pair
 		/// </summary>
@@ -221,7 +239,37 @@ namespace Proximity.Utility.Collections
 					MyHandle.Free();
 			}
 		}
-		
+
+		/// <summary>
+		/// Checks whether a key has an active value in the dictionary
+		/// </summary>
+		/// <param name="key">The key to check for</param>
+		/// <returns>True if the key exists and the value is still valid, otherwise False</returns>
+		/// <remarks>Note that the value may be garbage collected after or even during this call</remarks>
+		public bool ContainsKey(TKey key)
+		{	//****************************************
+			GCHandle MyHandle;
+			//****************************************
+
+			// Does the item exist in the dictionary?
+			if (_Dictionary.TryGetValue(key, out MyHandle))
+				// Yes, is the reference valid?
+				return MyHandle.Target != null;
+
+			return false;
+		}
+
+		/// <summary>
+		/// Disposes of the Concurrent Weak Dictionary, cleaning up any weak references
+		/// </summary>
+		public void Dispose()
+		{
+			if (_DictionaryHandle.IsAllocated)
+				Dispose(true);
+
+			GC.SuppressFinalize(this);
+		}
+
 		/// <summary>
 		/// Adds or retrieves a value based on the key
 		/// </summary>
@@ -325,7 +373,43 @@ namespace Proximity.Utility.Collections
 				return false;
 			
 			// Yes, try and remove this key/gchandle pair
-			return ((IDictionary<TKey, GCHandle>)_Dictionary).Remove(new KeyValuePair<TKey, GCHandle>(key, MyHandle));
+			if (!((IDictionary<TKey, GCHandle>)_Dictionary).Remove(new KeyValuePair<TKey, GCHandle>(key, MyHandle)))
+				return false;
+
+			// Success, free the handle
+			MyHandle.Free();
+
+			return true;
+		}
+
+		/// <summary>
+		/// Removes all items from the concurrent weak dictionary
+		/// </summary>
+		/// <returns>An array of all the key/value pairs removed</returns>
+		public KeyValuePair<TKey, TValue>[] RemoveAll()
+		{	//****************************************
+			var MyValues = new List<KeyValuePair<TKey, TValue>>(_Dictionary.Count);
+			GCHandle MyHandle;
+			TValue MyValue;
+			//****************************************
+
+			while (_Dictionary.Count > 0)
+			{
+				foreach (var MyKey in _Dictionary.Keys)
+				{
+					if (!_Dictionary.TryRemove(MyKey, out MyHandle))
+						continue;
+
+					MyValue = (TValue)MyHandle.Target;
+
+					if (MyValue != null)
+						MyValues.Add(new KeyValuePair<TKey, TValue>(MyKey, MyValue));
+
+					MyHandle.Free();
+				}
+			}
+
+			return MyValues.ToArray();
 		}
 		
 		/// <summary>
@@ -418,8 +502,7 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="key">The key to remove</param>
 		/// <param name="value">The value to remove, if still referenced. Null if the key was not found or was found but the reference expired</param>
-		/// <returns>True if the key was found, otherwise false</returns>
-		/// <remarks>Will return true with null as value if the reference expired</remarks>
+		/// <returns>True if the key was found and still referenced, otherwise false</returns>
 		public bool TryRemove(TKey key, out TValue value)
 		{	//****************************************
 			GCHandle MyHandle;
@@ -431,7 +514,7 @@ namespace Proximity.Utility.Collections
 				
 				MyHandle.Free();
 				
-				return true;
+				return value != null;
 			}
 			
 			value = null;
@@ -603,11 +686,31 @@ namespace Proximity.Utility.Collections
 		}
 		
 		/// <summary>
+		/// Constructs a list of strong references to the values in the dictionary
+		/// </summary>
+		/// <returns>A list containing all the live values in this dictionary</returns>
+		/// <remarks>Changes made to the returned list will not be reflected in the Weak Dictionary</remarks>
+		public IList<TValue> ToValueList()
+		{
+			return GetValues().ToList();
+		}
+
+		/// <summary>
+		/// Constructs a list of strong references to the current key/value pairs in the dictionary
+		/// </summary>
+		/// <returns>A list containing all the live keys/value pairs in this dictionary</returns>
+		/// <remarks>Changes made to the returned list will not be reflected in the Weak Dictionary</remarks>
+		public IList<KeyValuePair<TKey, TValue>> ToList()
+		{
+			return GetContents().ToArray();
+		}
+
+		/// <summary>
 		/// Constructs a strong dictionary from the live values in the weak dictionary
 		/// </summary>
 		/// <returns>A dictionary containing all the live values in this dictionary</returns>
 		/// <remarks>Changes made to the returned dictionary will not be reflected in the Weak Dictionary</remarks>
-		public IDictionary<TKey, TValue> ToStrongDictionary()
+		public IDictionary<TKey, TValue> ToDictionary()
 		{
 			return GetContents().ToDictionary(item => item.Key, item => item.Value);
 		}
@@ -619,11 +722,31 @@ namespace Proximity.Utility.Collections
 			return GetContents().GetEnumerator();
 		}
 		
-		private GCHandle CreateFrom(TValue item)
+		private static GCHandle CreateFrom(TValue item)
 		{
 			return GCHandle.Alloc(item, GCHandleType.Weak);
 		}
-		
+
+		private void Dispose(bool isDisposing)
+		{	//****************************************
+			var MyDictionary = _DictionaryHandle.Target;
+			//****************************************
+
+			_DictionaryHandle.Free();
+
+			// Skip doing the full cleanup if the CLR is shutting down, since there's a chance our dictionary is no longer valid
+			if (!Environment.HasShutdownStarted)
+			{
+				if (MyDictionary != null)
+				{
+					// Free our GC Handles so we don't create a memory leak
+					foreach (var MyValue in _Dictionary.Values)
+						MyValue.Free();
+				}
+			}
+
+		}
+
 		private IEnumerable<KeyValuePair<TKey, TValue>> GetContents()
 		{
 			foreach(var MyResult in _Dictionary)
@@ -675,22 +798,6 @@ namespace Proximity.Utility.Collections
 				throw new KeyNotFoundException();
 			}
 			set { AddOrReplace(key, value); }
-		}
-		
-		/// <summary>
-		/// Gets a list of strong references to the current key/value pairs in the dictionary
-		/// </summary>
-		public IList<KeyValuePair<TKey, TValue>> Contents
-		{
-			get { return GetContents().ToArray(); }
-		}
-		
-		/// <summary>
-		/// Gets a list of strong references to the values in the dictionary
-		/// </summary>
-		public IList<TValue> Values
-		{
-			get { return GetValues().ToList(); }
 		}
 	}
 }

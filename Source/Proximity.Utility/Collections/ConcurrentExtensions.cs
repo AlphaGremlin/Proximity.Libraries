@@ -153,7 +153,6 @@ namespace Proximity.Utility.Collections
 			}
 		}
 		
-		
 		/// <summary>
 		/// Updates an item if it exists in the dictionary
 		/// </summary>

@@ -16,17 +16,26 @@ namespace Proximity.Utility.Collections
 	/// Represents a dictionary that holds only weak references to its values
 	/// </summary>
 	/// <remarks>This class does not implement IDictionary or ICollection, as many of the methods have no meaning until you have strong references to the contents</remarks>
-	public class WeakDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>> where TValue : class
+	public class WeakDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>, IDisposable where TValue : class
 	{	//****************************************
 		private readonly Dictionary<TKey, GCHandle> _Dictionary;
+		private GCHandle _DictionaryHandle;
 		//****************************************
+
+		private WeakDictionary(Dictionary<TKey, GCHandle> dictionary)
+		{
+			_Dictionary = dictionary;
+
+			// If the WeakDictionary is garbage collected, we need to ensure we free the weak references
+			// So, we take a GC Handle of the dictionary which we can use to enumerate the dictionary upon finalisation
+			_DictionaryHandle = GCHandle.Alloc(dictionary, GCHandleType.Normal);
+		}
 		
 		/// <summary>
 		/// Creates a new WeakDictionary
 		/// </summary>
-		public WeakDictionary()
+		public WeakDictionary() : this(new Dictionary<TKey, GCHandle>())
 		{
-			_Dictionary = new Dictionary<TKey, GCHandle>();
 		}
 		
 		/// <summary>
@@ -41,9 +50,8 @@ namespace Proximity.Utility.Collections
 		/// Creates a new WeakDictionary with the given equality comparer
 		/// </summary>
 		/// <param name="comparer">The equality comparer to use when comparing keys</param>
-		public WeakDictionary(IEqualityComparer<TKey> comparer)
+		public WeakDictionary(IEqualityComparer<TKey> comparer) : this(new Dictionary<TKey, GCHandle>(comparer))
 		{
-			_Dictionary = new Dictionary<TKey, GCHandle>(comparer);
 		}
 		
 		/// <summary>
@@ -51,13 +59,21 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="collection">The collection holding the key/value pairs to add</param>
 		/// <param name="comparer">The equality comparer to use when comparing keys</param>
-		public WeakDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey> comparer)
+		public WeakDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey> comparer) : this(collection.ToDictionary((value) => value.Key, (value) => CreateFrom(value.Value), comparer))
 		{
-			_Dictionary = collection.ToDictionary((value) => value.Key, (value) => CreateFrom(value.Value), comparer);
 		}
-		
+
+		/// <summary>
+		/// Finalises the dictionary, releasing all Weak References
+		/// </summary>
+		~WeakDictionary()
+		{
+			if (_DictionaryHandle.IsAllocated)
+				Dispose(false);
+		}
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Adds a new pair to the dictionary
 		/// </summary>
@@ -91,7 +107,89 @@ namespace Proximity.Utility.Collections
 				_Dictionary.Add(key, CreateFrom(value));
 			}
 		}
-		
+
+		/// <summary>
+		/// Removes all elements from the collection
+		/// </summary>
+		public void Clear()
+		{
+			foreach (var MyHandle in _Dictionary.Values)
+			{
+				MyHandle.Free();
+			}
+
+			_Dictionary.Clear();
+		}
+
+		/// <summary>
+		/// Compacts the dictionary
+		/// </summary>
+		/// <returns>A list of keys where the values have expired</returns>
+		public IEnumerable<TKey> Compact()
+		{	//****************************************
+			List<TKey> ExpiredKeys = new List<TKey>();
+			//****************************************
+
+			// Locate all the items in the dictionary that are still valid
+			foreach (var Pair in _Dictionary)
+			{
+				var MyValue = (TValue)Pair.Value.Target;
+
+				if (MyValue != null)
+					continue;
+
+				// Add this key to the list of expired keys
+				Pair.Value.Free();
+
+				ExpiredKeys.Add(Pair.Key);
+			}
+
+			// If we found any expired keys, remove them
+			foreach (var MyKey in ExpiredKeys)
+				_Dictionary.Remove(MyKey);
+
+			return ExpiredKeys;
+		}
+
+		/// <summary>
+		/// Checks whether a key has an active value in the dictionary
+		/// </summary>
+		/// <param name="key">The key to check for</param>
+		/// <returns>True if the key exists and the value is still valid, otherwise False</returns>
+		/// <remarks>Note that the value may be garbage collected after or even during this call</remarks>
+		public bool ContainsKey(TKey key)
+		{	//****************************************
+			GCHandle MyHandle;
+			//****************************************
+			
+			// Does the item exist in the dictionary?
+			if (_Dictionary.TryGetValue(key, out MyHandle))
+				// Yes, is the reference valid?
+				return MyHandle.Target != null;
+
+			return false;
+		}
+
+		/// <summary>
+		/// Disposes of the Weak Dictionary, cleaning up any weak references
+		/// </summary>
+		public void Dispose()
+		{
+			if (_DictionaryHandle.IsAllocated)
+				Dispose(true);
+
+			GC.SuppressFinalize(this);
+		}
+
+		/// <summary>
+		/// Returns an enumerator that iterates through the live values in the dictionary
+		/// </summary>
+		/// <returns>An enumerator that can be used to iterate through the collection</returns>
+		public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
+		{
+			return GetContents().GetEnumerator();
+		}
+
 		/// <summary>
 		/// Removes a pair from the dictionary
 		/// </summary>
@@ -100,28 +198,19 @@ namespace Proximity.Utility.Collections
 		public bool Remove(TKey key)
 		{	//****************************************
 			GCHandle MyHandle;
+			bool HasValue;
 			//****************************************
 			
 			if (!_Dictionary.TryGetValue(key, out MyHandle))
 				return false;
-			
-			// Free the handle and remove the pair
+
+			HasValue = MyHandle.Target != null;
+
+			_Dictionary.Remove(key); // Should always succeed
+
 			MyHandle.Free();
-			
-			return _Dictionary.Remove(key);
-		}
-		
-		/// <summary>
-		/// Removes all elements from the collection
-		/// </summary>
-		public void Clear()
-		{
-			foreach(var MyHandle in _Dictionary.Values)
-			{
-				MyHandle.Free();
-			}
-			
-			_Dictionary.Clear();
+
+			return HasValue; // Only return true if the reference was still valid
 		}
 		
 		/// <summary>
@@ -149,52 +238,60 @@ namespace Proximity.Utility.Collections
 			
 			return value != null;
 		}
-		
+
 		/// <summary>
-		/// Compacts the dictionary
+		/// Removes the value associated with the specified key
 		/// </summary>
-		/// <returns>A list of keys where the values have expired</returns>
-		public IEnumerable<TKey> Compact()
+		/// <param name="key">The key to remove</param>
+		/// <param name="value">The value to remove, if still referenced. Null if the key was not found or was found but the reference expired</param>
+		/// <returns>True if the key was found and still referenced, otherwise false</returns>
+		public bool TryRemove(TKey key, out TValue value)
 		{	//****************************************
-			List<TKey> ExpiredKeys = new List<TKey>();
+			GCHandle MyHandle;
 			//****************************************
-			
-			// Locate all the items in the dictionary that are still valid
-			foreach(var Pair in _Dictionary)
+
+			if (!_Dictionary.TryGetValue(key, out MyHandle))
 			{
-				var MyValue = (TValue)Pair.Value.Target;
-				
-				if (MyValue != null)
-					continue;
-				
-				// Add this key to the list of expired keys
-				Pair.Value.Free();
-				
-				ExpiredKeys.Add(Pair.Key);
+				value = null;
+
+				return false;
 			}
-			
-			// If we found any expired keys, remove them
-			foreach(var MyKey in ExpiredKeys)
-				_Dictionary.Remove(MyKey);
-			
-			return ExpiredKeys;
+
+			value = (TValue)MyHandle.Target;
+
+			_Dictionary.Remove(key); // Should always succeed
+
+			MyHandle.Free();
+
+			return value != null; // Only return true if the reference was still valid
 		}
-		
+
 		/// <summary>
-		/// Returns an enumerator that iterates through the live values in the dictionary
+		/// Constructs a list of strong references to the values in the dictionary
 		/// </summary>
-		/// <returns>An enumerator that can be used to iterate through the collection</returns>
-		public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
+		/// <returns>A list containing all the live values in this dictionary</returns>
+		/// <remarks>Changes made to the returned list will not be reflected in the Weak Dictionary</remarks>
+		public IList<TValue> ToValueList()
 		{
-			return GetContents().GetEnumerator();
+			return GetValues().ToList();
 		}
-		
+
+		/// <summary>
+		/// Constructs a list of strong references to the current key/value pairs in the dictionary
+		/// </summary>
+		/// <returns>A list containing all the live keys/value pairs in this dictionary</returns>
+		/// <remarks>Changes made to the returned list will not be reflected in the Weak Dictionary</remarks>
+		public IList<KeyValuePair<TKey, TValue>> ToList()
+		{
+			return GetContents().ToArray();
+		}
+
 		/// <summary>
 		/// Constructs a strong dictionary from the live values in the weak dictionary
 		/// </summary>
 		/// <returns>A dictionary containing all the live values in this dictionary</returns>
 		/// <remarks>Changes made to the returned dictionary will not be reflected in the Weak Dictionary</remarks>
-		public IDictionary<TKey, TValue> ToStrongDictionary()
+		public IDictionary<TKey, TValue> ToDictionary()
 		{
 			return GetContents().ToDictionary(item => item.Key, item => item.Value);
 		}
@@ -206,11 +303,29 @@ namespace Proximity.Utility.Collections
 			return GetContents().GetEnumerator();
 		}
 		
-		private GCHandle CreateFrom(TValue item)
+		private static GCHandle CreateFrom(TValue item)
 		{
 			return GCHandle.Alloc(item, GCHandleType.Weak);
 		}
-		
+
+		private void Dispose(bool isDisposing)
+		{
+			var MyDictionary = _DictionaryHandle.Target;
+
+			_DictionaryHandle.Free();
+
+			// Skip doing the full cleanup if the CLR is shutting down, since there's a chance our dictionary is no longer valid
+			if (!Environment.HasShutdownStarted)
+			{
+				if (MyDictionary != null)
+				{
+					// Free our GC Handles so we don't create a memory leak
+					foreach (var MyValue in _Dictionary.Values)
+						MyValue.Free();
+				}
+			}
+		}
+
 		private IEnumerable<KeyValuePair<TKey, TValue>> GetContents()
 		{
 			foreach(var MyResult in _Dictionary)
@@ -276,22 +391,6 @@ namespace Proximity.Utility.Collections
 				
 				_Dictionary[key] = CreateFrom(value);
 			}
-		}
-		
-		/// <summary>
-		/// Gets a list of strong references to the current key/value pairs in the dictionary
-		/// </summary>
-		public IList<KeyValuePair<TKey, TValue>> Contents
-		{
-			get { return GetContents().ToArray(); }
-		}
-		
-		/// <summary>
-		/// Gets a list of strong references to the values in the dictionary
-		/// </summary>
-		public IList<TValue> Values
-		{
-			get { return GetValues().ToList(); }
 		}
 	}
 }
