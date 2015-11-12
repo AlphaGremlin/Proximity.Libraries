@@ -49,6 +49,18 @@ namespace Proximity.Utility.Tests
         </Text>
     </Test>
 </configuration>";
+
+		private const string RawTypedPropertySection = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<configuration>
+    <configSections>
+        <section name=""Test"" type=""Proximity.Utility.Tests.ConfigurationTests+TypedPropertyTestSection, Proximity.Utility.Tests"" allowExeDefinition=""MachineToRoamingUser"" />
+    </configSections>
+    <Test>
+        <Property Type=""Proximity.Utility.Tests.ConfigurationTests+SubTypedTestElement, Proximity.Utility.Tests"" Value=""1"" />
+    </Test>
+</configuration>";
+		
+		//****************************************
 		
 		[Test]
 		public void ReadStringElement()
@@ -259,6 +271,48 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
+		[Test]
+		public void ReadTypedProperty()
+		{
+			var RawXML = @"
+	<Test>
+		<Property Type=""Proximity.Utility.Tests.ConfigurationTests+SubTypedTestElement, Proximity.Utility.Tests"" Value=""1"" />
+	</Test>";
+
+			var MySection = TypedPropertyTestSection.FromString(RawXML);
+
+			Assert.IsNotNull(MySection.Property);
+			Assert.IsInstanceOf(typeof(SubTypedTestElement), MySection.Property.Content);
+			Assert.AreEqual("1", ((SubTypedTestElement)MySection.Property.Content).Value);
+		}
+
+		[Test]
+		public void ReadTypedPropertySection()
+		{
+			var MyMap = new ExeConfigurationFileMap();
+
+			var Temp1 = Path.GetTempFileName();
+
+			try
+			{
+				MyMap.ExeConfigFilename = Temp1;
+
+				File.WriteAllText(Temp1, RawTypedPropertySection);
+
+				var MyConfig = ConfigurationManager.OpenMappedExeConfiguration(MyMap, ConfigurationUserLevel.None);
+
+				var MySection = (TypedPropertyTestSection)MyConfig.GetSection("Test");
+
+				Assert.IsNotNull(MySection.Property);
+				Assert.IsInstanceOf(typeof(SubTypedTestElement), MySection.Property.Content);
+				Assert.AreEqual("1", ((SubTypedTestElement)MySection.Property.Content).Value);
+			}
+			finally
+			{
+				File.Delete(Temp1);
+			}
+		}
+
 		//****************************************
 		
 		public class StringElementSection : ConfigurationSection
@@ -350,6 +404,45 @@ namespace Proximity.Utility.Tests
 		
 		public class CustomTextElement : ConfigurationTextElement<int>
 		{
+		}
+
+		public class TypedTestElement : TypedElement
+		{
+		}
+
+		public class SubTypedTestElement : TypedTestElement
+		{
+			[ConfigurationProperty("Value", IsRequired = false)]
+			public string Value
+			{
+				get { return (string)base["Value"]; }
+				set { base["Value"] = value; }
+			}
+		}
+
+		public class TypedPropertyTestSection : ConfigurationSection
+		{
+			public static TypedPropertyTestSection FromString(string rawXml)
+			{
+				using (var MyStream = new StringReader(rawXml))
+				using (var MyReader = XmlReader.Create(MyStream))
+				{
+					MyReader.Read();
+
+					var MySection = new TypedPropertyTestSection();
+
+					MySection.DeserializeSection(MyReader);
+
+					return MySection;
+				}
+			}
+			
+			[ConfigurationProperty("Property", IsRequired = false)]
+			public TypedElementProperty<TypedTestElement> Property
+			{
+				get { return (TypedElementProperty<TypedTestElement>)base["Property"]; }
+				set { base["Property"] = value; }
+			}
 		}
 	}
 }

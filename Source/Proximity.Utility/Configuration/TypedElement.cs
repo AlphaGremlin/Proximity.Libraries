@@ -12,7 +12,7 @@ using System.Xml;
 namespace Proximity.Utility.Configuration
 {
 	/// <summary>
-	/// The base class of an element within a <see cref="TypedElementCollection&lt;TValue&gt;" />
+	/// The base class of an element within a <see cref="TypedElementCollection&lt;TValue&gt;" /> or <see cref="TypedElementProperty&lt;TValue&gt;" />
 	/// </summary>
 	public abstract class TypedElement : ConfigurationElement
 	{	//****************************************
@@ -54,14 +54,19 @@ namespace Proximity.Utility.Configuration
 				if (string.IsNullOrEmpty(Result))
 				{
 					var MyAttribute = (TypedElementAttribute)Attribute.GetCustomAttribute(GetType(), typeof(TypedElementAttribute), false);
-					
+
 					if (MyAttribute != null)
 					{
 						_InstanceType = MyAttribute.ConfigType;
-						
+
 						Result = _InstanceType.AssemblyQualifiedName;
-						SetPropertyValue(Properties["Type"], Result, true);
 					}
+					else
+					{
+						Result = GetType().AssemblyQualifiedName;
+					}
+
+					SetPropertyValue(Properties["Type"], Result, true);
 				}
 				
 				return Result;

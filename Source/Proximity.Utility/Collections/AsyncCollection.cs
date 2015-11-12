@@ -478,6 +478,8 @@ namespace Proximity.Utility.Collections
 #else
 				yield return Task.FromResult(MyItem);
 #endif
+				// Remember to clear the reference once we're back, so we don't hold onto it
+				MyItem = default(TItem);
 			}
 		}
 		

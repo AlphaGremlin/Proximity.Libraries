@@ -79,8 +79,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Configuration\TypedElement.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Configuration\TypedElementAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Configuration\TypedElementCollection.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Configuration\TypedPropertyElement.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Configuration\TypedPropertySection.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Configuration\TypedElementProperty.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Diagnostics\Profiler.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Diagnostics\ProfileSection.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Diagnostics\Statistic.cs" />
