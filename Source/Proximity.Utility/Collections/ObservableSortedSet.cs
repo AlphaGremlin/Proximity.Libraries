@@ -131,21 +131,36 @@ namespace Proximity.Utility.Collections
 			if (NewItems.Length == 0)
 				return;
 
-			// Try and add the new items
-			foreach (var MyItem in NewItems)
+			if (_Size == 0)
 			{
-				if (TryAdd(MyItem, out Index))
+				// Since we're empty, it's faster to load the contents by sorting and then copying
+				Array.Sort<TValue>(NewItems, _Comparer);
+
+				EnsureCapacity(NewItems.Length);
+
+				Array.Copy(NewItems, _Items, NewItems.Length);
+
+				NewItem = _Items[0];
+				_Size = NewItems.Length;
+			}
+			else
+			{
+				// Try and add the new items
+				foreach (var MyItem in NewItems)
 				{
-					NewItem = MyItem;
-					Count++;
+					if (TryAdd(MyItem, out Index))
+					{
+						NewItem = MyItem;
+						Count++;
+					}
 				}
 			}
 
 			// If we only got one, just do a single add
-			if (Count == 1)
+			if (_Size == 1)
 				OnCollectionChanged(NotifyCollectionChangedAction.Add, NewItem, Index);
 			// If there's more than one, the indexes could be anywhere, so reset the collection
-			else if (Count > 1)
+			else if (_Size > 1)
 				OnCollectionChanged();
 		}
 

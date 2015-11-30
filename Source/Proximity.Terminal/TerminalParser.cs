@@ -330,6 +330,9 @@ namespace Proximity.Terminal
 				foreach(var MyRegistry in registries)
 				{
 					MyTypeSet = MyRegistry.FindTypeSet(CommandText);
+
+					if (MyTypeSet != null)
+						break;
 				}
 				
 				// If the instance type doesn't match, return the partial command as is
@@ -416,7 +419,8 @@ namespace Proximity.Terminal
 						// Add matching type sets
 						foreach (var MyType in MyRegistry.TypeSets)
 						{
-							if (MyType.TypeName.StartsWith(partialCommand, StringComparison.InvariantCultureIgnoreCase))
+							// Only add ones that have an instance
+							if (MyType.TypeName.StartsWith(partialCommand, StringComparison.InvariantCultureIgnoreCase) && MyType.HasInstance)
 								PartialMatches.Add(MyType.TypeName);
 						}
 					}
