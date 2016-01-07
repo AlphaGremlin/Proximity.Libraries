@@ -110,6 +110,16 @@ namespace Proximity.Utility.Collections
 		//****************************************
 
 		/// <summary>
+		/// Performs a Binary Search for the given item
+		/// </summary>
+		/// <param name="item">The item to search for</param>
+		/// <returns>The index of the item, or the one's complement of the index where it should be inserted</returns>
+		public int BinarySearch(TValue item)
+		{
+			return _Items.BinarySearch(item, _Comparer);
+		}
+
+		/// <summary>
 		/// Determines whether the collection contains a specific item
 		/// </summary>
 		/// <param name="item">The item to locate</param>

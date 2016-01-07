@@ -13,73 +13,73 @@ using System.Linq;
 namespace Proximity.Utility.Collections
 {
 	/// <summary>
-	/// Implements an Observable Dictionary for WPF binding
+	/// Implements an Observable Sorted List for WPF binding
 	/// </summary>
-	public class ObservableDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IList<KeyValuePair<TKey, TValue>>, IList, INotifyCollectionChanged, INotifyPropertyChanged
+	public class ObservableSortedList<TKey, TValue> : IDictionary<TKey, TValue>, IList<KeyValuePair<TKey, TValue>>, IList, INotifyCollectionChanged, INotifyPropertyChanged
 	{	//****************************************
 		private const string CountString = "Count";
 		private const string IndexerName = "Item[]";
 		private const string KeysName = "Keys";
 		private const string ValuesName = "Values";
 		//****************************************
-		private int[] _Keys;
-		private KeyValuePair<TKey, TValue>[] _Values;
-		private readonly IEqualityComparer<TKey> _Comparer;
+		private TKey[] _Keys;
+		private TValue[] _Values;
+		private readonly IComparer<TKey> _Comparer;
 
 		private readonly ObservableDictionaryCollection<TKey> _KeyCollection;
 		private readonly ObservableDictionaryCollection<TValue> _ValueCollection;
-		
+
 		private int _UpdateCount = 0;
 		private int _Size = 0;
 		//****************************************
 
 		/// <summary>
-		/// Creates a new, empty observable dictionary
+		/// Creates a new, empty observable sorted list
 		/// </summary>
-		public ObservableDictionary() : this(0, EqualityComparer<TKey>.Default)
+		public ObservableSortedList() : this(0, Comparer<TKey>.Default)
 		{
 		}
 
 		/// <summary>
-		/// Creates a new pre-filled observable dictionary
+		/// Creates a new pre-filled observable sorted list
 		/// </summary>
 		/// <param name="dictionary">The dictionary to retrieve the contents from</param>
-		public ObservableDictionary(IDictionary<TKey, TValue> dictionary) : this(dictionary, EqualityComparer<TKey>.Default)
+		public ObservableSortedList(IDictionary<TKey, TValue> dictionary) : this(dictionary, Comparer<TKey>.Default)
 		{
 		}
 
 		/// <summary>
-		/// Creates a new empty observable dictionary with the specified default capacity
+		/// Creates a new empty observable sorted list with the specified default capacity
 		/// </summary>
 		/// <param name="capacity">The default capacity of the dictionary</param>
-		public ObservableDictionary(int capacity) : this(capacity, EqualityComparer<TKey>.Default)
-		{
-		}
-		
-		/// <summary>
-		/// Creates a new empty observable dictionary with the specified comparer
-		/// </summary>
-		/// <param name="comparer">The equality comparer to use</param>
-		public ObservableDictionary(IEqualityComparer<TKey> comparer) : this(0, comparer)
+		public ObservableSortedList(int capacity) : this(capacity, Comparer<TKey>.Default)
 		{
 		}
 
 		/// <summary>
-		/// Creates a new pre-filled observable dictionary with the specified comparer
+		/// Creates a new empty observable sorted list with the specified comparer
+		/// </summary>
+		/// <param name="comparer">The comparer to use</param>
+		public ObservableSortedList(IComparer<TKey> comparer) : this(0, comparer)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new pre-filled observable sorted list with the specified comparer
 		/// </summary>
 		/// <param name="dictionary">The dictionary to retrieve the contents from</param>
-		/// <param name="comparer">The equality comparer to use</param>
-		public ObservableDictionary(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey> comparer)
+		/// <param name="comparer">The comparer to use</param>
+		public ObservableSortedList(IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer)
 		{
 			_Comparer = comparer;
 
 			// Ensure we add all the values in the order sorted by hash code
 #if PORTABLE
-			_Keys = new int[0];
-			_Values = new KeyValuePair<TKey, TValue>[0];
+			_Keys = new TKey[0];
+			_Values = new TValue[0];
 
 			// Can't use Array.Sort(key, value, comparer) since it doesn't exist on portable
-			foreach (var MyPair in dictionary.Select(pair => new KeyValuePair<int, KeyValuePair<TKey, TValue>>(_Comparer.GetHashCode(pair.Key), pair)).OrderBy(pair => pair.Key))
+			foreach (var MyPair in dictionary.OrderBy(pair => pair.Key, _Comparer))
 			{
 				if (_Size == _Keys.Length)
 					EnsureCapacity(_Size + 1);
@@ -91,17 +91,13 @@ namespace Proximity.Utility.Collections
 			}
 #else
 			_Size = dictionary.Count;
-			_Keys = new int[_Size];
-			_Values = new KeyValuePair<TKey, TValue>[_Size];
+			_Keys = new TKey[_Size];
+			_Values = new TValue[_Size];
 
-			dictionary.CopyTo(_Values, 0);
+			dictionary.Keys.CopyTo(_Keys, 0);
+			dictionary.Values.CopyTo(_Values, 0);
 
-			for (int Index = 0; Index < _Values.Length; Index++)
-			{
-				_Keys[Index] = comparer.GetHashCode(_Values[Index].Key);
-			}
-
-			Array.Sort<int, KeyValuePair<TKey, TValue>>(_Keys, _Values, Comparer<int>.Default);
+			Array.Sort<TKey, TValue>(_Keys, _Values, _Comparer);
 #endif
 
 			_KeyCollection = new ObservableDictionaryCollection<TKey>(new KeyCollection(this));
@@ -109,24 +105,24 @@ namespace Proximity.Utility.Collections
 		}
 
 		/// <summary>
-		/// Creates a new empty observable dictionary with the specified comparer
+		/// Creates a new empty observable sorted list with the specified comparer
 		/// </summary>
 		/// <param name="capacity">The default capacity of the dictionary</param>
 		/// <param name="comparer">The equality comparer to use</param>
-		public ObservableDictionary(int capacity, IEqualityComparer<TKey> comparer)
+		public ObservableSortedList(int capacity, IComparer<TKey> comparer)
 		{
-			_Keys = new int[capacity];
-			_Values = new KeyValuePair<TKey, TValue>[capacity];
+			_Keys = new TKey[capacity];
+			_Values = new TValue[capacity];
 			_Comparer = comparer;
 
 			_KeyCollection = new ObservableDictionaryCollection<TKey>(new KeyCollection(this));
 			_ValueCollection = new ObservableDictionaryCollection<TValue>(new ValueCollection(this));
 		}
-		
+
 		//****************************************
 
 		/// <summary>
-		/// Adds a new element the Dictionary
+		/// Adds a new element the list
 		/// </summary>
 		/// <param name="key">The key of the item to add</param>
 		/// <param name="value">The value of the item to add</param>
@@ -181,6 +177,16 @@ namespace Proximity.Utility.Collections
 		public void BeginUpdate()
 		{
 			_UpdateCount++;
+		}
+
+		/// <summary>
+		/// Performs a Binary Search for the given key
+		/// </summary>
+		/// <param name="item">The item to search for</param>
+		/// <returns>The index of the item, or the one's complement of the index where it will be inserted</returns>
+		public int BinarySearch(TKey item)
+		{
+			return Array.BinarySearch<TKey>(_Keys, 0, _Size, item, _Comparer);
 		}
 
 		/// <summary>
@@ -252,9 +258,9 @@ namespace Proximity.Utility.Collections
 			// Raise changes (only if we're zero)
 			OnCollectionChanged();
 		}
-		
+
 		/// <summary>
-		/// Searches for the specified key/value pair and returns the zero-based index within the ObservableDictionary
+		/// Searches for the specified key/value pair and returns the zero-based index within the ObservableSortedList
 		/// </summary>
 		/// <param name="item">The key/value pair to search for</param>
 		/// <returns>True if a matching key/value pair was found, otherwise -1</returns>
@@ -263,49 +269,27 @@ namespace Proximity.Utility.Collections
 			var MyIndex = IndexOfKey(item.Key);
 
 			// If we found the Key, make sure the Item matches
-			if (MyIndex != -1 && !Equals(_Values[MyIndex].Value, item.Value))
+			if (MyIndex != -1 && !Equals(_Values[MyIndex], item.Value))
 				MyIndex = -1;
 
 			return MyIndex;
 		}
 
 		/// <summary>
-		/// Searches for the specified key and returns the zero-based index within the ObservableDictionary
+		/// Searches for the specified key and returns the zero-based index within the ObservableSortedList
 		/// </summary>
 		/// <param name="key">The key to search for</param>
 		/// <returns>True if a matching key was found, otherwise -1</returns>
 		public int IndexOfKey(TKey key)
 		{	//****************************************
-			int KeyHash = _Comparer.GetHashCode(key);
-			int Index = Array.BinarySearch<int>(_Keys, 0, _Size, KeyHash);
+			int Index = Array.BinarySearch<TKey>(_Keys, 0, _Size, key, _Comparer);
 			//****************************************
 
 			// Is there a matching hash code?
 			if (Index < 0)
 				return -1;
 
-			// BinarySearch is not guaranteed to return the first matching value, so we may need to move back
-			while (Index > 0 && _Keys[Index - 1] == KeyHash)
-				Index--;
-
-			for (; ; )
-			{
-				// Do we match this item?
-				if (_Comparer.Equals(_Values[Index].Key, key))
-					return Index; // Yes, so return the Index
-
-				Index++;
-
-				// Are we at the end of the list?
-				if (Index == _Size)
-					return -1; // Yes, so we didn't find the item
-
-				// Is there another item with the same key?
-				if (_Keys[Index] != KeyHash)
-					return -1; // Nope, so we didn't find the item
-
-				// Yes, so loop back and check that
-			}
+			return Index;
 		}
 
 		/// <summary>
@@ -317,7 +301,7 @@ namespace Proximity.Utility.Collections
 		{
 			for (int Index = 0; Index < _Size; Index++)
 			{
-				if (Equals(_Values[Index].Value, value))
+				if (Equals(_Values[Index], value))
 					return Index;
 			}
 
@@ -341,7 +325,7 @@ namespace Proximity.Utility.Collections
 
 			RemoveAt(Index);
 
-			OnCollectionChanged(NotifyCollectionChangedAction.Remove, Value, Index);
+			OnCollectionChanged(NotifyCollectionChangedAction.Remove, new KeyValuePair<TKey, TValue>(key, Value), Index);
 
 			return true;
 		}
@@ -363,7 +347,7 @@ namespace Proximity.Utility.Collections
 
 			RemoveAt(Index);
 
-			OnCollectionChanged(NotifyCollectionChangedAction.Remove, Value, Index);
+			OnCollectionChanged(NotifyCollectionChangedAction.Remove, item, Index);
 
 			return true;
 		}
@@ -377,7 +361,8 @@ namespace Proximity.Utility.Collections
 			if (index < 0 || index >= _Size)
 				throw new ArgumentOutOfRangeException("index");
 
-			var Item = _Values[index];
+			var Key = _Keys[index];
+			var Value = _Values[index];
 
 			_Size--;
 
@@ -389,9 +374,9 @@ namespace Proximity.Utility.Collections
 			}
 
 			// Ensure we don't hold a reference to the value
-			_Values[_Size] = default(KeyValuePair<TKey, TValue>);
+			_Values[_Size] = default(TValue);
 
-			OnCollectionChanged(NotifyCollectionChangedAction.Remove, Item, index);
+			OnCollectionChanged(NotifyCollectionChangedAction.Remove, new KeyValuePair<TKey, TValue>(Key, Value), index);
 		}
 
 		/// <summary>
@@ -412,7 +397,7 @@ namespace Proximity.Utility.Collections
 				return false;
 			}
 
-			value = _Values[Index].Value;
+			value = _Values[Index];
 
 			return true;
 		}
@@ -513,102 +498,50 @@ namespace Proximity.Utility.Collections
 
 		private int Insert(KeyValuePair<TKey, TValue> item)
 		{	//****************************************
-			int KeyHash = _Comparer.GetHashCode(item.Key);
-			int Index = Array.BinarySearch<int>(_Keys, 0, _Size, KeyHash);
+			int Index = Array.BinarySearch<TKey>(_Keys, 0, _Size, item.Key, _Comparer);
 			//****************************************
 
-			// Is there a matching hash code?
+			// Is there a matching key?
 			if (Index >= 0)
-			{
-				// BinarySearch is not guaranteed to return the first matching value, so we may need to move back
-				while (Index > 0 && _Keys[Index - 1] == KeyHash)
-					Index--;
-
-				for (; ; )
-				{
-					// Do we match this item?
-					if (_Comparer.Equals(_Values[Index].Key, item.Key))
-						return -1; // Yes, so the key already exists
-
-					// Are we at the end of the list?
-					if (Index == _Size - 1)
-						break; // Yes, so we need to insert the new item at the end
-
-					// Is there another item with the same key?
-					if (_Keys[Index + 1] != KeyHash)
-						break; // Nope, so we can insert the new item at the current Index
-
-					// Yes, so loop back and check that
-					Index++;
-				}
-
-				Insert(Index, KeyHash, item);
-
-				return Index;
-			}
+				return -1; // Yes, so reject
 
 			// No matching item, insert at the nearest spot above
-			Insert(~Index, KeyHash, item);
+			Insert(~Index, item);
 
 			return ~Index;
 		}
 
 		private void SetKey(TKey key, TValue value)
 		{	//****************************************
-			int KeyHash = _Comparer.GetHashCode(key);
-			int Index = Array.BinarySearch<int>(_Keys, 0, _Size, KeyHash);
+			int Index = Array.BinarySearch<TKey>(_Keys, 0, _Size, key, _Comparer);
 			var NewValue = new KeyValuePair<TKey, TValue>(key, value);
 			//****************************************
 
-			// Is there a matching hash code?
+			// Is there a matching key?
 			if (Index >= 0)
 			{
-				// BinarySearch is not guaranteed to return the first matching value, so we may need to move back
-				while (Index > 0 && _Keys[Index - 1] == KeyHash)
-					Index--;
+				var OldValue = _Values[Index];
 
-				for (; ; )
+				// Key already exists. Replace the value if it's different
+				if (!Equals(OldValue, value))
 				{
-					// Do we match this item?
-					if (_Comparer.Equals(_Values[Index].Key, key))
-					{
-						var OldValue = _Values[Index];
+					_Values[Index] = value;
 
-						// Yes, so the key already exists. Replace the value if it's different
-						if (!Equals(OldValue.Value, value))
-						{
-							_Values[Index] = NewValue;
-
-							OnCollectionChanged(NotifyCollectionChangedAction.Replace, NewValue, OldValue, Index);
-						}
-
-						return;
-					}
-
-					// Are we at the end of the list?
-					if (Index == _Size - 1)
-						break; // Yes, so we need to insert the new item at the end
-
-					// Is there another item with the same key?
-					if (_Keys[Index + 1] != KeyHash)
-						break; // Nope, so we can insert the new item at the current Index
-
-					// Yes, so loop back and check that
-					Index++;
+					OnCollectionChanged(NotifyCollectionChangedAction.Replace, NewValue, new KeyValuePair<TKey, TValue>(key, OldValue), Index);
 				}
-			}
-			else
-			{
-				// No matching item, insert at the nearest spot above
-				Index = ~Index;
+
+				return;
 			}
 
-			Insert(Index, KeyHash, NewValue);
+			// No matching item, insert at the nearest spot above
+			Index = ~Index;
+
+			Insert(Index, NewValue);
 
 			OnCollectionChanged(NotifyCollectionChangedAction.Add, NewValue, Index);
 		}
 
-		private void Insert(int index, int key, KeyValuePair<TKey, TValue> item)
+		private void Insert(int index, KeyValuePair<TKey, TValue> item)
 		{
 			if (_Size == _Keys.Length)
 				EnsureCapacity(_Size + 1);
@@ -621,8 +554,8 @@ namespace Proximity.Utility.Collections
 				Array.Copy(_Values, index, _Values, index + 1, _Size - index);
 			}
 
-			_Keys[index] = key;
-			_Values[index] = item;
+			_Keys[index] = item.Key;
+			_Values[index] = item.Value;
 
 			_Size++;
 		}
@@ -791,13 +724,13 @@ namespace Proximity.Utility.Collections
 
 				if (value == 0)
 				{
-					_Keys = new int[0];
-					_Values = new KeyValuePair<TKey, TValue>[0];
+					_Keys = new TKey[0];
+					_Values = new TValue[0];
 
 					return;
 				}
-				var NewKeys = new int[value];
-				var NewValues = new KeyValuePair<TKey, TValue>[value];
+				var NewKeys = new TKey[value];
+				var NewValues = new TValue[value];
 
 				if (_Size > 0)
 				{
@@ -811,9 +744,9 @@ namespace Proximity.Utility.Collections
 		}
 
 		/// <summary>
-		/// Gets the equality comparer being used for the Key
+		/// Gets the comparer being used for the Key
 		/// </summary>
-		public IEqualityComparer<TKey> Comparer
+		public IComparer<TKey> Comparer
 		{
 			get { return _Comparer; }
 		}
@@ -830,23 +763,26 @@ namespace Proximity.Utility.Collections
 
 		KeyValuePair<TKey, TValue> IList<KeyValuePair<TKey, TValue>>.this[int index]
 		{
-			get { return _Values[index]; }
+			get { return new KeyValuePair<TKey, TValue>(_Keys[index], _Values[index]); }
 			set
 			{
 				if (index < 0 || index >= _Size)
 					throw new ArgumentOutOfRangeException("index");
 
-				var OldValue = _Values[index];
+				// Are we changing the key?
+				var OldKey = _Keys[index];
 
-				if (!Equals(OldValue.Key, value.Key))
+				if (!Equals(OldKey, value.Key))
 					throw new InvalidOperationException();
 
-				if (Equals(OldValue.Value, value.Value))
+				var OldValue = _Values[index];
+
+				if (Equals(OldValue, value.Value))
 					return;
 
-				_Values[index] = value;
+				_Values[index] = value.Value;
 
-				OnCollectionChanged(NotifyCollectionChangedAction.Replace, value, OldValue, index);
+				OnCollectionChanged(NotifyCollectionChangedAction.Replace, value, new KeyValuePair<TKey, TValue>(OldKey, OldValue), index);
 			}
 		}
 
@@ -875,10 +811,10 @@ namespace Proximity.Utility.Collections
 
 		private class KeyCollection : IList<TKey>
 		{	//****************************************
-			private readonly ObservableDictionary<TKey, TValue> _Parent;
+			private readonly ObservableSortedList<TKey, TValue> _Parent;
 			//****************************************
 
-			public KeyCollection(ObservableDictionary<TKey, TValue> parent)
+			public KeyCollection(ObservableSortedList<TKey, TValue> parent)
 			{
 				_Parent = parent;
 			}
@@ -917,12 +853,12 @@ namespace Proximity.Utility.Collections
 
 			void ICollection<TKey>.CopyTo(TKey[] array, int arrayIndex)
 			{
-				var MyValues = _Parent._Values;
+				var MyKeys = _Parent._Keys;
 				var MySize = _Parent._Size;
 
 				for (int Index = 0; Index < MySize; Index++)
 				{
-					array[arrayIndex++] = MyValues[Index].Key;
+					array[arrayIndex++] = MyKeys[Index];
 				}
 			}
 
@@ -943,7 +879,7 @@ namespace Proximity.Utility.Collections
 
 			TKey IList<TKey>.this[int index]
 			{
-				get { return _Parent._Values[index].Key; }
+				get { return _Parent._Keys[index]; }
 				set { throw new NotSupportedException("Collection is read-only"); }
 			}
 
@@ -960,10 +896,10 @@ namespace Proximity.Utility.Collections
 
 		private class ValueCollection : IList<TValue>
 		{	//****************************************
-			private readonly ObservableDictionary<TKey, TValue> _Parent;
+			private readonly ObservableSortedList<TKey, TValue> _Parent;
 			//****************************************
 
-			public ValueCollection(ObservableDictionary<TKey, TValue> parent)
+			public ValueCollection(ObservableSortedList<TKey, TValue> parent)
 			{
 				_Parent = parent;
 			}
@@ -1007,7 +943,7 @@ namespace Proximity.Utility.Collections
 
 				for (int Index = 0; Index < MySize; Index++)
 				{
-					array[arrayIndex++] = MyValues[Index].Value;
+					array[arrayIndex++] = MyValues[Index];
 				}
 			}
 
@@ -1028,7 +964,7 @@ namespace Proximity.Utility.Collections
 
 			TValue IList<TValue>.this[int index]
 			{
-				get { return _Parent._Values[index].Value; }
+				get { return _Parent._Values[index]; }
 				set { throw new NotSupportedException("Collection is read-only"); }
 			}
 
@@ -1045,13 +981,13 @@ namespace Proximity.Utility.Collections
 
 		private sealed class KeyValueEnumerator : IEnumerator<KeyValuePair<TKey, TValue>>, IEnumerator
 		{	//****************************************
-			private readonly ObservableDictionary<TKey, TValue> _Parent;
+			private readonly ObservableSortedList<TKey, TValue> _Parent;
 
 			private int _Index;
 			private KeyValuePair<TKey, TValue> _Current;
 			//****************************************
 
-			public KeyValueEnumerator(ObservableDictionary<TKey, TValue> parent)
+			public KeyValueEnumerator(ObservableSortedList<TKey, TValue> parent)
 			{
 				_Parent = parent;
 			}
@@ -1073,7 +1009,9 @@ namespace Proximity.Utility.Collections
 					return false;
 				}
 
-				_Current = _Parent._Values[_Index++];
+				_Current = new KeyValuePair<TKey,TValue>(_Parent._Keys[_Index], _Parent._Values[_Index]);
+
+				_Index++;
 
 				return true;
 			}
@@ -1099,13 +1037,13 @@ namespace Proximity.Utility.Collections
 
 		private sealed class KeyEnumerator : IEnumerator<TKey>, IEnumerator
 		{	//****************************************
-			private readonly ObservableDictionary<TKey, TValue> _Parent;
+			private readonly ObservableSortedList<TKey, TValue> _Parent;
 
 			private int _Index;
 			private TKey _Current;
 			//****************************************
 
-			public KeyEnumerator(ObservableDictionary<TKey, TValue> parent)
+			public KeyEnumerator(ObservableSortedList<TKey, TValue> parent)
 			{
 				_Parent = parent;
 			}
@@ -1127,7 +1065,7 @@ namespace Proximity.Utility.Collections
 					return false;
 				}
 
-				_Current = _Parent._Values[_Index++].Key;
+				_Current = _Parent._Keys[_Index++];
 
 				return true;
 			}
@@ -1153,13 +1091,13 @@ namespace Proximity.Utility.Collections
 
 		private sealed class ValueEnumerator : IEnumerator<TValue>, IEnumerator
 		{	//****************************************
-			private readonly ObservableDictionary<TKey, TValue> _Parent;
+			private readonly ObservableSortedList<TKey, TValue> _Parent;
 
 			private int _Index;
 			private TValue _Current;
 			//****************************************
 
-			public ValueEnumerator(ObservableDictionary<TKey, TValue> parent)
+			public ValueEnumerator(ObservableSortedList<TKey, TValue> parent)
 			{
 				_Parent = parent;
 			}
@@ -1181,7 +1119,7 @@ namespace Proximity.Utility.Collections
 					return false;
 				}
 
-				_Current = _Parent._Values[_Index++].Value;
+				_Current = _Parent._Values[_Index++];
 
 				return true;
 			}

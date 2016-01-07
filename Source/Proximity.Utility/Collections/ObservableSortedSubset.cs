@@ -14,6 +14,10 @@ using Proximity.Utility.Events;
 
 namespace Proximity.Utility.Collections
 {
+	/// <summary>
+	/// Represents a subset of an Observable Sorted Set
+	/// </summary>
+	/// <typeparam name="TValue"></typeparam>
 	public class ObservableSortedSubset<TValue> : ISet<TValue>, IList<TValue>, IList, INotifyPropertyChanged, INotifyCollectionChanged
 	{	//****************************************
 		private readonly ObservableSortedSet<TValue> _Parent;

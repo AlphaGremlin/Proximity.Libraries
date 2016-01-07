@@ -346,6 +346,28 @@ namespace Proximity.Utility.Collections
 		{
 			return GetOrAdd(key, (innerKey) => value);
 		}
+
+		/// <summary>
+		/// Removes the value associated with the specified key
+		/// </summary>
+		/// <param name="key">The key to remove</param>
+		/// <returns>True if the key was found and still referenced, otherwise false</returns>
+		public bool Remove(TKey key)
+		{	//****************************************
+			GCHandle MyHandle;
+			//****************************************
+
+			if (_Dictionary.TryRemove(key, out MyHandle))
+			{
+				bool IsValid = MyHandle.Target != null;
+
+				MyHandle.Free();
+
+				return IsValid;
+			}
+
+			return false;
+		}
 		
 		/// <summary>
 		/// Removes the specified key/value pair

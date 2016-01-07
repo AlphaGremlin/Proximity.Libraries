@@ -212,6 +212,38 @@ namespace Proximity.Utility.Collections
 
 			return HasValue; // Only return true if the reference was still valid
 		}
+
+		/// <summary>
+		/// Removes the specified key/value pair
+		/// </summary>
+		/// <param name="key">The key to remove</param>
+		/// <param name="value">The value to remove</param>
+		/// <returns>True if the key was found with the expected value, otherwise false</returns>
+		public bool Remove(TKey key, TValue value)
+		{	//****************************************
+			GCHandle MyHandle;
+			TValue MyValue;
+			//****************************************
+
+			if (value == null)
+				throw new ArgumentNullException("Cannot have a null in a Weak Dictionary");
+
+			// Is this key in the dictionary?
+			if (!_Dictionary.TryGetValue(key, out MyHandle))
+				return false;
+
+			MyValue = (TValue)MyHandle.Target;
+
+			// Is the referenced value as expected?
+			if (MyValue != value)
+				return false;
+			
+			_Dictionary.Remove(key); // Should always succeed
+
+			MyHandle.Free();
+
+			return true; // Only return true if the reference was still valid
+		}
 		
 		/// <summary>
 		/// Retrieves the value associated with the specified key

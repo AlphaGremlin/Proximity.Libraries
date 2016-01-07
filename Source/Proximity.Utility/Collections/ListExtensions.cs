@@ -31,7 +31,7 @@ namespace Proximity.Utility.Collections
 
 			while (StartIndex < EndIndex)
 			{
-				MiddleIndex = (StartIndex + EndIndex) >> 1;
+				MiddleIndex = StartIndex + ((StartIndex - EndIndex) >> 1);
 				CompareResult = list[MiddleIndex].CompareTo(targetValue);
 
 				//Log.Debug("Check {0}: {1} ({2})", MiddleIndex, Dates[MiddleIndex].Ticks, CompareResult);
@@ -78,7 +78,7 @@ namespace Proximity.Utility.Collections
 
 			while (StartIndex < EndIndex)
 			{
-				MiddleIndex = (StartIndex + EndIndex) >> 1;
+				MiddleIndex = StartIndex + ((StartIndex - EndIndex) >> 1);
 				CompareResult = list[MiddleIndex].CompareTo(targetValue);
 
 				//Log.Debug("Check {0}: {1} ({2})", MiddleIndex, Dates[MiddleIndex].Ticks, CompareResult);
@@ -107,6 +107,7 @@ namespace Proximity.Utility.Collections
 
 			return -1;
 		}
+
 		/// <summary>
 		/// Searches a list sorted in ascending order, returning the index of the closest value equal to or less than the target
 		/// </summary>
@@ -124,7 +125,7 @@ namespace Proximity.Utility.Collections
 			
 			while (StartIndex < EndIndex)
 			{
-				MiddleIndex = (StartIndex + EndIndex) >> 1;
+				MiddleIndex = StartIndex + ((StartIndex - EndIndex) >> 1);
 				CompareResult = list[MiddleIndex].CompareTo(targetValue);
 				
 				//Log.Debug("Check {0}: {1} ({2})", MiddleIndex, Dates[MiddleIndex].Ticks, CompareResult);
@@ -171,7 +172,7 @@ namespace Proximity.Utility.Collections
 			
 			while (StartIndex < EndIndex)
 			{
-				MiddleIndex = (StartIndex + EndIndex) >> 1;
+				MiddleIndex = StartIndex + ((StartIndex - EndIndex) >> 1);
 				CompareResult = list[MiddleIndex].CompareTo(targetValue);
 				
 				//Log.Debug("Check {0}: {1} ({2})", MiddleIndex, Dates[MiddleIndex].Ticks, CompareResult);

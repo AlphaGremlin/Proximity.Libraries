@@ -90,7 +90,7 @@ namespace Proximity.Utility.Collections
 			_Values = new TValue[0];
 
 			// Can't use Array.Sort(key, value, comparer) since it doesn't exist on portable
-			foreach (var MyPair in collection.Select(value => new KeyValuePair<int, TValue>(comparer.GetHashCode(value), value)).OrderBy(pair => pair.Key))
+			foreach (var MyPair in collection.Select(value => new KeyValuePair<int, TValue>(_Comparer.GetHashCode(value), value)).OrderBy(pair => pair.Key))
 			{
 				if (_Size == _Keys.Length)
 					EnsureCapacity(_Size + 1);
