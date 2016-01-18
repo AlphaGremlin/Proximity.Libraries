@@ -7,6 +7,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Security;
 using System.Threading;
 //****************************************
 
@@ -15,6 +16,7 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Provides extra methods for manipulating immutable collections in a thread-safe manner
 	/// </summary>
+	[SecurityCritical]
 	public static class ImmutableInterlockedEx
 	{
 		/// <summary>

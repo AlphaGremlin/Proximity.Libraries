@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Proximity.Utility;
@@ -246,7 +247,8 @@ namespace Proximity.Utility.Threading
 		}
 		
 		//****************************************
-		
+
+		[SecuritySafeCritical]
 		private void ReleaseLeft()
 		{	//****************************************
 			TaskCompletionSource<VoidStruct> NextTask;
@@ -299,7 +301,8 @@ namespace Proximity.Utility.Threading
 			
 			MyWaiter.SetResult(VoidStruct.Empty);
 		}
-		
+
+		[SecuritySafeCritical]
 		private void ReleaseRight()
 		{	//****************************************
 			TaskCompletionSource<VoidStruct> NextTask;
@@ -344,7 +347,8 @@ namespace Proximity.Utility.Threading
 			ThreadPool.UnsafeQueueUserWorkItem(TryRelease, NextTask);
 #endif
 		}
-		
+
+		[SecuritySafeCritical]
 		private void CancelLeft(AsyncSwitchLeftInstance instance)
 		{	//****************************************
 			TaskCompletionSource<VoidStruct> NextRight= null;
@@ -386,7 +390,8 @@ namespace Proximity.Utility.Threading
 			// Need to release the Left
 			ReleaseLeft();
 		}
-		
+
+		[SecuritySafeCritical]
 		private void CancelRight(AsyncSwitchRightInstance instance)
 		{	//****************************************
 			TaskCompletionSource<VoidStruct> NextLeft = null;

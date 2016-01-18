@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Security;
 //****************************************
 
 namespace Proximity.Utility.Collections
@@ -68,6 +69,7 @@ namespace Proximity.Utility.Collections
 		/// <param name="item">The element to remove</param>
 		/// <returns>True if the item was removed, false if it was not in the collection</returns>
 		/// <remarks>Will perform a partial compaction, up to the point the target item is found</remarks>
+		[SecuritySafeCritical]
 		public bool Remove(TItem item)
 		{
 			int Index = 0;
@@ -103,6 +105,7 @@ namespace Proximity.Utility.Collections
 		/// <summary>
 		/// Removes all elements from the collection
 		/// </summary>
+		[SecuritySafeCritical]
 		public void Clear()
 		{
 			foreach(var MyHandle in _Values)
@@ -139,10 +142,27 @@ namespace Proximity.Utility.Collections
 		{
 			return GetContents().GetEnumerator();
 		}
-		
+
+		[SecuritySafeCritical]
 		private GCHandle CreateFrom(TItem item)
 		{
 			return GCHandle.Alloc(item, GCHandleType.Weak);
+		}
+
+		[SecuritySafeCritical]
+		private TItem ValueAt(int index)
+		{
+			var Handle = _Values[index];
+			var TargetItem = (TItem)Handle.Target;
+
+			if (TargetItem == null)
+			{
+				_Values.RemoveAt(index);
+
+				Handle.Free();
+			}
+
+			return TargetItem;
 		}
 		
 		private IEnumerable<TItem> GetContents()
@@ -151,16 +171,10 @@ namespace Proximity.Utility.Collections
 			
 			while (Index < _Values.Count)
 			{
-				var Handle = _Values[Index];
-				var TargetItem = (TItem)Handle.Target;
-				
-				if (TargetItem == null)
-				{
-					_Values.RemoveAt(Index);
-					
-					Handle.Free();
-				}
-				else
+				// Iterators are SecurityTransparent, so we have to use an accessor method
+				var TargetItem = ValueAt(Index);
+
+				if (TargetItem != null)
 				{
 					yield return TargetItem;
 					

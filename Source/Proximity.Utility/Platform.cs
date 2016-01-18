@@ -19,6 +19,7 @@ namespace Proximity.Utility
 	/// <summary>
 	/// Manages Platform-Specific tasks
 	/// </summary>
+	[SecurityCritical]
 	public static class Platform
 	{	//****************************************
 		[DllImport("kernel32.dll", EntryPoint = "LoadLibrary", CharSet = CharSet.Ansi), SuppressUnmanagedCodeSecurity()]

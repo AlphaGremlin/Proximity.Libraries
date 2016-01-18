@@ -5,6 +5,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Security;
 using System.Threading;
 //****************************************
 
@@ -13,6 +14,7 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Provides methods for creating an ImmutableCountedStack
 	/// </summary>
+	[SecurityCritical]
 	public static class ImmutableCountedStack
 	{
 		/// <summary>
@@ -116,6 +118,7 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Provides an Immutable Stack that also maintains a counter
 	/// </summary>
+	[SecurityCritical]
 	public sealed class ImmutableCountedStack<TItem> : IEnumerable<TItem>
 #if NET45
 		, System.Collections.Immutable.IImmutableStack<TItem>
@@ -155,6 +158,7 @@ namespace Proximity.Utility.Collections
 		/// Retrieves an enumerator for this stack
 		/// </summary>
 		/// <returns>The requested enumerator</returns>
+		[SecuritySafeCritical]
 		public IEnumerator<TItem> GetEnumerator()
 		{
 			return new StackEnumerator(this);
@@ -165,6 +169,7 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <returns>The top item</returns>
 		/// <exception cref="InvalidOperationException">Thrown if the stack is empty</exception>
+		[SecurityCritical]
 		public TItem Peek()
 		{
 			if (IsEmpty)
@@ -213,18 +218,21 @@ namespace Proximity.Utility.Collections
 		}
 		
 		//****************************************
-		
+
+		[SecuritySafeCritical]
 		IEnumerator IEnumerable.GetEnumerator()
 		{
 			return new StackEnumerator(this);
 		}
 		
 #if NET45
+		[SecurityCritical]
 		System.Collections.Immutable.IImmutableStack<TItem> System.Collections.Immutable.IImmutableStack<TItem>.Clear()
 		{
 			return Empty;
 		}
 
+		[SecurityCritical]
 		System.Collections.Immutable.IImmutableStack<TItem> System.Collections.Immutable.IImmutableStack<TItem>.Pop()
 		{
 			if (IsEmpty)
@@ -233,6 +241,7 @@ namespace Proximity.Utility.Collections
 			return _Tail;
 		}
 
+		[SecurityCritical]
 		System.Collections.Immutable.IImmutableStack<TItem> System.Collections.Immutable.IImmutableStack<TItem>.Push(TItem item)
 		{
 			return new ImmutableCountedStack<TItem>(item, this, _Count + 1);
@@ -245,6 +254,7 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		public bool IsEmpty
 		{
+			[SecurityCritical]
 			get { return _Tail == null; }
 		}
 		
@@ -257,7 +267,7 @@ namespace Proximity.Utility.Collections
 		}
 		
 		//****************************************
-		
+
 		private class StackEnumerator : IEnumerator<TItem>
 		{	//****************************************
 			private readonly ImmutableCountedStack<TItem> _Start;
@@ -273,6 +283,7 @@ namespace Proximity.Utility.Collections
 			
 			public TItem Current
 			{
+				[SecuritySafeCritical]
 				get
 				{
 					if (_Current == null || _Current.IsEmpty)
@@ -284,6 +295,7 @@ namespace Proximity.Utility.Collections
 			
 			object IEnumerator.Current
 			{
+				[SecuritySafeCritical]
 				get
 				{
 					if (_Current == null || _Current.IsEmpty)
@@ -292,11 +304,13 @@ namespace Proximity.Utility.Collections
 					return _Current._Head;
 				}
 			}
-			
+
+			[SecuritySafeCritical]
 			public void Dispose()
 			{
 			}
-			
+
+			[SecuritySafeCritical]
 			public bool MoveNext()
 			{
 				if (_Current == null)
@@ -306,7 +320,8 @@ namespace Proximity.Utility.Collections
 				
 				return !_Current.IsEmpty;
 			}
-			
+
+			[SecuritySafeCritical]
 			public void Reset()
 			{
 				_Current = null;

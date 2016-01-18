@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Security;
 //****************************************
 
 namespace Proximity.Utility.Events
@@ -13,6 +14,7 @@ namespace Proximity.Utility.Events
 	/// <summary>
 	/// Provides Weak Delegate services optimised for the EventHandler model
 	/// </summary>
+	[SecurityCritical]
 	public static class WeakEventDelegate
 	{
 		// IOS is statically compiled and doesn't do JIT, so we can't make generic types from reflection
@@ -139,7 +141,7 @@ namespace Proximity.Utility.Events
 		}
 		
 		//****************************************
-		
+
 		private interface IEventDelegate<TEventArgs> where TEventArgs : EventArgs
 		{
 			void Handler(object sender, TEventArgs e);
@@ -173,7 +175,8 @@ namespace Proximity.Utility.Events
 #endif
 				_Unsubscribe = unsubscribe;
 			}
-			
+
+			[SecuritySafeCritical]
 			~EventDelegate()
 			{
 				if (_Target.IsAllocated)
@@ -181,7 +184,8 @@ namespace Proximity.Utility.Events
 			}
 			
 			//****************************************
-			
+
+			[SecurityCritical]
 			public void Handler(object sender, TEventArgs e)
 			{	//****************************************
 				var MyTarget = _Target.Target;
@@ -212,14 +216,17 @@ namespace Proximity.Utility.Events
 			
 			public object Target
 			{
+				[SecurityCritical]
 				get { return _Target.Target; }
 			}
 			
 			public MethodInfo Method
 			{
 #if PORTABLE
+				[SecurityCritical]
 				get { return _Method; }
 #else
+				[SecurityCritical]
 				get { return _Handler.Method; }
 #endif
 			}

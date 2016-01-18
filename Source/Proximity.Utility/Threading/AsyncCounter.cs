@@ -6,6 +6,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Proximity.Utility;
@@ -195,6 +196,7 @@ namespace Proximity.Utility.Threading
 		/// Increments the Counter
 		/// </summary>
 		/// <remarks>The counter is not guaranteed to be incremented when this method returns, as waiters are evaluated on the ThreadPool. It will be incremented 'soon'.</remarks>
+		[SecuritySafeCritical]
 		public void Increment()
 		{	//****************************************
 			TaskCompletionSource<AsyncCounter> NextWaiter;
@@ -297,6 +299,7 @@ namespace Proximity.Utility.Threading
 		/// Always increments, regardless of disposal state
 		/// </summary>
 		/// <remarks>Used for DecrementAny</remarks>
+		[SecuritySafeCritical]
 		internal void ForceIncrement()
 		{	//****************************************
 			TaskCompletionSource<AsyncCounter> NextWaiter;
@@ -455,6 +458,7 @@ namespace Proximity.Utility.Threading
 				MyWaiter.TrySetException(new ObjectDisposedException("AsyncCounter", "Counter has been disposed of"));
 		}
 
+		[SecuritySafeCritical]
 		private void ReleasePeekers()
 		{	//****************************************
 			TaskCompletionSource<AsyncCounter> NextWaiter;

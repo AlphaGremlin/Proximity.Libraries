@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Security;
 using System.Text;
 using System.Threading;
 using System.Xml;
@@ -52,6 +53,7 @@ namespace Proximity.Utility.Logging.Outputs
 		//****************************************
 		
 		/// <inheritdoc />
+		[SecurityCritical]
 		protected internal override void Configure(OutputElement config)
 		{	//****************************************
 			var MyConfig = (TextFileOutputElement)config;
@@ -68,6 +70,7 @@ namespace Proximity.Utility.Logging.Outputs
 		}
 		
 		/// <inheritdoc />
+		[SecuritySafeCritical]
 		protected override void OnStreamChanging(Stream newStream)
 		{
 			if (_Writer != null)
@@ -86,6 +89,7 @@ namespace Proximity.Utility.Logging.Outputs
 		}
 		
 		/// <inheritdoc />
+		[SecuritySafeCritical]
 		protected override void OnWrite(LogEntry entry, ImmutableCountedStack<LogSection> context)
 		{	//****************************************
 			string SourceAssembly = null, SourceFullType = null, SourceShortType = null, SourceMethod = null;

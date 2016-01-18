@@ -7,6 +7,7 @@ using System;
 using System.Xml;
 using System.Configuration;
 using Proximity.Utility.Logging.Config;
+using System.Security;
 //****************************************
 
 namespace Proximity.Utility.Logging
@@ -14,6 +15,7 @@ namespace Proximity.Utility.Logging
 	/// <summary>
 	/// Configuration for the Logging Infrastructure
 	/// </summary>
+	[SecurityCritical]
 	public class LoggingConfig : ConfigurationSection
 	{	//****************************************
 		private static LoggingConfig ActiveConfig;

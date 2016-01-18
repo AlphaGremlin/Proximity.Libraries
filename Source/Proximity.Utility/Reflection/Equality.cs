@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Security;
 //****************************************
 
 namespace Proximity.Utility.Reflection
@@ -14,6 +15,7 @@ namespace Proximity.Utility.Reflection
 	/// <summary>
 	/// Provides method for performing value comparisons of objects
 	/// </summary>
+	[SecurityCritical]
 	public static class Equality<TObject> where TObject : class
 	{	//****************************************
 		private static Func<TObject, TObject, bool> _SimpleEqualsMethod;

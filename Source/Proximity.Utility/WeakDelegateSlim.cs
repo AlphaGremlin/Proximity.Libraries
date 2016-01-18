@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Security;
 //****************************************
 
 namespace Proximity.Utility
@@ -13,6 +14,7 @@ namespace Proximity.Utility
 	/// <summary>
 	/// Provides methods for managing a delegate to a method on a weakly bound object
 	/// </summary>
+	[SecurityCritical]
 	public static class WeakDelegateSlim
 	{
 		// IOS is statically compiled and doesn't do JIT, so we can't make generic types from reflection
@@ -327,6 +329,7 @@ namespace Proximity.Utility
 		
 		//****************************************
 
+		[SecurityCritical]
 		private interface IDelegateBase
 		{
 			object GetHandler();
@@ -345,6 +348,7 @@ namespace Proximity.Utility
 				_Unsubscribe = unsubscribe;
 			}
 
+			[SecuritySafeCritical]
 			~DelegateBase()
 			{
 				if (_Target.IsAllocated)
@@ -353,11 +357,13 @@ namespace Proximity.Utility
 
 			//****************************************
 
+			[SecurityCritical]
 			object IDelegateBase.GetHandler()
 			{
 				return GetHandler();
 			}
 
+			[SecurityCritical]
 			public TDelegate GetHandler()
 			{
 				// Create the delegate that is exposed to the outside world
@@ -427,8 +433,10 @@ namespace Proximity.Utility
 			internal override MethodInfo Method
 			{
 #if PORTABLE
+				[SecurityCritical]
 				get { return (_OpenDelegate as Delegate).GetMethodInfo(); }
 #else
+				[SecurityCritical]
 				get { return (_OpenDelegate as Delegate).Method; }
 #endif
 			}

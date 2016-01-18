@@ -6,6 +6,7 @@
 using System;
 using Proximity.Utility.Logging.Config;
 using System.Xml;
+using System.Security;
 //****************************************
 
 namespace Proximity.Utility.Logging
@@ -29,6 +30,7 @@ namespace Proximity.Utility.Logging
 		/// Applies the configuration for this log output
 		/// </summary>
 		/// <param name="config">The configuration to use</param>
+		[SecurityCritical]
 		protected internal virtual void Configure(OutputElement config)
 		{
 		}

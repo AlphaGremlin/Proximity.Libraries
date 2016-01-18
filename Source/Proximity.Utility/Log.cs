@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Security;
 using Proximity.Utility.Logging;
 //****************************************
 
@@ -15,6 +16,7 @@ namespace Proximity.Utility
 	/// <summary>
 	/// Writes entries to the Logging Infrastructure
 	/// </summary>
+	[SecuritySafeCritical]
 	public static class Log
 	{
 		/// <summary>

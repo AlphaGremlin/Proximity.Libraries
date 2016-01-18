@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Proximity.Utility.Collections;
@@ -45,6 +46,7 @@ namespace Proximity.Utility.Logging.Outputs
 		//****************************************
 		
 		/// <inheritdoc />
+		[SecurityCritical]
 		protected internal override void Configure(OutputElement config)
 		{	//****************************************
 			var MyConfig = (FileOutputElement)config;
@@ -56,7 +58,6 @@ namespace Proximity.Utility.Logging.Outputs
 			_MaxSize = MyConfig.MaximumSize;
 			_KeepHistory = MyConfig.KeepHistory != -1 ? (int?)MyConfig.KeepHistory : null;
 		}
-		
 		
 		/// <inheritdoc />
 		protected internal sealed override void Start()
@@ -71,6 +72,7 @@ namespace Proximity.Utility.Logging.Outputs
 		}
 		
 		/// <inheritdoc />
+		[SecuritySafeCritical]
 		protected internal sealed override void Write(LogEntry newEntry)
 		{
 			try
@@ -139,10 +141,17 @@ namespace Proximity.Utility.Logging.Outputs
 		/// </summary>
 		/// <param name="entry">The log entry to write</param>
 		/// <param name="context">The context when the entry was recorded</param>
+		[SecuritySafeCritical]
 		protected abstract void OnWrite(LogEntry entry, ImmutableCountedStack<LogSection> context);
 		
 		//****************************************
-		
+
+		[SecuritySafeCritical]
+		private void OnWrite(FullLogEntry entry)
+		{
+			OnWrite(entry.Entry, entry.Context);
+		}
+
 		private async Task PerformLogging()
 		{	//****************************************
 			FullLogEntry MyEntry;
@@ -167,7 +176,7 @@ namespace Proximity.Utility.Logging.Outputs
 					}
 					
 					if (MyEntry.Entry != null)
-						OnWrite(MyEntry.Entry, MyEntry.Context);
+						OnWrite(MyEntry);
 					
 					_Stream.Flush();
 					
@@ -194,7 +203,8 @@ namespace Proximity.Utility.Logging.Outputs
 				}
 			}
 		}
-		
+
+		[SecuritySafeCritical]
 		private void CheckOutput()
 		{	//****************************************
 			bool CloseOld = false;
@@ -370,7 +380,8 @@ namespace Proximity.Utility.Logging.Outputs
 		}
 		
 		//****************************************
-		
+
+		[SecuritySafeCritical]
 		private struct FullLogEntry
 		{
 			public readonly ImmutableCountedStack<LogSection> Context;

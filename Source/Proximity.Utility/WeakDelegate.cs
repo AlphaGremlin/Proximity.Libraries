@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.InteropServices;
+using System.Security;
 //****************************************
 
 namespace Proximity.Utility
@@ -15,6 +16,7 @@ namespace Proximity.Utility
 	/// <summary>
 	/// Represents a delegate to a method on a weakly bound object
 	/// </summary>
+	[SecurityCritical]
 	public sealed class WeakDelegate<TDelegate> where TDelegate : class
 	{	//****************************************
 		private GCHandle _Target;
@@ -59,6 +61,7 @@ namespace Proximity.Utility
 		/// <summary>
 		/// Destroys the Weak Delegate
 		/// </summary>
+		[SecuritySafeCritical]
 		~WeakDelegate()
 		{
 			if (_Target.IsAllocated)

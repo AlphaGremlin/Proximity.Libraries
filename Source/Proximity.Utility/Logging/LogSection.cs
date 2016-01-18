@@ -4,6 +4,7 @@
 \****************************************/
 #if !MOBILE && !PORTABLE
 using System;
+using System.Security;
 //****************************************
 
 namespace Proximity.Utility.Logging
@@ -24,6 +25,7 @@ namespace Proximity.Utility.Logging
 		/// Creates a new logging section
 		/// </summary>
 		/// <param name="entry">The logging entry to start with</param>
+		[SecuritySafeCritical]
 		public LogSection(LogEntry entry)
 		{
 			_Entry = entry;
@@ -36,6 +38,7 @@ namespace Proximity.Utility.Logging
 		/// </summary>
 		/// <param name="entry">The logging entry to start with</param>
 		/// <param name="priority">The priority of this entry</param>
+		[SecuritySafeCritical]
 		public LogSection(LogEntry entry, int priority)
 		{
 			_Entry = entry;
@@ -49,6 +52,7 @@ namespace Proximity.Utility.Logging
 		/// <summary>
 		/// Ends the logging section
 		/// </summary>
+		[SecuritySafeCritical]
 		public void Dispose()
 		{
 			LogManager.FinishSection(this);

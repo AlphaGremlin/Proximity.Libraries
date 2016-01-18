@@ -7,6 +7,7 @@ using System;
 using System.Diagnostics;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Lifetime;
+using System.Security;
 using System.Security.Permissions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,6 +19,7 @@ namespace Proximity.Utility.Threading
 	/// Provides a Task Completion Source within the calling AppDomain that receives the result of the Task in the target AppDomain
 	/// </summary>
 	/// <remarks>This object lives in the AppDomain making the call</remarks>
+	[SecuritySafeCritical]
 	internal sealed class RemoteTaskCompletionSource<TResult> : MarshalByRefObject, ISponsor
 	{	//****************************************
 		private readonly TaskCompletionSource<TResult> _TaskSource;
@@ -25,7 +27,7 @@ namespace Proximity.Utility.Threading
 		private readonly MarshalByRefObject _RemoteTask;
 		//****************************************
 		
-		[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
+//		[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
 		internal RemoteTaskCompletionSource(MarshalByRefObject remoteTask)
 		{
 			Debug.Assert(RemotingServices.IsObjectOutOfAppDomain(remoteTask), "Attempt to unwrap remote task inside the owning AppDomain");
@@ -54,7 +56,8 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 
-		[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
+		[SecurityCritical]
+		//[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
 		TimeSpan ISponsor.Renewal(ILease lease)
 		{
 			if (_TaskSource.Task.IsCompleted)

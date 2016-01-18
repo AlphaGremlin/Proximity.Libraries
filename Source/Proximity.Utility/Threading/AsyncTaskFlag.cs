@@ -4,6 +4,7 @@
 \****************************************/
 #if !PORTABLE
 using System;
+using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 //****************************************
@@ -101,6 +102,7 @@ namespace Proximity.Utility.Threading
 		/// <summary>
 		/// Sets the flag, causing the task to run/re-run depending on the status
 		/// </summary>
+		[SecuritySafeCritical]
 		public void Set()
 		{
 			// Set the state to 1 (flagged)
@@ -204,7 +206,8 @@ namespace Proximity.Utility.Threading
 		{
 			CompleteSecondTask(false);
 		}
-		
+
+		[SecuritySafeCritical]
 		private void CompleteSecondTask(bool isNested)
 		{	//****************************************
 			var MyWaitTask = Interlocked.Exchange(ref _PendingWaitTask, null);

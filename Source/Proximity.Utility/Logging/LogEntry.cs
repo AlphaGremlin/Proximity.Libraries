@@ -7,6 +7,7 @@ using System;
 using System.Threading;
 using System.Reflection;
 using System.Diagnostics;
+using System.Security;
 //****************************************
 
 namespace Proximity.Utility.Logging
@@ -35,6 +36,7 @@ namespace Proximity.Utility.Logging
 		/// <param name="source">The location the logging occurred</param>
 		/// <param name="severity">The severity of the log entry</param>
 		/// <param name="text">The text of the entry</param>
+		[SecuritySafeCritical]
 		public LogEntry(StackFrame source, Severity severity, string text)
 		{
 			_Index = Interlocked.Increment(ref CurrentIndex);
@@ -112,6 +114,7 @@ namespace Proximity.Utility.Logging
 		/// </summary>
 		public TimeSpan RelativeTime
 		{
+			[SecuritySafeCritical]
 			get { return _Timestamp.Subtract(LogManager.StartTime); }
 		}
 		

@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Security;
 using Proximity.Utility;
 //****************************************
 
@@ -17,6 +18,7 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Describes a page in a Paged Set
 	/// </summary>
+	[SecurityCritical]
 	public class ImmutablePagedSetPage<TKey, TItem> : IComparable<ImmutablePagedSetPage<TKey, TItem>> where TKey : IComparable<TKey>
 	{	//****************************************
 		private readonly ImmutableSortedSet<PagedSetItem<TKey, TItem>> _Items;
@@ -49,6 +51,7 @@ namespace Proximity.Utility.Collections
 
 		//****************************************
 
+		[SecuritySafeCritical]
 		int IComparable<ImmutablePagedSetPage<TKey, TItem>>.CompareTo(ImmutablePagedSetPage<TKey, TItem> other)
 		{
 			return this.Min.CompareTo(other.Min);

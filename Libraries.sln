@@ -33,6 +33,9 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Utility.Android", "Source\Proximity.Utility.Android\Proximity.Utility.Android.csproj", "{977ABA39-B89E-437A-9758-7395C68D4EE3}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Terminal", "Terminal", "{89132967-DFF2-4130-B675-9BD48992A68E}"
+	ProjectSection(SolutionItems) = preProject
+		Build\Proximity.Terminal\Proximity.Terminal.nuspec = Build\Proximity.Terminal\Proximity.Terminal.nuspec
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{AD24E051-CE39-492E-9197-151B51C0C893}"
 EndProject

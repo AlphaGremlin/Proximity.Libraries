@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.Serialization;
+using System.Security;
 using System.Threading;
 //****************************************
 
@@ -18,6 +19,7 @@ namespace Proximity.Utility.Reflection
 	/// <summary>
 	/// Provides methods for cloning objects
 	/// </summary>
+	[SecurityCritical]
 	public static class Cloning
 	{
 		/// <summary>
@@ -99,6 +101,7 @@ namespace Proximity.Utility.Reflection
 	/// <summary>
 	/// Provides methods for cloning objects
 	/// </summary>
+	[SecurityCritical]
 	internal static class Cloning<TObject> where TObject : class
 	{	//****************************************
 		private static Func<TObject, TObject> _CloneMethod, _SmartCloneMethod;

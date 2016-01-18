@@ -5,6 +5,7 @@
 #if !MOBILE && !PORTABLE
 using System;
 using System.Configuration;
+using System.Security;
 using Proximity.Utility.Configuration;
 using Proximity.Utility.Logging.Config;
 //****************************************
@@ -14,6 +15,7 @@ namespace Proximity.Utility.Logging.Outputs
 	/// <summary>
 	/// Describes the configuration for the Trace Output Logger
 	/// </summary>
+	[SecurityCritical]
 	[TypedElement(typeof(TraceOutput))]
 	public class TraceOutputElement : OutputElement
 	{

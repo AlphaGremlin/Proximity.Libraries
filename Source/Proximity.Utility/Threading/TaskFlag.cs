@@ -5,6 +5,7 @@
 #if !PORTABLE
 using System;
 using System.Linq;
+using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Proximity.Utility;
@@ -64,6 +65,7 @@ namespace Proximity.Utility.Threading
 		/// <summary>
 		/// Sets the flag, causing the callback to run/re-run depending on the status
 		/// </summary>
+		[SecuritySafeCritical]
 		public void Set()
 		{
 			// Set the state to 1 (flagged)
@@ -124,7 +126,8 @@ namespace Proximity.Utility.Threading
 			// Wait a bit before acknowledging the flag
 			_DelayTimer.Change(_Delay, new TimeSpan(0, 0, 0, 0, -1));
 		}
-		
+
+		[SecuritySafeCritical]
 		private void ProcessTaskFlag(object state)
 		{
 			// Set the processing state to 2, showing we've acknowledged this flag

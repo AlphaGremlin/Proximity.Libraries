@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.InteropServices;
+using System.Security;
 //****************************************
 
 namespace Proximity.Utility
@@ -16,6 +17,7 @@ namespace Proximity.Utility
 	/// <summary>
 	/// Provides services for rapidly emitting dynamic code
 	/// </summary>
+	[SecurityCritical]
 	public class EmitHelper
 	{	//****************************************
 		private ILGenerator _Generator;

@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Security;
 //****************************************
 
 namespace Proximity.Utility.Collections
@@ -17,6 +18,7 @@ namespace Proximity.Utility.Collections
 	/// Represents a concurrent dictionary that holds only weak references to its values
 	/// </summary>
 	/// <remarks>This class does not implement IDictionary or ICollection, as many of the methods have no meaning until you have strong references to the contents</remarks>
+	[SecuritySafeCritical]
 	public class ConcurrentWeakDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>> where TValue : class
 	{	//****************************************
 		private readonly ConcurrentDictionary<TKey, GCHandle> _Dictionary;
@@ -773,7 +775,8 @@ namespace Proximity.Utility.Collections
 		{
 			foreach(var MyResult in _Dictionary)
 			{
-				var MyValue = (TValue)MyResult.Value.Target;
+				// Iterators are SecurityTransparent, so we have to use an accessor method
+				var MyValue = ValueFromPair(MyResult);
 				
 				if (MyValue == null)
 					continue;
@@ -786,13 +789,19 @@ namespace Proximity.Utility.Collections
 		{
 			foreach(var MyResult in _Dictionary) // Get the base dictionary enumerator, as on ConcurrentDictionary getting Values will make a copy
 			{
-				var MyValue = (TValue)MyResult.Value.Target;
+				// Iterators are SecurityTransparent, so we have to use an accessor method
+				var MyValue = ValueFromPair(MyResult);
 				
 				if (MyValue == null)
 					continue;
 				
 				yield return MyValue;
 			}
+		}
+
+		private static TValue ValueFromPair(KeyValuePair<TKey, GCHandle> pair)
+		{
+			return (TValue)pair.Value.Target;
 		}
 		
 		//****************************************

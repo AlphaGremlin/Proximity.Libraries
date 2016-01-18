@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Proximity.Utility;
@@ -258,6 +259,7 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 
+		[SecuritySafeCritical]
 		private void ReleaseRead()
 		{	//****************************************
 			TaskCompletionSource<IDisposable> NextTask = null;
@@ -350,6 +352,7 @@ namespace Proximity.Utility.Threading
 			}
 		}
 
+		[SecuritySafeCritical]
 		private void ReleaseWrite(bool onThreadPool)
 		{	//****************************************
 			TaskCompletionSource<IDisposable> NextRelease = null;

@@ -6,6 +6,7 @@
 using System;
 using System.Diagnostics;
 using System.Reflection;
+using System.Security;
 using System.Xml;
 using Proximity.Utility.Configuration;
 using Proximity.Utility.Logging.Config;
@@ -34,6 +35,7 @@ namespace Proximity.Utility.Logging.Outputs
 		//****************************************
 		
 		/// <inheritdoc />
+		[SecurityCritical]
 		protected internal override void Configure(OutputElement config)
 		{
 			var MyConfig = (TraceOutputElement)config;
@@ -50,6 +52,7 @@ namespace Proximity.Utility.Logging.Outputs
 		}
 		
 		/// <inheritdoc />
+		[SecuritySafeCritical]
 		protected internal override void StartSection(LogSection newSection)
 		{
 			Trace.CorrelationManager.StartLogicalOperation(newSection.Text);
@@ -59,6 +62,7 @@ namespace Proximity.Utility.Logging.Outputs
 		}
 
 		/// <inheritdoc />
+		[SecuritySafeCritical]
 		protected internal override void Write(LogEntry newEntry)
 		{
 			if (newEntry is TraceLogEntry)
@@ -87,6 +91,7 @@ namespace Proximity.Utility.Logging.Outputs
 		}
 		
 		/// <inheritdoc />
+		[SecuritySafeCritical]
 		protected internal override void FinishSection(LogSection section)
 		{
 			Trace.IndentLevel = LogManager.Context.Count;
@@ -96,6 +101,7 @@ namespace Proximity.Utility.Logging.Outputs
 		}
 		
 		/// <inheritdoc />
+		[SecuritySafeCritical]
 		protected internal override void Finish()
 		{
 			_Source.Close();

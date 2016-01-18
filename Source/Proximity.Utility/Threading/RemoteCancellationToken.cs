@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Lifetime;
+using System.Security;
 using System.Security.Permissions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,6 +23,7 @@ namespace Proximity.Utility.Threading
 	/// Provides access to a cancellation token in another AppDomain
 	/// </summary>
 	/// <remarks>Exists in the calling AppDomain, and must be wrapped in a Using statement around any Awaits in order to preserve the lifetime of the remote object</remarks>
+	[SecuritySafeCritical]
 	public sealed class RemoteCancellationToken : MarshalByRefObject, IDisposable, ISponsor
 	{	//****************************************
 		private readonly CancellationToken _Token;
@@ -55,6 +57,7 @@ namespace Proximity.Utility.Threading
 		/// <summary>
 		/// Disposes of this Remote Cancellation Token
 		/// </summary>
+		[SecuritySafeCritical]
 		public void Dispose()
 		{
 			_Registration.Dispose();
@@ -63,8 +66,8 @@ namespace Proximity.Utility.Threading
 		}
 		
 		//****************************************
-		
-		[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
+
+//		[SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.Infrastructure)]
 		internal void Attach(RemoteCancellationTokenSource tokenSource)
 		{
 			Debug.Assert(RemotingServices.IsObjectOutOfAppDomain(tokenSource), "Attempt to unwrap remote token source inside the owning AppDomain");
@@ -81,8 +84,8 @@ namespace Proximity.Utility.Threading
 			if (_Token.IsCancellationRequested)
 				tokenSource.Cancel();
 		}
-		
-		[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
+
+//		[SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.Infrastructure)]
 		internal void Detach(RemoteCancellationTokenSource tokenSource)
 		{
 			ImmutableInterlockedEx.Remove(ref _TokenSources, tokenSource);
@@ -102,8 +105,9 @@ namespace Proximity.Utility.Threading
 		}
 		
 		//****************************************
-		
-		[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
+
+		[SecurityCritical]
+//		[SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.Infrastructure)]
 		TimeSpan ISponsor.Renewal(ILease lease)
 		{
 			// Ensure we keep the remote token source connection alive until we've been disposed

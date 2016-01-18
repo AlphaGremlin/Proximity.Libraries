@@ -16,6 +16,7 @@ namespace Proximity.Utility.Threading
 	/// <summary>
 	/// Provides methods for queueing a task on the ThreadPool without the call context
 	/// </summary>
+	[SecurityCritical]
 	public static class UnsafeTask
 	{
 		/// <summary>

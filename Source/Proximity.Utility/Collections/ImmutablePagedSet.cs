@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Security;
 using Proximity.Utility;
 //****************************************
 
@@ -19,6 +20,7 @@ namespace Proximity.Utility.Collections
 	/// </summary>
 	/// <typeparam name="TKey">The type of key for each item</typeparam>
 	/// <typeparam name="TItem">The type of item</typeparam>
+	[SecurityCritical]
 	public abstract class ImmutablePagedSet<TKey, TItem> where TKey : IComparable<TKey>
 	{	//****************************************
 		private readonly ImmutableSortedSet<ImmutablePagedSetPage<TKey, TItem>> _Pages;

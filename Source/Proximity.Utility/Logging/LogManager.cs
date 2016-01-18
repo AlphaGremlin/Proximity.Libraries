@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Runtime.Remoting.Messaging;
+using System.Security;
 using System.Threading;
 using Proximity.Utility.Collections;
 using Proximity.Utility.Logging.Config;
@@ -20,6 +21,7 @@ namespace Proximity.Utility.Logging
 	/// <summary>
 	/// Manages the logging framework
 	/// </summary>
+	[SecurityCritical]
 	public static class LogManager
 	{	//****************************************
 		private static LogOutput[] _Outputs = new LogOutput[0];

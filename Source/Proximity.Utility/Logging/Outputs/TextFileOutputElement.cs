@@ -5,6 +5,7 @@
 #if !MOBILE && !PORTABLE
 using System;
 using System.Configuration;
+using System.Security;
 using Proximity.Utility.Configuration;
 //****************************************
 
@@ -13,6 +14,7 @@ namespace Proximity.Utility.Logging.Outputs
 	/// <summary>
 	/// Describes the configuration for the Text File Output Logger
 	/// </summary>
+	[SecurityCritical]
 	[TypedElement(typeof(TextFileOutput))]
 	public class TextFileOutputElement : FileOutputElement
 	{

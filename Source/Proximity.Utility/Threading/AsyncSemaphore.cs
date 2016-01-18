@@ -4,6 +4,7 @@
 \****************************************/
 using System;
 using System.Collections.Generic;
+using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Proximity.Utility;
@@ -170,7 +171,8 @@ namespace Proximity.Utility.Threading
 		}
 		
 		//****************************************
-		
+
+		[SecuritySafeCritical]
 		private void Release(bool onThreadPool)
 		{	//****************************************
 			TaskCompletionSource<IDisposable> NextWaiter = null;

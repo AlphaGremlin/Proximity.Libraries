@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Configuration;
 using System.Collections.Generic;
 using Proximity.Utility.Configuration;
+using System.Security;
 //****************************************
 
 namespace Proximity.Utility.Logging.Config
@@ -17,6 +18,7 @@ namespace Proximity.Utility.Logging.Config
 	/// <summary>
 	/// An configuration entry defining a Logging Output
 	/// </summary>
+	[SecurityCritical]
 	public class OutputElement : TypedElement
 	{
 		/// <summary>

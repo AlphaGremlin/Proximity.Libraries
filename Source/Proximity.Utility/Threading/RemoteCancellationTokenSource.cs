@@ -7,6 +7,7 @@ using System;
 using System.Diagnostics;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Lifetime;
+using System.Security;
 using System.Security.Permissions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,6 +18,7 @@ namespace Proximity.Utility.Threading
 	/// <summary>
 	/// Receives notifications from a cancellation token in another AppDomain
 	/// </summary>
+	[SecuritySafeCritical]
 	internal sealed class RemoteCancellationTokenSource : MarshalByRefObject, ISponsor, IDisposable
 	{	//****************************************
 		private readonly CancellationTokenSource _TokenSource = new CancellationTokenSource();
@@ -26,7 +28,7 @@ namespace Proximity.Utility.Threading
 		private bool _IsDisposed;
 		//****************************************
 		
-		[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
+		//[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
 		internal RemoteCancellationTokenSource(RemoteCancellationToken remoteToken)
 		{
 			Debug.Assert(RemotingServices.IsObjectOutOfAppDomain(remoteToken), "Attempt to unwrap remote token inside the owning AppDomain");
@@ -35,8 +37,9 @@ namespace Proximity.Utility.Threading
 		}
 		
 		//****************************************
-		
-		[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
+
+		[SecuritySafeCritical]
+//		[SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.Infrastructure)]
 		public void Dispose()
 		{
 			// Task has completed (possibly by cancellation), we can detach from the remote token
@@ -52,7 +55,8 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 		
-		[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
+		[SecurityCritical]
+		//[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
 		TimeSpan ISponsor.Renewal(ILease lease)
 		{
 			// Ensure we keep the remote token connection alive until we've been disposed upon completion of the task

@@ -4,6 +4,7 @@
 \****************************************/
 #if !PORTABLE
 using System;
+using System.Security;
 //****************************************
 
 namespace Proximity.Utility.Events
@@ -12,6 +13,7 @@ namespace Proximity.Utility.Events
 	/// Provides weakly bound, fast and type-safe events
 	/// </summary>
 	/// <remarks>This class is threadsafe, however handlers have the potential to be called a short time after removal</remarks>
+	[SecurityCritical]
 	public sealed class WeakEvent<TEventArgs> where TEventArgs : EventArgs
 	{	//****************************************
 		private event EventHandler<TEventArgs> _WeakEventHandler;

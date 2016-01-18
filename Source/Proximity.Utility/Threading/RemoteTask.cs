@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Lifetime;
+using System.Security;
 using System.Security.Permissions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,6 +20,7 @@ namespace Proximity.Utility.Threading
 	/// Provides access to a Task running in another AppDomain
 	/// </summary>
 	/// <remarks>This object lives in the AppDomain where the Task is running</remarks>
+	[SecuritySafeCritical]
 	public sealed class RemoteTask : MarshalByRefObject, ISponsor
 	{	//****************************************
 		private readonly Task _Task;
@@ -41,8 +43,8 @@ namespace Proximity.Utility.Threading
 		}
 		
 		//****************************************
-		
-		[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
+
+//		[SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.Infrastructure)]
 		private void Attach(RemoteTaskCompletionSource<VoidStruct> taskSource)
 		{
 			if (!_Task.IsCompleted)
@@ -82,7 +84,8 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 
-		[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
+		[SecurityCritical]
+//		[SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.Infrastructure)]
 		TimeSpan ISponsor.Renewal(ILease lease)
 		{
 			// Ensure we keep the remote task source connection alive until our task is completed
@@ -207,6 +210,7 @@ namespace Proximity.Utility.Threading
 	/// Provides access to a Task running in another AppDomain
 	/// </summary>
 	/// <remarks>This object lives in the AppDomain where the Task is running</remarks>
+	[SecuritySafeCritical]
 	public sealed class RemoteTask<TResult> : MarshalByRefObject, ISponsor
 	{//****************************************
 		private readonly Task<TResult> _Task;
@@ -230,7 +234,7 @@ namespace Proximity.Utility.Threading
 
 		//****************************************
 		
-		[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
+		//[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
 		private void Attach(RemoteTaskCompletionSource<TResult> taskSource)
 		{
 			if (!_Task.IsCompleted)
@@ -276,7 +280,8 @@ namespace Proximity.Utility.Threading
 
 		//****************************************
 
-		[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
+		[SecurityCritical]
+		//[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
 		TimeSpan ISponsor.Renewal(ILease lease)
 		{
 			// Ensure we keep the remote task source connection alive until our task is completed
