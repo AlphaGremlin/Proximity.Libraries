@@ -23,13 +23,13 @@ namespace Proximity.Utility.Threading
 	/// Provides access to a cancellation token in another AppDomain
 	/// </summary>
 	/// <remarks>Exists in the calling AppDomain, and must be wrapped in a Using statement around any Awaits in order to preserve the lifetime of the remote object</remarks>
-	[SecuritySafeCritical]
 	public sealed class RemoteCancellationToken : MarshalByRefObject, IDisposable, ISponsor
 	{	//****************************************
 		private readonly CancellationToken _Token;
 		
 		private readonly CancellationTokenRegistration _Registration;
 		
+		[SecurityCritical]
 		private ImmutableHashSet<RemoteCancellationTokenSource> _TokenSources = ImmutableHashSet<RemoteCancellationTokenSource>.Empty;
 		private bool _IsDisposed;
 		//****************************************
@@ -38,6 +38,7 @@ namespace Proximity.Utility.Threading
 		/// Creates a new Remote Cancellation Token suitable for passing between AppDomains
 		/// </summary>
 		/// <param name="token">The Cancellation Token this Remote token will listen to cancellation requests for</param>
+		[SecuritySafeCritical]
 		public RemoteCancellationToken(CancellationToken token)
 		{
 			_Token = token;
@@ -53,7 +54,19 @@ namespace Proximity.Utility.Threading
 		}
 		
 		//****************************************
-		
+
+		/// <inheritdoc />
+		[SecurityCritical]
+		public override object InitializeLifetimeService()
+		{	//****************************************
+			var MyLease = (ILease)base.InitializeLifetimeService();
+			//****************************************
+
+			MyLease.Register(this);
+
+			return MyLease;
+		}
+
 		/// <summary>
 		/// Disposes of this Remote Cancellation Token
 		/// </summary>
@@ -62,20 +75,17 @@ namespace Proximity.Utility.Threading
 		{
 			_Registration.Dispose();
 
+			Unregister();
+
 			_IsDisposed = true;
 		}
 		
 		//****************************************
 
-//		[SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.Infrastructure)]
+		[SecuritySafeCritical]
 		internal void Attach(RemoteCancellationTokenSource tokenSource)
 		{
 			Debug.Assert(RemotingServices.IsObjectOutOfAppDomain(tokenSource), "Attempt to unwrap remote token source inside the owning AppDomain");
-			
-			// Sponsor the remote token source so it doesn't get disconnected if the operation takes a long time
-			var MyLease = (ILease)RemotingServices.GetLifetimeService(tokenSource);
-			
-			MyLease.Register(this);
 			
 			ImmutableInterlockedEx.Add(ref _TokenSources, tokenSource);
 			
@@ -85,29 +95,27 @@ namespace Proximity.Utility.Threading
 				tokenSource.Cancel();
 		}
 
-//		[SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.Infrastructure)]
+		[SecuritySafeCritical]
 		internal void Detach(RemoteCancellationTokenSource tokenSource)
 		{
 			ImmutableInterlockedEx.Remove(ref _TokenSources, tokenSource);
-			
-			var MyLease = (ILease)RemotingServices.GetLifetimeService(tokenSource);
-			
-			MyLease.Unregister(this);
 		}
 		
 		//****************************************
-		
+
+		[SecuritySafeCritical]
 		private void OnCancel()
 		{
 			// Since this token may be awaited by multiple remote calls, cancel each remote token source
 			foreach(var MyRemoteSource in _TokenSources)
 				MyRemoteSource.Cancel();
+
+			// All sources have been cancelled, but others might still attach (and immediately cancel, of course), so we can't Unregister
 		}
 		
 		//****************************************
 
 		[SecurityCritical]
-//		[SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.Infrastructure)]
 		TimeSpan ISponsor.Renewal(ILease lease)
 		{
 			// Ensure we keep the remote token source connection alive until we've been disposed
@@ -116,7 +124,17 @@ namespace Proximity.Utility.Threading
 			
 			return lease.RenewOnCallTime;
 		}
-		
+
+		[SecuritySafeCritical]
+		private void Unregister()
+		{	//****************************************
+			var MyLease = (ILease)RemotingServices.GetLifetimeService(this);
+			//****************************************
+
+			if (MyLease != null)
+				MyLease.Unregister(this);
+		}
+
 		//****************************************
 		
 		/// <summary>

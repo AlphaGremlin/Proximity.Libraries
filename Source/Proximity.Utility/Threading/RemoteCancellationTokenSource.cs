@@ -18,7 +18,6 @@ namespace Proximity.Utility.Threading
 	/// <summary>
 	/// Receives notifications from a cancellation token in another AppDomain
 	/// </summary>
-	[SecuritySafeCritical]
 	internal sealed class RemoteCancellationTokenSource : MarshalByRefObject, ISponsor, IDisposable
 	{	//****************************************
 		private readonly CancellationTokenSource _TokenSource = new CancellationTokenSource();
@@ -28,7 +27,7 @@ namespace Proximity.Utility.Threading
 		private bool _IsDisposed;
 		//****************************************
 		
-		//[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
+		[SecuritySafeCritical]
 		internal RemoteCancellationTokenSource(RemoteCancellationToken remoteToken)
 		{
 			Debug.Assert(RemotingServices.IsObjectOutOfAppDomain(remoteToken), "Attempt to unwrap remote token inside the owning AppDomain");
@@ -39,24 +38,30 @@ namespace Proximity.Utility.Threading
 		//****************************************
 
 		[SecuritySafeCritical]
-//		[SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.Infrastructure)]
 		public void Dispose()
 		{
 			// Task has completed (possibly by cancellation), we can detach from the remote token
 			_Token.Detach(this);
-			
-			// No longer need to sponsor the remote token connection
-			var MyLease = (ILease)RemotingServices.GetLifetimeService(_Token);
-			
-			MyLease.Unregister(this);
+
+			Unregister();
 			
 			_IsDisposed = true;
 		}
-		
+
+		[SecurityCritical]
+		public override object InitializeLifetimeService()
+		{	//****************************************
+			var MyLease = (ILease)base.InitializeLifetimeService();
+			//****************************************
+
+			MyLease.Register(this);
+
+			return MyLease;
+		}
+
 		//****************************************
 		
 		[SecurityCritical]
-		//[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
 		TimeSpan ISponsor.Renewal(ILease lease)
 		{
 			// Ensure we keep the remote token connection alive until we've been disposed upon completion of the task
@@ -65,16 +70,21 @@ namespace Proximity.Utility.Threading
 			
 			return lease.RenewOnCallTime;
 		}
-		
+
+		[SecuritySafeCritical]
+		private void Unregister()
+		{	//****************************************
+			var MyLease = (ILease)RemotingServices.GetLifetimeService(this);
+			//****************************************
+
+			if (MyLease != null)
+				MyLease.Unregister(this);
+		}
+
 		//****************************************
 		
 		internal void Attach()
 		{
-			// Sponsor the remote token so it doesn't get disconnected if the operation takes a long time
-			var MyLease = (ILease)RemotingServices.GetLifetimeService(_Token);
-			
-			MyLease.Register(this);
-			
 			// Attach to the remote token so it will cancel us
 			_Token.Attach(this);
 		}

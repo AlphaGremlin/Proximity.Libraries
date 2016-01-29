@@ -15,7 +15,8 @@ namespace Proximity.Utility
 	/// General API extensions
 	/// </summary>
 	public static class Extensions
-	{/// <summary>
+	{
+		/// <summary>
 		/// Calculates the similarity between two strings
 		/// </summary>
 		/// <param name="left">The first string to compare</param>

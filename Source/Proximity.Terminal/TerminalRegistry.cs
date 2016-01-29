@@ -49,16 +49,18 @@ namespace Proximity.Terminal
 			{
 				try
 				{
-					foreach(Type NewType in MyAssembly.GetTypes())
+					foreach(var NewType in MyAssembly.GetTypes())
 					{
-						Scan(NewType);
+						if (NewType != null)
+							Scan(NewType);
 					}
 				}
 				catch (ReflectionTypeLoadException e)
 				{
-					foreach (Type NewType in e.Types)
+					foreach (var NewType in e.Types)
 					{
-						Scan(NewType);
+						if (NewType != null)
+							Scan(NewType);
 					}
 				}
 			}

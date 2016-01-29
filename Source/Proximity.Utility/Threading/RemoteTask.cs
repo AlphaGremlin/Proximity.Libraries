@@ -20,7 +20,6 @@ namespace Proximity.Utility.Threading
 	/// Provides access to a Task running in another AppDomain
 	/// </summary>
 	/// <remarks>This object lives in the AppDomain where the Task is running</remarks>
-	[SecuritySafeCritical]
 	public sealed class RemoteTask : MarshalByRefObject, ISponsor
 	{	//****************************************
 		private readonly Task _Task;
@@ -44,19 +43,9 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 
-//		[SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.Infrastructure)]
+		[SecuritySafeCritical]
 		private void Attach(RemoteTaskCompletionSource<VoidStruct> taskSource)
 		{
-			if (!_Task.IsCompleted)
-			{
-				// Sponsor the remote task source so it doesn't get disconnected if the operation takes a long time
-				var MyLease = (ILease)RemotingServices.GetLifetimeService(taskSource);
-				
-				MyLease.Register(this);
-				
-				_IsRegistered = true;
-			}
-			
 			// Attach to the local task and pass the results on to the remote task source
 			_Task.ContinueWith(
 				(innerTask, state) =>
@@ -69,23 +58,35 @@ namespace Proximity.Utility.Threading
 						Source.SetCancelled();
 					else
 						Source.SetResult(default(VoidStruct));
-					
+
 					if (_IsRegistered)
-					{
-						// Task has completed, no need to maintain the sponsorship
-						var MyInnerLease = (ILease)RemotingServices.GetLifetimeService(Source);
-						
-						MyInnerLease.Unregister(this);
-					}
-					
-				}
-				, taskSource, TaskContinuationOptions.ExecuteSynchronously);
+						Unregister();
+				},
+				taskSource, TaskContinuationOptions.ExecuteSynchronously);
 		}
 		
 		//****************************************
 
+		/// <inheritdoc />
 		[SecurityCritical]
-//		[SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.Infrastructure)]
+		public override object InitializeLifetimeService()
+		{	//****************************************
+			var MyLease = (ILease)base.InitializeLifetimeService();
+			//****************************************
+
+			if (!_Task.IsCompleted)
+			{
+				MyLease.Register(this);
+
+				_IsRegistered = true;
+			}
+
+			return MyLease;
+		}
+
+		//****************************************
+
+		[SecurityCritical]
 		TimeSpan ISponsor.Renewal(ILease lease)
 		{
 			// Ensure we keep the remote task source connection alive until our task is completed
@@ -95,6 +96,16 @@ namespace Proximity.Utility.Threading
 			return lease.RenewOnCallTime;
 		}
 		
+		[SecuritySafeCritical]
+		private void Unregister()
+		{	//****************************************
+			var MyLease = (ILease)RemotingServices.GetLifetimeService(this);
+			//****************************************
+
+			if (MyLease != null)
+				MyLease.Unregister(this);
+		}
+
 		//****************************************
 		
 		/// <summary>
@@ -113,6 +124,7 @@ namespace Proximity.Utility.Threading
 		/// <param name="callback">The callback returning a task to wrap</param>
 		/// <param name="remoteToken">A remote cancellation token to convert into a local cancellation token</param>
 		/// <returns>A remote task to pass across AppDomain boundaries</returns>
+		[SecuritySafeCritical]
 		public static RemoteTask Start(Func<CancellationToken, Task> callback, RemoteCancellationToken remoteToken)
 		{
 			if (!RemotingServices.IsObjectOutOfAppDomain(remoteToken))
@@ -140,6 +152,7 @@ namespace Proximity.Utility.Threading
 		/// <param name="callback">The callback returning a task to wrap</param>
 		/// <param name="remoteToken">A remote cancellation token to convert into a local cancellation token</param>
 		/// <returns>A remote task to pass across AppDomain boundaries</returns>
+		[SecurityCritical]
 		public static RemoteTask<TResult> Start<TResult>(Func<CancellationToken, Task<TResult>> callback, RemoteCancellationToken remoteToken)
 		{
 			if (!RemotingServices.IsObjectOutOfAppDomain(remoteToken))
@@ -192,6 +205,7 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 		
+		[SecuritySafeCritical]
 		internal static Task CreateTask(RemoteTask remoteTask)
 		{
 			if (!RemotingServices.IsTransparentProxy(remoteTask))
@@ -210,7 +224,6 @@ namespace Proximity.Utility.Threading
 	/// Provides access to a Task running in another AppDomain
 	/// </summary>
 	/// <remarks>This object lives in the AppDomain where the Task is running</remarks>
-	[SecuritySafeCritical]
 	public sealed class RemoteTask<TResult> : MarshalByRefObject, ISponsor
 	{//****************************************
 		private readonly Task<TResult> _Task;
@@ -234,19 +247,9 @@ namespace Proximity.Utility.Threading
 
 		//****************************************
 		
-		//[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
+		[SecuritySafeCritical]
 		private void Attach(RemoteTaskCompletionSource<TResult> taskSource)
 		{
-			if (!_Task.IsCompleted)
-			{
-				// Sponsor the remote task source so it doesn't get disconnected if the operation takes a long time
-				var MyLease = (ILease)RemotingServices.GetLifetimeService(taskSource);
-				
-				MyLease.Register(this);
-				
-				_IsRegistered = true;
-			}
-			
 			// Attach to the local task and pass the results on to the remote task source
 			_Task.ContinueWith(
 				(innerTask, state) =>
@@ -266,31 +269,54 @@ namespace Proximity.Utility.Threading
 					{
 						Source.SetException(e);
 					}
-					
+
 					if (_IsRegistered)
-					{
-						// Task has completed, no need to maintain the sponsorship
-						var MyInnerLease = (ILease)RemotingServices.GetLifetimeService(Source);
-						
-						MyInnerLease.Unregister(this);
-					}
+						Unregister();
 				}
 				, taskSource, TaskContinuationOptions.ExecuteSynchronously);
 		}
 
 		//****************************************
 
+		/// <inheritdoc />
 		[SecurityCritical]
-		//[SecurityPermission(SecurityAction.LinkDemand, Flags=SecurityPermissionFlag.Infrastructure)]
+		public override object InitializeLifetimeService()
+		{	//****************************************
+			var MyLease = (ILease)base.InitializeLifetimeService();
+			//****************************************
+
+			if (!_Task.IsCompleted)
+			{
+				MyLease.Register(this);
+
+				_IsRegistered = true;
+			}
+
+			return MyLease;
+		}
+
+		//****************************************
+
+		[SecurityCritical]
 		TimeSpan ISponsor.Renewal(ILease lease)
 		{
 			// Ensure we keep the remote task source connection alive until our task is completed
 			if (_Task.IsCompleted)
 				return TimeSpan.Zero;
-			
+
 			return lease.RenewOnCallTime;
 		}
-		
+
+		[SecuritySafeCritical]
+		private void Unregister()
+		{	//****************************************
+			var MyLease = (ILease)RemotingServices.GetLifetimeService(this);
+			//****************************************
+
+			if (MyLease != null)
+				MyLease.Unregister(this);
+		}
+
 		//****************************************
 		
 		/// <summary>
@@ -309,6 +335,7 @@ namespace Proximity.Utility.Threading
 		/// <param name="callback">The callback returning a task to wrap</param>
 		/// <param name="remoteToken">A remote cancellation token to convert into a local cancellation token</param>
 		/// <returns>A remote task to pass across AppDomain boundaries</returns>
+		[SecuritySafeCritical]
 		public static RemoteTask<TResult> Start(Func<CancellationToken, Task<TResult>> callback, RemoteCancellationToken remoteToken)
 		{
 			if (!RemotingServices.IsObjectOutOfAppDomain(remoteToken))
@@ -341,7 +368,8 @@ namespace Proximity.Utility.Threading
 		}
 		
 		//****************************************
-		
+
+		[SecuritySafeCritical]
 		internal static Task<TResult> CreateTask(RemoteTask<TResult> remoteTask)
 		{
 			if (!RemotingServices.IsTransparentProxy(remoteTask))
