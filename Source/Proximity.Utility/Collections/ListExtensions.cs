@@ -31,7 +31,7 @@ namespace Proximity.Utility.Collections
 
 			while (StartIndex < EndIndex)
 			{
-				MiddleIndex = StartIndex + ((StartIndex - EndIndex) >> 1);
+				MiddleIndex = StartIndex + ((EndIndex - StartIndex) >> 1);
 				CompareResult = list[MiddleIndex].CompareTo(targetValue);
 
 				//Log.Debug("Check {0}: {1} ({2})", MiddleIndex, Dates[MiddleIndex].Ticks, CompareResult);
@@ -78,7 +78,7 @@ namespace Proximity.Utility.Collections
 
 			while (StartIndex < EndIndex)
 			{
-				MiddleIndex = StartIndex + ((StartIndex - EndIndex) >> 1);
+				MiddleIndex = StartIndex + ((EndIndex - StartIndex) >> 1);
 				CompareResult = list[MiddleIndex].CompareTo(targetValue);
 
 				//Log.Debug("Check {0}: {1} ({2})", MiddleIndex, Dates[MiddleIndex].Ticks, CompareResult);
@@ -125,7 +125,7 @@ namespace Proximity.Utility.Collections
 			
 			while (StartIndex < EndIndex)
 			{
-				MiddleIndex = StartIndex + ((StartIndex - EndIndex) >> 1);
+				MiddleIndex = StartIndex + ((EndIndex - StartIndex) >> 1);
 				CompareResult = list[MiddleIndex].CompareTo(targetValue);
 				
 				//Log.Debug("Check {0}: {1} ({2})", MiddleIndex, Dates[MiddleIndex].Ticks, CompareResult);
@@ -172,7 +172,7 @@ namespace Proximity.Utility.Collections
 			
 			while (StartIndex < EndIndex)
 			{
-				MiddleIndex = StartIndex + ((StartIndex - EndIndex) >> 1);
+				MiddleIndex = StartIndex + ((EndIndex - StartIndex) >> 1);
 				CompareResult = list[MiddleIndex].CompareTo(targetValue);
 				
 				//Log.Debug("Check {0}: {1} ({2})", MiddleIndex, Dates[MiddleIndex].Ticks, CompareResult);
