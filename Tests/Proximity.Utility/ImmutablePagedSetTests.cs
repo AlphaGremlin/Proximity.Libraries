@@ -20,7 +20,7 @@ namespace Proximity.Utility.Tests
 		public void SinglePage([Values(8, 16, 32, 48)] int count)
 		{	//****************************************
 			ImmutablePagedSet<DateTime, Tuple<DateTime, int>> MySet = new TestSet();
-			var MyContents = Generate(count, count).ToArray();
+			var MyContents = GenerateSequential(new DateTime(2000, 1, 1), count).ToArray();
 			//****************************************
 
 			MySet = MySet.AddRange(MyContents, true, true);
@@ -30,6 +30,56 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(count, MySet.TotalItems, "Total items are not as expected");
 			Assert.IsTrue(MySet.Pages.First().IsStart, "Has no start");
 			Assert.IsTrue(MySet.Pages.First().IsFinish, "Has no finish");
+			Assert.AreEqual(new DateTime(2000, 1, 1), MySet.Min.Min, "Min out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 1), MySet.Min.MinKey, "Min Key out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 1).AddDays(count - 1), MySet.Min.Max, "Max out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 1).AddDays(count - 1), MySet.Min.MaxKey, "Max Key out of range");
+
+			CollectionAssert.AreEqual(MyContents.OrderBy(item => item.Item1), MySet.Pages.First().Items, "Set does not contain the expected items in the right order");
+		}
+
+		[Test]
+		public void SinglePageMin([Values(8, 16, 32, 48)] int count)
+		{	//****************************************
+			ImmutablePagedSet<DateTime, Tuple<DateTime, int>> MySet = new TestSet();
+			var MyContents = GenerateSequential(new DateTime(2000, 1, 1), count).ToArray();
+			//****************************************
+
+			MySet = MySet.AddRangeMin(MyContents, new DateTime(1999, 12, 1), true, true);
+
+			//****************************************
+
+			Assert.AreEqual(count, MySet.TotalItems, "Total items are not as expected");
+			Assert.IsTrue(MySet.Pages.First().IsStart, "Has no start");
+			Assert.IsTrue(MySet.Pages.First().IsFinish, "Has no finish");
+
+			Assert.AreEqual(new DateTime(1999, 12, 1), MySet.Min.Min, "Min out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 1), MySet.Min.MinKey, "Min Key out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 1).AddDays(count - 1), MySet.Min.Max, "Max out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 1).AddDays(count - 1), MySet.Min.MaxKey, "Max Key out of range");
+
+			CollectionAssert.AreEqual(MyContents.OrderBy(item => item.Item1), MySet.Pages.First().Items, "Set does not contain the expected items in the right order");
+		}
+
+		[Test]
+		public void SinglePageMax([Values(8, 16, 32, 48)] int count)
+		{	//****************************************
+			ImmutablePagedSet<DateTime, Tuple<DateTime, int>> MySet = new TestSet();
+			var MyContents = GenerateSequential(new DateTime(2000, 1, 1), count).ToArray();
+			//****************************************
+
+			MySet = MySet.AddRangeMax(MyContents, new DateTime(2000, 3, 1), true, true);
+
+			//****************************************
+
+			Assert.AreEqual(count, MySet.TotalItems, "Total items are not as expected");
+			Assert.IsTrue(MySet.Pages.First().IsStart, "Has no start");
+			Assert.IsTrue(MySet.Pages.First().IsFinish, "Has no finish");
+
+			Assert.AreEqual(new DateTime(2000, 1, 1), MySet.Min.Min, "Min out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 1), MySet.Min.MinKey, "Min Key out of range");
+			Assert.AreEqual(new DateTime(2000, 3, 1), MySet.Min.Max, "Max out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 1).AddDays(count - 1), MySet.Min.MaxKey, "Max Key out of range");
 
 			CollectionAssert.AreEqual(MyContents.OrderBy(item => item.Item1), MySet.Pages.First().Items, "Set does not contain the expected items in the right order");
 		}
@@ -162,8 +212,8 @@ namespace Proximity.Utility.Tests
 		public void SinglePageOverlap()
 		{	//****************************************
 			ImmutablePagedSet<DateTime, Tuple<DateTime, int>> MySet = new TestSet();
-			var MyFirstContents = GenerateSequential(new DateTime(2015, 1, 1), 8).ToArray();
-			var MySecondContents = GenerateSequential(new DateTime(2015, 1, 7), 8).ToArray();
+			var MyFirstContents = GenerateSequential(new DateTime(2000, 1, 1), 8).ToArray();
+			var MySecondContents = GenerateSequential(new DateTime(2000, 1, 7), 8).ToArray();
 			//****************************************
 			
 			MySet = MySet.AddRange(MyFirstContents, true, true);
@@ -173,10 +223,110 @@ namespace Proximity.Utility.Tests
 			//****************************************
 
 			Assert.AreEqual(14, MySet.TotalItems, "Total items are not as expected");
+
+			Assert.AreEqual(new DateTime(2000, 1, 1), MySet.Min.Min, "Min out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 1), MySet.Min.MinKey, "Min Key out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 14), MySet.Min.Max, "Max out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 14), MySet.Min.MaxKey, "Max Key out of range");
 			
 			CollectionAssert.AreEqual(MyFirstContents.Concat(MySecondContents.Skip(2)), MySet.Pages.First().Items, "Set does not contain the expected items");
 		}
+
+		[Test]
+		public void SinglePageOverlapMin()
+		{	//****************************************
+			ImmutablePagedSet<DateTime, Tuple<DateTime, int>> MySet = new TestSet();
+			var MyFirstContents = GenerateSequential(new DateTime(2000, 1, 1), 8).ToArray();
+			var MySecondContents = GenerateSequential(new DateTime(2000, 1, 7), 8).ToArray();
+			//****************************************
+
+			MySet = MySet.AddRangeMin(MyFirstContents, new DateTime(1999, 12, 1), true, true);
+
+			MySet = MySet.AddRange(MySecondContents, false, true);
+
+			//****************************************
+
+			Assert.AreEqual(14, MySet.TotalItems, "Total items are not as expected");
+
+			Assert.AreEqual(new DateTime(1999, 12, 1), MySet.Min.Min, "Min out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 1), MySet.Min.MinKey, "Min Key out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 14), MySet.Min.Max, "Max out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 14), MySet.Min.MaxKey, "Max Key out of range");
+			
+			CollectionAssert.AreEqual(MyFirstContents.Concat(MySecondContents.Skip(2)), MySet.Pages.First().Items, "Set does not contain the expected items");
+		}
+
+		[Test]
+		public void SinglePageOverlapMin2()
+		{	//****************************************
+			ImmutablePagedSet<DateTime, Tuple<DateTime, int>> MySet = new TestSet();
+			var MyFirstContents = GenerateSequential(new DateTime(2000, 1, 1), 8).ToArray();
+			var MySecondContents = GenerateSequential(new DateTime(2000, 1, 7), 8).ToArray();
+			//****************************************
+
+			MySet = MySet.AddRange(MyFirstContents, true, true);
+
+			MySet = MySet.AddRangeMin(MySecondContents, new DateTime(1999, 12, 1), false, true);
+
+			//****************************************
+
+			Assert.AreEqual(14, MySet.TotalItems, "Total items are not as expected");
+
+			Assert.AreEqual(new DateTime(1999, 12, 1), MySet.Min.Min, "Min out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 1), MySet.Min.MinKey, "Min Key out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 14), MySet.Min.Max, "Max out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 14), MySet.Min.MaxKey, "Max Key out of range");
+
+			CollectionAssert.AreEqual(MyFirstContents.Concat(MySecondContents.Skip(2)), MySet.Pages.First().Items, "Set does not contain the expected items");
+		}
+
+		[Test]
+		public void SinglePageOverlapMax()
+		{	//****************************************
+			ImmutablePagedSet<DateTime, Tuple<DateTime, int>> MySet = new TestSet();
+			var MyFirstContents = GenerateSequential(new DateTime(2000, 1, 1), 8).ToArray();
+			var MySecondContents = GenerateSequential(new DateTime(2000, 1, 7), 8).ToArray();
+			//****************************************
+
+			MySet = MySet.AddRangeMax(MyFirstContents, new DateTime(2000, 1, 31), true, true);
+
+			MySet = MySet.AddRange(MySecondContents, false, true);
+
+			//****************************************
+
+			Assert.AreEqual(14, MySet.TotalItems, "Total items are not as expected");
+
+			Assert.AreEqual(new DateTime(2000, 1, 1), MySet.Min.Min, "Min out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 1), MySet.Min.MinKey, "Min Key out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 31), MySet.Min.Max, "Max out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 14), MySet.Min.MaxKey, "Max Key out of range");
+
+			CollectionAssert.AreEqual(MyFirstContents.Concat(MySecondContents.Skip(2)), MySet.Pages.First().Items, "Set does not contain the expected items");
+		}
 		
+		[Test]
+		public void SinglePageOverlapMax2()
+		{	//****************************************
+			ImmutablePagedSet<DateTime, Tuple<DateTime, int>> MySet = new TestSet();
+			var MyFirstContents = GenerateSequential(new DateTime(2000, 1, 1), 8).ToArray();
+			var MySecondContents = GenerateSequential(new DateTime(2000, 1, 7), 8).ToArray();
+			//****************************************
+
+			MySet = MySet.AddRange(MyFirstContents, true, true);
+
+			MySet = MySet.AddRangeMax(MySecondContents, new DateTime(2000, 1, 31), false, true);
+
+			//****************************************
+
+			Assert.AreEqual(14, MySet.TotalItems, "Total items are not as expected");
+
+			Assert.AreEqual(new DateTime(2000, 1, 1), MySet.Min.Min, "Min out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 1), MySet.Min.MinKey, "Min Key out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 31), MySet.Min.Max, "Max out of range");
+			Assert.AreEqual(new DateTime(2000, 1, 14), MySet.Min.MaxKey, "Max Key out of range");
+
+			CollectionAssert.AreEqual(MyFirstContents.Concat(MySecondContents.Skip(2)), MySet.Pages.First().Items, "Set does not contain the expected items");
+		}
 		
 		//****************************************
 

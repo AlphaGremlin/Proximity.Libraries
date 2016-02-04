@@ -20,25 +20,33 @@ namespace Proximity.Utility.Collections
 	/// </summary>
 	[SecurityCritical]
 	public class ImmutablePagedSetPage<TKey, TItem> : IComparable<ImmutablePagedSetPage<TKey, TItem>> where TKey : IComparable<TKey>
-	{	//****************************************
+	{
+		internal static readonly ImmutablePagedSetPage<TKey, TItem> Empty = new ImmutablePagedSetPage<TKey, TItem>(true, true, default(TKey), default(TKey));
+
+		//****************************************
 		private readonly ImmutableSortedSet<PagedSetItem<TKey, TItem>> _Items;
 		private readonly bool _IsStart, _IsFinish;
+		private TKey _Min, _Max;
 		//****************************************
 
-		private ImmutablePagedSetPage(ImmutableSortedSet<PagedSetItem<TKey, TItem>> items, bool isStart, bool isFinish)
+		private ImmutablePagedSetPage(ImmutableSortedSet<PagedSetItem<TKey, TItem>> items, bool isStart, bool isFinish, TKey min, TKey max)
 		{
 			_IsStart = isStart;
 			_IsFinish = isFinish;
 
 			_Items = items;
+			_Min = min;
+			_Max = max;
 		}
 
-		internal ImmutablePagedSetPage(bool isStart, bool isFinish)
+		internal ImmutablePagedSetPage(bool isStart, bool isFinish, TKey min, TKey max)
 		{
 			_IsStart = isStart;
 			_IsFinish = isFinish;
 
 			_Items = ImmutableSortedSet<PagedSetItem<TKey, TItem>>.Empty;
+			_Min = min;
+			_Max = max;
 		}
 
 		internal ImmutablePagedSetPage(IEnumerable<PagedSetItem<TKey, TItem>> items, bool isStart, bool isFinish)
@@ -47,6 +55,18 @@ namespace Proximity.Utility.Collections
 			_IsFinish = isFinish;
 
 			_Items = ImmutableSortedSet.CreateRange<PagedSetItem<TKey, TItem>>(items);
+			_Min = _Items.Min.Key;
+			_Max = _Items.Max.Key;
+		}
+
+		internal ImmutablePagedSetPage(IEnumerable<PagedSetItem<TKey, TItem>> items, bool isStart, bool isFinish, TKey min, TKey max)
+		{
+			_IsStart = isStart;
+			_IsFinish = isFinish;
+
+			_Items = ImmutableSortedSet.CreateRange<PagedSetItem<TKey, TItem>>(items);
+			_Min = min;
+			_Max = max;
 		}
 
 		//****************************************
@@ -54,7 +74,7 @@ namespace Proximity.Utility.Collections
 		[SecuritySafeCritical]
 		int IComparable<ImmutablePagedSetPage<TKey, TItem>>.CompareTo(ImmutablePagedSetPage<TKey, TItem> other)
 		{
-			return this.Min.CompareTo(other.Min);
+			return _Min.CompareTo(_Min);
 		}
 
 		//****************************************
@@ -66,7 +86,7 @@ namespace Proximity.Utility.Collections
 			if (object.ReferenceEquals(NewItems, _Items))
 				return this;
 
-			return new ImmutablePagedSetPage<TKey, TItem>(NewItems, _IsStart, _IsFinish);
+			return new ImmutablePagedSetPage<TKey, TItem>(NewItems, _IsStart, _IsFinish, GetMin(_Min, item.Key), GetMax(_Max, item.Key));
 		}
 
 		internal ImmutablePagedSetPage<TKey, TItem> Merge(IEnumerable<PagedSetItem<TKey, TItem>> items)
@@ -76,17 +96,47 @@ namespace Proximity.Utility.Collections
 			if (object.ReferenceEquals(NewItems, _Items))
 				return this;
 
-			return new ImmutablePagedSetPage<TKey, TItem>(NewItems, _IsStart, _IsFinish);
+			return new ImmutablePagedSetPage<TKey, TItem>(NewItems, _IsStart, _IsFinish, GetMin(NewItems.Min.Key, _Min), GetMax(NewItems.Max.Key, _Max));
+		}
+
+		internal ImmutablePagedSetPage<TKey, TItem> Merge(IEnumerable<PagedSetItem<TKey, TItem>> items, TKey min, TKey max)
+		{
+			var NewItems = _Items.Union(items);
+
+			if (object.ReferenceEquals(NewItems, _Items))
+				return this;
+
+			return new ImmutablePagedSetPage<TKey, TItem>(NewItems, _IsStart, _IsFinish, GetMin(_Min, min), GetMax(_Max, max));
+		}
+
+		internal ImmutablePagedSetPage<TKey, TItem> MergeMin(IEnumerable<PagedSetItem<TKey, TItem>> items, TKey min)
+		{
+			var NewItems = _Items.Union(items);
+
+			if (object.ReferenceEquals(NewItems, _Items))
+				return this;
+
+			return new ImmutablePagedSetPage<TKey, TItem>(NewItems, _IsStart, _IsFinish, GetMin(_Min, min), GetMax(NewItems.Max.Key, _Max));
+		}
+
+		internal ImmutablePagedSetPage<TKey, TItem> MergeMax(IEnumerable<PagedSetItem<TKey, TItem>> items, TKey max)
+		{
+			var NewItems = _Items.Union(items);
+
+			if (object.ReferenceEquals(NewItems, _Items))
+				return this;
+
+			return new ImmutablePagedSetPage<TKey, TItem>(NewItems, _IsStart, _IsFinish, GetMin(NewItems.Min.Key, _Min), GetMax(_Max, max));
 		}
 
 		internal ImmutablePagedSetPage<TKey, TItem> WithStart(bool isStart)
 		{
-			return (isStart == _IsStart) ? this : new ImmutablePagedSetPage<TKey, TItem>(_Items, isStart, _IsFinish);
+			return (isStart == _IsStart) ? this : new ImmutablePagedSetPage<TKey, TItem>(_Items, isStart, _IsFinish, _Min, _Max);
 		}
 
 		internal ImmutablePagedSetPage<TKey, TItem> WithFinish(bool isFinish)
 		{
-			return (isFinish == _IsFinish) ? this : new ImmutablePagedSetPage<TKey, TItem>(_Items, _IsStart, isFinish);
+			return (isFinish == _IsFinish) ? this : new ImmutablePagedSetPage<TKey, TItem>(_Items, _IsStart, isFinish, _Min, _Max);
 		}
 
 		internal int TryGetAfter(TKey key, out IEnumerable<TItem> results)
@@ -128,7 +178,7 @@ namespace Proximity.Utility.Collections
 		/// <summary>
 		/// Gets the maximum key on this page
 		/// </summary>
-		public TKey Max
+		public TKey MaxKey
 		{
 			get { return _Items.Max.Key; }
 		}
@@ -136,9 +186,25 @@ namespace Proximity.Utility.Collections
 		/// <summary>
 		/// Gets the minimum key on this page
 		/// </summary>
-		public TKey Min
+		public TKey MinKey
 		{
 			get { return _Items.Min.Key; }
+		}
+
+		/// <summary>
+		/// Gets the maximum range on this page
+		/// </summary>
+		public TKey Max
+		{
+			get { return _Max; }
+		}
+
+		/// <summary>
+		/// Gets the minimum range on this page
+		/// </summary>
+		public TKey Min
+		{
+			get { return _Min; }
 		}
 
 		/// <summary>
@@ -182,6 +248,16 @@ namespace Proximity.Utility.Collections
 		}
 
 		//****************************************
+
+		private static TKey GetMax(TKey left, TKey right)
+		{
+			return (left.CompareTo(right) >= 0) ? left : right;
+		}
+
+		private static TKey GetMin(TKey left, TKey right)
+		{
+			return (left.CompareTo(right) <= 0) ? left : right;
+		}
 
 		private static TItem FromItem(PagedSetItem<TKey, TItem> item)
 		{

@@ -55,9 +55,6 @@ namespace Proximity.Utility.Collections
 		public ImmutablePagedSet<TKey, TItem> AddRange(IEnumerable<TItem> items, bool isStart, bool isFinish)
 		{	//****************************************
 			var SortedItems = items.OrderBy(GetKey).ToArray();
-			ImmutablePagedSetPage<TKey, TItem> OverlapsWith = null;
-			List<ImmutablePagedSetPage<TKey, TItem>> OverlappingPages = null;
-			ImmutableSortedSet<ImmutablePagedSetPage<TKey, TItem>>.Builder NewPages = null;
 			//****************************************
 
 			// If we receive an empty set, we can't merge since we have no min or max
@@ -66,101 +63,108 @@ namespace Proximity.Utility.Collections
 				// No other pages, and we're both start and finish, create an empty set to signal this situation
 				if (isStart && isFinish && _Pages.Count == 0)
 				{
-					return Create(_Pages.Add(new ImmutablePagedSetPage<TKey, TItem>(true, true)));
+					return Create(_Pages.Add(ImmutablePagedSetPage<TKey, TItem>.Empty));
 				}
 
 				return this;
 			}
 
-			// We have a set of items
+			// Find the ranges
 			var Min = GetKey(SortedItems[0]);
 			var Max = GetKey(SortedItems[SortedItems.Length - 1]);
-			var PageItems = SortedItems.Select((item) => new PagedSetItem<TKey, TItem>(GetKey(item), item));
 
-			// Do we overlap with any existing pages?
-			foreach (var MyPage in _Pages)
+			return AddRange(SortedItems, Min, Max, isStart, isFinish);
+		}
+
+		/// <summary>
+		/// Adds a range of items to the paged set as a new page, merging with existing overlapping pages
+		/// </summary>
+		/// <param name="items">The set of items to add</param>
+		/// <param name="min">The minimum value for this page</param>
+		/// <param name="max">The maximum value for this page</param>
+		/// <param name="isStart">Whether this page is the start of the set</param>
+		/// <param name="isFinish">Whether this page is the end of the set</param>
+		/// <returns>A new immutable paged set with the new items</returns>
+		public ImmutablePagedSet<TKey, TItem> AddRange(IEnumerable<TItem> items, TKey min, TKey max, bool isStart, bool isFinish)
+		{	//****************************************
+			var SortedItems = items.OrderBy(GetKey).ToArray();
+			//****************************************
+
+			// If we receive an empty set, we can't merge since we have no min or max
+			if (SortedItems.Length == 0)
 			{
-				if ((MyPage.Min.CompareTo(Max) <= 0 && MyPage.Max.CompareTo(Min) >= 0) || MyPage.Count == 0)
+				// No other pages, and we're both start and finish, create an empty set to signal this situation
+				if (isStart && isFinish && _Pages.Count == 0)
 				{
-					if (OverlapsWith != null)
-					{
-						// We overlap with multiple pages
-						if (OverlappingPages == null)
-							OverlappingPages = new List<ImmutablePagedSetPage<TKey, TItem>>();
-
-						OverlappingPages.Add(MyPage);
-					}
-					else
-					{
-						OverlapsWith = MyPage;
-					}
-				}
-			}
-
-			NewPages = _Pages.ToBuilder();
-
-			// No matching page we overlap with
-			if (OverlapsWith == null)
-			{
-				// Is there already a start or finish page?
-				if (_Pages.Count != 0)
-				{
-					if (isStart && _Pages.Min.IsStart)
-					{
-						// If our maximum is less than the minimum page, we can't take over as start page
-						if (_Pages.Min.Min.CompareTo(Max) < 0)
-							throw new InvalidOperationException("IsStart when there's already a lower start page");
-
-						Replace(NewPages, NewPages.Min, NewPages.Min.WithStart(false)); // This page is taking over as the start page
-					}
-
-					if (isFinish && _Pages.Max.IsFinish)
-					{
-						// If our minimum is greater than the maximum page, we can't take over as the finish page
-						if (_Pages.Max.Max.CompareTo(Min) > 0)
-							throw new InvalidOperationException("IsFinish when there's already a finish page");
-
-						Replace(NewPages, NewPages.Max, NewPages.Max.WithFinish(false)); // This page is taking over as the finish page
-					}
+					return Create(_Pages.Add(new ImmutablePagedSetPage<TKey, TItem>(true, true, min, max)));
 				}
 
-				NewPages.Add(new ImmutablePagedSetPage<TKey, TItem>(PageItems, isStart, isFinish));
-
-				//Log.Debug("PagedSet adding new page from {0}{1} to {2}{3} ({4} items)", Min, isStart ? " (Start)" : "", Max, isFinish ? " (Finish)" : "", PageItems.Count());
+				return this;
 			}
-			else if (OverlappingPages == null)
-			{
-				Replace(NewPages, OverlapsWith, OverlapsWith.Merge(PageItems));
 
-				/*
-				Log.Debug("PagedSet merging page from {0}{1} to {2}{3} with {4}{5} to {6}{7}", 
-					Min, isStart ? " (Start)" : "", Max, isFinish ? " (Finish)" : "",
-					OverlapsWith.Min, OverlapsWith.IsStart ? " (Start)" : "", OverlapsWith.Max, OverlapsWith.IsFinish ? " (Finish)" : "");
-				*/
-			}
-			else
+			return AddRange(SortedItems, min, max, isStart, isFinish);
+		}
+
+		/// <summary>
+		/// Adds a range of items to the paged set as a new page, merging with existing overlapping pages
+		/// </summary>
+		/// <param name="items">The set of items to add</param>
+		/// <param name="min">The minimum value for this page</param>
+		/// <param name="isStart">Whether this page is the start of the set</param>
+		/// <param name="isFinish">Whether this page is the end of the set</param>
+		/// <returns>A new immutable paged set with the new items</returns>
+		public ImmutablePagedSet<TKey, TItem> AddRangeMin(IEnumerable<TItem> items, TKey min, bool isStart, bool isFinish)
+		{	//****************************************
+			var SortedItems = items.OrderBy(GetKey).ToArray();
+			//****************************************
+
+			// If we receive an empty set, we can't merge since we have no min or max
+			if (SortedItems.Length == 0)
 			{
-				// Remove the pages that overlap
-				foreach (var MyPage in OverlappingPages)
+				// No other pages, and we're both start and finish, create an empty set to signal this situation
+				if (isStart && isFinish && _Pages.Count == 0)
 				{
-					NewPages.Remove(MyPage);
+					return Create(_Pages.Add(new ImmutablePagedSetPage<TKey, TItem>(true, true, min, default(TKey))));
 				}
 
-				var FirstPage = OverlappingPages[0];
-				var LastPage = OverlappingPages[OverlappingPages.Count - 1];
-
-				/*
-				Log.Debug("PagedSet merging page from {0}{1} to {2}{3} with {4} other pages {5}{6} to {7}{8}",
-					Min, isStart ? " (Start)" : "", Max, isFinish ? " (Finish)" : "",
-					OverlappingPages.Count,
-					FirstPage.Min, FirstPage.IsStart ? " (Start)" : "", LastPage.Max, LastPage.IsFinish ? " (Finish)" : "");
-				*/
-
-				// Merge the first and last pages with the added pages
-				NewPages.Add(FirstPage.Merge(PageItems.Concat(LastPage.SetItems)));
+				return this;
 			}
 
-			return Create(NewPages.ToImmutable());
+			// Find the maximum and use the given minimum
+			var Max = GetKey(SortedItems[SortedItems.Length - 1]);
+
+			return AddRange(SortedItems, min, Max, isStart, isFinish);
+		}
+
+		/// <summary>
+		/// Adds a range of items to the paged set as a new page, merging with existing overlapping pages
+		/// </summary>
+		/// <param name="items">The set of items to add</param>
+		/// <param name="max">The maximum value for this page</param>
+		/// <param name="isStart">Whether this page is the start of the set</param>
+		/// <param name="isFinish">Whether this page is the end of the set</param>
+		/// <returns>A new immutable paged set with the new items</returns>
+		public ImmutablePagedSet<TKey, TItem> AddRangeMax(IEnumerable<TItem> items, TKey max, bool isStart, bool isFinish)
+		{	//****************************************
+			var SortedItems = items.OrderBy(GetKey).ToArray();
+			//****************************************
+
+			// If we receive an empty set, we can't merge since we have no min or max
+			if (SortedItems.Length == 0)
+			{
+				// No other pages, and we're both start and finish, create an empty set to signal this situation
+				if (isStart && isFinish && _Pages.Count == 0)
+				{
+					return Create(_Pages.Add(new ImmutablePagedSetPage<TKey, TItem>(true, true, default(TKey), max)));
+				}
+
+				return this;
+			}
+
+			// Find the maximum and use the given minimum
+			var Min = GetKey(SortedItems[0]);
+
+			return AddRange(SortedItems, Min, max, isStart, isFinish);
 		}
 
 		/// <summary>
@@ -172,7 +176,7 @@ namespace Proximity.Utility.Collections
 		{
 			if (_Pages.Count == 0)
 			{
-				return Create(_Pages.Add(new ImmutablePagedSetPage<TKey, TItem>(true, true).Append(new PagedSetItem<TKey, TItem>(GetKey(item), item))));
+				return Create(_Pages.Add(ImmutablePagedSetPage<TKey, TItem>.Empty.Append(new PagedSetItem<TKey, TItem>(GetKey(item), item))));
 			}
 
 			return Create(Replace(_Pages, _Pages.Max, _Pages.Max.Append(new PagedSetItem<TKey, TItem>(GetKey(item), item))));
@@ -446,6 +450,102 @@ namespace Proximity.Utility.Collections
 
 		//****************************************
 
+		private ImmutablePagedSet<TKey, TItem> AddRange(TItem[] items, TKey min, TKey max, bool isStart, bool isFinish)
+		{	//****************************************
+			ImmutablePagedSetPage<TKey, TItem> OverlapsWith = null;
+			List<ImmutablePagedSetPage<TKey, TItem>> OverlappingPages = null;
+			ImmutableSortedSet<ImmutablePagedSetPage<TKey, TItem>>.Builder NewPages = null;
+			//****************************************
+
+			// We have a set of items
+			var PageItems = items.Select((item) => new PagedSetItem<TKey, TItem>(GetKey(item), item));
+
+			// Do we overlap with any existing pages?
+			foreach (var MyPage in _Pages)
+			{
+				if ((MyPage.Min.CompareTo(max) <= 0 && MyPage.Max.CompareTo(min) >= 0) || MyPage.Count == 0)
+				{
+					if (OverlapsWith != null)
+					{
+						// We overlap with multiple pages
+						if (OverlappingPages == null)
+							OverlappingPages = new List<ImmutablePagedSetPage<TKey, TItem>>();
+
+						OverlappingPages.Add(MyPage);
+					}
+					else
+					{
+						OverlapsWith = MyPage;
+					}
+				}
+			}
+
+			NewPages = _Pages.ToBuilder();
+
+			// No matching page we overlap with
+			if (OverlapsWith == null)
+			{
+				// Is there already a start or finish page?
+				if (_Pages.Count != 0)
+				{
+					if (isStart && _Pages.Min.IsStart)
+					{
+						// If our maximum is less than the minimum page, we can't take over as start page
+						if (_Pages.Min.Min.CompareTo(max) < 0)
+							throw new InvalidOperationException("IsStart when there's already a lower start page");
+
+						Replace(NewPages, NewPages.Min, NewPages.Min.WithStart(false)); // This page is taking over as the start page
+					}
+
+					if (isFinish && _Pages.Max.IsFinish)
+					{
+						// If our minimum is greater than the maximum page, we can't take over as the finish page
+						if (_Pages.Max.Max.CompareTo(min) > 0)
+							throw new InvalidOperationException("IsFinish when there's already a finish page");
+
+						Replace(NewPages, NewPages.Max, NewPages.Max.WithFinish(false)); // This page is taking over as the finish page
+					}
+				}
+
+				NewPages.Add(new ImmutablePagedSetPage<TKey, TItem>(PageItems, isStart, isFinish, min, max));
+
+				//Log.Debug("PagedSet adding new page from {0}{1} to {2}{3} ({4} items)", Min, isStart ? " (Start)" : "", Max, isFinish ? " (Finish)" : "", PageItems.Count());
+			}
+			else if (OverlappingPages == null)
+			{
+				Replace(NewPages, OverlapsWith, OverlapsWith.Merge(PageItems, min, max));
+
+				/*
+				Log.Debug("PagedSet merging page from {0}{1} to {2}{3} with {4}{5} to {6}{7}", 
+					Min, isStart ? " (Start)" : "", Max, isFinish ? " (Finish)" : "",
+					OverlapsWith.Min, OverlapsWith.IsStart ? " (Start)" : "", OverlapsWith.Max, OverlapsWith.IsFinish ? " (Finish)" : "");
+				*/
+			}
+			else
+			{
+				// Remove the pages that overlap
+				foreach (var MyPage in OverlappingPages)
+				{
+					NewPages.Remove(MyPage);
+				}
+
+				var FirstPage = OverlappingPages[0];
+				var LastPage = OverlappingPages[OverlappingPages.Count - 1];
+
+				/*
+				Log.Debug("PagedSet merging page from {0}{1} to {2}{3} with {4} other pages {5}{6} to {7}{8}",
+					Min, isStart ? " (Start)" : "", Max, isFinish ? " (Finish)" : "",
+					OverlappingPages.Count,
+					FirstPage.Min, FirstPage.IsStart ? " (Start)" : "", LastPage.Max, LastPage.IsFinish ? " (Finish)" : "");
+				*/
+
+				// Merge the first and last pages with the added pages
+				NewPages.Add(FirstPage.Merge(PageItems.Concat(LastPage.SetItems), min, max));
+			}
+
+			return Create(NewPages.ToImmutable());
+		}
+
 		//****************************************
 
 		/// <summary>
@@ -454,6 +554,22 @@ namespace Proximity.Utility.Collections
 		public ISet<ImmutablePagedSetPage<TKey, TItem>> Pages
 		{
 			get { return _Pages; }
+		}
+
+		/// <summary>
+		/// Gets the minimum page, if any
+		/// </summary>
+		public ImmutablePagedSetPage<TKey, TItem> Min
+		{
+			get { return _Pages.Min; }
+		}
+
+		/// <summary>
+		/// Gets the maximum page
+		/// </summary>
+		public ImmutablePagedSetPage<TKey, TItem> Max
+		{
+			get { return _Pages.Max; }
 		}
 
 		/// <summary>
