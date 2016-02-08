@@ -168,6 +168,144 @@ namespace Proximity.Utility.Collections
 		}
 
 		/// <summary>
+		/// Remove all pages and records after and including the given Key
+		/// </summary>
+		/// <param name="key">The key to remove all records after</param>
+		/// <returns>A new Immutable Paged Set with matching page data removed</returns>
+		/// <remarks>Will mark the finish page as unfinished if key is equal or less than the Max</remarks>
+		public ImmutablePagedSet<TKey, TItem> RemoveAfter(TKey key)
+		{	//****************************************
+			ImmutableSortedSet<ImmutablePagedSetPage<TKey, TItem>>.Builder NewPages = null;
+			//****************************************
+
+			foreach (var MyPage in _Pages)
+			{
+				// Does this page overlap the Key?
+				if (MyPage.Max.CompareTo(key) > 0)
+					continue;
+
+				if (NewPages == null)
+					NewPages = _Pages.ToBuilder();
+
+				// Yes, so remove it
+				NewPages.Remove(MyPage);
+
+				// Is it completely outside?
+				if (MyPage.Min.CompareTo(key) <= 0)
+				{
+					// No, so add a new trimmed version
+					NewPages.Add(MyPage.RemoveAfter(key));
+				}
+			}
+
+			// Did we make any changes?
+			if (NewPages == null)
+				return this;
+
+			// Yes, so create a new paged set
+			return Create(NewPages.ToImmutable());
+		}
+
+		/// <summary>
+		/// Remove all pages and records before and including the given Key
+		/// </summary>
+		/// <param name="key">The key to remove all records before</param>
+		/// <returns>A new Immutable Paged Set with matching page data removed</returns>
+		/// <remarks>Will mark the start page as unfinished if key is equal or greater than the Min</remarks>
+		public ImmutablePagedSet<TKey, TItem> RemoveBefore(TKey key)
+		{	//****************************************
+			ImmutableSortedSet<ImmutablePagedSetPage<TKey, TItem>>.Builder NewPages = null;
+			//****************************************
+
+			foreach (var MyPage in _Pages)
+			{
+				// Does this page overlap the Key?
+				if (MyPage.Min.CompareTo(key) < 0)
+					continue;
+
+				if (NewPages == null)
+					NewPages = _Pages.ToBuilder();
+
+				// Yes, so remove it
+				NewPages.Remove(MyPage);
+
+				// Is it completely outside?
+				if (MyPage.Max.CompareTo(key) >= 0)
+				{
+					// No, so add a new trimmed version
+					NewPages.Add(MyPage.RemoveBefore(key));
+				}
+			}
+
+			// Did we make any changes?
+			if (NewPages == null)
+				return this;
+
+			// Yes, so create a new paged set
+			return Create(NewPages.ToImmutable());
+		}
+
+		/// <summary>
+		/// Remove all pages and records between the given range
+		/// </summary>
+		/// <param name="min">The minimum record to remove</param>
+		/// <param name="max">The maximum record to remove</param>
+		/// <returns>A new Immutable Paged Set with matching page data removed</returns>
+		/// <remarks>Will invalidate the start or finish pages if the given range overlaps with the start or finish</remarks>
+		public ImmutablePagedSet<TKey, TItem> RemoveBetween(TKey min, TKey max)
+		{	//****************************************
+			ImmutableSortedSet<ImmutablePagedSetPage<TKey, TItem>>.Builder NewPages = null;
+			//****************************************
+			
+			foreach (var MyPage in _Pages)
+			{
+				// Does this page overlap the Key?
+				if (MyPage.Min.CompareTo(max) > 0 && MyPage.Max.CompareTo(min) < 0)
+					continue;
+				
+				if (NewPages == null)
+					NewPages = _Pages.ToBuilder();
+				
+				// Yes, so remove it
+				NewPages.Remove(MyPage);
+
+				// Is our minimum outside the range?
+				if (MyPage.Min.CompareTo(min) < 0)
+				{
+					// Yes, is our maximum outside the range too?
+					if (MyPage.Max.CompareTo(max) > 0)
+					{
+						// Split this page into two
+						NewPages.Add(MyPage.RemoveBefore(max)); // Page containing everything after Max
+						NewPages.Add(MyPage.RemoveAfter(min)); // Page containing everything before Min
+
+						break; // We can abort early, since this page entirely envelops our range
+					}
+					else
+					{
+						// We're overlapping the bottom, trim it off
+						NewPages.Add(MyPage.RemoveBefore(min));
+					}
+				}
+				// Is our maximum outside the range?
+				else if (MyPage.Max.CompareTo(max) > 0)
+				{
+					// We're overlapping the top, trim it down
+					NewPages.Add(MyPage.RemoveAfter(min));
+				}
+
+				// If none of the comparisons above match, we're entirely inside, so don't add it back since it'll get deleted
+			}
+
+			// Did we make any changes?
+			if (NewPages == null)
+				return this;
+
+			// Yes, so create a new paged set
+			return Create(NewPages.ToImmutable());
+		}
+
+		/// <summary>
 		/// Adds a single item to the final finished page
 		/// </summary>
 		/// <param name="item">The item to add</param>
@@ -180,6 +318,18 @@ namespace Proximity.Utility.Collections
 			}
 
 			return Create(Replace(_Pages, _Pages.Max, _Pages.Max.Append(new PagedSetItem<TKey, TItem>(GetKey(item), item))));
+		}
+
+		/// <summary>
+		/// Mark the start page as unfinished
+		/// </summary>
+		/// <returns>A new immutable paged set with the start page unfinished</returns>
+		public ImmutablePagedSet<TKey, TItem> InvalidateStart()
+		{
+			if (_Pages.Count == 0 || !_Pages.Min.IsStart)
+				return this;
+
+			return Create(Replace(_Pages, _Pages.Min, _Pages.Min.WithStart(false)));
 		}
 
 		/// <summary>

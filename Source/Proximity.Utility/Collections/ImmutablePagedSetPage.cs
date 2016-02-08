@@ -139,6 +139,48 @@ namespace Proximity.Utility.Collections
 			return (isFinish == _IsFinish) ? this : new ImmutablePagedSetPage<TKey, TItem>(_Items, _IsStart, isFinish, _Min, _Max);
 		}
 
+		internal ImmutablePagedSetPage<TKey, TItem> RemoveAfter(TKey key)
+		{
+			// Are there any items greater than the Key?
+			if (_Items.Count != 0 && key.CompareTo(_Items.Max.Key) <= 0)
+			{
+				var NewItems = _Items.ToBuilder();
+
+				foreach (var MyItem in _Items.Reverse())
+				{
+					if (key.CompareTo(_Items[0].Key) <= 0)
+						NewItems.Remove(MyItem);
+					else
+						break;
+				}
+
+				return new ImmutablePagedSetPage<TKey, TItem>(NewItems.ToImmutable(), _IsStart, false, _Min, key);
+			}
+
+			return new ImmutablePagedSetPage<TKey, TItem>(_Items, _IsStart, false, _Min, key);
+		}
+
+		internal ImmutablePagedSetPage<TKey, TItem> RemoveBefore(TKey key)
+		{
+			// Are there any items less than the Key?
+			if (_Items.Count != 0 && key.CompareTo(_Items.Min.Key) >= 0)
+			{
+				var NewItems = _Items.ToBuilder();
+
+				foreach (var MyItem in _Items)
+				{
+					if (key.CompareTo(_Items[0].Key) >= 0)
+						NewItems.Remove(MyItem);
+					else
+						break;
+				}
+
+				return new ImmutablePagedSetPage<TKey, TItem>(NewItems.ToImmutable(), false, _IsFinish, key, _Max);
+			}
+
+			return new ImmutablePagedSetPage<TKey, TItem>(_Items, false, _IsFinish, key, _Max);
+		}
+
 		internal int TryGetAfter(TKey key, out IEnumerable<TItem> results)
 		{	//****************************************
 			var TopIndex = _Items.NearestAboveAscending(new PagedSetItem<TKey, TItem>(key));

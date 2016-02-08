@@ -40,7 +40,7 @@ namespace Proximity.Terminal
 						{
 							using (Log.VerboseSection("Available Default Commands:"))
 							{
-								Log.Info(string.Join(", ", MyTypeSet.Default.Type.Commands));
+								Log.Info(string.Join(", ", MyTypeSet.Default.Type.Commands.OrderBy(set => set)));
 							}
 						}
 						
@@ -48,7 +48,7 @@ namespace Proximity.Terminal
 						{
 							using (Log.VerboseSection("Available Default Variables:"))
 							{
-								Log.Info(string.Join(", ", MyTypeSet.Default.Type.Variables));
+								Log.Info(string.Join(", ", MyTypeSet.Default.Type.Variables.OrderBy(var => var)));
 							}
 						}
 					}
@@ -57,7 +57,7 @@ namespace Proximity.Terminal
 					{
 						using (Log.VerboseSection("Available Instances:"))
 						{
-							Log.Info(string.Join(", ", MyTypeSet.Instances));
+							Log.Info(string.Join(", ", MyTypeSet.Instances.OrderBy(name => name)));
 						}
 					}
 				}
@@ -72,7 +72,7 @@ namespace Proximity.Terminal
 				{
 					using (Log.VerboseSection("Available Commands:"))
 					{
-						Log.Info(string.Join(", ", MyInstance.Type.Commands));
+						Log.Info(string.Join(", ", MyInstance.Type.Commands.OrderBy(set => set)));
 					}
 				}
 				
@@ -80,7 +80,7 @@ namespace Proximity.Terminal
 				{
 					using (Log.VerboseSection("Available Variables:"))
 					{
-						Log.Info(string.Join(", ", MyInstance.Type.Variables));
+						Log.Info(string.Join(", ", MyInstance.Type.Variables.OrderBy(var => var)));
 					}
 				}
 			}
@@ -88,7 +88,7 @@ namespace Proximity.Terminal
 			{
 				using (Log.VerboseSection("Available Overloads:"))
 				{
-					foreach(var MyCommand in ((TerminalCommandSet)typeData).Commands)
+					foreach (var MyCommand in ((TerminalCommandSet)typeData).Commands)
 					{
 						Log.Info("{0}({1})\t{2}", MyCommand.Name, string.Join(", ", MyCommand.Method.GetParameters().Select(param => string.Format("{0}: {1}", param.Name, param.ParameterType.Name))), MyCommand.Description);
 					}
