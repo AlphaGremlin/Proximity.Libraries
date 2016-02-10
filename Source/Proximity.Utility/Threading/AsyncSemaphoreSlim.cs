@@ -176,7 +176,6 @@ namespace Proximity.Utility.Threading
 			}
 		}
 
-		[SecuritySafeCritical]
 		private void Decrement()
 		{	//****************************************
 			TaskCompletionSource<IDisposable> NextWaiter;
@@ -196,7 +195,8 @@ namespace Proximity.Utility.Threading
 #if PORTABLE
 					Task.Factory.StartNew(ReleaseWaiter, NextWaiter);
 #else
-					ThreadPool.UnsafeQueueUserWorkItem(ReleaseWaiter, NextWaiter);
+					ThreadPool.QueueUserWorkItem(ReleaseWaiter, NextWaiter);
+//					ThreadPool.UnsafeQueueUserWorkItem(ReleaseWaiter, NextWaiter);
 #endif
 					return;
 				}

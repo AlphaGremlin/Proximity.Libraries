@@ -19,6 +19,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ObservableSortedList.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ObservableSortedSet.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\PagedSetResults.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)IO\PipeStream.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\AsyncSemaphoreSlim.cs" />
     <None Include="$(MSBuildThisFileDirectory)Collections\ObservableSortedSubset.cs" />
     <None Include="$(MSBuildThisFileDirectory)Diagnostics\ExceptionExtensions.cs" />

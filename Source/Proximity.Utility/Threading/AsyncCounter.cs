@@ -154,7 +154,7 @@ namespace Proximity.Utility.Threading
 		/// <summary>
 		/// Attempts to decrement the Counter
 		/// </summary>
-		/// <param name="token">A cancellation token that can be used to abort waiting on the lock</param>
+		/// <param name="token">A cancellation token that can be used to abort waiting on the counter</param>
 		/// <returns>A task that completes when we were able to decrement the counter</returns>
 		public Task Decrement(CancellationToken token)
 		{	//****************************************
@@ -191,12 +191,127 @@ namespace Proximity.Utility.Threading
 		{
 			return _Waiters.IsEmpty && InternalTryDecrement();
 		}
+		
+		/// <summary>
+		/// Blocks attempting to decrement the counter
+		/// </summary>
+		/// <param name="token">A cancellation token that can be used to abort waiting on the counter</param>
+		/// <returns>True if the counter was decremented without waiting, otherwise False due to disposal</returns>
+		/// <exception cref="OperationCancelledException">The given cancellation token was cancelled</exception>
+		public bool TryDecrement(CancellationToken token)
+		{
+			return TryDecrement(Timeout.InfiniteTimeSpan, token);
+		}
+		
+		/// <summary>
+		/// Blocks attempting to decrement the counter
+		/// </summary>
+		/// <param name="timeout">Number of milliseconds to block for a counter to become available. Pass zero to not block, or Timeout.InfiniteTimeSpan to block indefinitely</param>
+		/// <returns>True if the counter was decremented, otherwise False due to timeout or disposal</returns>
+		public bool TryDecrement(TimeSpan timeout)
+		{
+			return TryDecrement(timeout, CancellationToken.None);
+		}
+
+		/// <summary>
+		/// Blocks attempting to decrement the counter
+		/// </summary>
+		/// <param name="timeout">Number of milliseconds to block for a counter to become available. Pass zero to not block, or Timeout.InfiniteTimeSpan to block indefinitely</param>
+		/// <param name="token">A cancellation token that can be used to abort waiting on the counter</param>
+		/// <returns>True if the counter was decremented, otherwise False due to timeout or disposal</returns>
+		/// <exception cref="OperationCancelledException">The given cancellation token was cancelled</exception>
+		public bool TryDecrement(TimeSpan timeout, CancellationToken token)
+		{	//****************************************
+			TaskCompletionSource<AsyncCounter> NewWaiter;
+			//****************************************
+
+			// First up, try and take the counter if possible
+			if (_Waiters.IsEmpty && InternalTryDecrement())
+				return true;
+
+			// If we're not okay with blocking, then we fail
+			if (timeout == TimeSpan.Zero)
+				return false;
+
+			// No free counters, are we disposed?
+			if (_CurrentCount == -1)
+				return false;
+
+			//****************************************
+
+			if (timeout == Timeout.InfiniteTimeSpan && timeout < TimeSpan.Zero)
+				throw new ArgumentOutOfRangeException("timeout", "Timeout must be Timeout.InfiniteTimeSpan or a positive time");
+
+			// We're okay with blocking, so create our waiter and add it to the queue
+			NewWaiter = new TaskCompletionSource<AsyncCounter>();
+
+			_Waiters.Enqueue(NewWaiter);
+
+			// Was a counter added while we were busy?
+			if (InternalTryDecrement())
+				ForceIncrement(); // Try and activate a waiter, or at least increment
+
+			//****************************************
+
+			// Are we okay with blocking indefinitely (or until the token is raised)?
+			if (timeout == Timeout.InfiniteTimeSpan)
+			{
+				// Prepare the cancellation token (if any)
+				PrepareWaiter(NewWaiter, token);
+
+				try
+				{
+					// Wait indefinitely for a definitive result
+					NewWaiter.Task.Wait();
+
+					return true;
+				}
+				catch
+				{
+					// We may get a cancel or dispose exception
+					if (!token.IsCancellationRequested)
+						return false; // Original token was not cancelled, so return false
+
+					throw; // Throw the cancellation
+				}
+			}
+
+			// We want to be able to timeout and possibly cancel too
+			using (var MySource = CancellationTokenSource.CreateLinkedTokenSource(token))
+			{
+				// Prepare the cancellation token (if any)
+				PrepareWaiter(NewWaiter, MySource.Token);
+
+				// If the task is completed, all good!
+				if (NewWaiter.Task.IsCompleted)
+					return true;
+
+				// We can't just use Decrement(token).Wait(timeout) because that won't cancel the decrement attempt
+				// Instead, we have to cancel on the original token
+				MySource.CancelAfter(timeout);
+
+				try
+				{
+					// Wait for the task to complete, knowing it will either cancel due to the token, the timeout, or because we're zero and disposed
+					NewWaiter.Task.Wait();
+
+					return true;
+				}
+				catch
+				{
+					// We may get a cancel or dispose exception
+					if (!token.IsCancellationRequested)
+						return false; // Original token was not cancelled, so either we timed out or are disposed. Return false
+
+					throw; // Throw the cancellation
+				}
+			}
+		}
 
 		/// <summary>
 		/// Increments the Counter
 		/// </summary>
 		/// <remarks>The counter is not guaranteed to be incremented when this method returns, as waiters are evaluated on the ThreadPool. It will be incremented 'soon'.</remarks>
-		[SecuritySafeCritical]
 		public void Increment()
 		{	//****************************************
 			TaskCompletionSource<AsyncCounter> NextWaiter;
@@ -213,7 +328,7 @@ namespace Proximity.Utility.Threading
 #if PORTABLE
 				Task.Factory.StartNew(ReleaseWaiter, NextWaiter);
 #else
-				ThreadPool.UnsafeQueueUserWorkItem(ReleaseWaiter, NextWaiter);
+				ThreadPool.QueueUserWorkItem(ReleaseWaiter, NextWaiter);
 #endif
 				return;
 			}
@@ -299,7 +414,6 @@ namespace Proximity.Utility.Threading
 		/// Always increments, regardless of disposal state
 		/// </summary>
 		/// <remarks>Used for DecrementAny</remarks>
-		[SecuritySafeCritical]
 		internal void ForceIncrement()
 		{	//****************************************
 			TaskCompletionSource<AsyncCounter> NextWaiter;
@@ -320,7 +434,7 @@ namespace Proximity.Utility.Threading
 #if PORTABLE
 					Task.Factory.StartNew(ReleaseWaiter, NextWaiter);
 #else
-					ThreadPool.UnsafeQueueUserWorkItem(ReleaseWaiter, NextWaiter);
+					ThreadPool.QueueUserWorkItem(ReleaseWaiter, NextWaiter);
 #endif
 					return;
 				}
@@ -458,7 +572,6 @@ namespace Proximity.Utility.Threading
 				MyWaiter.TrySetException(new ObjectDisposedException("AsyncCounter", "Counter has been disposed of"));
 		}
 
-		[SecuritySafeCritical]
 		private void ReleasePeekers()
 		{	//****************************************
 			TaskCompletionSource<AsyncCounter> NextWaiter;
@@ -471,7 +584,7 @@ namespace Proximity.Utility.Threading
 #if PORTABLE
 				Task.Factory.StartNew(ReleasePeeker, NextWaiter);
 #else
-				ThreadPool.UnsafeQueueUserWorkItem(ReleasePeeker, NextWaiter);
+				ThreadPool.QueueUserWorkItem(ReleasePeeker, NextWaiter);
 #endif
 			}
 		}

@@ -356,8 +356,18 @@ namespace Proximity.Utility.Collections
 		/// <returns>True if an item was removed without waiting, otherwise False</returns>
 		public bool TryTake(out TItem item)
 		{
+			return TryTake(out item, TimeSpan.Zero);
+		}
+		
+		/// <summary>
+		/// Attempts to take an item from the collection without waiting
+		/// </summary>
+		/// <param name="item">The item that was removed from the collection</param>
+		/// <returns>True if an item was removed without waiting, otherwise False</returns>
+		public bool TryTake(out TItem item, TimeSpan timeout)
+		{
 			// Is there an item to take?
-			if (!_UsedSlots.TryDecrement())
+			if (!_UsedSlots.TryDecrement(timeout))
 			{
 				item = default(TItem);
 				return false;
