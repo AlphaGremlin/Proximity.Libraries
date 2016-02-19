@@ -197,10 +197,14 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="token">A cancellation token that can be used to abort waiting on the counter</param>
 		/// <returns>True if the counter was decremented without waiting, otherwise False due to disposal</returns>
-		/// <exception cref="OperationCancelledException">The given cancellation token was cancelled</exception>
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
 		public bool TryDecrement(CancellationToken token)
 		{
+#if NET40
+			return TryDecrement(new TimeSpan(0, 0, 0, 0, -1), token);
+#else
 			return TryDecrement(Timeout.InfiniteTimeSpan, token);
+#endif
 		}
 		
 		/// <summary>
@@ -219,7 +223,7 @@ namespace Proximity.Utility.Threading
 		/// <param name="timeout">Number of milliseconds to block for a counter to become available. Pass zero to not block, or Timeout.InfiniteTimeSpan to block indefinitely</param>
 		/// <param name="token">A cancellation token that can be used to abort waiting on the counter</param>
 		/// <returns>True if the counter was decremented, otherwise False due to timeout or disposal</returns>
-		/// <exception cref="OperationCancelledException">The given cancellation token was cancelled</exception>
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
 		public bool TryDecrement(TimeSpan timeout, CancellationToken token)
 		{	//****************************************
 			TaskCompletionSource<AsyncCounter> NewWaiter;
@@ -239,7 +243,11 @@ namespace Proximity.Utility.Threading
 
 			//****************************************
 
+#if NET40
+			if (timeout == new TimeSpan(0, 0, 0, 0, -1) && timeout < TimeSpan.Zero)
+#else
 			if (timeout == Timeout.InfiniteTimeSpan && timeout < TimeSpan.Zero)
+#endif
 				throw new ArgumentOutOfRangeException("timeout", "Timeout must be Timeout.InfiniteTimeSpan or a positive time");
 
 			// We're okay with blocking, so create our waiter and add it to the queue
@@ -254,7 +262,11 @@ namespace Proximity.Utility.Threading
 			//****************************************
 
 			// Are we okay with blocking indefinitely (or until the token is raised)?
+#if NET40
+			if (timeout == new TimeSpan(0, 0, 0, 0, -1))
+#else
 			if (timeout == Timeout.InfiniteTimeSpan)
+#endif
 			{
 				// Prepare the cancellation token (if any)
 				PrepareWaiter(NewWaiter, token);

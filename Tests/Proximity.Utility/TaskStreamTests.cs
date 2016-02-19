@@ -1,8 +1,12 @@
 ﻿/****************************************\
  TaskStreamTests.cs
- Created: 2013-07-26
+ Created: 2016-02-17
 \****************************************/
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -16,392 +20,1393 @@ namespace Proximity.Utility.Tests
 	/// </summary>
 	[TestFixture()]
 	public class TaskStreamTests
-	{	//****************************************
-		private int _WaitTime;
-		private int _Step1, _Step2, _Step3, _Step4;
-		private int _Step1Value, _Step2Value, _Step3Value, _Step4Value;
-		
-		private CancellationTokenSource _CancelSource;
-		//****************************************
-		
+	{
 		public TaskStreamTests()
 		{
 		}
-		
+
 		//****************************************
-		
-		[SetUp()]
-		public void SetupTest()
-		{
-			_Step1 = 0;
-			_Step1Value = 0;
-			
-			_Step2 = 0;
-			_Step2Value = 0;
-			
-			_Step3 = 0;
-			_Step3Value = 0;
-			
-			_Step4 = 0;
-			_Step4Value = 0;
-			
-			_WaitTime = 100;
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingle()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			bool TaskRan = false;
+			//****************************************
+
+			var MyTask = MyQueue.Queue(() => { TaskRan = true; });
+
+			await MyTask;
+
+			//****************************************
+
+			Assert.IsTrue(TaskRan, "Task did not run");
 		}
-		
-		[TearDown()]
-		public void CleanupTest()
-		{
-			if (_CancelSource != null)
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleException()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			//****************************************
+
+			var MyTask = MyQueue.Queue(() => { Assert.Pass("Success"); });
+
+			await MyTask;
+
+			//****************************************
+
+			Assert.Fail("Should not run");
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleInValue()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			//****************************************
+
+			await MyQueue.Queue((value) => { Assert.AreEqual(42, value); }, 42);
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleInValueToken()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			Task MyTask;
+			//****************************************
+
+			using (var MySource = new CancellationTokenSource())
 			{
-				_CancelSource.Dispose();
-				
-				_CancelSource = null;
+				MyTask = MyQueue.Queue((value) => { Assert.AreEqual(42, value); SpinUntilCancel(MySource.Token); }, 42, MySource.Token);
+
+				await Task.Yield();
+
+				MySource.Cancel();
+
+				try
+				{
+					await MyTask;
+
+					Assert.Fail("Task succeeded");
+				}
+				catch (OperationCanceledException)
+				{
+				}
 			}
 		}
-		
-		//****************************************
-		
-		[Test()]
-		public void TestQueue()
-		{
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleInOutValue()
+		{	//****************************************
 			var MyQueue = new TaskStream();
-			
-			var MyTask = MyQueue.Queue(OnStep1);
-			
-			Assert.IsTrue(MyTask.Wait(1000), "Timed out");
-			
-			Assert.AreEqual(1, _Step1, "Step 1 was executed {0} times", _Step1);
+			//****************************************
+
+			var MyResult = await MyQueue.Queue((value) => value, 42);
+
+			//****************************************
+
+			Assert.AreEqual(42, MyResult, "Value is incorrect");
 		}
-		
-		[Test()]
-		public void TestQueueLonger()
-		{
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleInOutValueToken()
+		{	//****************************************
 			var MyQueue = new TaskStream();
+			Task MyTask;
+			//****************************************
+
+			using (var MySource = new CancellationTokenSource())
+			{
+				MyTask = MyQueue.Queue((value) => { Assert.AreEqual(42, value); SpinUntilCancel(MySource.Token); return 30; }, 42, MySource.Token);
+
+				await Task.Yield();
+
+				MySource.Cancel();
+
+				try
+				{
+					await MyTask;
+
+					Assert.Fail("Task succeeded");
+				}
+				catch (OperationCanceledException)
+				{
+				}
+			}
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleOutValue()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			//****************************************
+
+			var MyResult = await MyQueue.Queue(() => 42);
+
+			//****************************************
+
+			Assert.AreEqual(42, MyResult, "Value is incorrect");
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleOutValueToken()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			Task MyTask;
+			//****************************************
+
+			using (var MySource = new CancellationTokenSource())
+			{
+				MyTask = MyQueue.Queue((value) => { SpinUntilCancel(MySource.Token); return 42; }, MySource.Token);
+
+				await Task.Yield();
+
+				MySource.Cancel();
+
+				try
+				{
+					await MyTask;
+
+					Assert.Fail("Task succeeded");
+				}
+				catch (OperationCanceledException)
+				{
+				}
+			}
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleToken()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			Task MyTask;
+			//****************************************
+
+			using (var MySource = new CancellationTokenSource())
+			{
+				MyTask = MyQueue.Queue(() => SpinUntilCancel(MySource.Token), MySource.Token);
+
+				await Task.Yield();
+
+				MySource.Cancel();
+
+				try
+				{
+					await MyTask;
+
+					Assert.Fail("Task succeeded");
+				}
+				catch (OperationCanceledException)
+				{
+				}
+			}
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleTask()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			bool TaskRan = false;
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask(() => { TaskRan = true; return TaskSource.Task; });
+
+			TaskSource.SetResult(VoidStruct.Empty);
+
+			await MyTask;
+
+			//****************************************
+
+			Assert.IsTrue(TaskRan, "Task did not run");
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleTaskCancel()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			bool TaskRan = false;
+			var MySpinWait = new SpinWait();
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask(() => { TaskRan = true; return (Task)TaskSource.Task; });
+
+			while (!TaskRan)
+			{
+				MySpinWait.SpinOnce();
+			}
+
+			TaskSource.SetCanceled();
+
+			try
+			{
+				await MyTask;
+
+				Assert.Fail("Should not reach this point");
+			}
+			catch (OperationCanceledException)
+			{
+			}
+
+			//****************************************
+
+			Assert.IsTrue(TaskRan, "Task did not run");
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleTaskCancelImmediate()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			bool TaskRan = false;
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask(() => { TaskRan = true; TaskSource.SetCanceled(); return (Task)TaskSource.Task; });
+
+			try
+			{
+				await MyTask;
+
+				Assert.Fail("Should not reach this point");
+			}
+			catch (OperationCanceledException)
+			{
+			}
+
+			//****************************************
+
+			Assert.IsTrue(TaskRan, "Task did not run");
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleTaskInValue()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			bool TaskRan = false;
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask((value) => { Assert.AreEqual(42, value); TaskRan = true; return (Task)TaskSource.Task; }, 42);
+
+			TaskSource.SetResult(VoidStruct.Empty);
+
+			await MyTask;
+
+			//****************************************
+
+			Assert.IsTrue(TaskRan, "Task did not run");
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleTaskInValueCancel()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			bool TaskRan = false;
+			var MySpinWait = new SpinWait();
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask((value) => { TaskRan = true; Assert.AreEqual(42, value); return (Task)TaskSource.Task; }, 42);
+
+			while (!TaskRan)
+			{
+				MySpinWait.SpinOnce();
+			}
+
+			TaskSource.SetCanceled();
+
+			try
+			{
+				await MyTask;
+
+				Assert.Fail("Should not reach this point");
+			}
+			catch (OperationCanceledException)
+			{
+			}
+
+			//****************************************
+
+			Assert.IsTrue(TaskRan, "Task did not run");
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleTaskInValueCancelImmediate()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			bool TaskRan = false;
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask((value) => { TaskRan = true; Assert.AreEqual(42, value); TaskSource.SetCanceled(); return (Task)TaskSource.Task; }, 42);
+
+			try
+			{
+				await MyTask;
+
+				Assert.Fail("Should not reach this point");
+			}
+			catch (OperationCanceledException)
+			{
+			}
+
+			//****************************************
+
+			Assert.IsTrue(TaskRan, "Task did not run");
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleTaskInOutValue()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var TaskSource = new TaskCompletionSource<int>();
+			bool TaskRan = false;
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask((value) => { Assert.AreEqual(42, value); TaskRan = true; return TaskSource.Task; }, 42);
+
+			TaskSource.SetResult(30);
+
+			var MyResult = await MyTask;
+
+			//****************************************
+
+			Assert.IsTrue(TaskRan, "Task did not run");
+			Assert.AreEqual(30, MyResult, "Value is incorrect");
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleTaskInOutValueCancel()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			bool TaskRan = false;
+			var MySpinWait = new SpinWait();
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask((value) => { TaskRan = true; Assert.AreEqual(42, value); return TaskSource.Task; }, 42);
+
+			while (!TaskRan)
+			{
+				MySpinWait.SpinOnce();
+			}
+
+			TaskSource.SetCanceled();
+
+			try
+			{
+				await MyTask;
+
+				Assert.Fail("Should not reach this point");
+			}
+			catch (OperationCanceledException)
+			{
+			}
+
+			//****************************************
+
+			Assert.IsTrue(TaskRan, "Task did not run");
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleTaskInOutValueCancelImmediate()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			bool TaskRan = false;
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask((value) => { TaskRan = true; Assert.AreEqual(42, value); TaskSource.SetCanceled(); return TaskSource.Task; }, 42);
+
+			try
+			{
+				await MyTask;
+
+				Assert.Fail("Should not reach this point");
+			}
+			catch (OperationCanceledException)
+			{
+			}
+
+			//****************************************
+
+			Assert.IsTrue(TaskRan, "Task did not run");
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleTaskOutValue()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var TaskSource = new TaskCompletionSource<int>();
+			bool TaskRan = false;
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask(() => { TaskRan = true; return TaskSource.Task; });
+
+			TaskSource.SetResult(30);
+
+			var MyResult = await MyTask;
+
+			//****************************************
+
+			Assert.IsTrue(TaskRan, "Task did not run");
+			Assert.AreEqual(30, MyResult, "Value is incorrect");
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleTaskOutValueCancel()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			bool TaskRan = false;
+			var MySpinWait = new SpinWait();
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask(() => { TaskRan = true; return TaskSource.Task; });
+
+			while (!TaskRan)
+			{
+				MySpinWait.SpinOnce();
+			}
+
+			TaskSource.SetCanceled();
+
+			try
+			{
+				await MyTask;
+
+				Assert.Fail("Should not reach this point");
+			}
+			catch (OperationCanceledException)
+			{
+			}
+
+			//****************************************
+
+			Assert.IsTrue(TaskRan, "Task did not run");
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleTaskOutValueCancelImmediate()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			bool TaskRan = false;
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask(() => { TaskRan = true; TaskSource.SetCanceled(); return TaskSource.Task; });
+
+			try
+			{
+				await MyTask;
+
+				Assert.Fail("Should not reach this point");
+			}
+			catch (OperationCanceledException)
+			{
+			}
+
+			//****************************************
+
+			Assert.IsTrue(TaskRan, "Task did not run");
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleTaskFinished()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			bool TaskRan = false;
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask(() => { TaskRan = true; return VoidStruct.EmptyTask; });
+
+			await MyTask;
+
+			//****************************************
+
+			Assert.IsTrue(TaskRan, "Task did not run");
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleTaskException()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			bool TaskRan = false;
+			var MySpinWait = new SpinWait();
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask(() => { TaskRan = true; return (Task)TaskSource.Task; });
+
+			while (!TaskRan)
+			{
+				MySpinWait.SpinOnce();
+			}
+
+			TaskSource.SetException(new ApplicationException());
+
+			//****************************************
+
+			try
+			{
+				await MyTask;
+
+				Assert.Fail("Should not reach this point");
+			}
+			catch (ApplicationException)
+			{
+			}
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleTaskExceptionOutValue()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			bool TaskRan = false;
+			var MySpinWait = new SpinWait();
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask(() => { TaskRan = true; return TaskSource.Task; });
+
+			while (!TaskRan)
+			{
+				MySpinWait.SpinOnce();
+			}
+
+			TaskSource.SetException(new ApplicationException());
+
+			//****************************************
+
+			try
+			{
+				await MyTask;
+
+				Assert.Fail("Should not reach this point");
+			}
+			catch (ApplicationException)
+			{
+			}
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleTaskExceptionRaised()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask(() => { Assert.Pass("Completed"); return VoidStruct.EmptyTask; });
+
+			await MyTask;
+
+			//****************************************
+
+			Assert.Fail("Should not reach this point");
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleTaskExceptionImmediate()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask(() => { TaskSource.SetException(new ApplicationException()); return (Task)TaskSource.Task; });
+
+			//****************************************
+
+			try
+			{
+				await MyTask;
+
+				Assert.Fail("Should not reach this point");
+			}
+			catch (ApplicationException)
+			{
+			}
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueSingleTaskExceptionImmediateOutValue()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask(() => { TaskSource.SetException(new ApplicationException()); return (Task)TaskSource.Task; });
+
+			//****************************************
+
+			try
+			{
+				await MyTask;
+
+				Assert.Fail("Should not reach this point");
+			}
+			catch (ApplicationException)
+			{
+			}
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueMultiple()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			int RunCounter = 0;
 			Task LatestTask = null;
-			
-			_WaitTime = 10;
-			
+			//****************************************
+
 			for (int Index = 0; Index < 100; Index++)
-				LatestTask = MyQueue.Queue(OnStep1);
-			
-			Assert.IsTrue(LatestTask.Wait(2000), "Timed out");
-			
-			Assert.AreEqual(100, _Step1, "Step 1 was executed {0} times", _Step1);
+				LatestTask = MyQueue.Queue(() => { RunCounter++; });
+
+			await LatestTask;
+
+			//****************************************
+
+			Assert.AreEqual(100, RunCounter);
 		}
-		
-		[Test()]
-		public void TestQueueCancel()
-		{
+
+		[Test(), Timeout(1000)]
+		public async Task QueueMultipleInValue()
+		{	//****************************************
 			var MyQueue = new TaskStream();
-			
-			_WaitTime = 1000;
-			_CancelSource = new CancellationTokenSource();
-			
-			var MyTask = MyQueue.Queue(OnStep3, _CancelSource.Token);
-			
-			Thread.Sleep(100);
-			
-			_CancelSource.Cancel();
-			
-			while (!MyTask.IsCompleted)
-			{
-				Thread.Sleep(100);
-			}
-			
-			Assert.IsFalse(MyTask.IsFaulted, "Task faulted: {0}", MyTask.Exception);
-			Assert.IsTrue(MyTask.IsCanceled, "Task did not cancel");
-			
-			Assert.AreEqual(0, _Step3, "Step 3 was executed {0} times", _Step3);
-		}
-		
-		[Test()]
-		public void TestQueueLongerCancel()
-		{
-			var MyQueue = new TaskStream();
-			
-			_WaitTime = 500;
-			_CancelSource = new CancellationTokenSource();
-			
-			var MyFirstTask = MyQueue.Queue(OnStep1);
-			var MySecondTask = MyQueue.Queue(OnStep3, _CancelSource.Token);
-			
-			Thread.Sleep(100);
-			
-			_CancelSource.Cancel();
-			
-			while (!MyFirstTask.IsCompleted || !MySecondTask.IsCompleted)
-			{
-				Thread.Sleep(100);
-			}
-			
-			Assert.IsFalse(MySecondTask.IsFaulted, "Task faulted: {0}", MySecondTask.Exception);
-			Assert.IsTrue(MySecondTask.IsCanceled, "Task did not cancel");
-			
-			Assert.AreEqual(1, _Step1, "Step 1 was executed {0} times", _Step1);
-			Assert.AreEqual(0, _Step3, "Step 3 was executed {0} times", _Step3);
-		}
-		
-		[Test()]
-		public void TestValue()
-		{
-			var MyQueue = new TaskStream();
-			
-			var MyTask = MyQueue.Queue(OnStep1Param, 42);
-			
-			Assert.IsTrue(MyTask.Wait(1000), "Timed out");
-			
-			Assert.AreEqual(1, _Step1, "Step 1 was executed {0} times", _Step1);
-			Assert.AreEqual(42, _Step1Value, "Step 1 value is {0}", _Step1Value);
-		}
-		
-		[Test()]
-		public void TestValueLonger()
-		{
-			var MyQueue = new TaskStream();
-			
-			_WaitTime = 10;
-			
+			int RunCounter = 0;
+			Task LatestTask = null;
+			//****************************************
+
 			for (int Index = 0; Index < 100; Index++)
-				MyQueue.Queue(OnStep1Param, 30);
-			
-			var MyTask = MyQueue.Queue(OnStep3Param, 42);
-			
-			Assert.IsTrue(MyTask.Wait(2000), "Timed out");
-			
-			Assert.AreEqual(100, _Step1, "Step 1 was executed {0} times", _Step1);
-			Assert.AreEqual(30, _Step1Value, "Step 1 value is {0}", _Step1Value);
-			Assert.AreEqual(1, _Step3, "Step 2 was executed {0} times", _Step2);
-			Assert.AreEqual(42, _Step3Value, "Step 2 value is {0}", _Step2Value);
+				LatestTask = MyQueue.Queue((value) => { Assert.AreEqual(30, value); RunCounter++; }, 30);
+
+			await LatestTask;
+
+			//****************************************
+
+			Assert.AreEqual(100, RunCounter, "Not all tasks executed");
 		}
-		
-		[Test()]
-		public void TestValueCancel()
-		{
+
+		[Test(), Timeout(1000)]
+		public async Task QueueMultipleOutValue()
+		{	//****************************************
 			var MyQueue = new TaskStream();
-			
-			_WaitTime = 1000;
-			_CancelSource = new CancellationTokenSource();
-			
-			var MyTask = MyQueue.Queue(OnStep3Param, 42, _CancelSource.Token);
-			
-			Thread.Sleep(100);
-			
-			_CancelSource.Cancel();
-			
-			while (!MyTask.IsCompleted)
-			{
-				Thread.Sleep(100);
-			}
-			
-			Assert.IsFalse(MyTask.IsFaulted, "Task faulted: {0}", MyTask.Exception);
-			Assert.IsTrue(MyTask.IsCanceled, "Task did not cancel");
-			
-			Assert.AreEqual(0, _Step3, "Step 3 was executed {0} times", _Step3);
-			Assert.AreEqual(0, _Step3Value, "Step 3 value is {0}", _Step3Value);
-		}
-		
-		[Test()]
-		public void TestValueLongerCancel()
-		{
-			var MyQueue = new TaskStream();
-			
-			_WaitTime = 500;
-			_CancelSource = new CancellationTokenSource();
-			
-			var MyFirstTask = MyQueue.Queue(OnStep1Param, 42);
-			var MySecondTask = MyQueue.Queue(OnStep3Param, 42, _CancelSource.Token);
-			
-			Thread.Sleep(100);
-			
-			_CancelSource.Cancel();
-			
-			while (!MyFirstTask.IsCompleted || !MySecondTask.IsCompleted)
-			{
-				Thread.Sleep(100);
-			}
-			
-			Assert.IsFalse(MySecondTask.IsFaulted, "Task faulted: {0}", MySecondTask.Exception);
-			Assert.IsTrue(MySecondTask.IsCanceled, "Task did not cancel");
-			
-			Assert.AreEqual(1, _Step1, "Step 1 was executed {0} times", _Step1);
-			Assert.AreEqual(42, _Step1Value, "Step 1 value is {0}", _Step1Value);
-			Assert.AreEqual(0, _Step3, "Step 3 was executed {0} times", _Step3);
-			Assert.AreEqual(0, _Step3Value, "Step 3 value is {0}", _Step3Value);
-		}
-		
-		[Test()]
-		public void TestResult()
-		{
-			var MyQueue = new TaskStream();
-			
-			var MyTask = MyQueue.Queue<int>(OnStep4);
-			
-			Assert.IsTrue(MyTask.Wait(1000), "Timed out");
-			
-			Assert.AreEqual(1, _Step4, "Step 4 was executed {0} times", _Step4);
-			Assert.AreEqual(42, MyTask.Result, "Step 4 result is {0}", MyTask.Result);
-		}
-		
-		[Test()]
-		public void TestResultLonger()
-		{
-			var MyQueue = new TaskStream();
+			int RunCounter = 0;
 			Task<int> LatestTask = null;
-			
-			_WaitTime = 10;
-			
+			//****************************************
+
 			for (int Index = 0; Index < 100; Index++)
-				LatestTask = MyQueue.Queue<int>(OnStep4);
-			
-			Assert.IsTrue(LatestTask.Wait(2000), "Timed out");
-			
-			Assert.AreEqual(100, _Step4, "Step 4 was executed {0} times", _Step4);
-			Assert.AreEqual(42, LatestTask.Result, "Step 4 result is {0}", LatestTask.Result);
+				LatestTask = MyQueue.Queue((value) => { RunCounter++; return value; }, Index);
+
+			var MyResult = await LatestTask;
+
+			//****************************************
+
+			Assert.AreEqual(100, RunCounter, "Not all tasks executed");
+			Assert.AreEqual(99, MyResult, "Result is not as expected");
 		}
-		
-		[Test()]
-		public void TestTask()
-		{
+
+		[Test(), Timeout(1000)]
+		public async Task QueueWaitQueue()
+		{	//****************************************
 			var MyQueue = new TaskStream();
-			
-			var MyTask = MyQueue.QueueTask(OnStep2);
-			
-			Assert.IsTrue(MyTask.Wait(1000), "Timed out");
-			
-			Assert.AreEqual(1, _Step2, "Step 2 was executed {0} times", _Step2);
+			bool FirstRan = false, SecondRan = false;
+			//****************************************
+
+			await MyQueue.Queue(() => { FirstRan = true; });
+
+			await MyQueue.Queue(() => { SecondRan = true; });
+
+			//****************************************
+
+			Assert.IsTrue(FirstRan, "First task did not run");
+			Assert.IsTrue(SecondRan, "Second Task did not run");
 		}
-		
-		[Test()]
-		public void TestTaskValue()
-		{
+
+		[Test(), Timeout(1000)]
+		public async Task QueueResultWaitQueueResult()
+		{	//****************************************
 			var MyQueue = new TaskStream();
-			
-			var MyTask = MyQueue.QueueTask(OnStep2Param, 42);
-			
-			Assert.IsTrue(MyTask.Wait(1000), "Timed out");
-			
-			Assert.AreEqual(1, _Step2, "Step 2 was executed {0} times", _Step2);
-			Assert.AreEqual(42, _Step2Value, "Step 2 value is {0}", _Step2Value);
+			bool FirstRan = false, SecondRan = false;
+			//****************************************
+
+			var FirstResult = await MyQueue.Queue(() => { FirstRan = true; return 1; });
+
+			var SecondResult = await MyQueue.Queue(() => { SecondRan = true; return 2; });
+
+			//****************************************
+
+			Assert.IsTrue(FirstRan, "First Task did not run");
+			Assert.IsTrue(SecondRan, "Second Task did not run");
+
+			Assert.AreEqual(1, FirstResult, "First Task result incorrect");
+			Assert.AreEqual(2, SecondResult, "Second Task result incorrect");
 		}
-		
-		[Test()]
-		public void TestComplete()
-		{
+
+		[Test(), Timeout(1000)]
+		public async Task QueueTwoCancelSecond()
+		{	//****************************************
 			var MyQueue = new TaskStream();
-			
-			var MyTask = MyQueue.QueueTask(OnStep2);
-			
-			Assert.IsTrue(MyQueue.Complete().Wait(1000), "Timed out");
-			Assert.IsTrue(MyTask.IsCompleted, "Task did not complete");
-			
-			Assert.AreEqual(1, _Step2, "Step 2 was executed {0} times", _Step2);
+			Task FirstTask, SecondTask;
+			TaskCompletionSource<VoidStruct> FirstSource;
+			bool SecondRan = false;
+			//****************************************
+
+			FirstSource = new TaskCompletionSource<VoidStruct>();
+
+			using (var MySource = new CancellationTokenSource())
+			{
+				FirstTask = MyQueue.QueueTask(() => FirstSource.Task);
+				SecondTask = MyQueue.Queue(() => { SecondRan = true; }, MySource.Token);
+
+				MySource.Cancel();
+			}
+
+			//****************************************
+
+			try
+			{
+				await SecondTask;
+
+				Assert.Fail("Second Task succeeded");
+			}
+			catch (OperationCanceledException)
+			{
+			}
+
+			Assert.IsFalse(FirstTask.IsCompleted, "Task completed");
+			Assert.IsFalse(SecondRan, "Second Task ran");
+
+			FirstSource.SetResult(VoidStruct.Empty);
+
+			await FirstTask;
 		}
-		
-		[Test()]
-		public void TestCompleteLonger()
-		{
+
+		[Test(), Timeout(1000)]
+		public async Task QueueTwoCancelSecondInValue()
+		{	//****************************************
 			var MyQueue = new TaskStream();
+			Task FirstTask, SecondTask;
+			TaskCompletionSource<VoidStruct> FirstSource;
+			bool SecondRan = false;
+			//****************************************
+
+			FirstSource = new TaskCompletionSource<VoidStruct>();
+
+			using (var MySource = new CancellationTokenSource())
+			{
+				FirstTask = MyQueue.QueueTask(() => FirstSource.Task);
+				SecondTask = MyQueue.Queue((value) => { SecondRan = true; }, 42, MySource.Token);
+
+				MySource.Cancel();
+			}
+
+			//****************************************
+
+			try
+			{
+				await SecondTask;
+
+				Assert.Fail("Second Task succeeded");
+			}
+			catch (OperationCanceledException)
+			{
+			}
+
+			Assert.IsFalse(FirstTask.IsCompleted, "Task completed");
+			Assert.IsFalse(SecondRan, "Second Task ran");
+
+			FirstSource.SetResult(VoidStruct.Empty);
+
+			await FirstTask;
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueTwoCancelSecondOutValue()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			Task<int> FirstTask, SecondTask;
+			TaskCompletionSource<int> FirstSource;
+			bool SecondRan = false;
+			//****************************************
+
+			FirstSource = new TaskCompletionSource<int>();
+
+			using (var MySource = new CancellationTokenSource())
+			{
+				FirstTask = MyQueue.QueueTask(() => FirstSource.Task);
+				SecondTask = MyQueue.Queue(() => { SecondRan = true; return 2; }, MySource.Token);
+
+				MySource.Cancel();
+			}
+
+			//****************************************
+
+			try
+			{
+				await SecondTask;
+
+				Assert.Fail("Second Task succeeded");
+			}
+			catch (OperationCanceledException)
+			{
+			}
+
+			Assert.IsFalse(FirstTask.IsCompleted, "Task completed");
+			Assert.IsFalse(SecondRan, "Second Task ran");
+
+			FirstSource.SetResult(1);
+
+			var MyResult = await FirstTask;
+
+			Assert.AreEqual(1, MyResult, "First Task result incorrect");
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueTwoCancelSecondTask()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			Task FirstTask, SecondTask;
+			TaskCompletionSource<VoidStruct> FirstSource;
+			bool SecondRan = false;
+			//****************************************
+
+			FirstSource = new TaskCompletionSource<VoidStruct>();
+
+			using (var MySource = new CancellationTokenSource())
+			{
+				FirstTask = MyQueue.QueueTask(() => FirstSource.Task);
+				SecondTask = MyQueue.QueueTask(() => { SecondRan = true; return VoidStruct.EmptyTask; }, MySource.Token);
+
+				await Task.Yield();
+
+				MySource.Cancel();
+
+				//****************************************
+
+				try
+				{
+					await SecondTask;
+
+					Assert.Fail("Second Task succeeded");
+				}
+				catch (OperationCanceledException)
+				{
+				}
+			}
+
+			Assert.IsFalse(FirstTask.IsCompleted, "Task completed");
+			Assert.IsFalse(SecondRan, "Second Task ran");
+
+			FirstSource.SetResult(VoidStruct.Empty);
+
+			await FirstTask;
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueTwoCancelSecondTaskInValue()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			Task FirstTask, SecondTask;
+			TaskCompletionSource<VoidStruct> FirstSource;
+			bool SecondRan = false;
+			//****************************************
+
+			FirstSource = new TaskCompletionSource<VoidStruct>();
+
+			using (var MySource = new CancellationTokenSource())
+			{
+				FirstTask = MyQueue.QueueTask(() => FirstSource.Task);
+				SecondTask = MyQueue.QueueTask((value) => { SecondRan = true; return VoidStruct.EmptyTask; }, 42, MySource.Token);
+
+				await Task.Yield();
+
+				MySource.Cancel();
+
+				//****************************************
+
+				try
+				{
+					await SecondTask;
+
+					Assert.Fail("Second Task succeeded");
+				}
+				catch (OperationCanceledException)
+				{
+				}
+			}
+
+			Assert.IsFalse(FirstTask.IsCompleted, "Task completed");
+			Assert.IsFalse(SecondRan, "Second Task ran");
+
+			FirstSource.SetResult(VoidStruct.Empty);
+
+			await FirstTask;
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueTwoExceptionSecond()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			Task FirstTask, SecondTask;
+			TaskCompletionSource<VoidStruct> FirstSource;
+			//****************************************
+
+			FirstSource = new TaskCompletionSource<VoidStruct>();
+
+			FirstTask = MyQueue.QueueTask(() => FirstSource.Task);
+			SecondTask = MyQueue.Queue(() => { Assert.Pass("Success"); });
+
+			//****************************************
+
+			Assert.IsFalse(FirstTask.IsCompleted, "Task completed");
+			Assert.IsFalse(SecondTask.IsCompleted, "Second Task ran");
+
+			FirstSource.SetResult(VoidStruct.Empty);
+
+			await SecondTask;
+
+			Assert.Fail("Should not run");
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueTwoInValueCancelSecond()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			Task FirstTask, SecondTask;
+			TaskCompletionSource<VoidStruct> FirstSource;
+			bool SecondRan = false;
+			//****************************************
+
+			FirstSource = new TaskCompletionSource<VoidStruct>();
+
+			using (var MySource = new CancellationTokenSource())
+			{
+				FirstTask = MyQueue.QueueTask((value) => { Assert.AreEqual(12, value); return FirstSource.Task; }, 12);
+				SecondTask = MyQueue.Queue((value) => { Assert.AreEqual(24, value); SecondRan = true; }, 24, MySource.Token);
+
+				await Task.Yield();
+
+				MySource.Cancel();
+
+				//****************************************
+
+				try
+				{
+					await SecondTask;
+
+					Assert.Fail("Second Task succeeded");
+				}
+				catch (OperationCanceledException)
+				{
+				}
+			}
+
+			Assert.IsFalse(FirstTask.IsCompleted, "Task completed");
+			Assert.IsFalse(SecondRan, "Second Task ran");
+
+			FirstSource.SetResult(VoidStruct.Empty);
+
+			await FirstTask;
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueThree()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			Task FirstTask, SecondTask, ThirdTask;
+			TaskCompletionSource<VoidStruct> FirstSource, SecondSource, ThirdSource;
+			bool SecondRan = false, ThirdRan = false;
+			//****************************************
+
+			FirstSource = new TaskCompletionSource<VoidStruct>();
+			SecondSource = new TaskCompletionSource<VoidStruct>();
+			ThirdSource = new TaskCompletionSource<VoidStruct>();
+
+			FirstTask = MyQueue.QueueTask(() => FirstSource.Task);
+			SecondTask = MyQueue.QueueTask(() => { SecondRan = true; return SecondSource.Task; });
+			ThirdTask = MyQueue.QueueTask(() => { ThirdRan = true; return ThirdSource.Task; });
+
+			await Task.Yield();
+
+			Assert.IsFalse(SecondRan, "Second Task was executed early");
+			Assert.IsFalse(ThirdRan, "Third Task was executed early");
+
+			FirstSource.SetResult(VoidStruct.Empty);
+
+			await FirstTask;
+
+			Assert.IsFalse(ThirdRan, "Third Task was executed early");
+
+			SecondSource.SetResult(VoidStruct.Empty);
+
+			await SecondTask;
+
+			ThirdSource.SetResult(VoidStruct.Empty);
+
+			await ThirdTask;
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueThreeCancelSecond()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			Task FirstTask, SecondTask, ThirdTask;
+			TaskCompletionSource<VoidStruct> FirstSource, ThirdSource;
+			bool SecondRan = false, ThirdRan = false;
+			//****************************************
+
+			FirstSource = new TaskCompletionSource<VoidStruct>();
+			ThirdSource = new TaskCompletionSource<VoidStruct>();
+
+			using (var MySource = new CancellationTokenSource())
+			{
+				FirstTask = MyQueue.QueueTask(() => FirstSource.Task);
+				SecondTask = MyQueue.Queue(() => { SecondRan = true; }, MySource.Token);
+				ThirdTask = MyQueue.QueueTask(() => { ThirdRan = true; return ThirdSource.Task; });
+
+				await Task.Yield();
+
+				MySource.Cancel();
+
+				ThirdSource.SetResult(VoidStruct.Empty);
+
+				//****************************************
+
+				try
+				{
+					await SecondTask;
+
+					Assert.Fail("Second Task succeeded");
+				}
+				catch (OperationCanceledException)
+				{
+				}
+			}
+
+			Thread.Sleep(500); // No way to know when the third task will run or not
+
+			Assert.IsFalse(SecondRan, "Second Task was executed");
+			Assert.IsFalse(ThirdRan, "Third Task was executed early");
+
+			FirstSource.SetResult(VoidStruct.Empty);
+
+			await ThirdTask;
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueThreeCancelSecondTask()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			Task FirstTask, SecondTask, ThirdTask;
+			TaskCompletionSource<VoidStruct> FirstSource, ThirdSource;
+			bool SecondRan = false, ThirdRan = false;
+			//****************************************
+
+			FirstSource = new TaskCompletionSource<VoidStruct>();
+			ThirdSource = new TaskCompletionSource<VoidStruct>();
+
+			using (var MySource = new CancellationTokenSource())
+			{
+				FirstTask = MyQueue.QueueTask(() => FirstSource.Task);
+				SecondTask = MyQueue.QueueTask(() => { SecondRan = true; return VoidStruct.EmptyTask; }, MySource.Token);
+				ThirdTask = MyQueue.QueueTask(() => { ThirdRan = true; return ThirdSource.Task; });
+
+				await Task.Yield();
+
+				MySource.Cancel();
+
+				ThirdSource.SetResult(VoidStruct.Empty);
+
+				//****************************************
+
+				try
+				{
+					await SecondTask;
+
+					Assert.Fail("Second Task succeeded");
+				}
+				catch (OperationCanceledException)
+				{
+				}
+			}
+
+			Thread.Sleep(500); // No way to know when the third task will run or not
+
+			Assert.IsFalse(SecondRan, "Second Task was executed");
+			Assert.IsFalse(ThirdRan, "Third Task was executed early");
+
+			FirstSource.SetResult(VoidStruct.Empty);
+
+			await ThirdTask;
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueComplete()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			//****************************************
+
+			var MyTask = MyQueue.Queue(() => { });
+
+			var CompletionTask = MyQueue.Complete();
+
+			//****************************************
+
+			await CompletionTask;
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueOutValueComplete()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			//****************************************
+
+			var MyTask = MyQueue.Queue(() => 42);
+
+			var CompletionTask = MyQueue.Complete();
+
+			//****************************************
+
+			await CompletionTask;
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueTaskComplete()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask(() => (Task)TaskSource.Task);
+
+			var CompletionTask = MyQueue.Complete();
+
+			Assert.IsFalse(CompletionTask.IsCompleted, "Task completed early");
+
+			TaskSource.SetResult(VoidStruct.Empty);
+
+			//****************************************
+
+			await CompletionTask;
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueTaskOutValueComplete()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask(() => TaskSource.Task);
+
+			var CompletionTask = MyQueue.Complete();
+
+			Assert.IsFalse(CompletionTask.IsCompleted, "Task completed early");
+
+			TaskSource.SetResult(VoidStruct.Empty);
+
+			//****************************************
+
+			await CompletionTask;
+		}
+
+		[Test(), Timeout(1000)]
+		public async Task QueueCompleteMultiple()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			Task LatestTask = null;
-			
-			_WaitTime = 10;
-			
+			int RunCounter = 0;
+			//****************************************
+
+			var MyTask = MyQueue.QueueTask(() => (Task)TaskSource.Task);
+
 			for (int Index = 0; Index < 100; Index++)
-				LatestTask = MyQueue.QueueTask(OnStep2);
-			
-			Assert.IsTrue(MyQueue.Complete().Wait(2000), "Timed out");
-			Assert.IsTrue(LatestTask.IsCompleted, "Task did not complete");
-			
-			Assert.AreEqual(100, _Step2, "Step 2 was executed {0} times", _Step2);
+				LatestTask = MyQueue.Queue(() => { RunCounter++; });
+
+			var CompletionTask = MyQueue.Complete();
+
+			Assert.IsFalse(CompletionTask.IsCompleted, "Task completed early");
+
+			TaskSource.SetResult(VoidStruct.Empty);
+
+			//****************************************
+
+			await CompletionTask;
+
+			Assert.AreEqual(100, RunCounter);
 		}
-		
+
+		[Test(), Timeout(1000)]
+		public void Complete()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			//****************************************
+
+			var CompletionTask = MyQueue.Complete();
+
+			Assert.IsTrue(CompletionTask.IsCompleted, "Task is not completed");
+		}
+
+		[Test(), Timeout(2000)]
+		public async Task ConcurrentQueue()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			int RunCounter = 0;
+			//****************************************
+
+			await Task.WhenAll(
+				Enumerable.Range(1, 10).Select(
+					async count =>
+					{
+						await Task.Yield(); // Yield, so it doesn't serialise
+
+						for (int Index = 0; Index < 20; Index++)
+						{
+							var MyTask = MyQueue.Queue(() => { RunCounter++; });
+
+							await Task.Yield();
+						}
+
+						return;
+					})
+			);
+
+			//****************************************
+
+			await MyQueue.Complete();
+
+			Assert.AreEqual(20 * 10, RunCounter, "Did not run");
+		}
+
+		[Test(), Timeout(2000)]
+		public async Task ConcurrentLockCheck()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var MyLock = new AsyncSemaphore();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			int RunCounter = 0;
+			var AllTasks = new List<Task>();
+			//****************************************
+
+			AllTasks.Add(MyQueue.QueueTask(() => (Task)TaskSource.Task));
+
+			for (int Index = 0; Index < 100; Index++)
+			{
+				AllTasks.Add(MyQueue.QueueTask(async () =>
+				{
+					var MyTask = MyLock.Wait();
+
+					if (!MyTask.IsCompleted)
+						Assert.Fail("Failure");
+
+					await Task.Yield();
+
+					RunCounter++;
+
+					Assert.AreEqual(0, MyLock.WaitingCount, "Someone was waiting");
+
+					MyTask.Result.Dispose();
+				}));
+			}
+
+			TaskSource.SetResult(VoidStruct.Empty);
+
+			//****************************************
+
+			await MyQueue.Complete();
+
+			await Task.WhenAll(AllTasks);
+
+			Assert.AreEqual(100, RunCounter, "Did not run");
+		}
+
+		[Test(), Timeout(2000), Repeat(4)]
+		public async Task ConcurrentOrderCheck()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			int RunCounter = 0;
+			var AllTasks = new ConcurrentBag<Task>();
+			//****************************************
+
+			await Task.WhenAll(
+				Enumerable.Range(1, 4).Select(
+					async count =>
+					{
+						await Task.Yield(); // Yield, so it doesn't serialise
+						int InnerCount = 0;
+
+						for (int Index = 0; Index < 100; Index++)
+						{
+							AllTasks.Add(MyQueue.Queue((value) => { RunCounter++; Assert.AreEqual(InnerCount++, value); }, Index));
+
+							await Task.Yield();
+						}
+					})
+			);
+
+			//****************************************
+
+			await MyQueue.Complete();
+
+			await Task.WhenAll(AllTasks);
+
+			Assert.AreEqual(4 * 100, RunCounter, "Did not run");
+		}
+
+		[Test(), Timeout(2000)]
+		public async Task ConcurrentLockExtended()
+		{	//****************************************
+			var MyQueue = new TaskStream();
+			var MyLock = new AsyncSemaphore();
+			var AllTasks = new List<Task>();
+			int RunCounter = 0;
+			var MySpinWait = new SpinWait();
+			//****************************************
+
+			var EndTime = DateTime.Now.AddSeconds(1.0);
+
+			do
+			{
+				if (MyQueue.PendingActions < 100)
+				{
+					AllTasks.Add(MyQueue.QueueTask(async () =>
+					{
+						var MyTask = MyLock.Wait();
+
+						if (!MyTask.IsCompleted)
+							Assert.Fail("Failure");
+
+						await Task.Yield();
+
+						RunCounter++;
+
+						Assert.AreEqual(0, MyLock.WaitingCount, "Someone was waiting");
+
+						MyTask.Result.Dispose();
+					}));
+				}
+
+				MySpinWait.SpinOnce();
+
+			} while (EndTime > DateTime.Now);
+
+			//****************************************
+
+			await MyQueue.Complete();
+
+			await Task.WhenAll(AllTasks);
+		}
+
 		//****************************************
-		
-		private void OnStep1()
+
+		private void SpinUntilCancel(CancellationToken token)
 		{
-			Thread.Sleep(_WaitTime);
-			
-			Interlocked.Increment(ref _Step1);
-		}
-		
-		private void OnStep1Param(int value)
-		{
-			Thread.Sleep(_WaitTime);
-			
-			Interlocked.Increment(ref _Step1);
-			_Step1Value = value;
-		}
-		
-		private async Task OnStep2()
-		{
-			await Task.Yield();
-			
-			await Task.Delay(_WaitTime);
-			
-			Interlocked.Increment(ref _Step2);
-		}
-		
-		private async Task OnStep2Param(int value)
-		{
-			await Task.Yield();
-			
-			await Task.Delay(_WaitTime);
-			
-			Interlocked.Increment(ref _Step2);
-			_Step2Value = value;
-		}
-		
-		private void OnStep3()
-		{
-			int TimeWaited = 0;
-			
-			while (TimeWaited < _WaitTime)
-			{
-				Thread.Sleep(10);
-				
-				if (_CancelSource != null)
-					_CancelSource.Token.ThrowIfCancellationRequested();
-				
-				TimeWaited += 10;
-			}
-			
-			Interlocked.Increment(ref _Step3);
-		}
-		
-		private void OnStep3Param(int value)
-		{
-			int TimeWaited = 0;
-			
-			while (TimeWaited < _WaitTime)
-			{
-				Thread.Sleep(10);
-				
-				if (_CancelSource != null)
-					_CancelSource.Token.ThrowIfCancellationRequested();
-				
-				TimeWaited += 10;
-			}
-			
-			Interlocked.Increment(ref _Step3);
-			_Step3Value = value;
-		}
-		
-		private int OnStep4()
-		{
-			Thread.Sleep(_WaitTime);
-			
-			Interlocked.Increment(ref _Step4);
-			
-			return 42;
-		}
-		
-		private int OnStep4Param(int value)
-		{
-			Thread.Sleep(_WaitTime);
-			
-			Interlocked.Increment(ref _Step4);
-			_Step4Value = value;
-			
-			return 42;
+			var MySpinWait = new SpinWait();
+
+			while (!token.IsCancellationRequested)
+				MySpinWait.SpinOnce();
+
+			token.ThrowIfCancellationRequested();
 		}
 	}
 }

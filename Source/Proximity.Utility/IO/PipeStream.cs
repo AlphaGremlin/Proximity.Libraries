@@ -52,6 +52,7 @@ namespace Proximity.Utility.IO
 		/// <param name="ownsWrittenBuffers">Whether the stream takes ownership of buffers given to WriteStream.Write</param>
 		public PipeStream(bool ownsWrittenBuffers)
 		{
+			_OwnsWrittenBuffers = ownsWrittenBuffers;
 			_DataCollection = new AsyncCollection<byte[]>(_DataStore);
 
 			_WriteStream = new InputStream(this);

@@ -4,6 +4,7 @@
 \****************************************/
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -311,7 +312,7 @@ namespace Proximity.Terminal
 					case ConsoleKey.Backspace:
 						if (_InputIndex > 0)
 						{
-							// Remove the previous character at the input point
+								// Remove the previous character at the input point
 							_InputLine.Remove(_InputIndex - 1, 1);
 							
 							_InputIndex--;
@@ -430,9 +431,39 @@ namespace Proximity.Terminal
 				Console.ResetColor();
 			}
 		}
-		
+		/*
+		private static int FindLastWord(StringBuilder source, int index)
+		{
+			bool IsDivider = false;
+
+			while (index > 0)
+			{
+				switch (char.GetUnicodeCategory(source[index]))
+				{
+				case UnicodeCategory.LowercaseLetter:
+				case UnicodeCategory.UppercaseLetter:
+				case UnicodeCategory.TitlecaseLetter:
+				case UnicodeCategory.OtherLetter:
+				case UnicodeCategory.ModifierLetter:
+				case UnicodeCategory.DecimalDigitNumber:
+					if (IsDivider)
+						return index + 1;
+
+					index--;
+					break;
+
+				default:
+					IsDivider = true;
+					index--;
+					break;
+				}
+			}
+
+			return index;
+		}
+		*/
 		//****************************************
-		
+
 		/// <summary>
 		/// Gets whether the command-line is available for input
 		/// </summary>

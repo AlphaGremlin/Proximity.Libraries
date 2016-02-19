@@ -1,5 +1,5 @@
 ﻿/****************************************\
- TaskStream.cs
+ TaskStreamSlim.cs
  Created: 2012-09-13
 \****************************************/
 using System;
@@ -16,7 +16,7 @@ namespace Proximity.Utility.Threading
 	/// <summary>
 	/// Manages the task of stringing together a sequence of tasks
 	/// </summary>
-	public sealed class TaskStreamSlim
+	public sealed class TaskStream
 	{	//****************************************
 		private static readonly IStreamTask _CompletedTask = new CompletedTask();
 		//****************************************
@@ -29,7 +29,7 @@ namespace Proximity.Utility.Threading
 		/// <summary>
 		/// Creates a new Task Stream with the default task factory
 		/// </summary>
-		public TaskStreamSlim() : this(Task.Factory)
+		public TaskStream() : this(Task.Factory)
 		{
 		}
 		
@@ -37,7 +37,7 @@ namespace Proximity.Utility.Threading
 		/// Creates a new Task Stream with a custom task factory
 		/// </summary>
 		/// <param name="factory">The target task factory to use</param>
-		public TaskStreamSlim(TaskFactory factory)
+		public TaskStream(TaskFactory factory)
 		{
 			_Factory = factory;
 		}
@@ -51,7 +51,7 @@ namespace Proximity.Utility.Threading
 		/// <returns>The task that was created</returns>
 		public Task Queue(Action action)
 		{
-			return Queue(action, CancellationToken.None);
+			return Queue(action, _Factory.CancellationToken);
 		}
 		
 		/// <summary>
@@ -78,7 +78,7 @@ namespace Proximity.Utility.Threading
 		/// <returns>The task that was created</returns>
 		public Task Queue<TValue>(Action<TValue> action, TValue value)
 		{
-			return Queue(action, value, CancellationToken.None);
+			return Queue(action, value, _Factory.CancellationToken);
 		}
 		
 		/// <summary>
@@ -105,7 +105,7 @@ namespace Proximity.Utility.Threading
 		/// <returns>The task that was created</returns>
 		public Task<TResult> Queue<TResult>(Func<TResult> action)
 		{
-			return Queue(action, CancellationToken.None);
+			return Queue(action, _Factory.CancellationToken);
 		}
 		
 		/// <summary>
@@ -132,7 +132,7 @@ namespace Proximity.Utility.Threading
 		/// <returns>The task that was created</returns>
 		public Task<TResult> Queue<TValue, TResult>(Func<TValue, TResult> action, TValue value)
 		{
-			return Queue(action, value, CancellationToken.None);
+			return Queue(action, value, _Factory.CancellationToken);
 		}
 		
 		/// <summary>
@@ -160,7 +160,7 @@ namespace Proximity.Utility.Threading
 		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
 		public Task QueueTask(Func<Task> action)
 		{
-			return QueueTask(action, CancellationToken.None);
+			return QueueTask(action, _Factory.CancellationToken);
 		}
 		
 		/// <summary>
@@ -188,7 +188,7 @@ namespace Proximity.Utility.Threading
 		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
 		public Task<TResult> QueueTask<TResult>(Func<Task<TResult>> action)
 		{
-			return QueueTask(action, CancellationToken.None);
+			return QueueTask(action, _Factory.CancellationToken);
 		}
 
 		/// <summary>
@@ -217,7 +217,7 @@ namespace Proximity.Utility.Threading
 		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
 		public Task QueueTask<TValue>(Func<TValue, Task> action, TValue value)
 		{
-			return QueueTask(action, value, CancellationToken.None);
+			return QueueTask(action, value, _Factory.CancellationToken);
 		}
 		
 		/// <summary>
@@ -247,7 +247,7 @@ namespace Proximity.Utility.Threading
 		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
 		public Task<TResult> QueueTask<TValue, TResult>(Func<TValue, Task<TResult>> action, TValue value)
 		{
-			return QueueTask(action, value, CancellationToken.None);
+			return QueueTask(action, value, _Factory.CancellationToken);
 		}
 
 		/// <summary>
@@ -269,35 +269,34 @@ namespace Proximity.Utility.Threading
 		}
 
 		/// <summary>
-		/// Resets the stream
+		/// Resets the stream, so future tasks will begin executing immediately (essentially starts a new stream)
 		/// </summary>
 		/// <remarks>This does not reset the pending actions counter</remarks>
 		public void Reset()
 		{
 			Interlocked.Exchange(ref _NextTask, _CompletedTask);
 		}
-		
+
 		/// <summary>
-		/// Completes when there have been no new tasks queued to the stream and all existing tasks have been completed
+		/// Completes when all queued tasks have been completed
 		/// </summary>
-		public async Task Complete()
+		public Task Complete()
+		{
+			return Complete(CancellationToken.None);
+		}
+
+		/// <summary>
+		/// Completes when all queued tasks have been completed
+		/// </summary>
+		public Task Complete(CancellationToken token)
 		{	//****************************************
-			IStreamTask CurrentTask;
+			var CurrentTask = _NextTask;
 			//****************************************
-			
-			do
-			{
-				CurrentTask = _NextTask; // Get the most recently queued task
-				
-				if (object.ReferenceEquals(CurrentTask, _CompletedTask)) // Nothing has been queued or the stream has been reset
-					return;
-			
-				// Wait on the most recent task
-				await CurrentTask;
-				
-				// Is it still the most recent task, or has something else been queued?
-				// If so, mark it as completed
-			} while (Interlocked.CompareExchange<IStreamTask>(ref _NextTask, _CompletedTask, CurrentTask) != CurrentTask);
+
+			if (object.ReferenceEquals(CurrentTask, _CompletedTask)) // Nothing has been queued or the stream has been reset
+				return VoidStruct.EmptyTask;
+
+			return CurrentTask.Task.When(token);
 		}
 		
 		//****************************************
@@ -318,6 +317,8 @@ namespace Proximity.Utility.Threading
 			void Execute();
 			
 			TaskAwaiter GetAwaiter();
+
+			Task Task { get; }
 		}
 		
 		private sealed class CompletedTask : IStreamTask
@@ -336,23 +337,28 @@ namespace Proximity.Utility.Threading
 			{
 				throw new InvalidOperationException("Cannot await completed task");
 			}
+
+			Task IStreamTask.Task
+			{
+				get { return VoidStruct.EmptyTask; }
+			}
 		}
 		
 		//****************************************
 		
 		private sealed class ActionTask<TValue> : Task, IStreamTask
 		{	//****************************************
-			private readonly TaskStreamSlim _Owner;
+			private readonly TaskStream _Owner;
 
 			private IStreamTask _NextTask;
 			//****************************************
 			
-			internal ActionTask(TaskStreamSlim owner, Action action, CancellationToken token) : base(action, token, owner._Factory.CreationOptions)
+			internal ActionTask(TaskStream owner, Action action, CancellationToken token) : base(action, token, owner._Factory.CreationOptions)
 			{
 				_Owner = owner;
 			}
 			
-			internal ActionTask(TaskStreamSlim owner, Action<TValue> action, TValue value, CancellationToken token) : base(TaskValue<TValue>.Create(action, value), token, owner._Factory.CreationOptions)
+			internal ActionTask(TaskStream owner, Action<TValue> action, TValue value, CancellationToken token) : base(TaskValue<TValue>.Create(action, value), token, owner._Factory.CreationOptions)
 			{
 				_Owner = owner;
 			}
@@ -382,21 +388,28 @@ namespace Proximity.Utility.Threading
 				// Try and start it
 				try
 				{
-					Start(_Owner._Factory.Scheduler);
+					Start(_Owner._Factory.Scheduler ?? TaskScheduler.Default);
 					
 					// Is it complete?
 					if (IsCompleted)
 						OnComplete();
 					else
 						// No, wait for it then
-						ConfigureAwait(false).GetAwaiter().OnCompleted(OnComplete); // 2 (TaskCompletion and Action)
+						this.ConfigureAwait(false).GetAwaiter().OnCompleted(OnComplete); // 2 (TaskCompletion and Action)
 				}
 				catch (InvalidOperationException)
 				{
 					OnComplete();
 				}
 			}
-			
+
+#if NET40
+			TaskAwaiter IStreamTask.GetAwaiter()
+			{
+				return this.GetAwaiter();
+			}
+#endif
+
 			//****************************************
 			
 			private void OnComplete()
@@ -411,22 +424,29 @@ namespace Proximity.Utility.Threading
 				if (NextTask != null)
 					NextTask.Execute();
 			}
+
+			//****************************************
+
+			Task IStreamTask.Task
+			{
+				get { return this; }
+			}
 		}
 	
 		private sealed class FuncTask<TValue, TResult> : Task<TResult>, IStreamTask
 		{	//****************************************
-			private readonly TaskStreamSlim _Owner;
+			private readonly TaskStream _Owner;
 			private readonly Func<TValue, TResult> _Action;
 
 			private IStreamTask _NextTask;
 			//****************************************
 			
-			internal FuncTask(TaskStreamSlim owner, Func<TResult> action, CancellationToken token) : base(action, token, owner._Factory.CreationOptions)
+			internal FuncTask(TaskStream owner, Func<TResult> action, CancellationToken token) : base(action, token, owner._Factory.CreationOptions)
 			{
 				_Owner = owner;
 			}
 			
-			internal FuncTask(TaskStreamSlim owner, Func<TValue, TResult> action, TValue value, CancellationToken token) : base(TaskValue<TValue, TResult>.Create(action, value), token, owner._Factory.CreationOptions)
+			internal FuncTask(TaskStream owner, Func<TValue, TResult> action, TValue value, CancellationToken token) : base(TaskValue<TValue, TResult>.Create(action, value), token, owner._Factory.CreationOptions)
 			{
 				_Owner = owner;
 				_Action = action;
@@ -464,14 +484,21 @@ namespace Proximity.Utility.Threading
 						OnComplete();
 					else
 						// No, wait for it then
-						ConfigureAwait(false).GetAwaiter().OnCompleted(OnComplete); // 2 (TaskCompletion and Action)
+						this.ConfigureAwait(false).GetAwaiter().OnCompleted(OnComplete); // 2 (TaskCompletion and Action)
 				}
 				catch (InvalidOperationException)
 				{
 					OnComplete();
 				}
 			}
-			
+
+#if NET40
+			TaskAwaiter IStreamTask.GetAwaiter()
+			{
+				return ((Task)this).GetAwaiter();
+			}
+#endif
+
 			//****************************************
 			
 			private void OnComplete()
@@ -485,6 +512,13 @@ namespace Proximity.Utility.Threading
 				// If there's a task queued to run next, start it
 				if (NextTask != null)
 					NextTask.Execute();
+			}
+
+			//****************************************
+
+			Task IStreamTask.Task
+			{
+				get { return this; }
 			}
 		}
 		
@@ -546,29 +580,35 @@ namespace Proximity.Utility.Threading
 		
 		private abstract class BaseWrappedTask<TValue, TResult, TFinalResult> : TaskCompletionSource<TFinalResult>, IStreamTask where TResult : Task
 		{	//****************************************
-			private readonly TaskStreamSlim _Owner;
+			private readonly TaskStream _Owner;
 			private readonly Action _OnComplete;
 			
 			private bool _WaitSecond;
 			private Task _CurrentTask;
-			
+
 			private IStreamTask _NextTask;
 			//****************************************
 			
-			protected BaseWrappedTask(TaskStreamSlim owner, Func<TResult> action, CancellationToken token)
+			protected BaseWrappedTask(TaskStream owner, Func<TResult> action, CancellationToken token)
 			{
 				_Owner = owner;
 				
 				_OnComplete = OnCompleteTask;
 				_CurrentTask = new Task<TResult>(action, token, owner._Factory.CreationOptions);
+
+				if (token.CanBeCanceled)
+					_CurrentTask.ContinueWith(OnCancelled, TaskContinuationOptions.OnlyOnCanceled);
 			}
 			
-			protected BaseWrappedTask(TaskStreamSlim owner, Func<TValue, TResult> action, TValue value, CancellationToken token)
+			protected BaseWrappedTask(TaskStream owner, Func<TValue, TResult> action, TValue value, CancellationToken token)
 			{
 				_Owner = owner;
 				
 				_OnComplete = OnCompleteTask;
 				_CurrentTask = new Task<TResult>(TaskValue<TValue, TResult>.Create(action, value), token, owner._Factory.CreationOptions);
+
+				if (token.CanBeCanceled)
+					_CurrentTask.ContinueWith(OnCancelled, TaskContinuationOptions.OnlyOnCanceled);
 			}
 			
 			//****************************************
@@ -588,7 +628,7 @@ namespace Proximity.Utility.Threading
 				// May be cancelled if the token has been set
 				if (_CurrentTask.IsCanceled)
 				{
-					SetCanceled();
+					TrySetCanceled();
 					
 					OnComplete();
 					
@@ -599,7 +639,9 @@ namespace Proximity.Utility.Threading
 				try
 				{
 					_CurrentTask.Start(_Owner._Factory.Scheduler ?? TaskScheduler.Default);
-					
+
+					// If we pass this point, we weren't cancelled and cannot be cancelled unless the returned task does so
+
 					// Is it complete?
 					if (_CurrentTask.IsCompleted)
 						OnCompleteTask();
@@ -607,10 +649,17 @@ namespace Proximity.Utility.Threading
 						// No, wait for it then
 						_CurrentTask.ConfigureAwait(false).GetAwaiter().OnCompleted(_OnComplete); // 2 (TaskCompletion and Action)
 				}
+				catch (InvalidOperationException)
+				{
+					// We were likely cancelled
+					TrySetCanceled();
+
+					OnComplete();
+				}
 				catch (Exception e)
 				{
-					SetException(e);
-					
+					TrySetException(e);
+
 					OnComplete();
 				}
 			}
@@ -623,7 +672,13 @@ namespace Proximity.Utility.Threading
 			protected abstract void ProcessResult(TResult resultTask);
 			
 			//****************************************
-			
+
+			private void OnCancelled(Task task)
+			{
+				// Our original task was cancelled. Cancel our external task, but don't queue the next one
+				TrySetCanceled();
+			}
+
 			private void OnCompleteTask()
 			{
 				if (_WaitSecond)
@@ -675,15 +730,22 @@ namespace Proximity.Utility.Threading
 				if (NextTask != null)
 					NextTask.Execute();
 			}
+
+			//****************************************
+
+			Task IStreamTask.Task
+			{
+				get { return base.Task; }
+			}
 		}
 		
 		private sealed class WrappedTask<TValue> : BaseWrappedTask<TValue, Task, VoidStruct>
 		{
-			internal WrappedTask(TaskStreamSlim owner, Func<Task> action, CancellationToken token) : base(owner, action, token)
+			internal WrappedTask(TaskStream owner, Func<Task> action, CancellationToken token) : base(owner, action, token)
 			{
 			}
 			
-			internal WrappedTask(TaskStreamSlim owner, Func<TValue, Task> action, TValue value, CancellationToken token) : base(owner, action, value, token)
+			internal WrappedTask(TaskStream owner, Func<TValue, Task> action, TValue value, CancellationToken token) : base(owner, action, value, token)
 			{
 			}
 			
@@ -702,11 +764,11 @@ namespace Proximity.Utility.Threading
 		
 		private sealed class WrappedResultTask<TValue, TResult> : BaseWrappedTask<TValue, Task<TResult>, TResult>
 		{
-			internal WrappedResultTask(TaskStreamSlim owner, Func<Task<TResult>> action, CancellationToken token) : base(owner, action, token)
+			internal WrappedResultTask(TaskStream owner, Func<Task<TResult>> action, CancellationToken token) : base(owner, action, token)
 			{
 			}
 			
-			internal WrappedResultTask(TaskStreamSlim owner, Func<TValue, Task<TResult>> action, TValue value, CancellationToken token) : base(owner, action, value, token)
+			internal WrappedResultTask(TaskStream owner, Func<TValue, Task<TResult>> action, TValue value, CancellationToken token) : base(owner, action, value, token)
 			{
 			}
 			

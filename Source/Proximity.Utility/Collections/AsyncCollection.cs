@@ -363,6 +363,7 @@ namespace Proximity.Utility.Collections
 		/// Attempts to take an item from the collection without waiting
 		/// </summary>
 		/// <param name="item">The item that was removed from the collection</param>
+		/// <param name="timeout">The amount of time to block before returning False</param>
 		/// <returns>True if an item was removed without waiting, otherwise False</returns>
 		public bool TryTake(out TItem item, TimeSpan timeout)
 		{

@@ -126,10 +126,9 @@
     <Compile Include="$(MSBuildThisFileDirectory)Resources\XmlResourceSet.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SteppedTimer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\AsyncCounter.cs" />
-    <None Include="$(MSBuildThisFileDirectory)packages.config" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\AsyncCounterDecrementAny.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\AsyncSwitchLock.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Threading\AsyncSemaphore.cs" />
+    <None Include="$(MSBuildThisFileDirectory)Threading\AsyncSemaphore.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\AsyncReadWriteLock.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\AsyncTaskFlag.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\DedicatedThreadScheduler.cs" />
@@ -147,8 +146,8 @@
     <Compile Include="$(MSBuildThisFileDirectory)Threading\SafeTimer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\StreamTaskScheduler.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\TaskFlag.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Threading\TaskStream.cs" />
-    <None Include="$(MSBuildThisFileDirectory)Threading\TaskStreamSlim.cs" />
+    <None Include="$(MSBuildThisFileDirectory)Threading\TaskStream.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Threading\TaskStreamSlim.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\UnsafeTask.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\VoidStruct.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\WaitHandleExtensions.cs" />

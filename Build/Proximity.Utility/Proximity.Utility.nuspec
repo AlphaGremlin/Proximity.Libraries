@@ -2,7 +2,7 @@
 <package >
 	<metadata>
 		<id>Proximity.Utility</id>
-		<version>17.2.0.0</version>
+		<version>17.3.0.0</version>
 		<title>Proximity Utility Library</title>
 		<authors>Proximity Interactive</authors>
 		<owners>Proximity Interactive</owners>
@@ -12,7 +12,7 @@
 		<copyright>Copyright 2015</copyright>
 		<dependencies>
 			<group>
-				<dependency id="Microsoft.Bcl.Immutable" version="1.0.34" />
+				<dependency id="System.Collections.Immutable" version="1.1.37" />
 			</group>
 			<group targetFramework="net40">
 			</group>

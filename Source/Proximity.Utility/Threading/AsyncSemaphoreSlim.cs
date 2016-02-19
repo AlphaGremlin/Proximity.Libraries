@@ -17,18 +17,18 @@ namespace Proximity.Utility.Threading
 	/// <summary>
 	/// Provides a lock-free primitive for semaphores supporting async/await and a disposable model for releasing
 	/// </summary>
-	public sealed class AsyncSemaphoreSlim : IDisposable
+	public sealed class AsyncSemaphore : IDisposable
 	{	//****************************************
 		private readonly ConcurrentQueue<TaskCompletionSource<IDisposable>> _Waiters = new ConcurrentQueue<TaskCompletionSource<IDisposable>>();
 		private int _MaxCount, _CurrentCount;
 
-		private TaskCompletionSource<AsyncSemaphoreSlim> _Dispose;
+		private TaskCompletionSource<AsyncSemaphore> _Dispose;
 		//****************************************
 
 		/// <summary>
 		/// Creates a new Asynchronous Semaphore with a single counter (acts as a lock)
 		/// </summary>
-		public AsyncSemaphoreSlim() : this(1)
+		public AsyncSemaphore() : this(1)
 		{
 		}
 
@@ -36,7 +36,7 @@ namespace Proximity.Utility.Threading
 		/// Creates a new Asynchronous Semaphore with the given number of counters
 		/// </summary>
 		/// <param name="initialCount">The number of counters allowed</param>
-		public AsyncSemaphoreSlim(int initialCount)
+		public AsyncSemaphore(int initialCount)
 		{
 			if (initialCount < 1)
 				throw new ArgumentException("Initial Count is invalid");
@@ -61,7 +61,7 @@ namespace Proximity.Utility.Threading
 
 		void IDisposable.Dispose()
 		{
-			if (_Dispose != null || Interlocked.CompareExchange(ref _Dispose, new TaskCompletionSource<AsyncSemaphoreSlim>(), null) != null)
+			if (_Dispose != null || Interlocked.CompareExchange(ref _Dispose, new TaskCompletionSource<AsyncSemaphore>(), null) != null)
 				return;
 
 			DisposeWaiters();
@@ -116,7 +116,7 @@ namespace Proximity.Utility.Threading
 		{
 			// Are we disposed?
 			if (_Dispose != null)
-				throw new ObjectDisposedException("AsyncSemaphoreSlim", "Semaphore has been disposed of");
+				throw new ObjectDisposedException("AsyncSemaphore", "Semaphore has been disposed of");
 
 			// Try and add a counter as long as nobody is waiting on it
 			if (_Waiters.IsEmpty && TryIncrement())
@@ -242,7 +242,7 @@ namespace Proximity.Utility.Threading
 
 			// Success, now close any pending waiters
 			while (_Waiters.TryDequeue(out MyWaiter))
-				MyWaiter.TrySetException(new ObjectDisposedException("AsyncSemaphoreSlim", "Counter has been disposed of"));
+				MyWaiter.TrySetException(new ObjectDisposedException("AsyncSemaphore", "Counter has been disposed of"));
 		}
 
 		//****************************************
@@ -278,7 +278,7 @@ namespace Proximity.Utility.Threading
 					throw new ArgumentException("Maximum is invalid");
 
 				if (_Dispose != null)
-					throw new ObjectDisposedException("AsyncSemaphoreSlim", "Object has been disposed");
+					throw new ObjectDisposedException("AsyncSemaphore", "Object has been disposed");
 
 				_MaxCount = value;
 
@@ -292,11 +292,11 @@ namespace Proximity.Utility.Threading
 
 		private class AsyncLockInstance : IDisposable
 		{	//****************************************
-			private readonly AsyncSemaphoreSlim _Source;
+			private readonly AsyncSemaphore _Source;
 			private int _Released;
 			//****************************************
 
-			internal AsyncLockInstance(AsyncSemaphoreSlim source)
+			internal AsyncLockInstance(AsyncSemaphore source)
 			{
 				_Source = source;
 			}
