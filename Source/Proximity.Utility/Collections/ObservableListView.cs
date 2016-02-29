@@ -18,7 +18,9 @@ namespace Proximity.Utility.Collections
 	/// Provides an Observable View over a list that performs sorting based on a comparer
 	/// </summary>
 	/// <typeparam name="TValue">The type of the values in the list</typeparam>
-	/// <remarks>This does not support dynamic sorting, so if values are modified outside of this collection and it changes their positioning, data corruption will result</remarks>
+	/// <remarks>
+	/// <para>This does not support dynamic sorting, so if values are modified outside of this collection and it changes their positioning, data corruption will result</para>
+	/// </remarks>
 	public class ObservableListView<TValue> : IList<TValue>, IList, INotifyCollectionChanged, INotifyPropertyChanged, IDisposable
 #if !NET40
 , IReadOnlyList<TValue>
@@ -38,7 +40,7 @@ namespace Proximity.Utility.Collections
 		/// Creates a new Observable List View
 		/// </summary>
 		/// <param name="source">The source list to wrap</param>
-		public ObservableListView(IList<TValue> source) : this(source, GetDefaultComparer(), null)
+		public ObservableListView(IList<TValue> source) : this(source, (IComparer<TValue>)null, null)
 		{
 		}
 
@@ -65,7 +67,7 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="source">The source list to wrap</param>
 		/// <param name="filter">A filter to apply to the source list</param>
-		public ObservableListView(IList<TValue> source, Predicate<TValue> filter) : this(source, GetDefaultComparer(), filter)
+		public ObservableListView(IList<TValue> source, Predicate<TValue> filter) : this(source, (IComparer<TValue>)null, filter)
 		{
 		}
 
@@ -88,7 +90,7 @@ namespace Proximity.Utility.Collections
 		public ObservableListView(IList<TValue> source, IComparer<TValue> comparer, Predicate<TValue> filter)
 		{
 			_Source = source;
-			_Comparer = comparer;
+			_Comparer = comparer ?? GetDefaultComparer();
 			_Filter = filter;
 			_Items = new List<TValue>(source.Count);
 
@@ -143,7 +145,7 @@ namespace Proximity.Utility.Collections
 		/// Releases this Observable List View
 		/// </summary>
 		/// <remarks>Detaches event handlers</remarks>
-		public void Dispose()
+		public virtual void Dispose()
 		{
 			if (_Source is INotifyCollectionChanged)
 				((INotifyCollectionChanged)_Source).CollectionChanged -= OnSourceChanged;
@@ -258,6 +260,47 @@ namespace Proximity.Utility.Collections
 				PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
 		}
 
+		/// <summary>
+		/// Occurs when the collection has been reset
+		/// </summary>
+		/// <param name="oldItems">A list of the old items in the collection</param>
+		protected virtual void OnCollectionChanged(TValue[] oldItems)
+		{
+			OnPropertyChanged();
+
+			if (CollectionChanged != null)
+				CollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+		}
+
+		/// <summary>
+		/// Occurs when the collection has an item added or removed
+		/// </summary>
+		/// <param name="action">The action that occurred</param>
+		/// <param name="changedItem">The old or new item</param>
+		/// <param name="index">The index of the item</param>
+		protected virtual void OnCollectionChanged(NotifyCollectionChangedAction action, TValue changedItem, int index)
+		{
+			OnPropertyChanged();
+
+			if (CollectionChanged != null)
+				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, changedItem, index));
+		}
+		
+		/// <summary>
+		/// Occurs when the collection has an item replaced
+		/// </summary>
+		/// <param name="action">The action that occurred</param>
+		/// <param name="newItem">The new item</param>
+		/// <param name="oldItem">The old item</param>
+		/// <param name="index">The index of the item that was replaced</param>
+		protected virtual void OnCollectionChanged(NotifyCollectionChangedAction action, TValue newItem, TValue oldItem, int index)
+		{
+			OnPropertyChanged(IndexerName); // Only the indexer has changed, the count is the same
+
+			if (CollectionChanged != null)
+				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItem, oldItem, index));
+		}
+
 		//****************************************
 
 		private void OnSourceChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -265,6 +308,8 @@ namespace Proximity.Utility.Collections
 			switch (e.Action)
 			{
 			case NotifyCollectionChangedAction.Reset:
+				var OldItems = _Items.ToArray();
+
 				_Items.Clear();
 
 				if (_Filter != null)
@@ -274,7 +319,7 @@ namespace Proximity.Utility.Collections
 
 				_Items.Sort(_Comparer);
 
-				OnCollectionChanged();
+				OnCollectionChanged(OldItems);
 				break;
 
 			case NotifyCollectionChangedAction.Add:
@@ -389,30 +434,6 @@ namespace Proximity.Utility.Collections
 			OnPropertyChanged(IndexerName);
 		}
 
-		private void OnCollectionChanged()
-		{
-			OnPropertyChanged();
-
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
-		}
-
-		private void OnCollectionChanged(NotifyCollectionChangedAction action, TValue changedItem, int index)
-		{
-			OnPropertyChanged();
-
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, changedItem, index));
-		}
-
-		private void OnCollectionChanged(NotifyCollectionChangedAction action, TValue newItem, TValue oldItem, int index)
-		{
-			OnPropertyChanged(IndexerName); // Only the indexer has changed, the count is the same
-
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItem, oldItem, index));
-		}
-
 		private bool FilterItem(TValue item)
 		{
 			return _Filter(item); // Enumerable.Where requires an Action, but this is a Predicate, so we wrap it
@@ -488,6 +509,14 @@ namespace Proximity.Utility.Collections
 		object ICollection.SyncRoot
 		{
 			get { return _Source; }
+		}
+
+		/// <summary>
+		/// Gets the internal list of items
+		/// </summary>
+		protected List<TValue> Items
+		{
+			get { return _Items; }
 		}
 
 		//****************************************

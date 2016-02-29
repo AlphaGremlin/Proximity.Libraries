@@ -29,7 +29,7 @@ namespace Proximity.Utility.Threading
 		/// <summary>
 		/// Creates a new Task Stream with the default task factory
 		/// </summary>
-		public TaskStream() : this(Task.Factory)
+		public TaskStream() : this(null)
 		{
 		}
 		
@@ -39,7 +39,7 @@ namespace Proximity.Utility.Threading
 		/// <param name="factory">The target task factory to use</param>
 		public TaskStream(TaskFactory factory)
 		{
-			_Factory = factory;
+			_Factory = factory ?? Task.Factory;
 		}
 		
 		//****************************************
@@ -62,7 +62,7 @@ namespace Proximity.Utility.Threading
 		/// <returns>The task that was created</returns>
 		public Task Queue(Action action, CancellationToken cancellationToken)
 		{
-			var NewTask = new ActionTask<VoidStruct>(this, action, cancellationToken);
+			var NewTask = new ActionTask(this, action, cancellationToken);
 			
 			Interlocked.Increment(ref _PendingActions);
 			Interlocked.Exchange<IStreamTask>(ref _NextTask, NewTask).Queue(NewTask);
@@ -90,7 +90,7 @@ namespace Proximity.Utility.Threading
 		/// <returns>The task that was created</returns>
 		public Task Queue<TValue>(Action<TValue> action, TValue value, CancellationToken cancellationToken)
 		{
-			var NewTask = new ActionTask<TValue>(this, action, value, cancellationToken);
+			var NewTask = new ActionTask(this, TaskValue<TValue>.Create(action, value), cancellationToken);
 			
 			Interlocked.Increment(ref _PendingActions);
 			Interlocked.Exchange<IStreamTask>(ref _NextTask, NewTask).Queue(NewTask);
@@ -116,7 +116,7 @@ namespace Proximity.Utility.Threading
 		/// <returns>The task that was created</returns>
 		public Task<TResult> Queue<TResult>(Func<TResult> action, CancellationToken cancellationToken)
 		{
-			var NewTask = new FuncTask<VoidStruct, TResult>(this, action, cancellationToken);
+			var NewTask = new FuncTask<TResult>(this, action, cancellationToken);
 			
 			Interlocked.Increment(ref _PendingActions);
 			Interlocked.Exchange<IStreamTask>(ref _NextTask, NewTask).Queue(NewTask);
@@ -144,7 +144,7 @@ namespace Proximity.Utility.Threading
 		/// <returns>The task that was created</returns>
 		public Task<TResult> Queue<TValue, TResult>(Func<TValue, TResult> action, TValue value, CancellationToken cancellationToken)
 		{
-			var NewTask = new FuncTask<TValue, TResult>(this, action, value, cancellationToken);
+			var NewTask = new FuncTask<TResult>(this, TaskValue<TValue, TResult>.Create(action, value), cancellationToken);
 			
 			Interlocked.Increment(ref _PendingActions);
 			Interlocked.Exchange<IStreamTask>(ref _NextTask, NewTask).Queue(NewTask);
@@ -172,7 +172,7 @@ namespace Proximity.Utility.Threading
 		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
 		public Task QueueTask(Func<Task> action, CancellationToken cancellationToken)
 		{
-			var NewTask = new WrappedTask<VoidStruct>(this, action, cancellationToken);
+			var NewTask = new WrappedTask(this, action, cancellationToken);
 			
 			Interlocked.Increment(ref _PendingActions);
 			Interlocked.Exchange<IStreamTask>(ref _NextTask, NewTask).Queue(NewTask);
@@ -200,7 +200,7 @@ namespace Proximity.Utility.Threading
 		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
 		public Task<TResult> QueueTask<TResult>(Func<Task<TResult>> action, CancellationToken cancellationToken)
 		{
-			var NewTask = new WrappedResultTask<VoidStruct, TResult>(this, action, cancellationToken);
+			var NewTask = new WrappedResultTask<TResult>(this, action, cancellationToken);
 			
 			Interlocked.Increment(ref _PendingActions);
 			Interlocked.Exchange<IStreamTask>(ref _NextTask, NewTask).Queue(NewTask);
@@ -230,7 +230,7 @@ namespace Proximity.Utility.Threading
 		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
 		public Task QueueTask<TValue>(Func<TValue, Task> action, TValue value, CancellationToken cancellationToken)
 		{
-			var NewTask = new WrappedTask<TValue>(this, action, value, cancellationToken);
+			var NewTask = new WrappedTask(this, TaskValue<TValue, Task>.Create(action, value), cancellationToken);
 			
 			Interlocked.Increment(ref _PendingActions);
 			Interlocked.Exchange<IStreamTask>(ref _NextTask, NewTask).Queue(NewTask);
@@ -260,7 +260,7 @@ namespace Proximity.Utility.Threading
 		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
 		public Task<TResult> QueueTask<TValue, TResult>(Func<TValue, Task<TResult>> action, TValue value, CancellationToken cancellationToken)
 		{
-			var NewTask = new WrappedResultTask<TValue, TResult>(this, action, value, cancellationToken);
+			var NewTask = new WrappedResultTask<TResult>(this, TaskValue<TValue, Task<TResult>>.Create(action, value), cancellationToken);
 			
 			Interlocked.Increment(ref _PendingActions);
 			Interlocked.Exchange<IStreamTask>(ref _NextTask, NewTask).Queue(NewTask);
@@ -346,7 +346,7 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 		
-		private sealed class ActionTask<TValue> : Task, IStreamTask
+		private sealed class ActionTask : Task, IStreamTask
 		{	//****************************************
 			private readonly TaskStream _Owner;
 
@@ -354,11 +354,6 @@ namespace Proximity.Utility.Threading
 			//****************************************
 			
 			internal ActionTask(TaskStream owner, Action action, CancellationToken token) : base(action, token, owner._Factory.CreationOptions)
-			{
-				_Owner = owner;
-			}
-			
-			internal ActionTask(TaskStream owner, Action<TValue> action, TValue value, CancellationToken token) : base(TaskValue<TValue>.Create(action, value), token, owner._Factory.CreationOptions)
 			{
 				_Owner = owner;
 			}
@@ -433,10 +428,9 @@ namespace Proximity.Utility.Threading
 			}
 		}
 	
-		private sealed class FuncTask<TValue, TResult> : Task<TResult>, IStreamTask
+		private sealed class FuncTask<TResult> : Task<TResult>, IStreamTask
 		{	//****************************************
 			private readonly TaskStream _Owner;
-			private readonly Func<TValue, TResult> _Action;
 
 			private IStreamTask _NextTask;
 			//****************************************
@@ -444,12 +438,6 @@ namespace Proximity.Utility.Threading
 			internal FuncTask(TaskStream owner, Func<TResult> action, CancellationToken token) : base(action, token, owner._Factory.CreationOptions)
 			{
 				_Owner = owner;
-			}
-			
-			internal FuncTask(TaskStream owner, Func<TValue, TResult> action, TValue value, CancellationToken token) : base(TaskValue<TValue, TResult>.Create(action, value), token, owner._Factory.CreationOptions)
-			{
-				_Owner = owner;
-				_Action = action;
 			}
 			
 			//****************************************
@@ -578,7 +566,7 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 		
-		private abstract class BaseWrappedTask<TValue, TResult, TFinalResult> : TaskCompletionSource<TFinalResult>, IStreamTask where TResult : Task
+		private abstract class BaseWrappedTask<TResult, TFinalResult> : TaskCompletionSource<TFinalResult>, IStreamTask where TResult : Task
 		{	//****************************************
 			private readonly TaskStream _Owner;
 			private readonly Action _OnComplete;
@@ -595,17 +583,6 @@ namespace Proximity.Utility.Threading
 				
 				_OnComplete = OnCompleteTask;
 				_CurrentTask = new Task<TResult>(action, token, owner._Factory.CreationOptions);
-
-				if (token.CanBeCanceled)
-					_CurrentTask.ContinueWith(OnCancelled, TaskContinuationOptions.OnlyOnCanceled);
-			}
-			
-			protected BaseWrappedTask(TaskStream owner, Func<TValue, TResult> action, TValue value, CancellationToken token)
-			{
-				_Owner = owner;
-				
-				_OnComplete = OnCompleteTask;
-				_CurrentTask = new Task<TResult>(TaskValue<TValue, TResult>.Create(action, value), token, owner._Factory.CreationOptions);
 
 				if (token.CanBeCanceled)
 					_CurrentTask.ContinueWith(OnCancelled, TaskContinuationOptions.OnlyOnCanceled);
@@ -739,13 +716,9 @@ namespace Proximity.Utility.Threading
 			}
 		}
 		
-		private sealed class WrappedTask<TValue> : BaseWrappedTask<TValue, Task, VoidStruct>
+		private sealed class WrappedTask : BaseWrappedTask<Task, VoidStruct>
 		{
 			internal WrappedTask(TaskStream owner, Func<Task> action, CancellationToken token) : base(owner, action, token)
-			{
-			}
-			
-			internal WrappedTask(TaskStream owner, Func<TValue, Task> action, TValue value, CancellationToken token) : base(owner, action, value, token)
 			{
 			}
 			
@@ -762,13 +735,9 @@ namespace Proximity.Utility.Threading
 			}
 		}
 		
-		private sealed class WrappedResultTask<TValue, TResult> : BaseWrappedTask<TValue, Task<TResult>, TResult>
+		private sealed class WrappedResultTask<TResult> : BaseWrappedTask<Task<TResult>, TResult>
 		{
 			internal WrappedResultTask(TaskStream owner, Func<Task<TResult>> action, CancellationToken token) : base(owner, action, token)
-			{
-			}
-			
-			internal WrappedResultTask(TaskStream owner, Func<TValue, Task<TResult>> action, TValue value, CancellationToken token) : base(owner, action, value, token)
 			{
 			}
 			
