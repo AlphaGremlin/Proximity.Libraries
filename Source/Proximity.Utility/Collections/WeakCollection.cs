@@ -16,26 +16,48 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Represents a collection that holds only weak references to its contents
 	/// </summary>
-	public sealed class WeakCollection<TItem> : IEnumerable<TItem> where TItem : class
+	public sealed class WeakCollection<TItem> : IEnumerable<TItem>, IDisposable where TItem : class
 	{	//****************************************
-		private readonly List<GCHandle> _Values;
+		private readonly List<GCReference> _Values;
+		private readonly GCHandleType _HandleType;
 		//****************************************
 		
 		/// <summary>
 		/// Creates a new WeakCollection
 		/// </summary>
-		public WeakCollection()
+		public WeakCollection() : this(null, GCHandleType.Weak)
 		{
-			_Values = new List<GCHandle>();
+		}
+
+		/// <summary>
+		/// Creates a new WeakCollection
+		/// </summary>
+		/// <param name="handleType">The type of GCHandle to use</param>
+		public WeakCollection(GCHandleType handleType) : this(null, handleType)
+		{
 		}
 		
 		/// <summary>
 		/// Creates a new WeakCollection of references to the contents of the collection
 		/// </summary>
 		/// <param name="collection">The collection holding the items to weakly reference</param>
-		public WeakCollection(IEnumerable<TItem> collection)
+		public WeakCollection(IEnumerable<TItem> collection) : this(collection, GCHandleType.Weak)
 		{
-			_Values = new List<GCHandle>(collection.Where(item => item != null).Select(CreateFrom));
+		}
+
+		/// <summary>
+		/// Creates a new WeakCollection of references to the contents of the collection
+		/// </summary>
+		/// <param name="collection">The collection holding the items to reference</param>
+		/// <param name="handleType">The type of GCHandle to use</param>
+		public WeakCollection(IEnumerable<TItem> collection, GCHandleType handleType)
+		{
+			_HandleType = handleType;
+
+			if (collection == null)
+				_Values = new List<GCReference>();
+			else
+				_Values = new List<GCReference>(collection.Where(item => item != null).Select(CreateFrom));
 		}
 		
 		//****************************************
@@ -62,60 +84,29 @@ namespace Proximity.Utility.Collections
 		{
 			_Values.AddRange(collection.Where(item => item != null).Select(CreateFrom));
 		}
-		
-		/// <summary>
-		/// Removes an element from the collection
-		/// </summary>
-		/// <param name="item">The element to remove</param>
-		/// <returns>True if the item was removed, false if it was not in the collection</returns>
-		/// <remarks>Will perform a partial compaction, up to the point the target item is found</remarks>
-		[SecuritySafeCritical]
-		public bool Remove(TItem item)
-		{
-			int Index = 0;
-			
-			while (Index < _Values.Count)
-			{
-				var Handle = _Values[Index];
-				var TargetItem = (TItem)Handle.Target;
-				
-				if (TargetItem == null)
-				{
-					_Values.RemoveAt(Index);
-					
-					Handle.Free();
-				}
-				else if (TargetItem == item)
-				{
-					_Values.RemoveAt(Index);
-					
-					Handle.Free();
-					
-					return true;
-				}
-				else
-				{
-					Index++;
-				}
-			}
-			
-			return false;
-		}
-		
+
 		/// <summary>
 		/// Removes all elements from the collection
 		/// </summary>
-		[SecuritySafeCritical]
 		public void Clear()
 		{
-			foreach(var MyHandle in _Values)
+			foreach (var MyHandle in _Values)
 			{
-				MyHandle.Free();
+				MyHandle.Dispose();
 			}
-			
+
 			_Values.Clear();
 		}
 		
+		/// <summary>
+		/// Disposes of the Weak Dictionary, cleaning up any weak references
+		/// </summary>
+		public void Dispose()
+		{
+			foreach (var MyItem in _Values)
+				MyItem.Dispose();
+		}
+
 		/// <summary>
 		/// Returns an enumerator that iterates through the collection
 		/// </summary>
@@ -124,6 +115,44 @@ namespace Proximity.Utility.Collections
 		public IEnumerator<TItem> GetEnumerator()
 		{
 			return GetContents().GetEnumerator();
+		}
+
+		/// <summary>
+		/// Removes an element from the collection
+		/// </summary>
+		/// <param name="item">The element to remove</param>
+		/// <returns>True if the item was removed, false if it was not in the collection</returns>
+		/// <remarks>Will perform a partial compaction, up to the point the target item is found</remarks>
+		public bool Remove(TItem item)
+		{
+			int Index = 0;
+
+			while (Index < _Values.Count)
+			{
+				var Handle = _Values[Index];
+				var TargetItem = (TItem)Handle.Target;
+
+				if (TargetItem == null)
+				{
+					_Values.RemoveAt(Index);
+
+					Handle.Dispose();
+				}
+				else if (TargetItem == item)
+				{
+					_Values.RemoveAt(Index);
+
+					Handle.Dispose();
+
+					return true;
+				}
+				else
+				{
+					Index++;
+				}
+			}
+
+			return false;
 		}
 		
 		/// <summary>
@@ -143,13 +172,11 @@ namespace Proximity.Utility.Collections
 			return GetContents().GetEnumerator();
 		}
 
-		[SecuritySafeCritical]
-		private GCHandle CreateFrom(TItem item)
+		private GCReference CreateFrom(TItem item)
 		{
-			return GCHandle.Alloc(item, GCHandleType.Weak);
+			return new GCReference(item, _HandleType);
 		}
 
-		[SecuritySafeCritical]
 		private TItem ValueAt(int index)
 		{
 			var Handle = _Values[index];
@@ -159,7 +186,7 @@ namespace Proximity.Utility.Collections
 			{
 				_Values.RemoveAt(index);
 
-				Handle.Free();
+				Handle.Dispose();
 			}
 
 			return TargetItem;

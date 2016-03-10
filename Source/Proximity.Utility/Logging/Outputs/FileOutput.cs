@@ -52,7 +52,7 @@ namespace Proximity.Utility.Logging.Outputs
 			var MyConfig = (FileOutputElement)config;
 			//****************************************
 			
-			_FileName = Path.Combine(LogManager.OutputPath, MyConfig.Prefix);
+			_FileName = MyConfig.Prefix;
 			_RolloverOn = MyConfig.RolloverOn;
 			
 			_MaxSize = MyConfig.MaximumSize;

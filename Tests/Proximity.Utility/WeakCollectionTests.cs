@@ -20,7 +20,7 @@ namespace Proximity.Utility.Tests
 	public class WeakCollectionTests
 	{
 		[Test()]
-		public void TestAdd()
+		public void Add()
 		{
 			var MyCollection = new WeakCollection<object>();
 			var MyObject = new object();
@@ -35,7 +35,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test()]
-		public void TestAddRange()
+		public void AddRange()
 		{
 			var MyCollection = new WeakCollection<object>();
 			var MyObject1 = new object();
@@ -52,7 +52,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test()]
-		public void TestRemove()
+		public void Remove()
 		{	//****************************************
 			WeakCollection<object> MyCollection;
 			object MyObject;
@@ -72,7 +72,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test()]
-		public void TestRemoveMulti()
+		public void RemoveMulti()
 		{	//****************************************
 			WeakCollection<object> MyCollection;
 			object MyObject1, MyObject2;
@@ -93,7 +93,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test()]
-		public void TestWeakAdd()
+		public void WeakAdd()
 		{	//****************************************
 			WeakCollection<object> MyCollection;
 			//****************************************
@@ -106,7 +106,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test()]
-		public void TestWeakAddRange()
+		public void WeakAddRange()
 		{	//****************************************
 			WeakCollection<object> MyCollection;
 			//****************************************
@@ -119,7 +119,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test()]
-		public void TestWeakAddSingle()
+		public void WeakAddSingle()
 		{	//****************************************
 			WeakCollection<object> MyCollection;
 			object MyObject;
@@ -135,7 +135,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test()]
-		public void TestClear()
+		public void Clear()
 		{	//****************************************
 			WeakCollection<object> MyCollection;
 			object MyObject;
@@ -155,7 +155,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test()]
-		public void TestEnum()
+		public void Enum()
 		{	//****************************************
 			WeakCollection<object> MyCollection;
 			object MyObject1, MyObject2;
@@ -193,7 +193,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test()]
-		public void TestEnumValues()
+		public void EnumValues()
 		{	//****************************************
 			WeakCollection<object> MyCollection;
 			object MyObject1, MyObject2;
@@ -231,7 +231,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test()]
-		public void TestWeakEnum()
+		public void WeakEnum()
 		{	//****************************************
 			WeakCollection<object> MyCollection;
 			object MyObject;
@@ -262,7 +262,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test()]
-		public void TestWeakEnumValues()
+		public void WeakEnumValues()
 		{	//****************************************
 			WeakCollection<object> MyCollection;
 			object MyObject;
@@ -291,7 +291,30 @@ namespace Proximity.Utility.Tests
 			
 			GC.KeepAlive(MyObject);
 		}
-		
+
+		[Test()]
+		public void Cleanup()
+		{
+			var StrongRef = new object();
+			var WeakRef = new WeakReference(StrongRef);
+			var MyCollection = new WeakCollection<object>(System.Runtime.InteropServices.GCHandleType.Normal);
+
+			MyCollection.Add(StrongRef);
+
+			CollectionAssert.Contains(MyCollection, StrongRef);
+
+			StrongRef = null;
+			MyCollection = null;
+
+			GC.Collect();
+			GC.WaitForPendingFinalizers();
+
+			GC.Collect();
+			GC.WaitForPendingFinalizers();
+
+			Assert.IsNull(WeakRef.Target);
+		}
+
 		//****************************************
 		
 		private void AllocateRange<TItem>(out WeakCollection<TItem> collection, int count) where TItem : class, new()

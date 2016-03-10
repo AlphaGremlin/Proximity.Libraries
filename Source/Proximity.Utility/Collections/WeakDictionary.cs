@@ -19,24 +19,20 @@ namespace Proximity.Utility.Collections
 	/// <remarks>This class does not implement IDictionary or ICollection, as many of the methods have no meaning until you have strong references to the contents</remarks>
 	public class WeakDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>, IDisposable where TValue : class
 	{	//****************************************
-		private readonly Dictionary<TKey, GCHandle> _Dictionary;
-		private GCHandle _DictionaryHandle;
+		private readonly Dictionary<TKey, GCReference> _Dictionary;
+		private readonly GCHandleType _HandleType;
 		//****************************************
 
-		[SecuritySafeCritical]
-		private WeakDictionary(Dictionary<TKey, GCHandle> dictionary)
+		private WeakDictionary(Dictionary<TKey, GCReference> dictionary, GCHandleType handleType)
 		{
 			_Dictionary = dictionary;
-
-			// If the WeakDictionary is garbage collected, we need to ensure we free the weak references
-			// So, we take a GC Handle of the dictionary which we can use to enumerate the dictionary upon finalisation
-			_DictionaryHandle = GCHandle.Alloc(dictionary, GCHandleType.Normal);
+			_HandleType = handleType;
 		}
 		
 		/// <summary>
 		/// Creates a new WeakDictionary
 		/// </summary>
-		public WeakDictionary() : this(new Dictionary<TKey, GCHandle>())
+		public WeakDictionary() : this(new Dictionary<TKey, GCReference>(), GCHandleType.Weak)
 		{
 		}
 		
@@ -52,7 +48,7 @@ namespace Proximity.Utility.Collections
 		/// Creates a new WeakDictionary with the given equality comparer
 		/// </summary>
 		/// <param name="comparer">The equality comparer to use when comparing keys</param>
-		public WeakDictionary(IEqualityComparer<TKey> comparer) : this(new Dictionary<TKey, GCHandle>(comparer))
+		public WeakDictionary(IEqualityComparer<TKey> comparer) : this(new Dictionary<TKey, GCReference>(comparer), GCHandleType.Weak)
 		{
 		}
 		
@@ -61,18 +57,8 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="collection">The collection holding the key/value pairs to add</param>
 		/// <param name="comparer">The equality comparer to use when comparing keys</param>
-		public WeakDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey> comparer) : this(collection.ToDictionary((value) => value.Key, (value) => CreateFrom(value.Value), comparer))
+		public WeakDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey> comparer) : this(collection.ToDictionary((value) => value.Key, (value) => new GCReference(value.Value, GCHandleType.Weak), comparer), GCHandleType.Weak)
 		{
-		}
-
-		/// <summary>
-		/// Finalises the dictionary, releasing all Weak References
-		/// </summary>
-		[SecuritySafeCritical]
-		~WeakDictionary()
-		{
-			if (_DictionaryHandle.IsAllocated)
-				Dispose(false);
 		}
 
 		//****************************************
@@ -84,10 +70,9 @@ namespace Proximity.Utility.Collections
 		/// <param name="value">The value that will be weakly referenced</param>
 		/// <exception cref="ArgumentNullException">Value was null</exception>
 		/// <exception cref="ArgumentException">Key already exists</exception>
-		[SecuritySafeCritical]
 		public void Add(TKey key, TValue value)
 		{	//****************************************
-			GCHandle MyHandle;
+			GCReference MyHandle;
 			//****************************************
 			
 			if (value == null)
@@ -101,7 +86,7 @@ namespace Proximity.Utility.Collections
 					throw new ArgumentException("Key already exists in the Weak Dictionary");
 				
 				// No, free the handle and replace it
-				MyHandle.Free();
+				MyHandle.Dispose();
 				
 				_Dictionary[key] = CreateFrom(value);
 			}
@@ -115,13 +100,10 @@ namespace Proximity.Utility.Collections
 		/// <summary>
 		/// Removes all elements from the collection
 		/// </summary>
-		[SecuritySafeCritical]
 		public void Clear()
 		{
 			foreach (var MyHandle in _Dictionary.Values)
-			{
-				MyHandle.Free();
-			}
+				MyHandle.Dispose();
 
 			_Dictionary.Clear();
 		}
@@ -130,7 +112,6 @@ namespace Proximity.Utility.Collections
 		/// Compacts the dictionary
 		/// </summary>
 		/// <returns>A list of keys where the values have expired</returns>
-		[SecuritySafeCritical]
 		public IEnumerable<TKey> Compact()
 		{	//****************************************
 			List<TKey> ExpiredKeys = new List<TKey>();
@@ -145,7 +126,7 @@ namespace Proximity.Utility.Collections
 					continue;
 
 				// Add this key to the list of expired keys
-				Pair.Value.Free();
+				Pair.Value.Dispose();
 
 				ExpiredKeys.Add(Pair.Key);
 			}
@@ -163,10 +144,9 @@ namespace Proximity.Utility.Collections
 		/// <param name="key">The key to check for</param>
 		/// <returns>True if the key exists and the value is still valid, otherwise False</returns>
 		/// <remarks>Note that the value may be garbage collected after or even during this call</remarks>
-		[SecuritySafeCritical]
 		public bool ContainsKey(TKey key)
 		{	//****************************************
-			GCHandle MyHandle;
+			GCReference MyHandle;
 			//****************************************
 			
 			// Does the item exist in the dictionary?
@@ -180,13 +160,10 @@ namespace Proximity.Utility.Collections
 		/// <summary>
 		/// Disposes of the Weak Dictionary, cleaning up any weak references
 		/// </summary>
-		[SecuritySafeCritical]
 		public void Dispose()
 		{
-			if (_DictionaryHandle.IsAllocated)
-				Dispose(true);
-
-			GC.SuppressFinalize(this);
+			foreach (var MyValue in _Dictionary.Values)
+				MyValue.Dispose();
 		}
 
 		/// <summary>
@@ -203,10 +180,9 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="key">The key associated with the value to remove</param>
 		/// <returns>True if the item was found and removed, otherwise False</returns>
-		[SecuritySafeCritical]
 		public bool Remove(TKey key)
 		{	//****************************************
-			GCHandle MyHandle;
+			GCReference MyHandle;
 			bool HasValue;
 			//****************************************
 			
@@ -217,7 +193,7 @@ namespace Proximity.Utility.Collections
 
 			_Dictionary.Remove(key); // Should always succeed
 
-			MyHandle.Free();
+			MyHandle.Dispose();
 
 			return HasValue; // Only return true if the reference was still valid
 		}
@@ -228,10 +204,9 @@ namespace Proximity.Utility.Collections
 		/// <param name="key">The key to remove</param>
 		/// <param name="value">The value to remove</param>
 		/// <returns>True if the key was found with the expected value, otherwise false</returns>
-		[SecuritySafeCritical]
 		public bool Remove(TKey key, TValue value)
 		{	//****************************************
-			GCHandle MyHandle;
+			GCReference MyHandle;
 			TValue MyValue;
 			//****************************************
 
@@ -250,7 +225,7 @@ namespace Proximity.Utility.Collections
 			
 			_Dictionary.Remove(key); // Should always succeed
 
-			MyHandle.Free();
+			MyHandle.Dispose();
 
 			return true; // Only return true if the reference was still valid
 		}
@@ -262,10 +237,9 @@ namespace Proximity.Utility.Collections
 		/// <param name="value">Receives the value associated with the key, or null if the key does not exist or the value is no longer available</param>
 		/// <returns>True if the key was found and the value was available, otherwise False</returns>
 		/// <remarks>Does not remove the key if the value is no longer available</remarks>
-		[SecuritySafeCritical]
 		public bool TryGetValue(TKey key, out TValue value)
 		{	//****************************************
-			GCHandle MyHandle;
+			GCReference MyHandle;
 			//****************************************
 			
 			// Does the item exist in the dictionary?
@@ -288,10 +262,9 @@ namespace Proximity.Utility.Collections
 		/// <param name="key">The key to remove</param>
 		/// <param name="value">The value to remove, if still referenced. Null if the key was not found or was found but the reference expired</param>
 		/// <returns>True if the key was found and still referenced, otherwise false</returns>
-		[SecuritySafeCritical]
 		public bool TryRemove(TKey key, out TValue value)
 		{	//****************************************
-			GCHandle MyHandle;
+			GCReference MyHandle;
 			//****************************************
 
 			if (!_Dictionary.TryGetValue(key, out MyHandle))
@@ -305,7 +278,7 @@ namespace Proximity.Utility.Collections
 
 			_Dictionary.Remove(key); // Should always succeed
 
-			MyHandle.Free();
+			MyHandle.Dispose();
 
 			return value != null; // Only return true if the reference was still valid
 		}
@@ -347,37 +320,16 @@ namespace Proximity.Utility.Collections
 			return GetContents().GetEnumerator();
 		}
 
-		[SecuritySafeCritical]
-		private static GCHandle CreateFrom(TValue item)
+		private static GCReference CreateFrom(TValue item)
 		{
-			return GCHandle.Alloc(item, GCHandleType.Weak);
+			return new GCReference(item, GCHandleType.Weak);
 		}
 
-		[SecuritySafeCritical]
-		private static TValue ValueFromPair(KeyValuePair<TKey, GCHandle> pair)
+		private static TValue ValueFromPair(KeyValuePair<TKey, GCReference> pair)
 		{
 			return (TValue)pair.Value.Target;
 		}
 		
-		[SecuritySafeCritical]
-		private void Dispose(bool isDisposing)
-		{
-			var MyDictionary = _DictionaryHandle.Target;
-
-			_DictionaryHandle.Free();
-
-			// Skip doing the full cleanup if the CLR is shutting down, since there's a chance our dictionary is no longer valid
-			if (!Environment.HasShutdownStarted)
-			{
-				if (MyDictionary != null)
-				{
-					// Free our GC Handles so we don't create a memory leak
-					foreach (var MyValue in _Dictionary.Values)
-						MyValue.Free();
-				}
-			}
-		}
-
 		private IEnumerable<KeyValuePair<TKey, TValue>> GetContents()
 		{
 			foreach(var MyResult in _Dictionary)
@@ -416,10 +368,9 @@ namespace Proximity.Utility.Collections
 		/// <remarks>Returns null if the value has expired</remarks>
 		public TValue this[TKey key]
 		{
-			[SecuritySafeCritical]
 			get
 			{	//****************************************
-				GCHandle MyHandle;
+				GCReference MyHandle;
 				//****************************************
 				
 				// Does the item exist in the dictionary?
@@ -431,7 +382,6 @@ namespace Proximity.Utility.Collections
 				
 				throw new KeyNotFoundException();
 			}
-			[SecuritySafeCritical]
 			set
 			{
 				if (value == null)
@@ -440,9 +390,9 @@ namespace Proximity.Utility.Collections
 				// If the key already exists, we need to free the weak reference
 				if (_Dictionary.ContainsKey(key))
 				{
-					GCHandle MyHandle = _Dictionary[key];
+					var MyHandle = _Dictionary[key];
 					
-					MyHandle.Free();
+					MyHandle.Dispose();
 				}
 				
 				_Dictionary[key] = CreateFrom(value);

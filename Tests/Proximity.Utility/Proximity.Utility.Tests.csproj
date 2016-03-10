@@ -119,6 +119,8 @@
     <Compile Include="AsyncSemaphoreTests.cs" />
     <Compile Include="AsyncSwitchLockTests.cs" />
     <Compile Include="AsyncTaskFlagTests.cs" />
+    <Compile Include="BinaryTextReaderTests.cs" />
+    <Compile Include="BinaryTextWriterTests.cs" />
     <Compile Include="CloneTests.cs" />
     <Compile Include="ConfigurationTests.cs" />
     <Compile Include="EmitterTests.cs" />

@@ -16,6 +16,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Collections\AsyncCollection.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ComparisonComparer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ObservableListView.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)GCReference.cs" />
     <None Include="$(MSBuildThisFileDirectory)Collections\ObservableListViewDynamic.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ObservableSortedList.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ObservableSortedSet.cs" />

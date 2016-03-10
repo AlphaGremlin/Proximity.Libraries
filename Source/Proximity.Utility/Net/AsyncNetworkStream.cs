@@ -419,6 +419,8 @@ namespace Proximity.Utility.Net
 			{	//****************************************
 				var EventArgs = _Stream._ReadEventArgs;
 				//****************************************
+
+				EventArgs.SetBuffer(null, 0, 0);
 				
 				if (EventArgs.SocketError == SocketError.Success)
 					SetResult(EventArgs.BytesTransferred);
@@ -494,13 +496,15 @@ namespace Proximity.Utility.Net
 			
 			internal void ProcessCompletedSend()
 			{	//****************************************
-				var MyError = _Stream._WriteEventArgs.SocketError;
+				var EventArgs = _Stream._WriteEventArgs;
 				//****************************************
-				
-				if (MyError == SocketError.Success)
+
+				EventArgs.SetBuffer(null, 0, 0);
+
+				if (EventArgs.SocketError == SocketError.Success)
 					SetResult(VoidStruct.Empty);
 				else
-					SetException(new IOException("Send failed", new SocketException((int)MyError)));
+					SetException(new IOException("Send failed", new SocketException((int)EventArgs.SocketError)));
 
 				try
 				{

@@ -278,7 +278,6 @@ namespace Proximity.Utility.IO
 			get { return _ByteBuffer.Length; }
 			set
 			{
-
 				if (value == _ByteBuffer.Length)
 					return;
 
