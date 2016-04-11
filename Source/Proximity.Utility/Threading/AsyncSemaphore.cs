@@ -172,7 +172,6 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 
-		[SecuritySafeCritical]
 		private void Release(bool onThreadPool)
 		{	//****************************************
 			TaskCompletionSource<IDisposable> NextWaiter = null;
@@ -211,7 +210,7 @@ namespace Proximity.Utility.Threading
 				// If we're not on the threadpool, run TrySetResult on there, so we don't blow the stack if the result calls Release too (and so on)
 				if (!onThreadPool)
 				{
-					ThreadPool.UnsafeQueueUserWorkItem(TryRelease, NextWaiter);
+					ThreadPool.QueueUserWorkItem(TryRelease, NextWaiter);
 					
 					return;
 				}

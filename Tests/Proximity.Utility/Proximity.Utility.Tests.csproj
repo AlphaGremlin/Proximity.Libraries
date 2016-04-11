@@ -114,6 +114,7 @@
   <ItemGroup>
     <Compile Include="AsyncCollectionTests.cs" />
     <Compile Include="AsyncCounterTests.cs" />
+    <Compile Include="AsyncKeyedLockTests.cs" />
     <Compile Include="AsyncReadWriteLockTests.cs" />
     <None Include="AsyncSemaphoreSlimTests.cs" />
     <Compile Include="AsyncSemaphoreTests.cs" />
