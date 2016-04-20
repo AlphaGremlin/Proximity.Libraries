@@ -21,6 +21,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="remoteTask">The remote task to await</param>
 		/// <returns>A task awaiter that can be used to await the remote task</returns>
+		/// <remarks>Beware of unloading the target AppDomain in a continuation of this Task, as it's likely running with the AppDomain in the stack, causing a strange ThreadAbortException</remarks>
 		public static TaskAwaiter GetAwaiter(this RemoteTask remoteTask)
 		{
 			// This is an extension method so the code runs in the calling AppDomain
@@ -32,6 +33,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="remoteTask">The remote task to await</param>
 		/// <returns>A task awaiter that can be used to await the remote task</returns>
+		/// <remarks>Beware of unloading the target AppDomain in a continuation of this Task, as it's likely running with the AppDomain in the stack, causing a strange ThreadAbortException</remarks>
 		public static TaskAwaiter<TResult> GetAwaiter<TResult>(this RemoteTask<TResult> remoteTask)
 		{
 			// This is an extension method so the code runs in the calling AppDomain
@@ -43,6 +45,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="remoteTask">The remote task to wrap</param>
 		/// <returns>A task that will reflect the status of the RemoteTask</returns>
+		/// <remarks>Beware of unloading the target AppDomain in a continuation of this Task, as it's likely running with the AppDomain in the stack, causing a strange ThreadAbortException</remarks>
 		public static Task ToTask(this RemoteTask remoteTask)
 		{
 			return RemoteTask.CreateTask(remoteTask);
@@ -53,6 +56,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="remoteTask">The remote task to wrap</param>
 		/// <returns>A task that will reflect the status of the RemoteTask</returns>
+		/// <remarks>Beware of unloading the target AppDomain in a continuation of this Task, as it's likely running with the AppDomain in the stack, causing a strange ThreadAbortException</remarks>
 		public static Task ToTask<TResult>(this RemoteTask<TResult> remoteTask)
 		{
 			return RemoteTask<TResult>.CreateTask(remoteTask);

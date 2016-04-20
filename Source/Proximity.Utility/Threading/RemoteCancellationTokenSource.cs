@@ -18,13 +18,11 @@ namespace Proximity.Utility.Threading
 	/// <summary>
 	/// Receives notifications from a cancellation token in another AppDomain
 	/// </summary>
-	internal sealed class RemoteCancellationTokenSource : MarshalByRefObject, ISponsor, IDisposable
+	internal sealed class RemoteCancellationTokenSource : MarshalByRefObject, IDisposable
 	{	//****************************************
 		private readonly CancellationTokenSource _TokenSource = new CancellationTokenSource();
 		
 		private readonly RemoteCancellationToken _Token;
-		
-		private bool _IsDisposed;
 		//****************************************
 		
 		[SecuritySafeCritical]
@@ -44,41 +42,20 @@ namespace Proximity.Utility.Threading
 			_Token.Detach(this);
 
 			Unregister();
-			
-			_IsDisposed = true;
 		}
 
 		[SecurityCritical]
 		public override object InitializeLifetimeService()
-		{	//****************************************
-			var MyLease = (ILease)base.InitializeLifetimeService();
-			//****************************************
-
-			MyLease.Register(this);
-
-			return MyLease;
+		{
+			return null; // Last until the Remote Cancellation Token we're attached to is cancelled or we're disposed
 		}
 
 		//****************************************
 		
-		[SecurityCritical]
-		TimeSpan ISponsor.Renewal(ILease lease)
-		{
-			// Ensure we keep the remote token connection alive until we've been disposed upon completion of the task
-			if (_IsDisposed)
-				return TimeSpan.Zero;
-			
-			return lease.RenewOnCallTime;
-		}
-
 		[SecuritySafeCritical]
 		private void Unregister()
-		{	//****************************************
-			var MyLease = (ILease)RemotingServices.GetLifetimeService(this);
-			//****************************************
-
-			if (MyLease != null)
-				MyLease.Unregister(this);
+		{
+			RemotingServices.Disconnect(this);
 		}
 
 		//****************************************

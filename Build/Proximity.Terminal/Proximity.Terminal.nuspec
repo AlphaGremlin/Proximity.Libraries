@@ -2,14 +2,14 @@
 <package >
 	<metadata>
 		<id>Proximity.Terminal</id>
-		<version>16.4.0.0</version>
+		<version>16.5.0.0</version>
 		<title>Proximity Terminal Library</title>
 		<authors>Proximity Interactive</authors>
 		<owners>Proximity Interactive</owners>
 		<requireLicenseAcceptance>false</requireLicenseAcceptance>
 		<description>Proximity Terminal Library</description>
 		<releaseNotes></releaseNotes>
-		<copyright>Copyright 2015</copyright>
+		<copyright>Copyright 2016</copyright>
 		<dependencies>
 			<dependency id="Proximity.Utility" version="17.1.0.0" />
 		</dependencies>

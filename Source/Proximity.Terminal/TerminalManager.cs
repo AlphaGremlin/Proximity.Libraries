@@ -147,196 +147,41 @@ namespace Proximity.Terminal
 		//****************************************
 		
 		/// <summary>
-		/// Processes command-line input
+		/// Processes command-line input, returning immediately if no key is pressed
 		/// </summary>
 		/// <remarks>Requires that <see cref="HasCommandLine" /> is True</remarks>
 		public static void ProcessInput()
-		{	//****************************************
-			ConsoleKeyInfo KeyData;
-			string CurrentLine;
-			//****************************************
-			
+		{
 			if (!_HasCommandLine)
 				throw new InvalidOperationException("Command-line is not available");
 			
 			while (Console.KeyAvailable)
 			{
-				KeyData = Console.ReadKey(true);
-				
-				// If the user has pressed entry, try and execute the current command
-				if (KeyData.Key == ConsoleKey.Enter)
-				{
-					if (_InputLine.Length == 0)
-						continue;
-					
-					_CommandHistoryIndex = -1;
-					
-					CurrentLine = _InputLine.ToString();
-					
-					lock (_LockObject)
-					{
-						HideInputArea();
-						IsCursorVisible = false;
-					}
-					
-					_InputLine.Length = 0;
-					_InputIndex = 0;
-					
-					// Attempt to parse an execute the command
-					if (TerminalParser.Execute(CurrentLine, _Registry).Result)
-					{
-						// Store the new line into the history, as long as it's not already the most recent entry
-						if (_CommandHistory.Count == 0 || _CommandHistory[0] != CurrentLine)
-							_CommandHistory.Insert(0, CurrentLine);
-					}
-					else
-					{
-						// True
-						_InputLine.Append(CurrentLine);
-						_InputIndex = _InputLine.Length;
-					}
-					
-					lock (_LockObject)
-					{
-						IsCursorVisible = true;
-						ShowInputArea();
-					}
-					
-					continue;
-				}
-				
-				//****************************************
-				
-				lock (_LockObject)
-				{
-					HideInputArea();
-					
-					if (KeyData.Key != ConsoleKey.Tab)
-						_PartialCommand = null;
-					
-					var Width = BufferWidth;
-					
-					switch (KeyData.Key)
-					{
-					case ConsoleKey.UpArrow:
-						if (KeyData.Modifiers.HasFlag(ConsoleModifiers.Control))
-						{
-							if (_InputIndex >= Width - 2)
-								_InputIndex -= Width;
-							else
-								_InputIndex = 0;
-						}
-						else if (_CommandHistoryIndex < _CommandHistory.Count - 1)
-						{
-							_CommandHistoryIndex++;
-							
-							_InputLine.Length = 0;
-							_InputLine.Append(_CommandHistory[_CommandHistoryIndex]);
-							_InputIndex = _InputLine.Length;
-						}
-						break;
-						
-					case ConsoleKey.DownArrow:
-						if (KeyData.Modifiers.HasFlag(ConsoleModifiers.Control))
-						{
-							if (_InputIndex < Width - 2)
-								_InputIndex = Math.Min(_InputIndex + Width, _InputLine.Length);
-							else
-								_InputIndex = _InputLine.Length;
-						}
-						else if (_CommandHistoryIndex >= 0)
-						{
-							_CommandHistoryIndex--;
-						
-							_InputLine.Length = 0;
-							if (_CommandHistoryIndex != -1)
-								_InputLine.Append(_CommandHistory[_CommandHistoryIndex]);
-	
-							_InputIndex = _InputLine.Length;
-						}
-						break;
-						
-					case ConsoleKey.LeftArrow:
-						if (_InputIndex > 0)
-						{
-							if (KeyData.Modifiers.HasFlag(ConsoleModifiers.Control))
-								_InputIndex = Math.Max(_InputLine.ToString().LastIndexOf(' ', _InputIndex), 0);
-							else
-								_InputIndex--;
-						}
-						break;
-						
-					case ConsoleKey.RightArrow:
-						if (_InputIndex < _InputLine.Length)
-						{
-							if (KeyData.Modifiers.HasFlag(ConsoleModifiers.Control))
-							{
-								_InputIndex = _InputLine.ToString().IndexOf(' ', _InputIndex);
-								
-								if (_InputIndex == -1)
-									_InputIndex = _InputLine.Length;
-							}
-							else
-								_InputIndex++;
-						}
-						break;
-						
-					case ConsoleKey.Tab:
-						if (_PartialCommand == null)
-							_PartialCommand = _InputLine.ToString();
-						
-						string NewCommand = TerminalParser.FindNextCommand(_PartialCommand, _InputLine.ToString(), _Registry);
-						
-						if (NewCommand == null) // No matching commands
-							break;
-						
-						_InputLine.Length = 0;
-						_InputLine.Append(NewCommand);
+				HandleConsoleKey(Console.ReadKey(true));
+			}
+		}
 
-						_InputIndex = _InputLine.Length;
-						break;
-						
-					case ConsoleKey.Home:
-						_InputIndex = 0;
-						break;
-						
-					case ConsoleKey.End:
-						_InputIndex = _InputLine.Length;
-						break;
-						
-					case ConsoleKey.Escape:
-						_InputLine.Length = 0;
-						_InputIndex = 0;
-						break;
-						
-					case ConsoleKey.Backspace:
-						if (_InputIndex > 0)
-						{
-								// Remove the previous character at the input point
-							_InputLine.Remove(_InputIndex - 1, 1);
-							
-							_InputIndex--;
-						}
-						break;
-						
-					case ConsoleKey.Delete:
-						if (_InputIndex < _InputLine.Length)
-						{
-							_InputLine.Remove(_InputIndex, 1);
-						}
-						break;
-						
-					default:
-						if (KeyData.KeyChar == '\0')
-							break;
-						
-						_InputLine.Insert(_InputIndex, KeyData.KeyChar);
-						_InputIndex++;
-						break;
-					}
-					
-					ShowInputArea();
-				}
+		/// <summary>
+		/// Processes command-line input, waiting until a key has been read
+		/// </summary>
+		/// <remarks>Requires that <see cref="HasCommandLine" /> is True</remarks>
+		public static void WaitInput()
+		{	//****************************************
+			ConsoleKeyInfo KeyData;
+			//****************************************
+
+			if (!_HasCommandLine)
+				throw new InvalidOperationException("Command-line is not available");
+
+			// Read the first key available
+			KeyData = Console.ReadKey(true);
+
+			HandleConsoleKey(KeyData);
+
+			// Read any more keys and then return
+			while (Console.KeyAvailable)
+			{
+				HandleConsoleKey(Console.ReadKey(true));
 			}
 		}
 		
@@ -379,6 +224,190 @@ namespace Proximity.Terminal
 		private static void OnProcessExit(object sender, EventArgs e)
 		{
 			Console.CursorVisible = true;
+		}
+
+		private static void HandleConsoleKey(ConsoleKeyInfo keyData)
+		{	//****************************************
+			string CurrentLine;
+			//****************************************
+
+			if (!_HasCommandLine)
+				throw new InvalidOperationException("Command-line is not available");
+
+			// If the user has pressed entry, try and execute the current command
+			if (keyData.Key == ConsoleKey.Enter)
+			{
+				if (_InputLine.Length == 0)
+					return;
+
+				_CommandHistoryIndex = -1;
+
+				CurrentLine = _InputLine.ToString();
+
+				lock (_LockObject)
+				{
+					HideInputArea();
+					IsCursorVisible = false;
+				}
+
+				_InputLine.Length = 0;
+				_InputIndex = 0;
+
+				// Attempt to parse an execute the command
+				if (TerminalParser.Execute(CurrentLine, _Registry).Result)
+				{
+					// Store the new line into the history, as long as it's not already the most recent entry
+					if (_CommandHistory.Count == 0 || _CommandHistory[0] != CurrentLine)
+						_CommandHistory.Insert(0, CurrentLine);
+				}
+				else
+				{
+					// True
+					_InputLine.Append(CurrentLine);
+					_InputIndex = _InputLine.Length;
+				}
+
+				lock (_LockObject)
+				{
+					IsCursorVisible = true;
+					ShowInputArea();
+				}
+
+				return;
+			}
+
+			//****************************************
+
+			lock (_LockObject)
+			{
+				HideInputArea();
+
+				if (keyData.Key != ConsoleKey.Tab)
+					_PartialCommand = null;
+
+				var Width = BufferWidth;
+
+				switch (keyData.Key)
+				{
+				case ConsoleKey.UpArrow:
+					if (keyData.Modifiers.HasFlag(ConsoleModifiers.Control))
+					{
+						if (_InputIndex >= Width - 2)
+							_InputIndex -= Width;
+						else
+							_InputIndex = 0;
+					}
+					else if (_CommandHistoryIndex < _CommandHistory.Count - 1)
+					{
+						_CommandHistoryIndex++;
+
+						_InputLine.Length = 0;
+						_InputLine.Append(_CommandHistory[_CommandHistoryIndex]);
+						_InputIndex = _InputLine.Length;
+					}
+					break;
+
+				case ConsoleKey.DownArrow:
+					if (keyData.Modifiers.HasFlag(ConsoleModifiers.Control))
+					{
+						if (_InputIndex < Width - 2)
+							_InputIndex = Math.Min(_InputIndex + Width, _InputLine.Length);
+						else
+							_InputIndex = _InputLine.Length;
+					}
+					else if (_CommandHistoryIndex >= 0)
+					{
+						_CommandHistoryIndex--;
+
+						_InputLine.Length = 0;
+						if (_CommandHistoryIndex != -1)
+							_InputLine.Append(_CommandHistory[_CommandHistoryIndex]);
+
+						_InputIndex = _InputLine.Length;
+					}
+					break;
+
+				case ConsoleKey.LeftArrow:
+					if (_InputIndex > 0)
+					{
+						if (keyData.Modifiers.HasFlag(ConsoleModifiers.Control))
+							_InputIndex = Math.Max(_InputLine.ToString().LastIndexOf(' ', Math.Max(_InputIndex - 1, 0)), 0);
+						else
+							_InputIndex--;
+					}
+					break;
+
+				case ConsoleKey.RightArrow:
+					if (_InputIndex < _InputLine.Length)
+					{
+						if (keyData.Modifiers.HasFlag(ConsoleModifiers.Control))
+						{
+							_InputIndex = _InputLine.ToString().IndexOf(' ', Math.Min(_InputIndex + 1, _InputLine.Length - 1));
+
+							if (_InputIndex == -1)
+								_InputIndex = _InputLine.Length;
+						}
+						else
+							_InputIndex++;
+					}
+					break;
+
+				case ConsoleKey.Tab:
+					if (_PartialCommand == null)
+						_PartialCommand = _InputLine.ToString();
+
+					string NewCommand = TerminalParser.FindNextCommand(_PartialCommand, _InputLine.ToString(), _Registry);
+
+					if (NewCommand == null) // No matching commands
+						break;
+
+					_InputLine.Length = 0;
+					_InputLine.Append(NewCommand);
+
+					_InputIndex = _InputLine.Length;
+					break;
+
+				case ConsoleKey.Home:
+					_InputIndex = 0;
+					break;
+
+				case ConsoleKey.End:
+					_InputIndex = _InputLine.Length;
+					break;
+
+				case ConsoleKey.Escape:
+					_InputLine.Length = 0;
+					_InputIndex = 0;
+					break;
+
+				case ConsoleKey.Backspace:
+					if (_InputIndex > 0)
+					{
+						// Remove the previous character at the input point
+						_InputLine.Remove(_InputIndex - 1, 1);
+
+						_InputIndex--;
+					}
+					break;
+
+				case ConsoleKey.Delete:
+					if (_InputIndex < _InputLine.Length)
+					{
+						_InputLine.Remove(_InputIndex, 1);
+					}
+					break;
+
+				default:
+					if (keyData.KeyChar == '\0')
+						break;
+
+					_InputLine.Insert(_InputIndex, keyData.KeyChar);
+					_InputIndex++;
+					break;
+				}
+
+				ShowInputArea();
+			}
 		}
 		
 		private static void HideInputArea()

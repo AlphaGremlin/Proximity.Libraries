@@ -23,7 +23,7 @@ namespace Proximity.Utility.Threading
 	/// Provides access to a cancellation token in another AppDomain
 	/// </summary>
 	/// <remarks>Exists in the calling AppDomain, and must be wrapped in a Using statement around any Awaits in order to preserve the lifetime of the remote object</remarks>
-	public sealed class RemoteCancellationToken : MarshalByRefObject, IDisposable, ISponsor
+	public sealed class RemoteCancellationToken : MarshalByRefObject, IDisposable
 	{	//****************************************
 		private readonly CancellationToken _Token;
 		
@@ -31,7 +31,6 @@ namespace Proximity.Utility.Threading
 		
 		[SecurityCritical]
 		private ImmutableHashSet<RemoteCancellationTokenSource> _TokenSources = ImmutableHashSet<RemoteCancellationTokenSource>.Empty;
-		private bool _IsDisposed;
 		//****************************************
 		
 		/// <summary>
@@ -58,13 +57,8 @@ namespace Proximity.Utility.Threading
 		/// <inheritdoc />
 		[SecurityCritical]
 		public override object InitializeLifetimeService()
-		{	//****************************************
-			var MyLease = (ILease)base.InitializeLifetimeService();
-			//****************************************
-
-			MyLease.Register(this);
-
-			return MyLease;
+		{
+			return null; // Last until the Cancellation Token we're attached to is cancelled or we're disposed
 		}
 
 		/// <summary>
@@ -76,8 +70,6 @@ namespace Proximity.Utility.Threading
 			_Registration.Dispose();
 
 			Unregister();
-
-			_IsDisposed = true;
 		}
 		
 		//****************************************
@@ -115,24 +107,10 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 
-		[SecurityCritical]
-		TimeSpan ISponsor.Renewal(ILease lease)
-		{
-			// Ensure we keep the remote token source connection alive until we've been disposed
-			if (_IsDisposed)
-				return TimeSpan.Zero;
-			
-			return lease.RenewOnCallTime;
-		}
-
 		[SecuritySafeCritical]
 		private void Unregister()
-		{	//****************************************
-			var MyLease = (ILease)RemotingServices.GetLifetimeService(this);
-			//****************************************
-
-			if (MyLease != null)
-				MyLease.Unregister(this);
+		{
+			RemotingServices.Disconnect(this);
 		}
 
 		//****************************************

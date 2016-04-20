@@ -1,6 +1,9 @@
-﻿/****************************************\
+/****************************************\
+ Proximity Utility Library
+ Copyright (c) Daniel Chandler
+ Released under the GNU LGPL 2.1 or later
+ ****************************************
  AssemblyInfo.cs
- Created: 2014-02-28
 \****************************************/
 using System;
 using System.Reflection;
@@ -8,8 +11,8 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 //****************************************
 
-[assembly: AssemblyTitle("Proximity Terminal Library")]
-[assembly: AssemblyDescription("Proximity Terminal Library")]
+[assembly: AssemblyTitle("Proximity Utility Library")]
+[assembly: AssemblyDescription("Proximity Utility Library")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Proximity Interactive")]
 [assembly: AssemblyProduct("Proximity Utilities")]
@@ -24,5 +27,5 @@ using System.Runtime.InteropServices;
 
 //****************************************
 
-[assembly: AssemblyVersion("16.1.0.0")]
-[assembly: AssemblyFileVersion("16.5.0.0")]
+[assembly: AssemblyVersion("17.1.0.0")]
+[assembly: AssemblyFileVersion("17.5.0.0")]

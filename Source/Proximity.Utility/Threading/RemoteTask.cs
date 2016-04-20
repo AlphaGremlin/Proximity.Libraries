@@ -20,11 +20,9 @@ namespace Proximity.Utility.Threading
 	/// Provides access to a Task running in another AppDomain
 	/// </summary>
 	/// <remarks>This object lives in the AppDomain where the Task is running</remarks>
-	public sealed class RemoteTask : MarshalByRefObject, ISponsor
+	public sealed class RemoteTask : MarshalByRefObject
 	{	//****************************************
 		private readonly Task _Task;
-		
-		private bool _IsRegistered;
 		//****************************************
 		
 		internal RemoteTask(Task task)
@@ -47,22 +45,7 @@ namespace Proximity.Utility.Threading
 		private void Attach(RemoteTaskCompletionSource<VoidStruct> taskSource)
 		{
 			// Attach to the local task and pass the results on to the remote task source
-			_Task.ContinueWith(
-				(innerTask, state) =>
-				{
-					var Source = (RemoteTaskCompletionSource<VoidStruct>)state;
-					
-					if (innerTask.IsFaulted)
-						Source.SetException(innerTask.Exception.InnerException);
-					else if (innerTask.IsCanceled)
-						Source.SetCancelled();
-					else
-						Source.SetResult(default(VoidStruct));
-
-					if (_IsRegistered)
-						Unregister();
-				},
-				taskSource, TaskContinuationOptions.ExecuteSynchronously);
+			_Task.ContinueWith(CompleteLocalTask, taskSource, TaskContinuationOptions.ExecuteSynchronously);
 		}
 		
 		//****************************************
@@ -70,40 +53,31 @@ namespace Proximity.Utility.Threading
 		/// <inheritdoc />
 		[SecurityCritical]
 		public override object InitializeLifetimeService()
-		{	//****************************************
-			var MyLease = (ILease)base.InitializeLifetimeService();
-			//****************************************
-
-			if (!_Task.IsCompleted)
-			{
-				MyLease.Register(this);
-
-				_IsRegistered = true;
-			}
-
-			return MyLease;
+		{
+			return null; // Last until the Task we're attached to is completed
 		}
 
 		//****************************************
 
-		[SecurityCritical]
-		TimeSpan ISponsor.Renewal(ILease lease)
-		{
-			// Ensure we keep the remote task source connection alive until our task is completed
-			if (_Task.IsCompleted)
-				return TimeSpan.Zero;
-			
-			return lease.RenewOnCallTime;
-		}
-		
-		[SecuritySafeCritical]
-		private void Unregister()
+		private void CompleteLocalTask(Task task, object state)
 		{	//****************************************
-			var MyLease = (ILease)RemotingServices.GetLifetimeService(this);
+			var Source = (RemoteTaskCompletionSource<VoidStruct>)state;
 			//****************************************
 
-			if (MyLease != null)
-				MyLease.Unregister(this);
+			if (task.IsFaulted)
+				Source.SetException(task.Exception.InnerException);
+			else if (task.IsCanceled)
+				Source.SetCancelled();
+			else
+				Source.SetResult(default(VoidStruct));
+
+			Unregister();
+		}
+
+		[SecuritySafeCritical]
+		private void Unregister()
+		{
+			RemotingServices.Disconnect(this);
 		}
 
 		//****************************************
@@ -168,6 +142,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="remoteTask">The remote task to wrap</param>
 		/// <returns>A task that will reflect the status of the RemoteTask</returns>
+		/// <remarks>Beware of unloading the target AppDomain in a continuation of this Task, as it's likely running with the AppDomain in the stack, causing a strange ThreadAbortException</remarks>
 		public static implicit operator Task(RemoteTask remoteTask)
 		{
 			return CreateTask(remoteTask);
@@ -224,11 +199,9 @@ namespace Proximity.Utility.Threading
 	/// Provides access to a Task running in another AppDomain
 	/// </summary>
 	/// <remarks>This object lives in the AppDomain where the Task is running</remarks>
-	public sealed class RemoteTask<TResult> : MarshalByRefObject, ISponsor
+	public sealed class RemoteTask<TResult> : MarshalByRefObject
 	{//****************************************
 		private readonly Task<TResult> _Task;
-		
-		private bool _IsRegistered;
 		//****************************************
 		
 		internal RemoteTask(Task<TResult> task)
@@ -251,29 +224,7 @@ namespace Proximity.Utility.Threading
 		private void Attach(RemoteTaskCompletionSource<TResult> taskSource)
 		{
 			// Attach to the local task and pass the results on to the remote task source
-			_Task.ContinueWith(
-				(innerTask, state) =>
-				{
-					var Source = (RemoteTaskCompletionSource<TResult>)state;
-					
-					try
-					{
-						if (innerTask.IsFaulted)
-							Source.SetException(innerTask.Exception.InnerException);
-						else if (innerTask.IsCanceled)
-							Source.SetCancelled();
-						else
-							Source.SetResult(innerTask.Result);
-					}
-					catch (Exception e) // Can fail if the result object is not serialisable or marshalable
-					{
-						Source.SetException(e);
-					}
-
-					if (_IsRegistered)
-						Unregister();
-				}
-				, taskSource, TaskContinuationOptions.ExecuteSynchronously);
+			_Task.ContinueWith(CompleteLocalTask, taskSource, TaskContinuationOptions.ExecuteSynchronously);
 		}
 
 		//****************************************
@@ -281,40 +232,38 @@ namespace Proximity.Utility.Threading
 		/// <inheritdoc />
 		[SecurityCritical]
 		public override object InitializeLifetimeService()
-		{	//****************************************
-			var MyLease = (ILease)base.InitializeLifetimeService();
-			//****************************************
-
-			if (!_Task.IsCompleted)
-			{
-				MyLease.Register(this);
-
-				_IsRegistered = true;
-			}
-
-			return MyLease;
+		{
+			return null; // Last until the Task we're attached to is completed
 		}
 
 		//****************************************
 
-		[SecurityCritical]
-		TimeSpan ISponsor.Renewal(ILease lease)
-		{
-			// Ensure we keep the remote task source connection alive until our task is completed
-			if (_Task.IsCompleted)
-				return TimeSpan.Zero;
+		private void CompleteLocalTask(Task<TResult> task, object state)
+		{	//****************************************
+			var Source = (RemoteTaskCompletionSource<TResult>)state;
+			//****************************************
 
-			return lease.RenewOnCallTime;
+			try
+			{
+				if (task.IsFaulted)
+					Source.SetException(task.Exception.InnerException);
+				else if (task.IsCanceled)
+					Source.SetCancelled();
+				else
+					Source.SetResult(task.Result);
+			}
+			catch (Exception e) // Can fail if the result object is not serialisable or marshalable
+			{
+				Source.SetException(e);
+			}
+
+			Unregister();
 		}
 
 		[SecuritySafeCritical]
 		private void Unregister()
-		{	//****************************************
-			var MyLease = (ILease)RemotingServices.GetLifetimeService(this);
-			//****************************************
-
-			if (MyLease != null)
-				MyLease.Unregister(this);
+		{
+			RemotingServices.Disconnect(this);
 		}
 
 		//****************************************
@@ -351,6 +300,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="remoteTask">The remote task to wrap</param>
 		/// <returns>A task that will reflect the status of the RemoteTask</returns>
+		/// <remarks>Beware of unloading the target AppDomain in a continuation of this Task, as it's likely running with the AppDomain in the stack, causing a strange ThreadAbortException</remarks>
 		public static implicit operator Task<TResult>(RemoteTask<TResult> remoteTask)
 		{
 			return CreateTask(remoteTask);

@@ -19,7 +19,7 @@ namespace Proximity.Utility.Threading
 	/// Provides a Task Completion Source within the calling AppDomain that receives the result of the Task in the target AppDomain
 	/// </summary>
 	/// <remarks>This object lives in the AppDomain making the call</remarks>
-	internal sealed class RemoteTaskCompletionSource<TResult> : MarshalByRefObject, ISponsor
+	internal sealed class RemoteTaskCompletionSource<TResult> : MarshalByRefObject
 	{	//****************************************
 		private readonly TaskCompletionSource<TResult> _TaskSource;
 		
@@ -42,13 +42,8 @@ namespace Proximity.Utility.Threading
 
 		[SecurityCritical]
 		public override object InitializeLifetimeService()
-		{	//****************************************
-			var MyLease = (ILease)base.InitializeLifetimeService();
-			//****************************************
-
-			MyLease.Register(this);
-
-			return MyLease;
+		{
+			return null; // Last until the Remote Task we're attached to is completed
 		}
 
 		//****************************************
@@ -76,24 +71,10 @@ namespace Proximity.Utility.Threading
 
 		//****************************************
 
-		[SecurityCritical]
-		TimeSpan ISponsor.Renewal(ILease lease)
-		{
-			// Ensure we keep the remote task source connection alive until our task is completed
-			if (_TaskSource.Task.IsCompleted)
-				return TimeSpan.Zero;
-
-			return lease.RenewOnCallTime;
-		}
-
 		[SecuritySafeCritical]
 		private void Unregister()
-		{	//****************************************
-			var MyLease = (ILease)RemotingServices.GetLifetimeService(this);
-			//****************************************
-
-			if (MyLease != null)
-				MyLease.Unregister(this);
+		{
+			RemotingServices.Disconnect(this);
 		}
 
 		//****************************************
