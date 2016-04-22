@@ -30,6 +30,8 @@
     <ConsolePause>false</ConsolePause>
     <DefineConstants>NET45</DefineConstants>
     <DocumentationFile>..\..\Build\Proximity.Utility\lib\net45\Proximity.Utility.xml</DocumentationFile>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />

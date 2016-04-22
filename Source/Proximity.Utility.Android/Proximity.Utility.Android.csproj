@@ -38,6 +38,8 @@
     <AndroidUseSharedRuntime>false</AndroidUseSharedRuntime>
     <DefineConstants>NET45;ANDROID;MOBILE</DefineConstants>
     <DocumentationFile>..\..\Build\Proximity.Utility\lib\MonoAndroid10\Proximity.Utility.xml</DocumentationFile>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />

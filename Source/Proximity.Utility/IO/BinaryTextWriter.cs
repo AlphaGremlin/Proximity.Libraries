@@ -19,6 +19,8 @@ namespace Proximity.Utility.IO
 	/// </summary>
 	public sealed class BinaryTextWriter : TextWriter
 	{	//****************************************
+		private static readonly Encoding _UTF8NoBOM = new UTF8Encoding(false, true);
+		//****************************************
 		private const int MinBufferSize = 128;
 		//****************************************
 		private readonly Encoding _Encoding;
@@ -27,7 +29,16 @@ namespace Proximity.Utility.IO
 		private byte[] _ByteBuffer;
 		private char[] _CharBuffer;
 		private int _ByteLength, _CharLength; // The bytes that have been written to each buffer so far
+
+		private bool _HaveWrittenPreamble;
 		//****************************************
+
+		/// <summary>
+		/// Creates a new Binary Text Writer using UTF8
+		/// </summary>
+		public BinaryTextWriter() : this(_UTF8NoBOM, MinBufferSize, null)
+		{
+		}
 
 		/// <summary>
 		/// Creates a new Binary Text Writer
@@ -248,6 +259,9 @@ namespace Proximity.Utility.IO
 			if (_CharLength == 0 && !flushEncoder)
 				return;
 
+			if (!_HaveWrittenPreamble)
+				WritePreamble();
+
 			// Ensure we have enough space in the byte buffer to write to
 			var RequiredCapacity = _Encoding.GetMaxByteCount(_CharLength) + _ByteLength;
 
@@ -260,6 +274,24 @@ namespace Proximity.Utility.IO
 			_CharLength = 0;
 
 			_ByteLength += OutBytes;
+		}
+
+		private void WritePreamble()
+		{
+			_HaveWrittenPreamble = true;
+
+			var MyPreamble = _Encoding.GetPreamble();
+
+			if (MyPreamble.Length == 0)
+				return;
+
+			// Ensure we have enough space in the byte buffer to write to
+			if (MyPreamble.Length > _ByteBuffer.Length)
+				EnsureCapacity(MyPreamble.Length);
+
+			Array.Copy(MyPreamble, 0, _ByteBuffer, 0, MyPreamble.Length);
+
+			_ByteLength += MyPreamble.Length;
 		}
 
 		//****************************************

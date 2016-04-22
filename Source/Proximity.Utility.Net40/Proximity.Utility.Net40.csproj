@@ -35,6 +35,8 @@
     <DefineConstants>NET40</DefineConstants>
     <LangVersion>5</LangVersion>
     <DocumentationFile>..\..\Build\Proximity.Utility\lib\net40\Proximity.Utility.xml</DocumentationFile>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="AsyncBridge">

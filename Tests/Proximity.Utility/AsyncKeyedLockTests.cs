@@ -145,7 +145,6 @@ namespace Proximity.Utility.Tests
 		public async Task LockInstant()
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<int>();
-			Task<IDisposable> SecondTask;
 			//****************************************
 
 			using (await MyLock.Lock(42, TimeSpan.FromMilliseconds(50.0)))
@@ -396,7 +395,7 @@ namespace Proximity.Utility.Tests
 
 			await Task.Delay(50);
 
-			MyLock.Dispose();
+			MyDisposeTask = MyLock.Dispose();
 
 			try
 			{
@@ -407,6 +406,8 @@ namespace Proximity.Utility.Tests
 			catch (ObjectDisposedException)
 			{
 			}
+
+			await MyDisposeTask;
 		}
 
 		[Test, Timeout(1000), Repeat(2)]

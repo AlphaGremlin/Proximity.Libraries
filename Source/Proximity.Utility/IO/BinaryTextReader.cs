@@ -18,15 +18,20 @@ namespace Proximity.Utility.IO
 	public sealed class BinaryTextReader : TextReader
 	{	//****************************************
 		private const int MinBufferSize = 128;
+		private const int DefaultBufferSize = 1024;
 		//****************************************
 		private readonly byte[] _Array;
+		private readonly int _StartIndex;
 		private int _Index, _Length;
 
-		private readonly Encoding _Encoding;
-		private readonly Decoder _Decoder;
-		private readonly char[] _Buffer;
+		private Encoding _Encoding;
+		private Decoder _Decoder;
+		private char[] _Buffer;
 		private int _BufferIndex, _BufferLength;
+		private readonly int _BufferSize;
 
+		private bool _DetectEncoding, _CheckPreamble;
+		private byte[] _Preamble;
 		//****************************************
 
 		/// <summary>
@@ -34,7 +39,7 @@ namespace Proximity.Utility.IO
 		/// </summary>
 		/// <param name="array">The array segment to read from</param>
 		/// <param name="encoding">The encoding of the text in the byte array</param>
-		public BinaryTextReader(ArraySegment<byte> array, Encoding encoding) : this(array.Array, array.Offset, array.Count, encoding, 0)
+		public BinaryTextReader(ArraySegment<byte> array, Encoding encoding) : this(array.Array, array.Offset, array.Count, encoding, true, DefaultBufferSize)
 		{
 		}
 
@@ -43,8 +48,19 @@ namespace Proximity.Utility.IO
 		/// </summary>
 		/// <param name="array">The array segment to read from</param>
 		/// <param name="encoding">The encoding of the text in the byte array</param>
+		/// <param name="detectEncoding">Whether to detect the encoding using the preamble</param>
+		public BinaryTextReader(ArraySegment<byte> array, Encoding encoding, bool detectEncoding) : this(array.Array, array.Offset, array.Count, encoding, detectEncoding, DefaultBufferSize)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Binary Text Reader
+		/// </summary>
+		/// <param name="array">The array segment to read from</param>
+		/// <param name="encoding">The encoding of the text in the byte array</param>
+		/// <param name="detectEncoding">Whether to detect the encoding using the preamble</param>
 		/// <param name="bufferSize">The buffer size to use when reading the text</param>
-		public BinaryTextReader(ArraySegment<byte> array, Encoding encoding, int bufferSize) : this(array.Array, array.Offset, array.Count, encoding, bufferSize)
+		public BinaryTextReader(ArraySegment<byte> array, Encoding encoding, bool detectEncoding, int bufferSize) : this(array.Array, array.Offset, array.Count, encoding, detectEncoding, bufferSize)
 		{
 		}
 
@@ -53,7 +69,7 @@ namespace Proximity.Utility.IO
 		/// </summary>
 		/// <param name="array">The byte array to read from</param>
 		/// <param name="encoding">The encoding of the text in the byte array</param>
-		public BinaryTextReader(byte[] array, Encoding encoding) : this(array, 0, array.Length, encoding, 0)
+		public BinaryTextReader(byte[] array, Encoding encoding) : this(array, 0, array.Length, encoding, true, DefaultBufferSize)
 		{
 		}
 
@@ -62,8 +78,19 @@ namespace Proximity.Utility.IO
 		/// </summary>
 		/// <param name="array">The byte array to read from</param>
 		/// <param name="encoding">The encoding of the text in the byte array</param>
+		/// <param name="detectEncoding">Whether to detect the encoding using the preamble</param>
+		public BinaryTextReader(byte[] array, Encoding encoding, bool detectEncoding) : this(array, 0, array.Length, encoding, detectEncoding, DefaultBufferSize)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Binary Text Reader
+		/// </summary>
+		/// <param name="array">The byte array to read from</param>
+		/// <param name="encoding">The encoding of the text in the byte array</param>
+		/// <param name="detectEncoding">Whether to detect the encoding using the preamble</param>
 		/// <param name="bufferSize">The buffer size to use when reading the text</param>
-		public BinaryTextReader(byte[] array, Encoding encoding, int bufferSize) : this(array, 0, array.Length, encoding, bufferSize)
+		public BinaryTextReader(byte[] array, Encoding encoding, bool detectEncoding, int bufferSize) : this(array, 0, array.Length, encoding, detectEncoding, bufferSize)
 		{
 		}
 
@@ -74,7 +101,7 @@ namespace Proximity.Utility.IO
 		/// <param name="offset">The offset into the byte array to start from</param>
 		/// <param name="length">The maximum bytes to read from the array</param>
 		/// <param name="encoding">The encoding of the text in the byte array</param>
-		public BinaryTextReader(byte[] array, int offset, int length, Encoding encoding) : this(array, offset, length, encoding, 0)
+		public BinaryTextReader(byte[] array, int offset, int length, Encoding encoding) : this(array, offset, length, encoding, true, DefaultBufferSize)
 		{
 		}
 
@@ -85,18 +112,36 @@ namespace Proximity.Utility.IO
 		/// <param name="offset">The offset into the byte array to start from</param>
 		/// <param name="length">The maximum bytes to read from the array</param>
 		/// <param name="encoding">The encoding of the text in the byte array</param>
+		/// <param name="detectEncoding">Whether to detect the encoding using the preamble</param>
+		public BinaryTextReader(byte[] array, int offset, int length, Encoding encoding, bool detectEncoding) : this(array, offset, length, encoding, detectEncoding, DefaultBufferSize)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Binary Text Reader
+		/// </summary>
+		/// <param name="array">The byte array to read from</param>
+		/// <param name="offset">The offset into the byte array to start from</param>
+		/// <param name="length">The maximum bytes to read from the array</param>
+		/// <param name="encoding">The encoding of the text in the byte array</param>
+		/// <param name="detectEncoding">Whether to detect the encoding using the preamble</param>
 		/// <param name="bufferSize">The buffer size to use when reading the text</param>
-		public BinaryTextReader(byte[] array, int offset, int length, Encoding encoding, int bufferSize) : base()
+		public BinaryTextReader(byte[] array, int offset, int length, Encoding encoding, bool detectEncoding, int bufferSize) : base()
 		{
 			if (bufferSize < MinBufferSize)
 				bufferSize = MinBufferSize;
 
 			_Array = array;
-			_Index = offset;
+			_StartIndex = _Index = offset;
 			_Length = length;
 			_Encoding = encoding;
 			_Decoder = encoding.GetDecoder();
 
+			_DetectEncoding = detectEncoding;
+			_Preamble = encoding.GetPreamble();
+			_CheckPreamble = (_Preamble.Length > 0);
+
+			_BufferSize = bufferSize;
 			_Buffer = new char[encoding.GetMaxCharCount(bufferSize)];
 		}
 
@@ -150,6 +195,12 @@ namespace Proximity.Utility.IO
 
 			if (count == 0)
 				return CharsWritten;
+
+			if (_CheckPreamble)
+				CheckPreamble();
+
+			if (_DetectEncoding && _Length >= 2)
+				DetectEncoding();
 
 			// Keep trying to read until we fill the buffer, or the source array runs out
 			for (; ; )
@@ -317,12 +368,35 @@ namespace Proximity.Utility.IO
 		}
 #endif
 
+		/// <summary>
+		/// Resets the reader to the start
+		/// </summary>
+		public void Reset()
+		{
+			_Length += _Index - _StartIndex;
+			_Index = _StartIndex;
+			_BufferIndex = 0;
+			_BufferLength = 0;
+			_Decoder = _Encoding.GetDecoder();
+			_CheckPreamble = true;
+		}
+
 		//****************************************
 
 		private bool FillBuffer()
 		{	//****************************************
-			var ReadLength = Math.Min(_Length, _Buffer.Length);
+			int ReadLength;
 			//****************************************
+
+			if (_CheckPreamble)
+				CheckPreamble();
+
+			if (_DetectEncoding && _Length >= 2)
+				DetectEncoding();
+
+			//****************************************
+
+			ReadLength = Math.Min(_Length, _Buffer.Length);
 
 			if (ReadLength == 0)
 				return false;
@@ -334,6 +408,130 @@ namespace Proximity.Utility.IO
 			_Length -= ReadLength;
 
 			return true;
+		}
+
+		private void CheckPreamble()
+		{
+			// Do we have enough bytes for a Preamble?
+			if (_Length < _Preamble.Length)
+			{
+				// No, so assume there isn't one
+				_CheckPreamble = false;
+
+				return;
+			}
+
+			// Match the bytes in our input against the Preamble
+			for (int Index = 0; Index < _Preamble.Length; Index++)
+			{
+				if (_Preamble[Index] != _Array[_Index + Index])
+				{
+					// Preamble doesn't match
+					_CheckPreamble = false;
+				}
+			}
+
+			if (_CheckPreamble)
+			{
+				// Success. Skip over the Preamble
+				_Index += _Preamble.Length;
+				_Length -= _Preamble.Length;
+
+				_CheckPreamble = false;
+			}
+		}
+
+		private void DetectEncoding()
+		{	//****************************************
+			int PreambleLength = 0;
+			byte FirstByte = _Array[_Index];
+			byte SecondByte = _Array[_Index + 1];
+			byte ThirdByte = _Length >= 3 ? _Array[_Index + 2] : (byte)0;
+			byte FourthByte = _Length >= 4 ? _Array[_Index + 3] : (byte)0;
+			//****************************************
+
+			_DetectEncoding = false;
+
+			// Detect big-endian Unicode
+			if (FirstByte == 0xFE && SecondByte == 0xFF)
+			{
+				_Encoding = new UnicodeEncoding(true, true);
+
+				PreambleLength  = 2;
+			}
+			// Detect little-endian UTF32 and Unicode
+			else if (FirstByte == 0xFF && SecondByte == 0xFE)
+			{
+				if (_Length < 4 || ThirdByte != 0 || FourthByte != 0)
+				{
+					_Encoding = new UnicodeEncoding(false, true);
+
+					PreambleLength = 2;
+				}
+#if !PORTABLE
+				else
+				{
+					_Encoding = new UTF32Encoding(false, true);
+
+					PreambleLength = 4;
+				}
+#endif
+			}
+			// Detect plain UTF8
+			else if (_Length >= 3 && FirstByte == 0xEF && SecondByte == 0xBB && ThirdByte == 0xBF)
+			{
+				_Encoding = Encoding.UTF8;
+
+				PreambleLength = 3;
+			}
+#if !PORTABLE
+			// Detect big-endian UTF32
+			else if (_Length >= 4 && FirstByte == 0 && SecondByte == 0 && ThirdByte == 0xFE && FourthByte == 0xFF)
+			{
+				_Encoding = new UTF32Encoding(true, true);
+
+				PreambleLength = 4;
+			}
+#endif
+
+			//****************************************
+
+			if (PreambleLength != 0)
+			{
+				_Decoder = _Encoding.GetDecoder();
+				_Preamble = _Encoding.GetPreamble();
+				_Buffer = new char[_Encoding.GetMaxCharCount(_BufferSize)];
+
+				// Skip over the Preamble
+				_Index += PreambleLength;
+				_Length -= PreambleLength;
+			}
+		}
+
+		//****************************************
+
+		/// <summary>
+		/// Gets the position we're reading from in the source Array
+		/// </summary>
+		public int Position
+		{
+			get { return _Index - _StartIndex; }
+		}
+
+		/// <summary>
+		/// Gets the number of remaining bytes to read from the source Array
+		/// </summary>
+		public int BytesLeft
+		{
+			get { return _Length; }
+		}
+
+		/// <summary>
+		/// Gets the Encoding being used to decode the source Array
+		/// </summary>
+		public Encoding Encoding
+		{
+			get { return _Encoding; }
 		}
 	}
 }

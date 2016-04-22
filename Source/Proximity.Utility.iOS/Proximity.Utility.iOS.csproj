@@ -37,6 +37,7 @@
     <CodesignKey>iPhone Developer</CodesignKey>
     <DocumentationFile>..\..\Build\Proximity.Utility\lib\Xamarin.iOS10\Proximity.Utility.XML</DocumentationFile>
     <DefineConstants>__UNIFIED__;__MOBILE__;__IOS__;__MOBILE__;__IOS__;IOS;MOBILE</DefineConstants>
+    <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />

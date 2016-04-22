@@ -16,14 +16,14 @@
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ComparisonComparer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ObservableListView.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)GCReference.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)IO\BinaryTextReader.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)IO\BinaryTextWriter.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Properties\AssemblyInfo.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\AsyncKeyedLock.cs" />
     <None Include="$(MSBuildThisFileDirectory)Collections\ObservableListViewDynamic.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ObservableSortedList.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ObservableSortedSet.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\PagedSetResults.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)IO\BinaryTextReader.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)IO\BinaryTextWriter.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)IO\PipeStream.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\AsyncSemaphoreSlim.cs" />
     <None Include="$(MSBuildThisFileDirectory)Collections\ObservableSortedSubset.cs" />
