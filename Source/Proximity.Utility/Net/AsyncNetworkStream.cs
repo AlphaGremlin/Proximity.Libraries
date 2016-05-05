@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
+using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Proximity.Utility.Threading;
@@ -18,6 +19,7 @@ namespace Proximity.Utility.Net
 	/// <summary>
 	/// Provides a NetworkStream-esque interface that uses SocketAwaitable and tasks
 	/// </summary>
+	[SecuritySafeCritical]
 	public sealed class AsyncNetworkStream : Stream
 	{	//****************************************
 		private readonly Socket _Socket;
@@ -25,6 +27,9 @@ namespace Proximity.Utility.Net
 		private readonly SocketAwaitableEventArgs _WriteEventArgs = new SocketAwaitableEventArgs(), _ReadEventArgs = new SocketAwaitableEventArgs();
 		
 		private Task _LastWrite;
+		private long _PendingWriteBytes = 0;
+
+		private long _InBytes = 0, _OutBytes = 0;
 		//****************************************
 
 		/// <summary>
@@ -39,6 +44,7 @@ namespace Proximity.Utility.Net
 		//****************************************
 		
 		/// <inheritdoc />
+		[SecuritySafeCritical]
 		protected override void Dispose(bool disposing)
 		{
 			base.Dispose(disposing);
@@ -95,13 +101,12 @@ namespace Proximity.Utility.Net
 		{
 		}
 
-#if NET40
 		/// <inheritdoc />
-		public Task FlushAsync(CancellationToken cancellationToken)
-#else
-			/// <inheritdoc />
-			public override Task FlushAsync(CancellationToken cancellationToken)
+		public
+#if !NET40
+		override
 #endif
+		Task FlushAsync(CancellationToken cancellationToken)
 		{
 			return VoidStruct.EmptyTask;
 		}
@@ -116,13 +121,12 @@ namespace Proximity.Utility.Net
 			return ReadData(buffer, offset, count).GetAwaiter().GetResult();
 		}
 
-#if NET40
 		/// <inheritdoc />
-		public Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-#else
-			/// <inheritdoc />
-			public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+		public
+#if !NET40
+		override
 #endif
+		Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
 		{
 			if (cancellationToken.IsCancellationRequested)
 			{
@@ -167,6 +171,7 @@ namespace Proximity.Utility.Net
 			if (count == 0)
 				return;
 			
+			// There is no synchronous sending with SocketAsyncEventArgs
 			// Use GetResult() so exceptions are thrown without being wrapped in AggregateException
 			SendData(buffer, offset, count).GetAwaiter().GetResult();
 		}
@@ -179,18 +184,18 @@ namespace Proximity.Utility.Net
 		{
 			if (buffers.Count == 0)
 				return;
-			
+
+			// There is no synchronous sending with SocketAsyncEventArgs
 			// Use GetResult() so exceptions are thrown without being wrapped in AggregateException
 			SendData(buffers).GetAwaiter().GetResult();
 		}
 
-#if NET40
 		/// <inheritdoc />
-		public Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-#else
-			/// <inheritdoc />
-			public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+		public
+#if !NET40
+		override
 #endif
+		Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
 		{
 			if (cancellationToken.IsCancellationRequested)
 			{
@@ -212,6 +217,9 @@ namespace Proximity.Utility.Net
 		/// <returns>A task representing the write operation</returns>
 		public Task WriteAsync(IList<ArraySegment<byte>> buffers, CancellationToken cancellationToken)
 		{
+			if (buffers == null)
+				throw new ArgumentNullException("buffers");
+
 			if (cancellationToken.IsCancellationRequested)
 			{
 #if NET40
@@ -227,7 +235,8 @@ namespace Proximity.Utility.Net
 		/// <inheritdoc />
 		public override void WriteByte(byte value)
 		{
-			SendData(new byte[] { value }, 0, 1);
+			// There is no synchronous sending with SocketAsyncEventArgs
+			SendData(new byte[] { value }, 0, 1).GetAwaiter().GetResult();
 		}
 
 		//****************************************
@@ -256,6 +265,12 @@ namespace Proximity.Utility.Net
 	
 				return MyOperation.Task;
 			}
+			catch (ObjectDisposedException) // Socket was closed, no need to continue
+			{
+				MyOperation.SetResult(0);
+
+				return MyOperation.Task;
+			}
 			catch (Exception e)
 			{
 				MyOperation.Fail(e);
@@ -266,7 +281,18 @@ namespace Proximity.Utility.Net
 		
 		private Task SendData(IList<ArraySegment<byte>> buffers, AsyncCallback callback = null, object state = null)
 		{	//****************************************
-			var MyOperation = new SendBulkOperation(this, buffers, callback, state); // 2 allocations (TaskCompletionSource and Task)
+			SendBulkOperation MyOperation;
+			int TotalBytes = 0;
+			//****************************************
+
+			// Total the bytes to be sent
+			foreach (var MyBuffer in buffers)
+				TotalBytes += buffers.Count;
+
+			Interlocked.Add(ref _PendingWriteBytes, TotalBytes);
+
+			MyOperation = new SendBulkOperation(this, buffers, TotalBytes, callback, state); // 2 allocations (TaskCompletionSource and Task)
+
 			//****************************************
 			
 			// Swap out the previous write task with ours
@@ -291,7 +317,10 @@ namespace Proximity.Utility.Net
 		{	//****************************************
 			var MyOperation = new SendOperation(this, buffer, offset, count, callback, state); // 2 allocations (TaskCompletionSource and Task)
 			//****************************************
-			
+
+			// Add the bytes to be sent
+			Interlocked.Add(ref _PendingWriteBytes, count);
+
 			// Swap out the previous write task with ours
 			var OldTask = Interlocked.Exchange(ref _LastWrite, MyOperation.Task);
 			
@@ -312,11 +341,11 @@ namespace Proximity.Utility.Net
 
 		private void DoSendData(SendOperation operation)
 		{
-			_WriteEventArgs.BufferList = null;
-			operation.Apply();
-			
 			try
 			{
+				_WriteEventArgs.BufferList = null;
+				operation.Apply();
+			
 				_WriteEventArgs.SendAsync(_Socket);
 
 				if (_WriteEventArgs.IsCompleted)
@@ -325,8 +354,12 @@ namespace Proximity.Utility.Net
 				}
 				else
 				{
-					((INotifyCompletion)_WriteEventArgs).OnCompleted(operation.ProcessCompletedSend); // 1 allocation (Action)
+					_WriteEventArgs.OnCompleted(operation.ProcessCompletedSend); // 1 allocation (Action)
 				}
+			}
+			catch (ObjectDisposedException)
+			{
+				operation.Dispose();
 			}
 			catch (Exception e)
 			{
@@ -336,11 +369,11 @@ namespace Proximity.Utility.Net
 		
 		private void DoSendData(SendBulkOperation operation)
 		{
-			_WriteEventArgs.SetBuffer(null, 0, 0);
-			operation.Apply();
-			
 			try
 			{
+				_WriteEventArgs.SetBuffer(null, 0, 0);
+				operation.Apply();
+
 				_WriteEventArgs.SendAsync(_Socket);
 
 				if (_WriteEventArgs.IsCompleted)
@@ -349,15 +382,30 @@ namespace Proximity.Utility.Net
 				}
 				else
 				{
-					((INotifyCompletion)_WriteEventArgs).OnCompleted(operation.ProcessCompletedSend); // 1 allocation (Action)
+					_WriteEventArgs.OnCompleted(operation.ProcessCompletedSend); // 1 allocation (Action)
 				}
+			}
+			catch (ObjectDisposedException)
+			{
+				operation.Dispose();
 			}
 			catch (Exception e)
 			{
 				operation.Fail(e);
 			}
 		}
-		
+
+		private void CompleteReceive(long totalBytes)
+		{
+			Interlocked.Add(ref _InBytes, totalBytes);
+		}
+
+		private void CompleteSend(long bytesSent)
+		{
+			Interlocked.Add(ref _PendingWriteBytes, -bytesSent);
+			Interlocked.Add(ref _OutBytes, bytesSent);
+		}
+
 		//****************************************
 
 		/// <inheritdoc />
@@ -398,7 +446,32 @@ namespace Proximity.Utility.Net
 		{
 			get { return _Socket; }
 		}
-		
+
+		/// <summary>
+		/// Gets the total number of bytes read from the underlying socket
+		/// </summary>
+		public long ReadBytes
+		{
+			get { return _InBytes; }
+		}
+
+		/// <summary>
+		/// Gets the total number of bytes written to the underlying socket
+		/// </summary>
+		public long WrittenBytes
+		{
+			get { return _OutBytes; }
+		}
+
+		/// <summary>
+		/// Gets the bytes that are awaiting being sent
+		/// </summary>
+		/// <remarks>This does not necessarily include data that is in the send buffer for the Socket</remarks>
+		public long PendingWriteBytes
+		{
+			get { return _PendingWriteBytes; }
+		}
+
 		//****************************************
 		
 		private sealed class ReadOperation : TaskCompletionSource<int>
@@ -420,12 +493,24 @@ namespace Proximity.Utility.Net
 				var EventArgs = _Stream._ReadEventArgs;
 				//****************************************
 
-				EventArgs.SetBuffer(null, 0, 0);
-				
+				try
+				{
+					EventArgs.SetBuffer(null, 0, 0);
+				}
+				catch (ObjectDisposedException)
+				{
+				}
+
 				if (EventArgs.SocketError == SocketError.Success)
+				{
+					_Stream.CompleteReceive(EventArgs.BytesTransferred);
+
 					SetResult(EventArgs.BytesTransferred);
+				}
 				else
+				{
 					SetException(new IOException("Receive failed", new SocketException((int)EventArgs.SocketError)));
+				}
 
 				try
 				{
@@ -452,10 +537,10 @@ namespace Proximity.Utility.Net
 					if (_Callback != null)
 						_Callback(Task);
 				}
-				catch (Exception ex)
+				catch (Exception)
 				{
 					// Callback can raise exceptions. If it's our exception, ignore
-					if (e != ex)
+					if (Task.Exception == null || Task.Exception.InnerException != e)
 						throw;
 				}
 			}
@@ -474,9 +559,18 @@ namespace Proximity.Utility.Net
 			}
 			
 			//****************************************
-			
+
+			internal void Dispose()
+			{
+				_Stream.CompleteSend(TotalBytes);
+
+				SetResult(VoidStruct.Empty);
+			}
+
 			internal void Fail(Exception e)
 			{
+				_Stream.CompleteSend(TotalBytes);
+
 				// Ensure the completed task we return has the appropriate state
 				SetException(e);
 
@@ -486,10 +580,10 @@ namespace Proximity.Utility.Net
 					if (_Callback != null)
 						_Callback(Task);
 				}
-				catch (Exception ex)
+				catch (Exception)
 				{
 					// Callback can raise exceptions. If it's our exception, ignore
-					if (e != ex)
+					if (Task.Exception == null || Task.Exception.InnerException != e)
 						throw;
 				}
 			}
@@ -499,7 +593,16 @@ namespace Proximity.Utility.Net
 				var EventArgs = _Stream._WriteEventArgs;
 				//****************************************
 
-				EventArgs.SetBuffer(null, 0, 0);
+				_Stream.CompleteSend(TotalBytes);
+
+				// Clean the buffer, so SocketAsyncEventArgs don't hold a pinned reference to it
+				try
+				{
+					EventArgs.SetBuffer(null, 0, 0);
+				}
+				catch (ObjectDisposedException)
+				{
+				}
 
 				if (EventArgs.SocketError == SocketError.Success)
 					SetResult(VoidStruct.Empty);
@@ -526,6 +629,8 @@ namespace Proximity.Utility.Net
 			{
 				get { return _Stream; }
 			}
+
+			internal abstract long TotalBytes { get; }
 		}
 		
 		private sealed class SendOperation : BaseSendOperation
@@ -552,16 +657,25 @@ namespace Proximity.Utility.Net
 			{
 				Stream._WriteEventArgs.SetBuffer(_Buffer, _Offset, _Count);
 			}
+
+			//****************************************
+
+			internal override long TotalBytes
+			{
+				get { return _Count; }
+			}
 		}
 		
 		private sealed class SendBulkOperation : BaseSendOperation
 		{	//****************************************
 			private readonly IList<ArraySegment<byte>> _Buffers;
+			private readonly long _TotalBytes;
 			//****************************************
 			
-			internal SendBulkOperation(AsyncNetworkStream stream, IList<ArraySegment<byte>> buffers, AsyncCallback callback, object state) : base(stream, callback, state)
+			internal SendBulkOperation(AsyncNetworkStream stream, IList<ArraySegment<byte>> buffers, long totalBytes, AsyncCallback callback, object state) : base(stream, callback, state)
 			{
 				_Buffers = buffers;
+				_TotalBytes = totalBytes;
 			}
 			
 			//****************************************
@@ -574,6 +688,13 @@ namespace Proximity.Utility.Net
 			internal void Apply()
 			{
 				Stream._WriteEventArgs.BufferList = _Buffers;
+			}
+
+			//****************************************
+
+			internal override long TotalBytes
+			{
+				get { return _TotalBytes; }
 			}
 		}
 	}

@@ -515,7 +515,7 @@ namespace Proximity.Utility.Collections
 			if (num < capacity)
 				num = capacity;
 
-			Capacity = capacity;
+			Capacity = num;
 		}
 
 		private bool TryAdd(TValue item, out int insertIndex)

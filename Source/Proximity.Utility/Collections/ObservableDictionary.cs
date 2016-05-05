@@ -508,7 +508,7 @@ namespace Proximity.Utility.Collections
 			if (num < capacity)
 				num = capacity;
 
-			Capacity = capacity;
+			Capacity = num;
 		}
 
 		private int Insert(KeyValuePair<TKey, TValue> item)

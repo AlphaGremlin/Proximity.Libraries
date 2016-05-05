@@ -39,7 +39,7 @@ namespace Proximity.Utility.Threading
 			// If the token cancels first, DoCancelTaskSource will take care of observing any potential exceptions
 			task.ContinueWith(DoCompleteTaskSource, MySource, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
 
-			return MySource.Source.Task;
+			return MySource.Task;
 		}
 		
 		/// <summary>
@@ -63,7 +63,7 @@ namespace Proximity.Utility.Threading
 			// If the token cancels first, DoCancelTaskSource will take care of observing any potential exceptions
 			task.ContinueWith((Action<Task<TResult>, object>)DoCompleteTaskSource, MySource, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
 
-			return MySource.Source.Task;
+			return MySource.Task;
 		}
 		
 		/// <summary>
@@ -186,7 +186,28 @@ namespace Proximity.Utility.Threading
 			
 			return task;
 		}
-		
+
+		/// <summary>
+		/// Interleaves an enumeration of tasks, returning them in the order they complete
+		/// </summary>
+		/// <param name="source">The enumeration of tasks to interleave</param>
+		/// <returns>An enumeration that returns the tasks in order of completion</returns>
+		public static IEnumerable<Task> Interleave(this IEnumerable<Task> source)
+		{
+			return new Interleave(source);
+		}
+
+		/// <summary>
+		/// Interleaves an enumeration of tasks, returning them in the order they complete
+		/// </summary>
+		/// <param name="source">The enumeration of tasks to interleave</param>
+		/// <param name="token">A cancellation token to cancel the interleaving tasks</param>
+		/// <returns>An enumeration that returns the tasks in order of completion</returns>
+		public static IEnumerable<Task> Interleave(this IEnumerable<Task> source, CancellationToken token)
+		{
+			return new Interleave(source, token);
+		}
+
 		/// <summary>
 		/// Interleaves an enumeration of tasks, returning them in the order they complete
 		/// </summary>
@@ -197,6 +218,16 @@ namespace Proximity.Utility.Threading
 			return new Interleave<TResult>(source);
 		}
 
+		/// <summary>
+		/// Interleaves an enumeration of tasks, returning them in the order they complete
+		/// </summary>
+		/// <param name="source">The enumeration of tasks to interleave</param>
+		/// <param name="token">A cancellation token to cancel the interleaving tasks</param>
+		/// <returns>An enumeration that returns the tasks in order of completion</returns>
+		public static IEnumerable<Task<TResult>> Interleave<TResult>(this IEnumerable<Task<TResult>> source, CancellationToken token)
+		{
+			return new Interleave<TResult>(source, token);
+		}
 		//****************************************
 		
 		private static void DoCompleteTaskSource(Task innerTask, object state)
@@ -204,11 +235,11 @@ namespace Proximity.Utility.Threading
 			var MySource = (TargetTask<VoidStruct>)state;
 			
 			if (innerTask.IsFaulted)
-				MySource.Source.TrySetException(innerTask.Exception.InnerException);
+				MySource.TrySetException(innerTask.Exception.InnerException);
 			else if (innerTask.IsCanceled)
-				MySource.Source.TrySetCanceled();
+				MySource.TrySetCanceled();
 			else
-				MySource.Source.TrySetResult(VoidStruct.Empty);
+				MySource.TrySetResult(VoidStruct.Empty);
 
 			MySource.Registration.Dispose();
 		}
@@ -218,11 +249,11 @@ namespace Proximity.Utility.Threading
 			var MySource = (TargetTask<TResult>)state;
 			
 			if (innerTask.IsFaulted)
-				MySource.Source.TrySetException(innerTask.Exception.InnerException);
+				MySource.TrySetException(innerTask.Exception.InnerException);
 			else if (innerTask.IsCanceled)
-				MySource.Source.TrySetCanceled();
+				MySource.TrySetCanceled();
 			else
-				MySource.Source.TrySetResult(innerTask.Result);
+				MySource.TrySetResult(innerTask.Result);
 
 			MySource.Registration.Dispose();
 		}
@@ -231,11 +262,11 @@ namespace Proximity.Utility.Threading
 		{
 			var MySource = (TargetTask<TResult>)state;
 
-			if (MySource.Source.TrySetCanceled())
+			if (MySource.TrySetCanceled())
 			{
 				// We cancelled our listener. The danger here is, if the wrapped task then throws an exception, it'll go unobserved if there's no other continuations.
 				// Since we want When to be a drop-in replacement for async methods that don't take CancellationToken, we attach a new task to observe the fault, just in case it throws
-				MySource.Task.ContinueWith(DoObserveFault, TaskContinuationOptions.OnlyOnFaulted);
+				MySource.Target.ContinueWith(DoObserveFault, TaskContinuationOptions.OnlyOnFaulted);
 			}
 		}
 		
@@ -253,10 +284,9 @@ namespace Proximity.Utility.Threading
 
 		//****************************************
 
-		private class TargetTask<TResult>
+		private sealed class TargetTask<TResult> : TaskCompletionSource<TResult>
 		{	//****************************************
 			private readonly Task _Target;
-			private readonly TaskCompletionSource<TResult> _Source;
 
 			private CancellationTokenRegistration _Registration;
 			//****************************************
@@ -264,17 +294,11 @@ namespace Proximity.Utility.Threading
 			public TargetTask(Task task)
 			{
 				_Target = task;
-				_Source = new TaskCompletionSource<TResult>();
 			}
 
 			//****************************************
 
-			public TaskCompletionSource<TResult> Source
-			{
-				get { return _Source; }
-			}
-
-			public Task Task
+			public Task Target
 			{
 				get { return _Target; }
 			}

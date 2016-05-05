@@ -34,7 +34,7 @@ namespace Proximity.Utility.IO
 		//****************************************
 
 		/// <summary>
-		/// Creates a new Binary Text Writer using UTF8
+		/// Creates a new Binary Text Writer using UTF8 with no BOM
 		/// </summary>
 		public BinaryTextWriter() : this(_UTF8NoBOM, MinBufferSize, null)
 		{
@@ -92,6 +92,29 @@ namespace Proximity.Utility.IO
 			return VoidStruct.EmptyTask;
 		}
 #endif
+
+		/// <summary>
+		/// Gets the underlying array for this TextWriter
+		/// </summary>
+		/// <returns>The underlying array</returns>
+		/// <remarks>This buffer may contain bytes that are unused. Use the <see cref="Length"/> property to tell the true length of data in the buffer, or utilise <see cref="GetBufferSegment"/></remarks>
+		public byte[] GetBuffer()
+		{
+			Flush(true);
+
+			return _ByteBuffer;
+		}
+
+		/// <summary>
+		/// Gets the underlying array for this TextWriter in the form of an Array Segment
+		/// </summary>
+		/// <returns>An array segment describing the underlying buffer for this TextWriter</returns>
+		public ArraySegment<byte> GetBufferSegment()
+		{
+			Flush(true);
+
+			return new ArraySegment<byte>(_ByteBuffer, 0, _ByteLength);
+		}
 
 		/// <summary>
 		/// Retrieves the bytes written so far to the Binary Text Writer
@@ -251,7 +274,7 @@ namespace Proximity.Utility.IO
 			if (num < capacity)
 				num = capacity;
 
-			Capacity = capacity;
+			Capacity = num;
 		}
 
 		private void Flush(bool flushEncoder)

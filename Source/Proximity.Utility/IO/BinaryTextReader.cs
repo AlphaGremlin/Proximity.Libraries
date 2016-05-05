@@ -33,6 +33,14 @@ namespace Proximity.Utility.IO
 		private bool _DetectEncoding, _CheckPreamble;
 		private byte[] _Preamble;
 		//****************************************
+		
+		/// <summary>
+		/// Creates a new Binary Text Reader with auto-detected encoding
+		/// </summary>
+		/// <param name="array">The array segment to read from</param>
+		public BinaryTextReader(ArraySegment<byte> array) : this(array.Array, array.Offset, array.Count, Encoding.UTF8, true, DefaultBufferSize)
+		{
+		}
 
 		/// <summary>
 		/// Creates a new Binary Text Reader
@@ -65,6 +73,14 @@ namespace Proximity.Utility.IO
 		}
 
 		/// <summary>
+		/// Creates a new Binary Text Reader with auto-detected encoding
+		/// </summary>
+		/// <param name="array">The byte array to read from</param>
+		public BinaryTextReader(byte[] array) : this(array, 0, array.Length, Encoding.UTF8, true, DefaultBufferSize)
+		{
+		}
+
+		/// <summary>
 		/// Creates a new Binary Text Reader
 		/// </summary>
 		/// <param name="array">The byte array to read from</param>
@@ -91,6 +107,16 @@ namespace Proximity.Utility.IO
 		/// <param name="detectEncoding">Whether to detect the encoding using the preamble</param>
 		/// <param name="bufferSize">The buffer size to use when reading the text</param>
 		public BinaryTextReader(byte[] array, Encoding encoding, bool detectEncoding, int bufferSize) : this(array, 0, array.Length, encoding, detectEncoding, bufferSize)
+		{
+		}
+		
+		/// <summary>
+		/// Creates a new Binary Text Reader with auto-detected encoding
+		/// </summary>
+		/// <param name="array">The byte array to read from</param>
+		/// <param name="offset">The offset into the byte array to start from</param>
+		/// <param name="length">The maximum bytes to read from the array</param>
+		public BinaryTextReader(byte[] array, int offset, int length) : this(array, offset, length, Encoding.UTF8, true, DefaultBufferSize)
 		{
 		}
 
