@@ -177,14 +177,14 @@ namespace Proximity.Terminal
 				
 				if (MyTypeSet == null)
 				{
-					Log.Error("{0} is not an Instance Type", CommandText);
+					Log.Info("{0} is not an Instance Type", CommandText);
 					
 					return Task.FromResult<bool>(false);
 				}
 				
 				if (MyInstance == null)
 				{
-					Log.Error("{0} is not a known Instance of {1}", InstanceName, MyTypeSet.TypeName);
+					Log.Info("{0} is not a known Instance of {1}", InstanceName, MyTypeSet.TypeName);
 					
 					return Task.FromResult<bool>(false);
 				}
@@ -214,7 +214,7 @@ namespace Proximity.Terminal
 				// Do we have a match at all?
 				if (MyTypeSet == null)
 				{
-					Log.Error("{0} is not a Command, Variable, or Instance Type", CommandText);
+					Log.Info("{0} is not a Command, Variable, or Instance Type", CommandText);
 					
 					return Task.FromResult<bool>(false);
 				}
@@ -232,7 +232,7 @@ namespace Proximity.Terminal
 				
 				if (MyInstance == null)
 				{
-					Log.Error("{0} does not have a default instance", MyTypeSet.TypeName);
+					Log.Info("{0} does not have a default instance", MyTypeSet.TypeName);
 					
 					return Task.FromResult<bool>(false);
 				}
@@ -275,8 +275,8 @@ namespace Proximity.Terminal
 			
 			if (MyResult != null)
 				return MyResult;
-			
-			Log.Error("{0}{1} is not a Command or Variable", CurrentPath, CommandText);
+
+			Log.Info("{0}{1} is not a Command or Variable", CurrentPath, CommandText);
 			
 			return Task.FromResult<bool>(false);
 		}
@@ -580,7 +580,7 @@ namespace Proximity.Terminal
 				
 				if (MyInstance == null)
 				{
-					Log.Error("{0} is not a known Instance of {1}", instance.Name, instance.Type.Name);
+					Log.Info("{0} is not a known Instance of {1}", instance.Name, instance.Type.Name);
 					
 					return Task.FromResult<bool>(false);
 				}
@@ -633,14 +633,14 @@ namespace Proximity.Terminal
 				{
 					if (!MyVariable.CanWrite)
 					{
-						Log.Error("{0}{1} is not writeable", path, MyVariable.Name);
+						Log.Info("{0}{1} is not writeable", path, MyVariable.Name);
 						
 						return Task.FromResult<bool>(false);
 					}
 					
 					if (!MyVariable.SetValue(MyInstance, argumentText))
 					{
-						Log.Error("{0}{1} is of type {2}", path, MyVariable.Name, MyVariable.Type);
+						Log.Info("{0}{1} is of type {2}", path, MyVariable.Name, MyVariable.Type);
 						
 						return Task.FromResult<bool>(false);
 					}
@@ -768,7 +768,7 @@ namespace Proximity.Terminal
 				
 			if (MyCommand == null)
 			{
-				Log.Error("{0}{1} does not accept the given arguments", path, commandSet.Name);
+				Log.Info("{0}{1} does not accept the given arguments", path, commandSet.Name);
 				
 				return false;
 			}

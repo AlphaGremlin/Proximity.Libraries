@@ -136,7 +136,8 @@ namespace Proximity.Utility.Collections
 				// Since we're empty, it's faster to load the contents by sorting and then copying
 				Array.Sort<TValue>(NewItems, _Comparer);
 
-				EnsureCapacity(NewItems.Length);
+				if (NewItems.Length > _Items.Length)
+					Capacity = NewItems.Length;
 
 				Array.Copy(NewItems, _Items, NewItems.Length);
 
