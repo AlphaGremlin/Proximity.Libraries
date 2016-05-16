@@ -82,7 +82,7 @@ namespace Proximity.Utility.Collections
 			if (_Dictionary.TryGetValue(key, out MyHandle))
 			{
 				// Yes, is the object available?
-				if (MyHandle.Target != null)
+				if (MyHandle.IsAlive)
 					throw new ArgumentException("Key already exists in the Weak Dictionary");
 				
 				// No, free the handle and replace it
@@ -120,9 +120,7 @@ namespace Proximity.Utility.Collections
 			// Locate all the items in the dictionary that are still valid
 			foreach (var Pair in _Dictionary)
 			{
-				var MyValue = (TValue)Pair.Value.Target;
-
-				if (MyValue != null)
+				if (Pair.Value.IsAlive)
 					continue;
 
 				// Add this key to the list of expired keys
@@ -189,7 +187,7 @@ namespace Proximity.Utility.Collections
 			if (!_Dictionary.TryGetValue(key, out MyHandle))
 				return false;
 
-			HasValue = MyHandle.Target != null;
+			HasValue = MyHandle.IsAlive;
 
 			_Dictionary.Remove(key); // Should always succeed
 
@@ -207,7 +205,6 @@ namespace Proximity.Utility.Collections
 		public bool Remove(TKey key, TValue value)
 		{	//****************************************
 			GCReference MyHandle;
-			TValue MyValue;
 			//****************************************
 
 			if (value == null)
@@ -217,10 +214,8 @@ namespace Proximity.Utility.Collections
 			if (!_Dictionary.TryGetValue(key, out MyHandle))
 				return false;
 
-			MyValue = (TValue)MyHandle.Target;
-
 			// Is the referenced value as expected?
-			if (MyValue != value)
+			if ((TValue)MyHandle.Target != value)
 				return false;
 			
 			_Dictionary.Remove(key); // Should always succeed
@@ -389,11 +384,7 @@ namespace Proximity.Utility.Collections
 				
 				// If the key already exists, we need to free the weak reference
 				if (_Dictionary.ContainsKey(key))
-				{
-					var MyHandle = _Dictionary[key];
-					
-					MyHandle.Dispose();
-				}
+					_Dictionary[key].Dispose();
 				
 				_Dictionary[key] = CreateFrom(value);
 			}

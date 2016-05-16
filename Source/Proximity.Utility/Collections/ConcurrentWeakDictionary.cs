@@ -80,11 +80,19 @@ namespace Proximity.Utility.Collections
 				// Is this key already in the dictionary?
 				if (_Dictionary.TryGetValue(key, out MyHandle))
 				{
-					var OldValue = (TValue)MyHandle.Target;
-					
-					// Yes. If the reference is the same, no need to change anything
-					if (object.ReferenceEquals(OldValue, value))
-						return;
+					try
+					{
+						var OldValue = (TValue)MyHandle.Target;
+
+						// Yes. If the reference is the same, no need to change anything
+						if (object.ReferenceEquals(OldValue, value))
+							return;
+					}
+					catch (InvalidOperationException)
+					{
+						// The GCHandle was disposed, try again
+						continue;
+					}
 					
 					// Reference has changed, create a new GCReference
 					NewHandle = CreateFrom(value);
@@ -137,14 +145,22 @@ namespace Proximity.Utility.Collections
 				// Is this key already in the dictionary?
 				if (_Dictionary.TryGetValue(key, out MyHandle))
 				{
-					OldValue = (TValue)MyHandle.Target;
+					try
+					{
+						OldValue = (TValue)MyHandle.Target;
+					}
+					catch (InvalidOperationException)
+					{
+						// The GCHandle was disposed, try again
+						continue;
+					}
 					
 					// Yes, does the target still exist?
 					if (OldValue != null)
 					{
 						// Yes, let's try and update it
 						NewValue = updateCallback(key, OldValue);
-					
+
 						// If the reference is the same, no need to change anything
 						if (object.ReferenceEquals(OldValue, NewValue))
 							return NewValue;
@@ -153,11 +169,11 @@ namespace Proximity.Utility.Collections
 					{
 						// Target reference has vanished, replace it with the new value
 						NewValue = valueCallback(key);
-						
+
 						if (NewValue == null)
 							throw new InvalidOperationException("Cannot add null to a Weak Dictionary");
 					}
-						
+
 					// Reference has changed, create a new GCReference
 					NewHandle = CreateFrom(NewValue);
 					
@@ -239,7 +255,7 @@ namespace Proximity.Utility.Collections
 			// Does the item exist in the dictionary?
 			if (_Dictionary.TryGetValue(key, out MyHandle))
 				// Yes, is the reference valid?
-				return MyHandle.Target != null;
+				return MyHandle.IsAlive;
 
 			return false;
 		}
@@ -271,11 +287,19 @@ namespace Proximity.Utility.Collections
 				// Is this key already in the dictionary?
 				if (_Dictionary.TryGetValue(key, out MyHandle))
 				{
-					var MyValue = (TValue)MyHandle.Target;
-					
-					// Yes, does the target still exist?
-					if (MyValue != null)
-						return MyValue; // Yes, return it
+					try
+					{
+						var MyValue = (TValue)MyHandle.Target;
+
+						// Yes, does the target still exist?
+						if (MyValue != null)
+							return MyValue; // Yes, return it
+					}
+					catch (InvalidOperationException)
+					{
+						// The GCHandle was disposed, try again
+						continue;
+					}
 					
 					// Target reference has vanished, replace it with the new value
 					NewValue = valueCallback(key);
@@ -341,16 +365,14 @@ namespace Proximity.Utility.Collections
 			GCReference MyHandle;
 			//****************************************
 
-			if (_Dictionary.TryRemove(key, out MyHandle))
-			{
-				bool IsValid = MyHandle.Target != null;
+			if (!_Dictionary.TryRemove(key, out MyHandle))
+				return false;
 
-				MyHandle.Dispose();
+			var IsValid = MyHandle.IsAlive;
 
-				return IsValid;
-			}
+			MyHandle.Dispose();
 
-			return false;
+			return IsValid;
 		}
 		
 		/// <summary>
@@ -371,12 +393,20 @@ namespace Proximity.Utility.Collections
 			// Is this key in the dictionary?
 			if (!_Dictionary.TryGetValue(key, out MyHandle))
 				return false;
-			
-			MyValue = (TValue)MyHandle.Target;
-			
-			// Is the referenced value as expected?
-			if (MyValue != value)
+
+			try
+			{
+				MyValue = (TValue)MyHandle.Target;
+
+				// Is the referenced value as expected?
+				if (MyValue != value)
+					return false;
+			}
+			catch (InvalidOperationException)
+			{
+				// The GCHandle was disposed, so someone concurrently removed it
 				return false;
+			}
 			
 			// Yes, try and remove this key/GCReference pair
 			if (!((IDictionary<TKey, GCReference>)_Dictionary).Remove(new KeyValuePair<TKey, GCReference>(key, MyHandle)))
@@ -452,11 +482,8 @@ namespace Proximity.Utility.Collections
 					return false;
 				}
 				
-				// Key found, get the target reference
-				var MyValue = (TValue)MyHandle.Target;
-				
-				// Does it still exist?
-				if (MyValue != null)
+				// Key found, is the weak reference still valid?
+				if (MyHandle.IsAlive)
 					return false; // Yes, can't add
 				
 				// Target reference has vanished, we can replace it with the new value
@@ -496,11 +523,21 @@ namespace Proximity.Utility.Collections
 				
 				return false;
 			}
-			
-			// Yes, is the reference valid?
-			value = (TValue)MyHandle.Target;
-			
-			return value != null;
+
+			try
+			{
+				// Yes, is the reference valid?
+				value = (TValue)MyHandle.Target;
+
+				return value != null;
+			}
+			catch (InvalidOperationException)
+			{
+				// We can get Disposed of between TryGetValue and get_Target
+				value = null;
+
+				return false;
+			}
 		}
 		
 		/// <summary>
@@ -551,8 +588,16 @@ namespace Proximity.Utility.Collections
 					
 					return false; // No, update fails
 				}
-				
-				OldValue = (TValue)MyHandle.Target;
+
+				try
+				{
+					OldValue = (TValue)MyHandle.Target;
+				}
+				catch (InvalidOperationException)
+				{
+					// The GCHandle was disposed, try again
+					continue;
+				}
 				
 				// Yes, is the reference still valid?
 				if (OldValue == null)
@@ -622,8 +667,16 @@ namespace Proximity.Utility.Collections
 				// Is this key already in the dictionary?
 				if (!_Dictionary.TryGetValue(key, out MyHandle))
 					return false; // No, update fails
-				
-				OldValue = (TValue)MyHandle.Target;
+
+				try
+				{
+					OldValue = (TValue)MyHandle.Target;
+				}
+				catch (InvalidOperationException)
+				{
+					// The GCHandle was disposed, try again
+					continue;
+				}
 				
 				// Yes, is it what we expected?
 				if (!object.ReferenceEquals(oldValue, OldValue))
@@ -663,9 +716,7 @@ namespace Proximity.Utility.Collections
 			// Locate all the items in the dictionary that are still valid
 			foreach(var Pair in _Dictionary)
 			{
-				var MyValue = (TValue)Pair.Value.Target;
-				
-				if (MyValue != null)
+				if (Pair.Value.IsAlive)
 					continue;
 				
 				// Try and remove this exact pair
@@ -737,12 +788,22 @@ namespace Proximity.Utility.Collections
 		{
 			foreach(var MyResult in _Dictionary)
 			{
-				// Iterators are SecurityTransparent, so we have to use an accessor method
-				var MyValue = ValueFromPair(MyResult);
-				
+				TValue MyValue;
+
+				try
+				{
+					// Iterators are SecurityTransparent, so we have to use an accessor method
+					MyValue = ValueFromPair(MyResult);
+				}
+				catch (InvalidOperationException)
+				{
+					// The GCHandle was disposed, try again
+					continue;
+				}
+
 				if (MyValue == null)
 					continue;
-				
+
 				yield return new KeyValuePair<TKey, TValue>(MyResult.Key, MyValue);
 			}
 		}
@@ -751,8 +812,18 @@ namespace Proximity.Utility.Collections
 		{
 			foreach(var MyResult in _Dictionary) // Get the base dictionary enumerator, as on ConcurrentDictionary getting Values will make a copy
 			{
-				// Iterators are SecurityTransparent, so we have to use an accessor method
-				var MyValue = ValueFromPair(MyResult);
+				TValue MyValue;
+
+				try
+				{
+					// Iterators are SecurityTransparent, so we have to use an accessor method
+					MyValue = ValueFromPair(MyResult);
+				}
+				catch (InvalidOperationException)
+				{
+					// The GCHandle was disposed, try again
+					continue;
+				}
 				
 				if (MyValue == null)
 					continue;
@@ -784,8 +855,15 @@ namespace Proximity.Utility.Collections
 				// Does the item exist in the dictionary?
 				if (_Dictionary.TryGetValue(key, out MyHandle))
 				{
-					// Yes, return the reference whether valid or not
-					return (TValue)MyHandle.Target;
+					try
+					{
+						// Yes, return the reference whether valid or not
+						return (TValue)MyHandle.Target;
+					}
+					catch (InvalidOperationException)
+					{
+						// The GCHandle was disposed
+					}
 				}
 				
 				throw new KeyNotFoundException();
