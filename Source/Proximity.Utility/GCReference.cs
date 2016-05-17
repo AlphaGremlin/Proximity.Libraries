@@ -9,6 +9,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security;
+using System.Threading;
 //****************************************
 
 namespace Proximity.Utility
@@ -20,6 +21,7 @@ namespace Proximity.Utility
 	public sealed class GCReference : IDisposable
 	{	//****************************************
 		private GCHandle _Handle;
+		private int _IsDisposed;
 		//****************************************
 
 		/// <summary>
@@ -41,7 +43,7 @@ namespace Proximity.Utility
 		[SecuritySafeCritical]
 		~GCReference()
 		{
-			if (_Handle.IsAllocated)
+			if (Interlocked.Exchange(ref _IsDisposed, 1) == 0)
 				_Handle.Free();
 		}
 
@@ -53,7 +55,7 @@ namespace Proximity.Utility
 		[SecuritySafeCritical]
 		public void Dispose()
 		{
-			if (_Handle.IsAllocated)
+			if (Interlocked.Exchange(ref _IsDisposed, 1) == 0)
 				_Handle.Free();
 
 			GC.SuppressFinalize(this);
@@ -76,7 +78,7 @@ namespace Proximity.Utility
 		public bool IsAlive
 		{
 			[SecuritySafeCritical]
-			get { return _Handle.IsAllocated; }
+			get { return _Handle.IsAllocated && _Handle.Target != null; }
 		}
 	}
 }

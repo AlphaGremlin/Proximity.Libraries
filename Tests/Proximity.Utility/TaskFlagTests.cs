@@ -18,12 +18,16 @@ namespace Proximity.Utility.Tests
 	public sealed class TaskFlagTests
 	{	//****************************************
 		private int _Counter;
+		private int _IsRunning;
+		private bool _Concurrent;
 		//****************************************
 		
 		[SetUp()]
 		public void Reset()
 		{
 			_Counter = 0;
+			_IsRunning = 0;
+			_Concurrent = false;
 		}
 		
 		//****************************************
@@ -38,8 +42,9 @@ namespace Proximity.Utility.Tests
 			await MyFlag.SetAndWait();
 			
 			Assert.That(DateTime.Now.Subtract(StartTime).TotalMilliseconds, Is.InRange(400.0, 600.0));
-			
+
 			Assert.AreEqual(1, _Counter, "Counter is not as expected");
+			Assert.IsFalse(_Concurrent, "Ran concurrently");
 		}
 		
 		[Test(), Timeout(1500)]
@@ -58,8 +63,9 @@ namespace Proximity.Utility.Tests
 			await MyTask;
 			
 			Assert.That(DateTime.Now.Subtract(StartTime).TotalMilliseconds, Is.InRange(500.0, 700.0));
-			
+
 			Assert.AreEqual(1, _Counter, "Counter is not as expected");
+			Assert.IsFalse(_Concurrent, "Ran concurrently");
 		}
 		
 		[Test(), Timeout(2500)]
@@ -76,8 +82,28 @@ namespace Proximity.Utility.Tests
 			await MyFlag.SetAndWait();
 			
 			Assert.That(DateTime.Now.Subtract(StartTime).TotalMilliseconds, Is.InRange(900.0, 1100.0));
-			
+
 			Assert.AreEqual(2, _Counter, "Counter is not as expected");
+			Assert.IsFalse(_Concurrent, "Ran concurrently");
+		}
+
+		[Test(), Timeout(2500)]
+		public async Task SetAndWaitTwiceDelay()
+		{
+			var MyFlag = new TaskFlag(WaitHalfSecond, new TimeSpan(0, 0, 0, 0, 500));
+
+			var StartTime = DateTime.Now;
+
+			MyFlag.Set();
+
+			Thread.Sleep(200);
+
+			await MyFlag.SetAndWait();
+
+			Assert.That(DateTime.Now.Subtract(StartTime).TotalMilliseconds, Is.InRange(900.0, 1100.0));
+
+			Assert.AreEqual(1, _Counter, "Counter is not as expected");
+			Assert.IsFalse(_Concurrent, "Ran concurrently");
 		}
 		
 		[Test(), Timeout(1500)]
@@ -96,8 +122,51 @@ namespace Proximity.Utility.Tests
 			}
 			
 			await MyFlag.SetAndWait();
-			
+
 			Assert.AreNotEqual(0, _Counter);
+			Assert.IsFalse(_Concurrent, "Ran concurrently");
+		}
+
+		[Test(), Timeout(2500)]
+		public async Task SetAndWaitLots()
+		{
+			var MyFlag = new TaskFlag(WaitHalfSecond);
+
+			var EndTime = DateTime.Now.Add(new TimeSpan(0, 0, 1));
+
+			var MyWait = new SpinWait();
+
+			while (DateTime.Now < EndTime)
+			{
+				MyFlag.Set();
+
+				MyWait.SpinOnce();
+			}
+
+			await MyFlag.SetAndWait();
+
+			Assert.IsFalse(_Concurrent, "Ran concurrently");
+		}
+		
+		[Test(), Timeout(2500)]
+		public async Task SetAndWaitLotsDelay()
+		{
+			var MyFlag = new TaskFlag(WaitHalfSecond, new TimeSpan(0, 0, 0, 0, 200));
+
+			var EndTime = DateTime.Now.Add(new TimeSpan(0, 0, 1));
+
+			var MyWait = new SpinWait();
+
+			while (DateTime.Now < EndTime)
+			{
+				MyFlag.Set();
+
+				MyWait.SpinOnce();
+			}
+
+			await MyFlag.SetAndWait();
+
+			Assert.IsFalse(_Concurrent, "Ran concurrently");
 		}
 		
 		//****************************************
@@ -105,15 +174,25 @@ namespace Proximity.Utility.Tests
 		private void WaitFiftyMs()
 		{
 			Interlocked.Increment(ref _Counter);
+
+			if (Interlocked.CompareExchange(ref _IsRunning, 1, 0) != 0)
+				_Concurrent = true;
 			
 			Thread.Sleep(50);
+
+			Interlocked.CompareExchange(ref _IsRunning, 0, 1);
 		}
 		
 		private void WaitHalfSecond()
 		{
 			Interlocked.Increment(ref _Counter);
-			
+
+			if (Interlocked.CompareExchange(ref _IsRunning, 1, 0) != 0)
+				_Concurrent = true;
+
 			Thread.Sleep(500);
+
+			Interlocked.CompareExchange(ref _IsRunning, 0, 1);
 		}
 	}
 }

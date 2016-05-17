@@ -182,7 +182,7 @@ namespace Proximity.Utility.IO
 			}
 		}
 
-		private class InputStream : BaseStream
+		private sealed class InputStream : BaseStream
 		{
 			internal InputStream(PipeStream pipeStream) : base(pipeStream)
 			{
@@ -254,7 +254,7 @@ namespace Proximity.Utility.IO
 			}
 		}
 
-		private class OutputStream : BaseStream
+		private sealed class OutputStream : BaseStream
 		{	//****************************************
 			private ArraySegment<byte> _Remainder;
 			private int _ReadTimeout = Timeout.Infinite;
