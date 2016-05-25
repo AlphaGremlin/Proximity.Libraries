@@ -2,7 +2,7 @@
 <package >
 	<metadata>
 		<id>Proximity.Terminal</id>
-		<version>16.5.0.0</version>
+		<version>16.6.0.0</version>
 		<title>Proximity Terminal Library</title>
 		<authors>Proximity Interactive</authors>
 		<owners>Proximity Interactive</owners>
@@ -11,7 +11,7 @@
 		<releaseNotes></releaseNotes>
 		<copyright>Copyright 2016</copyright>
 		<dependencies>
-			<dependency id="Proximity.Utility" version="17.1.0.0" />
+			<dependency id="Proximity.Utility" version="17.6.3.0" />
 		</dependencies>
 		<tags></tags>
 	</metadata>

@@ -137,7 +137,7 @@ namespace Proximity.Terminal
 			Log.Write(new ConsoleLogEntry(string.Format("> {0}", command)));
 			
 			// Find the first word (split on a space, equals)
-			CharIndex = command.IndexOfAny(new char[] {' ', '=', '!'});
+			CharIndex = command.IndexOfAny(new char[] {' ', '='});
 			
 			// Split off the arguments (if any)
 			if (CharIndex == -1)
@@ -237,7 +237,7 @@ namespace Proximity.Terminal
 					return Task.FromResult<bool>(false);
 				}
 				
-				CurrentPath = MyTypeSet.TypeName + "!";
+				CurrentPath = MyTypeSet.TypeName + " ";
 			}
 			
 			//****************************************
@@ -252,7 +252,7 @@ namespace Proximity.Terminal
 			}
 			
 			// Repeat the argument process on the arguments themselves
-			CharIndex = ArgumentText.IndexOfAny(new char[] {' ', '=', '!'});
+			CharIndex = ArgumentText.IndexOfAny(new char[] {' ', '='});
 			
 			// Split off the arguments (if any)
 			if (CharIndex == -1)
