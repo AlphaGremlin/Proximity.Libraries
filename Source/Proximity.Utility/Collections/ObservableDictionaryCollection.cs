@@ -12,23 +12,19 @@ using System.Linq;
 
 namespace Proximity.Utility.Collections
 {
-
 	/// <summary>
 	/// Provides an observable view of the dictionary's keys and values
 	/// </summary>
-	public sealed class ObservableDictionaryCollection<TSource> : IList<TSource>, ICollection<TSource>, IList, INotifyCollectionChanged, INotifyPropertyChanged
+	public abstract class ObservableDictionaryCollection<TSource> : IList<TSource>, ICollection<TSource>, IList, INotifyCollectionChanged, INotifyPropertyChanged
 #if !NET40
 , IReadOnlyCollection<TSource>
 #endif
 	{	//****************************************
 		private const string CountString = "Count";
 		//****************************************
-		private readonly IList<TSource> _Source;
-		//****************************************
 
-		internal ObservableDictionaryCollection(IList<TSource> source)
+		internal ObservableDictionaryCollection()
 		{
-			_Source = source;
 		}
 
 		//****************************************
@@ -38,20 +34,14 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="item">The item to locate</param>
 		/// <returns>True if the item is in the list, otherwise false</returns>
-		public bool Contains(TSource item)
-		{
-			return _Source.Contains(item);
-		}
+		public abstract bool Contains(TSource item);
 
 		/// <summary>
 		/// Copies the elements of the collection to a given array, starting at a specified index
 		/// </summary>
 		/// <param name="array">The destination array</param>
 		/// <param name="arrayIndex">The index into the array to start writing</param>
-		public void CopyTo(TSource[] array, int arrayIndex)
-		{
-			_Source.CopyTo(array, arrayIndex);
-		}
+		public abstract void CopyTo(TSource[] array, int arrayIndex);
 
 		/// <summary>
 		/// Returns an enumerator that iterates through the collection
@@ -59,7 +49,7 @@ namespace Proximity.Utility.Collections
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
 		public IEnumerator<TSource> GetEnumerator()
 		{
-			return _Source.GetEnumerator();
+			return InternalGetEnumerator();
 		}
 
 		/// <summary>
@@ -67,10 +57,7 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="item">The item to search for</param>
 		/// <returns>True if a matching item was found, otherwise -1</returns>
-		public int IndexOf(TSource item)
-		{
-			return _Source.IndexOf(item);
-		}
+		public abstract int IndexOf(TSource item);
 
 		//****************************************
 
@@ -116,6 +103,12 @@ namespace Proximity.Utility.Collections
 
 		//****************************************
 
+		internal abstract void InternalCopyTo(Array array, int arrayIndex);
+
+		internal abstract IEnumerator<TSource> InternalGetEnumerator();
+
+		//****************************************
+
 		void ICollection<TSource>.Add(TSource item)
 		{
 			throw new NotSupportedException("Collection is read-only");
@@ -143,10 +136,7 @@ namespace Proximity.Utility.Collections
 
 		void ICollection.CopyTo(Array array, int arrayIndex)
 		{
-			for (int Index = 0; Index < _Source.Count; Index++)
-			{
-				array.SetValue(_Source[Index], arrayIndex++);
-			}
+			InternalCopyTo(array, arrayIndex);
 		}
 
 		int IList.IndexOf(object value)
@@ -189,7 +179,12 @@ namespace Proximity.Utility.Collections
 
 		IEnumerator IEnumerable.GetEnumerator()
 		{
-			return ((IEnumerable)_Source).GetEnumerator();
+			return InternalGetEnumerator();
+		}
+
+		IEnumerator<TSource> IEnumerable<TSource>.GetEnumerator()
+		{
+			return InternalGetEnumerator();
 		}
 
 		//****************************************
@@ -215,10 +210,7 @@ namespace Proximity.Utility.Collections
 		/// <summary>
 		/// Gets the number of items in the collection
 		/// </summary>
-		public int Count
-		{
-			get { return _Source.Count; }
-		}
+		public abstract int Count { get; }
 
 		/// <summary>
 		/// Gets whether this collection is read-only. Always true
@@ -232,20 +224,17 @@ namespace Proximity.Utility.Collections
 		/// Gets the item at the requested index
 		/// </summary>
 		[System.Runtime.CompilerServices.IndexerName("Item")]
-		public TSource this[int index]
-		{
-			get { return _Source[index]; }
-		}
+		public abstract TSource this[int index] { get; }
 
 		TSource IList<TSource>.this[int index]
 		{
-			get { return _Source[index]; }
+			get { return this[index]; }
 			set { throw new NotSupportedException("List is read-only"); }
 		}
 
 		object IList.this[int index]
 		{
-			get { return _Source[index]; }
+			get { return this[index]; }
 			set { throw new NotSupportedException("List is read-only"); }
 		}
 

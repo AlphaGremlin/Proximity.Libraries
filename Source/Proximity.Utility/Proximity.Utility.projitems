@@ -14,6 +14,8 @@
     <Compile Include="$(MSBuildThisFileDirectory)ActionNameAttribute.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\AsyncCollection.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ComparisonComparer.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Collections\ObservableBase.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Collections\ObservableBaseSet.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ObservableListView.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)GCReference.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)IO\BinaryTextReader.cs" />
@@ -32,7 +34,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)Xml\XmlReaderTryReadExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\AsyncCollectionTakeFromAny.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\BiDictionary.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Collections\CastEnumerator.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ConcurrentExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ConcurrentWeakDictionary.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ImmutableCountedStack.cs" />
@@ -50,10 +51,10 @@
     <Compile Include="$(MSBuildThisFileDirectory)Collections\PagedSetItem.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\PagedSetPage.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ReadOnlyCollection.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Collections\ReadOnlyCollectionCast.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Collections\ReadOnlyCollectionConverter.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ReadOnlyCollectionTyped.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ReadOnlyDictionary.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Collections\ReadOnlyDictionaryChild.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Collections\ReadOnlyDictionaryConverter.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ReadOnlyDictionaryKeySet.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ReadOnlyList.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ReadOnlyListTyped.cs" />

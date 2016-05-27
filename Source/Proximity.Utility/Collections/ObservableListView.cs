@@ -30,17 +30,27 @@ namespace Proximity.Utility.Collections
 		private const string IndexerName = "Item[]";
 		//****************************************
 		private readonly IList<TValue> _Source;
-		private readonly List<TValue> _Items;
+		private readonly List<TValue> _Items, _HiddenItems;
 
 		private readonly IComparer<TValue> _Comparer;
 		private readonly Predicate<TValue> _Filter;
+		private readonly int? _Maximum;
 		//****************************************
 		
 		/// <summary>
 		/// Creates a new Observable List View
 		/// </summary>
 		/// <param name="source">The source list to wrap</param>
-		public ObservableListView(IList<TValue> source) : this(source, (IComparer<TValue>)null, null)
+		public ObservableListView(IList<TValue> source) : this(source, (IComparer<TValue>)null, null, null)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Observable List View
+		/// </summary>
+		/// <param name="source">The source list to wrap</param>
+		/// <param name="maximum">The maximum number of items to show</param>
+		public ObservableListView(IList<TValue> source, int? maximum) : this(source, (IComparer<TValue>)null, null, maximum)
 		{
 		}
 
@@ -49,7 +59,7 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="source">The source list to wrap</param>
 		/// <param name="comparison">A delegate to perform the comparison with</param>
-		public ObservableListView(IList<TValue> source, Comparison<TValue> comparison) : this(source, new ComparisonComparer<TValue>(comparison), null)
+		public ObservableListView(IList<TValue> source, Comparison<TValue> comparison) : this(source, new ComparisonComparer<TValue>(comparison), null, null)
 		{
 		}
 
@@ -58,7 +68,17 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="source">The source list to wrap</param>
 		/// <param name="comparer">The comparer to use for sorting</param>
-		public ObservableListView(IList<TValue> source, IComparer<TValue> comparer) : this(source, comparer, null)
+		public ObservableListView(IList<TValue> source, IComparer<TValue> comparer) : this(source, comparer, null, null)
+		{
+		}
+		
+		/// <summary>
+		/// Creates a new Observable List View
+		/// </summary>
+		/// <param name="source">The source list to wrap</param>
+		/// <param name="comparer">The comparer to use for sorting</param>
+		/// <param name="maximum">The maximum number of items to show</param>
+		public ObservableListView(IList<TValue> source, IComparer<TValue> comparer, int? maximum) : this(source, comparer, null, maximum)
 		{
 		}
 
@@ -67,17 +87,37 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="source">The source list to wrap</param>
 		/// <param name="filter">A filter to apply to the source list</param>
-		public ObservableListView(IList<TValue> source, Predicate<TValue> filter) : this(source, (IComparer<TValue>)null, filter)
+		public ObservableListView(IList<TValue> source, Predicate<TValue> filter) : this(source, (IComparer<TValue>)null, filter, null)
 		{
 		}
-
+		
+		/// <summary>
+		/// Creates a new Observable List View
+		/// </summary>
+		/// <param name="source">The source list to wrap</param>
+		/// <param name="filter">A filter to apply to the source list</param>
+		/// <param name="maximum">The maximum number of items to show</param>
+		public ObservableListView(IList<TValue> source, Predicate<TValue> filter, int? maximum) : this(source, (IComparer<TValue>)null, filter, maximum)
+		{
+		}
+		
 		/// <summary>
 		/// Creates a new Observable List View
 		/// </summary>
 		/// <param name="source">The source list to wrap</param>
 		/// <param name="comparison">A delegate to perform the comparison with</param>
 		/// <param name="filter">A filter to apply to the source list</param>
-		public ObservableListView(IList<TValue> source, Comparison<TValue> comparison, Predicate<TValue> filter) : this(source, new ComparisonComparer<TValue>(comparison), filter)
+		public ObservableListView(IList<TValue> source, Comparison<TValue> comparison, Predicate<TValue> filter) : this(source, new ComparisonComparer<TValue>(comparison), filter, null)
+		{
+		}
+		
+		/// <summary>
+		/// Creates a new Observable List View
+		/// </summary>
+		/// <param name="source">The source list to wrap</param>
+		/// <param name="comparer">The comparer to use for sorting</param>
+		/// <param name="filter">A filter to apply to the source list</param>
+		public ObservableListView(IList<TValue> source, IComparer<TValue> comparer, Predicate<TValue> filter) : this(source, comparer, filter, null)
 		{
 		}
 
@@ -87,12 +127,17 @@ namespace Proximity.Utility.Collections
 		/// <param name="source">The source list to wrap</param>
 		/// <param name="comparer">The comparer to use for sorting</param>
 		/// <param name="filter">A filter to apply to the source list</param>
-		public ObservableListView(IList<TValue> source, IComparer<TValue> comparer, Predicate<TValue> filter)
+		/// <param name="maximum">The maximum number of items to show</param>
+		public ObservableListView(IList<TValue> source, IComparer<TValue> comparer, Predicate<TValue> filter, int? maximum)
 		{
 			_Source = source;
 			_Comparer = comparer ?? GetDefaultComparer();
 			_Filter = filter;
+			_Maximum = maximum;
 			_Items = new List<TValue>(source.Count);
+
+			if (maximum.HasValue)
+				_HiddenItems = new List<TValue>();
 
 			// Bring the collection up to date
 			if (source.Count > 0)
@@ -103,6 +148,9 @@ namespace Proximity.Utility.Collections
 					_Items.AddRange(source);
 
 				_Items.Sort(comparer);
+
+				if (maximum.HasValue && _Items.Count > maximum.Value)
+					_Items.RemoveRange(maximum.Value, _Items.Count - maximum.Value);
 			}
 			
 			if (source is INotifyCollectionChanged)
@@ -155,7 +203,7 @@ namespace Proximity.Utility.Collections
 		/// Returns an enumerator that iterates through the collection
 		/// </summary>
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
-		public IEnumerator<TValue> GetEnumerator()
+		public List<TValue>.Enumerator GetEnumerator()
 		{
 			return _Items.GetEnumerator();
 		}
@@ -250,6 +298,11 @@ namespace Proximity.Utility.Collections
 			return _Items.GetEnumerator();
 		}
 
+		IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator()
+		{
+			return _Items.GetEnumerator();
+		}
+
 		/// <summary>
 		/// Raises the PropertyChanged event
 		/// </summary>
@@ -319,6 +372,23 @@ namespace Proximity.Utility.Collections
 
 				_Items.Sort(_Comparer);
 
+				// Trim the bottom items if there's a limit
+				if (_Maximum.HasValue)
+				{
+					_HiddenItems.Clear();
+
+					if (_Items.Count > _Maximum.Value)
+					{
+						// Copy the already sorted items to the hidden items
+						for (int Index = _Maximum.Value; Index < _Items.Count; Index++)
+						{
+							_HiddenItems.Add(_Items[Index]);
+						}
+
+						_Items.RemoveRange(_Maximum.Value, _Items.Count - _Maximum.Value);
+					}
+				}
+
 				OnCollectionChanged(OldItems);
 				break;
 
@@ -333,20 +403,39 @@ namespace Proximity.Utility.Collections
 					// Where should this item go based on the comparer?
 					var InsertIndex = _Items.BinarySearch(NewItem, _Comparer);
 
-					if (InsertIndex >= 0)
+					// Is there a maximum?
+					if (_Maximum.HasValue)
 					{
-						// Identical item is already in the list, so insert there
-						_Items.Insert(InsertIndex, NewItem);
+						// Are we inserting a new item?
+						if (InsertIndex < 0)
+						{
+							// Get the final index to insert at
+							InsertIndex = ~InsertIndex;
 
-						OnCollectionChanged(NotifyCollectionChangedAction.Add, NewItem, InsertIndex);
+							// If we're inserting at the very end past the limit, skip this item
+							if (InsertIndex == _Maximum.Value)
+							{
+								AddToHidden(NewItem);
+
+								continue;
+							}
+						}
+
+						// If this pushes us over the maximum, move the last visible item
+						if (_Items.Count == _Maximum.Value)
+							MoveLastVisibleToHidden();
 					}
 					else
 					{
-						// New item, insert based on the sort order
-						_Items.Insert(~InsertIndex, NewItem);
-
-						OnCollectionChanged(NotifyCollectionChangedAction.Add, NewItem, ~InsertIndex);
+						// If this is a new item, get the final index to insert at
+						if (InsertIndex < 0)
+							InsertIndex = ~InsertIndex;
 					}
+
+					// Insert our new item
+					_Items.Insert(InsertIndex, NewItem);
+
+					OnCollectionChanged(NotifyCollectionChangedAction.Add, NewItem, InsertIndex);
 				}
 				break;
 
@@ -358,47 +447,157 @@ namespace Proximity.Utility.Collections
 					var OldIndex = _Items.BinarySearch(OldItem, _Comparer);
 
 					if (OldIndex < 0)
+					{
+						// If there's a maximum and we didn't find the item, ensure we remove it from the hidden list
+						if (_Maximum.HasValue)
+						{
+							OldIndex = _HiddenItems.BinarySearch(OldItem, _Comparer);
+
+							if (OldIndex >= 0)
+								_HiddenItems.RemoveAt(OldIndex);
+						}
+
 						continue;
+					}
 
 					_Items.RemoveAt(OldIndex);
 
-					OnCollectionChanged(NotifyCollectionChangedAction.Add, OldItem, OldIndex);
+					OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItem, OldIndex);
+				}
+
+				// If there's a maximum, can we add more items from the hidden list?
+				if (_Maximum.HasValue)
+				{
+					var MaxItems = Math.Min(_Maximum.Value - _Items.Count, _HiddenItems.Count);
+
+					if (MaxItems != 0)
+					{
+						// Copy the already sorted items from the hidden list to the end of our visible list
+						for (int Index = 0; Index < MaxItems; Index++)
+						{
+							var NewItem = _HiddenItems[Index];
+
+							_Items.Add(NewItem);
+
+							OnCollectionChanged(NotifyCollectionChangedAction.Add, NewItem, _Items.Count - 1);
+						}
+
+						_HiddenItems.RemoveRange(0, MaxItems);
+					}
 				}
 				break;
 
 			case NotifyCollectionChangedAction.Replace:
 				for (int Index = 0; Index < e.OldItems.Count; Index++)
 				{
-					var OldItem = (TValue)e.OldItems[Index];
-
-					var OldIndex = _Items.BinarySearch(OldItem, _Comparer);
-
-					// Is this item even in the list?
-					if (OldIndex < 0)
-						continue;
-
-					var NewItem = (TValue)e.NewItems[Index];
+					// Retrieve the old and new items
+					TValue OldItem = (TValue)e.OldItems[Index], NewItem = (TValue)e.NewItems[Index];
 
 					// Has the item changed?
 					if (_Comparer.Compare(OldItem, NewItem) == 0)
 						continue; // Item hasn't changed, so its sorting position won't either
 
-					// Yes, does it still meet the filter?
+					// Is the old Item in the visible list?
+					int OldIndex = _Items.BinarySearch(OldItem, _Comparer), NewIndex;
+
+					if (OldIndex < 0)
+					{
+						if (_Maximum.HasValue)
+						{
+							// It's not in the visible list, but it might be in the hidden one
+							OldIndex = _HiddenItems.BinarySearch(OldItem, _Comparer);
+
+							// If it's in the hidden list, remove it
+							if (OldIndex >= 0)
+								_HiddenItems.RemoveAt(OldIndex);
+						}
+
+						// It's not in the visible list or hidden list.
+
+						// Does the new item meet the filter?
+						if (_Filter != null && !_Filter(NewItem))
+							continue; // No, so ignore it
+
+						// Yes, so we might need to insert it somewhere
+
+						// Where should it go in the visible list?
+						NewIndex = _Items.BinarySearch(NewItem, _Comparer);
+
+						if (NewIndex < 0)
+							NewIndex = ~NewIndex;
+
+						// Is there a limit on the visible list?
+						if (_Maximum.HasValue)
+						{
+							// If we're inserting over the maximum, add to the hidden list instead
+							if (NewIndex == _Maximum.Value)
+							{
+								AddToHidden(NewItem);
+
+								continue;
+							}
+
+							// We're not adding to the end. Does this push us over the maximum?
+							if (_Items.Count == _Maximum.Value)
+								MoveLastVisibleToHidden();
+						}
+
+						// We're inserting somewhere into the visible list and we're guaranteed space
+						_Items.Insert(NewIndex, NewItem);
+						OnCollectionChanged(NotifyCollectionChangedAction.Add, NewItem, NewIndex);
+
+						continue;
+					}
+					
+					// The old item is visible and has changed
+
+					// Does it still meet the filter?
 					if (_Filter != null && !_Filter(NewItem))
 					{
 						// No, so remove it
 						_Items.RemoveAt(OldIndex);
 						OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItem, OldIndex);
 
+						// If there's a maximum and we've hidden items, move the first item to replace the one we removed
+						if (_Maximum.HasValue && _HiddenItems.Count > 0)
+							MoveFirstHiddenToVisible();
+
 						continue;
 					}
 
-					// Yes, what is its new Index?
-					var NewIndex = _Items.BinarySearch(NewItem, _Comparer);
-					var RealIndex = NewIndex < 0 ? ~NewIndex : NewIndex;
+					// It meets the filter, what is its new Index?
+					NewIndex = _Items.BinarySearch(NewItem, _Comparer);
+
+					if (NewIndex < 0)
+						NewIndex = ~NewIndex;
 					
+					// We're moving the new item. Is there a maximum?
+					if (_Maximum.HasValue)
+					{
+						// Are we moving it to the end and there are hidden items?
+						if (NewIndex == _Maximum.Value && _HiddenItems.Count > 0)
+						{
+							// Is it greater than the top-most hidden item?
+							if (_Comparer.Compare(NewItem, _HiddenItems[0]) > 0)
+							{
+								// Yes, so we need to remove ourselves from the visible list, then add the top-most hidden item
+								_Items.RemoveAt(OldIndex);
+								OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItem, OldIndex);
+
+								MoveFirstHiddenToVisible();
+
+								// Add the new item to the hidden list
+								AddToHidden(NewItem);
+
+								continue;
+							}
+
+							// Less than the top-most hidden item, so we'll just add it to the end
+						}
+					}
+
 					// Would we place this immediately before or after the old item?
-					if (RealIndex == OldIndex || RealIndex == OldIndex + 1)
+					if (NewIndex == OldIndex || NewIndex == OldIndex + 1)
 					{
 						// Yes, so just replace the old item instead
 						_Items[OldIndex] = NewItem;
@@ -407,18 +606,18 @@ namespace Proximity.Utility.Collections
 
 						continue;
 					}
-					
+
 					// It's going elsewhere, so first remove the old item
 					_Items.RemoveAt(OldIndex);
 					OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItem, OldIndex);
 
 					// If the target index is after where removed the old item, we need to correct the index
-					if (RealIndex > OldIndex)
-						RealIndex -= 1;
+					if (NewIndex > OldIndex)
+						NewIndex--;
 
 					// Now we can insert the new item where it belongs
-					_Items.Insert(RealIndex, NewItem);
-					OnCollectionChanged(NotifyCollectionChangedAction.Add, NewItem, RealIndex);
+					_Items.Insert(NewIndex, NewItem);
+					OnCollectionChanged(NotifyCollectionChangedAction.Add, NewItem, NewIndex);
 				}
 				break;
 
@@ -437,6 +636,38 @@ namespace Proximity.Utility.Collections
 		private bool FilterItem(TValue item)
 		{
 			return _Filter(item); // Enumerable.Where requires an Action, but this is a Predicate, so we wrap it
+		}
+
+		private void AddToHidden(TValue item)
+		{
+			var InsertIndex = _HiddenItems.BinarySearch(item, _Comparer);
+
+			if (InsertIndex < 0)
+				InsertIndex = ~InsertIndex;
+
+			_HiddenItems.Insert(InsertIndex, item);
+		}
+
+		private void MoveLastVisibleToHidden()
+		{
+			var OldIndex = _Items.Count - 1;
+			var OldItem = _Items[OldIndex];
+
+			_Items.RemoveAt(OldIndex);
+			_HiddenItems.Insert(0, OldItem); // The bottom of the visible list is always the top of the hidden
+
+			OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItem, OldIndex);
+		}
+
+		private void MoveFirstHiddenToVisible()
+		{
+			var NewItem = _HiddenItems[0];
+			var NewIndex = _Items.Count;
+
+			_HiddenItems.RemoveAt(0);
+			_Items.Add(NewItem); // The top of the hidden list is always the bottom of the visible
+
+			OnCollectionChanged(NotifyCollectionChangedAction.Add, NewItem, NewIndex);
 		}
 
 		//****************************************
@@ -473,7 +704,7 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		public bool IsReadOnly
 		{
-			get { return false; }
+			get { return true; }
 		}
 
 		/// <summary>
@@ -482,6 +713,23 @@ namespace Proximity.Utility.Collections
 		public IComparer<TValue> Comparer
 		{
 			get { return _Comparer; }
+		}
+
+		/// <summary>
+		/// Gets the maximum number of items that will be displayed in this List View
+		/// </summary>
+		/// <remarks>Will be null if there is no limit</remarks>
+		public int? Maximum
+		{
+			get { return _Maximum; }
+		}
+
+		/// <summary>
+		/// Gets the predicate that is filtering this List View
+		/// </summary>
+		public Predicate<TValue> Filter
+		{
+			get { return _Filter; }
 		}
 
 		TValue IList<TValue>.this[int index]

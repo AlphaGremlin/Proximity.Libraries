@@ -158,10 +158,9 @@ namespace Proximity.Utility.Collections
 		/// Retrieves an enumerator for this stack
 		/// </summary>
 		/// <returns>The requested enumerator</returns>
-		[SecuritySafeCritical]
-		public IEnumerator<TItem> GetEnumerator()
+		public Enumerator GetEnumerator()
 		{
-			return new StackEnumerator(this);
+			return new Enumerator(this);
 		}
 		
 		/// <summary>
@@ -222,7 +221,13 @@ namespace Proximity.Utility.Collections
 		[SecuritySafeCritical]
 		IEnumerator IEnumerable.GetEnumerator()
 		{
-			return new StackEnumerator(this);
+			return new Enumerator(this);
+		}
+
+		[SecuritySafeCritical]
+		IEnumerator<TItem> IEnumerable<TItem>.GetEnumerator()
+		{
+			return new Enumerator(this);
 		}
 		
 #if NET45
@@ -268,19 +273,57 @@ namespace Proximity.Utility.Collections
 		
 		//****************************************
 
-		private class StackEnumerator : IEnumerator<TItem>
+		/// <summary>
+		/// Enumerates the stack while avoiding memory allocations
+		/// </summary>
+		public struct Enumerator: IEnumerator<TItem>
 		{	//****************************************
 			private readonly ImmutableCountedStack<TItem> _Start;
 			private ImmutableCountedStack<TItem> _Current;
 			//****************************************
-			
-			public StackEnumerator(ImmutableCountedStack<TItem> stack)
+
+			internal Enumerator(ImmutableCountedStack<TItem> stack)
 			{
 				_Start = stack;
+				_Current = null;
 			}
 			
 			//****************************************
-			
+
+			/// <summary>
+			/// Disposes of the enumerator
+			/// </summary>
+			[SecuritySafeCritical]
+			public void Dispose()
+			{
+			}
+
+			/// <summary>
+			/// Tries to move to the next item
+			/// </summary>
+			/// <returns>True if there's another item to enumerate, otherwise False</returns>
+			[SecuritySafeCritical]
+			public bool MoveNext()
+			{
+				if (_Current == null)
+					_Current = _Start;
+				else if (!_Current.IsEmpty)
+					_Current = _Current._Tail;
+
+				return !_Current.IsEmpty;
+			}
+
+			[SecuritySafeCritical]
+			void IEnumerator.Reset()
+			{
+				_Current = null;
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Gets the current item being enumerated
+			/// </summary>
 			public TItem Current
 			{
 				[SecuritySafeCritical]
@@ -303,28 +346,6 @@ namespace Proximity.Utility.Collections
 					
 					return _Current._Head;
 				}
-			}
-
-			[SecuritySafeCritical]
-			public void Dispose()
-			{
-			}
-
-			[SecuritySafeCritical]
-			public bool MoveNext()
-			{
-				if (_Current == null)
-					_Current = _Start;
-				else if (!_Current.IsEmpty)
-					_Current = _Current._Tail;
-				
-				return !_Current.IsEmpty;
-			}
-
-			[SecuritySafeCritical]
-			public void Reset()
-			{
-				_Current = null;
 			}
 		}
 	}

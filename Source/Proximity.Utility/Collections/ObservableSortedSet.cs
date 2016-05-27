@@ -18,16 +18,13 @@ namespace Proximity.Utility.Collections
 	/// Provides an Observable Sorted Set supporting BeginUpdate and EndUpdate for batch changes as well as indexed access for optimal data-binding
 	/// </summary>
 	/// <typeparam name="TValue">The type of value within the set</typeparam>
-	public class ObservableSortedSet<TValue> : ISet<TValue>, IList<TValue>, IList, INotifyPropertyChanged, INotifyCollectionChanged
+	public class ObservableSortedSet<TValue> : ObservableBaseSet<TValue>, ISet<TValue>, IList<TValue>
 	{	//****************************************
-		private const string CountString = "Count";
-		//****************************************
 		private readonly IComparer<TValue> _Comparer;
 
 		private TValue[] _Items;
 
 		private int _Size;
-		private int _UpdateCount;
 		//****************************************
 
 		/// <summary>
@@ -96,7 +93,7 @@ namespace Proximity.Utility.Collections
 		/// <param name="item">The element to add</param>
 		/// <returns>True if the element was added, False if it was already in the set</returns>
 		/// <exception cref="ArgumentNullException">Item was null</exception>
-		public bool Add(TValue item)
+		public new bool Add(TValue item)
 		{	//****************************************
 			int Index;
 			//****************************************
@@ -115,7 +112,7 @@ namespace Proximity.Utility.Collections
 		/// Adds a range of elements to the collection
 		/// </summary>
 		/// <param name="items">The elements to add</param>
-		public void AddRange(IEnumerable<TValue> items)
+		public override void AddRange(IEnumerable<TValue> items)
 		{	//****************************************
 			int Index = 0;
 			int Count = 0;
@@ -166,16 +163,6 @@ namespace Proximity.Utility.Collections
 		}
 
 		/// <summary>
-		/// Begins a major update operation, suspending change notifications
-		/// </summary>
-		/// <remarks>Maintains a reference count. Each call to <see cref="BeginUpdate"/> must be matched with a call to <see cref="EndUpdate"/></remarks>
-		public void BeginUpdate()
-		{
-			if (_UpdateCount++ == 0)
-				OnPropertyChanged("IsUpdating");
-		}
-
-		/// <summary>
 		/// Performs a Binary Search for the given item
 		/// </summary>
 		/// <param name="item">The item to search for</param>
@@ -188,7 +175,7 @@ namespace Proximity.Utility.Collections
 		/// <summary>
 		/// Removes all elements from the collection
 		/// </summary>
-		public void Clear()
+		public override void Clear()
 		{
 			if (_Size > 0)
 			{
@@ -205,7 +192,7 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="item">The item to locate</param>
 		/// <returns>True if the item is in the list, otherwise false</returns>
-		public bool Contains(TValue item)
+		public override bool Contains(TValue item)
 		{
 			return IndexOf(item) >= 0;
 		}
@@ -215,31 +202,16 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="array">The destination array</param>
 		/// <param name="arrayIndex">The index into the array to start writing</param>
-		public void CopyTo(TValue[] array, int arrayIndex)
+		public override void CopyTo(TValue[] array, int arrayIndex)
 		{
 			Array.Copy(_Items, 0, array, arrayIndex, _Size);
-		}
-
-		/// <summary>
-		/// Ends a major update operation, resuming change notifications
-		/// </summary>
-		/// <remarks>Maintains a reference count. Each call to <see cref="BeginUpdate"/> must be matched with a call to <see cref="EndUpdate"/></remarks>
-		public void EndUpdate()
-		{
-			if (_UpdateCount == 0)
-				return;
-
-			if (--_UpdateCount == 0)
-				OnPropertyChanged("IsUpdating");
-
-			OnCollectionChanged();
 		}
 
 		/// <summary>
 		/// Returns an enumerator that iterates through the collection
 		/// </summary>
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
-		public IEnumerator<TValue> GetEnumerator()
+		public ValueEnumerator GetEnumerator()
 		{
 			return new ValueEnumerator(this);
 		}
@@ -249,7 +221,7 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="item">The item to locate</param>
 		/// <returns>The index of the item if found, otherwise -1</returns>
-		public int IndexOf(TValue item)
+		public override int IndexOf(TValue item)
 		{	//****************************************
 			int Index = Array.BinarySearch<TValue>(_Items, 0, _Size, item, _Comparer);
 			//****************************************
@@ -262,76 +234,11 @@ namespace Proximity.Utility.Collections
 		}
 
 		/// <summary>
-		/// Checks whether this set is a strict subset of the collection
-		/// </summary>
-		/// <param name="other">The collection to check</param>
-		/// <returns>True if this set is a strict subset of the collection, otherwise False</returns>
-		public bool IsProperSubsetOf(IEnumerable<TValue> other)
-		{
-			if (other == null)
-				throw new ArgumentException("other");
-
-			throw new NotSupportedException();
-		}
-
-		/// <summary>
-		/// Checks whether this set is a strict superset of the collection
-		/// </summary>
-		/// <param name="other">The collection to check</param>
-		/// <returns>True if this set is a strict superset of the collection, otherwise False</returns>
-		public bool IsProperSupersetOf(IEnumerable<TValue> other)
-		{
-			if (other == null)
-				throw new ArgumentException("other");
-
-			throw new NotSupportedException();
-		}
-
-		/// <summary>
-		/// Checks whether this set is a subset of the collection
-		/// </summary>
-		/// <param name="other">The collection to check</param>
-		/// <returns>True if this set is a subset of the collection, otherwise False</returns>
-		public bool IsSubsetOf(IEnumerable<TValue> other)
-		{
-			if (other == null)
-				throw new ArgumentException("other");
-
-			throw new NotSupportedException();
-		}
-
-		/// <summary>
-		/// Checks whether this set is a superset of the collection
-		/// </summary>
-		/// <param name="other">The collection to check</param>
-		/// <returns>True if this set is a superset of the collection, otherwise False</returns>
-		public bool IsSupersetOf(IEnumerable<TValue> other)
-		{
-			if (other == null)
-				throw new ArgumentException("other");
-
-			throw new NotSupportedException();
-		}
-
-		/// <summary>
-		/// Checks whether the current set overlaps with the specified collection
-		/// </summary>
-		/// <param name="other">The collection to check</param>
-		/// <returns>True if at least one element is common between this set and the collection, otherwise False</returns>
-		public bool Overlaps(IEnumerable<TValue> other)
-		{
-			if (other == null)
-				throw new ArgumentException("other");
-
-			throw new NotSupportedException();
-		}
-
-		/// <summary>
 		/// Removes an element from the collection
 		/// </summary>
 		/// <param name="item">The element to remove</param>
 		/// <returns>True if the item was in the collection and removed, otherwise False</returns>
-		public bool Remove(TValue item)
+		public override bool Remove(TValue item)
 		{	//****************************************
 			int Index = IndexOf(item);
 			//****************************************
@@ -370,114 +277,92 @@ namespace Proximity.Utility.Collections
 
 		}
 
-		/// <summary>
-		/// Checks whether this set and the given collection contain the same elements
-		/// </summary>
-		/// <param name="other">The collection to check against</param>
-		/// <returns>True if they contain the same elements, otherwise FAlse</returns>
-		public bool SetEquals(IEnumerable<TValue> other)
-		{
-			if (other == null)
-				throw new ArgumentException("other");
-
-			throw new NotSupportedException();
-		}
-
 		//****************************************
 
-		void ICollection<TValue>.Add(TValue item)
+		/// <inheritdoc />
+		protected override void InternalAdd(TValue item)
 		{
-			this.Add(item);
+			Add(item);
 		}
 
-		int IList.Add(object value)
-		{	//****************************************
-			int Index;
-			TValue NewValue;
-			//****************************************
-
-			if (!(value is TValue))
-				throw new ArgumentException("Value is not of the required type");
-
-			NewValue = (TValue)value;
-
-			if (TryAdd(NewValue, out Index))
-			{
-				OnCollectionChanged(NotifyCollectionChangedAction.Add, NewValue, Index);
-
-				return Index;
-			}
-
-			return -1;
-		}
-
-		bool IList.Contains(object value)
-		{
-			return value is TValue && Contains((TValue)value);
-		}
-
-		void ICollection.CopyTo(Array array, int index)
-		{
-			Array.Copy(_Items, 0, array, index, _Size);
-		}
-
-		void ISet<TValue>.ExceptWith(IEnumerable<TValue> other)
-		{
-			throw new NotSupportedException();
-		}
-
-		IEnumerator IEnumerable.GetEnumerator()
+		/// <inheritdoc />
+		protected override IEnumerator<TValue> InternalGetEnumerator()
 		{
 			return new ValueEnumerator(this);
 		}
 
-		int IList.IndexOf(object value)
+		/// <inheritdoc />
+		protected override TValue InternalGet(int index)
 		{
-			if (!(value is TValue))
-				return -1;
-
-			return IndexOf((TValue)value);
+			return _Items[index];
 		}
 
-		void IList.Insert(int index, object value)
+		/// <inheritdoc />
+		protected override void InternalInsert(int index, TValue item)
 		{
-			throw new NotSupportedException();
+			throw new NotSupportedException("Cannot insert into a set");
 		}
 
-		void IList<TValue>.Insert(int index, TValue item)
+		/// <inheritdoc />
+		protected override int InternalRemoveAll(Func<int, bool> predicate)
 		{
-			throw new NotSupportedException();
+			int Index = 0;
+
+			// Find the first item we need to remove
+			while (Index < _Size && !predicate(Index))
+				Index++;
+
+			// Did we find anything?
+			if (Index >= _Size)
+				return 0;
+
+			var RemovedItems = new List<TValue>();
+
+			RemovedItems.Add(_Items[Index]);
+
+			int InnerIndex = Index + 1;
+
+			while (InnerIndex < _Size)
+			{
+				// Skip the items we need to remove
+				while (InnerIndex < _Size && predicate(InnerIndex))
+				{
+					RemovedItems.Add(_Items[InnerIndex]);
+
+					InnerIndex++;
+				}
+
+				// If we reached the end, abort
+				if (InnerIndex >= _Size)
+					break;
+
+				// We found one we're not removing, so move it up
+				_Items[Index] = _Items[InnerIndex];
+
+				Index++;
+				InnerIndex++;
+			}
+
+			// Clear the removed items
+			Array.Clear(_Items, Index, _Size - Index);
+
+			_Size = Index;
+
+			OnCollectionChanged(NotifyCollectionChangedAction.Remove, RemovedItems);
+
+			return InnerIndex - Index;
 		}
 
-		void ISet<TValue>.IntersectWith(IEnumerable<TValue> other)
+		/// <inheritdoc />
+		protected override void InternalRemoveAt(int index)
 		{
-			throw new NotSupportedException();
+			RemoveAt(index);
 		}
 
-		void IList.Remove(object value)
+		/// <inheritdoc />
+		protected override void InternalSet(int index, TValue value)
 		{
-			if (value is TValue)
-				Remove((TValue)value);
-		}
-
-		void ISet<TValue>.SymmetricExceptWith(IEnumerable<TValue> other)
-		{
-			throw new NotSupportedException();
-		}
-
-		void ISet<TValue>.UnionWith(IEnumerable<TValue> other)
-		{
-			throw new NotSupportedException();
-		}
-
-		/// <summary>
-		/// Raises the PropertyChanged event
-		/// </summary>
-		/// <param name="propertyName">The name of the property that has changed</param>
-		protected virtual void OnPropertyChanged(string propertyName)
-		{
-			if (_UpdateCount == 0 && PropertyChanged != null)
-				PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+			throw new NotSupportedException("Cannot set by index");
 		}
 
 		//****************************************
@@ -533,50 +418,7 @@ namespace Proximity.Utility.Collections
 			_Size++;
 		}
 
-		private void OnCollectionChanged()
-		{
-			if (_UpdateCount != 0)
-				return;
-
-			OnPropertyChanged(CountString);
-
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
-		}
-
-		private void OnCollectionChanged(NotifyCollectionChangedAction action, TValue changedItem, int index)
-		{
-			if (_UpdateCount != 0)
-				return;
-
-			OnPropertyChanged(CountString);
-
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, changedItem, index));
-		}
-
-		private void OnCollectionChanged(NotifyCollectionChangedAction action, IEnumerable<TValue> changedItems)
-		{
-			if (_UpdateCount != 0)
-				return;
-
-			OnPropertyChanged(CountString);
-
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, changedItems.ToArray()));
-		}
-
 		//****************************************
-
-		/// <summary>
-		/// Raised when the collection changes
-		/// </summary>
-		public event NotifyCollectionChangedEventHandler CollectionChanged;
-
-		/// <summary>
-		/// Raised when a property of the dictionary changes
-		/// </summary>
-		public event PropertyChangedEventHandler PropertyChanged;
 
 		/// <summary>
 		/// Gets the IComparer{TValue} that is used to compare items in the set
@@ -589,7 +431,7 @@ namespace Proximity.Utility.Collections
 		/// <summary>
 		/// Gets the number of items in the collection
 		/// </summary>
-		public int Count
+		public override int Count
 		{
 			get { return _Size; }
 		}
@@ -620,22 +462,6 @@ namespace Proximity.Utility.Collections
 
 				return _Items[_Size - 1];
 			}
-		}
-
-		/// <summary>
-		/// Gets whether this collection is read-only
-		/// </summary>
-		public bool IsReadOnly
-		{
-			get { return false; }
-		}
-
-		/// <summary>
-		/// Gets whether an update is in progress via <see cref="BeginUpdate" /> and <see cref="EndUpdate" />
-		/// </summary>
-		public bool IsUpdating
-		{
-			get { return _UpdateCount != 0; }
 		}
 
 		/// <summary>
@@ -678,36 +504,18 @@ namespace Proximity.Utility.Collections
 			get { return _Items[index]; }
 		}
 
-		bool ICollection.IsSynchronized
-		{
-			get { return false; }
-		}
-
-		object ICollection.SyncRoot
-		{
-			get { return this; }
-		}
-
-		bool IList.IsFixedSize
-		{
-			get { return false; }
-		}
-
 		TValue IList<TValue>.this[int index]
 		{
 			get { return _Items[index]; }
-			set { throw new NotSupportedException(); }
-		}
-
-		object IList.this[int index]
-		{
-			get { return _Items[index]; }
-			set { throw new NotSupportedException(); }
+			set { throw new NotSupportedException("Cannot set by index"); }
 		}
 
 		//****************************************
 
-		private sealed class ValueEnumerator : IEnumerator<TValue>, IEnumerator
+		/// <summary>
+		/// Enumerates the sorted set while avoiding memory allocations
+		/// </summary>
+		public struct ValueEnumerator : IEnumerator<TValue>, IEnumerator
 		{	//****************************************
 			private readonly ObservableSortedSet<TValue> _Parent;
 
@@ -715,18 +523,27 @@ namespace Proximity.Utility.Collections
 			private TValue _Current;
 			//****************************************
 
-			public ValueEnumerator(ObservableSortedSet<TValue> parent)
+			internal ValueEnumerator(ObservableSortedSet<TValue> parent)
 			{
 				_Parent = parent;
+				_Index = 0;
+				_Current = default(TValue);
 			}
 
 			//****************************************
 
+			/// <summary>
+			/// Disposes of the enumerator
+			/// </summary>
 			public void Dispose()
 			{
 				_Current = default(TValue);
 			}
 
+			/// <summary>
+			/// Tries to move to the next item
+			/// </summary>
+			/// <returns>True if there's another item to enumerate, otherwise False</returns>
 			public bool MoveNext()
 			{
 				if (_Index >= _Parent._Size)
@@ -742,7 +559,7 @@ namespace Proximity.Utility.Collections
 				return true;
 			}
 
-			public void Reset()
+			void IEnumerator.Reset()
 			{
 				_Index = 0;
 				_Current = default(TValue);
@@ -750,6 +567,9 @@ namespace Proximity.Utility.Collections
 
 			//****************************************
 
+			/// <summary>
+			/// Gets the current item being enumerated
+			/// </summary>
 			public TValue Current
 			{
 				get { return _Current; }

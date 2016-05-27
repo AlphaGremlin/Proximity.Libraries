@@ -389,5 +389,14 @@ namespace Proximity.Utility.Collections
 				_Dictionary[key] = CreateFrom(value);
 			}
 		}
+
+		/// <summary>
+		/// Gets the equality comparer being used for the Key
+		/// </summary>
+		public IEqualityComparer<TKey> Comparer
+		{
+			get { return _Dictionary.Comparer; }
+		}
+
 	}
 }

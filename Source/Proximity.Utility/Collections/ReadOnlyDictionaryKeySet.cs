@@ -20,17 +20,30 @@ namespace Proximity.Utility.Collections
 #endif
 	{	//****************************************
 		private readonly IDictionary<TKey, TValue> _Set;
+		private readonly IEqualityComparer<TKey> _Comparer;
 		//****************************************
 		
 		/// <summary>
 		/// Creates a new read-only wrapper around a Dictionary Keys
 		/// </summary>
 		/// <param name="dictionary">The dictionary to provide a read-only set around</param>
-		public ReadOnlyDictionaryKeySet(IDictionary<TKey, TValue> dictionary)
+		/// <param name="comparer">The comparer to use when performing set comparisons</param>
+		public ReadOnlyDictionaryKeySet(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey> comparer)
 		{
 			_Set = dictionary;
+			_Comparer = comparer;
 		}
-		
+
+		/// <summary>
+		/// Creates a new read-only wrapper around a Dictionary Keys
+		/// </summary>
+		/// <param name="dictionary">The dictionary to provide a read-only set around</param>
+		public ReadOnlyDictionaryKeySet(Dictionary<TKey, TValue> dictionary)
+		{
+			_Set = dictionary;
+			_Comparer = dictionary.Comparer;
+		}
+
 		//****************************************
 		
 		/// <summary>
@@ -60,7 +73,24 @@ namespace Proximity.Utility.Collections
 		/// <returns>True if this set is a subset of the collection, otherwise False</returns>
 		public bool IsSubsetOf(IEnumerable<TKey> other)
 		{
-			throw new NotImplementedException();
+			if (_Set.Count == 0)
+				return true;
+
+			// If there are less items in the other collection than in us, we cannot be a subset
+			if (other is ICollection<TKey> && ((ICollection<TKey>)other).Count < _Set.Count)
+				return false;
+
+			var UniqueItems = new HashSet<TKey>(_Comparer);
+
+			foreach (var MyItem in other)
+			{
+				// Is this item in the list?
+				if (_Set.ContainsKey(MyItem))
+					UniqueItems.Add(MyItem); // Yes, so it matches
+			}
+
+			// Our dictionary cannot have duplicates, so ensure our number of unique items matches
+			return _Set.Count == UniqueItems.Count;
 		}
 		
 		/// <summary>
@@ -70,6 +100,24 @@ namespace Proximity.Utility.Collections
 		/// <returns>True if this set is a superset of the collection, otherwise False</returns>
 		public bool IsSupersetOf(IEnumerable<TKey> other)
 		{
+			// If the other collection is empty, we're automatically a superset
+			if (!other.Any())
+				return true;
+
+			// If we're empty, we cannot be a superset, since the other collection has items
+			if (_Set.Count == 0)
+				return false;
+
+			if (other is ICollection<TKey>)
+			{
+				int OtherCount = ((ICollection<TKey>)other).Count;
+
+				// If there are more items in the other collection than in us, we cannot be a superset
+				if (OtherCount > _Set.Count)
+					return false;
+			}
+
+			// Check that we have every item in the enumeration
 			foreach (var MyItem in other)
 			{
 				if (!_Set.ContainsKey(MyItem))
@@ -86,7 +134,36 @@ namespace Proximity.Utility.Collections
 		/// <returns>True if this set is a strict superset of the collection, otherwise False</returns>
 		public bool IsProperSupersetOf(IEnumerable<TKey> other)
 		{
-			throw new NotImplementedException();
+			// If we're empty, we cannot be a proper superset
+			if (_Set.Count == 0)
+				return false;
+
+			if (other is ICollection<TKey>)
+			{
+				int OtherCount = ((ICollection<TKey>)other).Count;
+
+				// If the other collection is empty, we're not, so we're automatically a superset
+				if (OtherCount == 0)
+					return true;
+
+				// If there are more items in the other collection than in us, we cannot be a superset
+				if (OtherCount > _Set.Count)
+					return false;
+			}
+
+			var UniqueItems = new HashSet<TKey>(_Comparer);
+
+			// Check that we have every item in the enumeration
+			foreach (var MyItem in other)
+			{
+				if (_Set.ContainsKey(MyItem))
+					UniqueItems.Add(MyItem); // Yes, so add it to our known matches
+				else
+					return false; // Doesn't match, so we're not a superset
+			}
+
+			// Ensure we have at least one more item than in other
+			return _Set.Count > UniqueItems.Count;
 		}
 		
 		/// <summary>
@@ -96,7 +173,27 @@ namespace Proximity.Utility.Collections
 		/// <returns>True if this set is a strict subset of the collection, otherwise False</returns>
 		public bool IsProperSubsetOf(IEnumerable<TKey> other)
 		{
-			throw new NotImplementedException();
+			if (_Set.Count == 0)
+				return other.Any(); // For a proper subset, there has to be at least one item in Other that isn't in us
+
+			// If there are less items in the other collection than in us, we cannot be a subset
+			if (other is ICollection<TKey> && ((ICollection<TKey>)other).Count < _Set.Count)
+				return false;
+
+			var UniqueItems = new HashSet<TKey>(_Comparer);
+			bool FoundExtra = false;
+
+			foreach (var MyItem in other)
+			{
+				// Is this item in the list?
+				if (_Set.ContainsKey(MyItem))
+					UniqueItems.Add(MyItem); // Yes, so it matches
+				else
+					FoundExtra = true;
+			}
+
+			// Our dictionary cannot have duplicates, so ensure our number of unique items matches
+			return FoundExtra && _Set.Count == UniqueItems.Count;
 		}
 		
 		/// <summary>
@@ -106,6 +203,10 @@ namespace Proximity.Utility.Collections
 		/// <returns>True if at least one element is common between this set and the collection, otherwise False</returns>
 		public bool Overlaps(IEnumerable<TKey> other)
 		{
+			// If there's no items, we can't overlap
+			if (_Set.Count == 0)
+				return false;
+
 			foreach (var MyItem in other)
 			{
 				if (_Set.ContainsKey(MyItem))
@@ -114,15 +215,32 @@ namespace Proximity.Utility.Collections
 			
 			return false;
 		}
-		
+
 		/// <summary>
 		/// Checks whether this set and the given collection contain the same elements
 		/// </summary>
 		/// <param name="other">The collection to check against</param>
-		/// <returns>True if they contain the same elements, otherwise FAlse</returns>
+		/// <returns>True if they contain the same elements, otherwise False</returns>
 		public bool SetEquals(IEnumerable<TKey> other)
 		{
-			throw new NotImplementedException();
+			// If we've no items, ensure the other collection is also empty
+			if (_Set.Count == 0)
+				return other.Any();
+
+			var UniqueItems = new HashSet<TKey>(_Comparer);
+
+			foreach (var MyItem in other)
+			{
+				// Is this item in the list?
+				if (!_Set.ContainsKey(MyItem))
+					return false; // No, so fail
+
+				// Since our source enumeration may contain duplicates, build a list of unique items
+				UniqueItems.Add(MyItem);
+			}
+
+			// Our dictionary cannot have duplicates, so ensure our number of unique items matches
+			return _Set.Count == UniqueItems.Count;
 		}
 		
 		/// <summary>

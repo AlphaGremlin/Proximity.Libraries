@@ -21,7 +21,7 @@ namespace Proximity.Utility.Collections
 	{	//****************************************
 		private readonly ICollection<TItem> _Collection;
 		//****************************************
-		
+
 		/// <summary>
 		/// Creates a new read-only wrapper around a collection
 		/// </summary>

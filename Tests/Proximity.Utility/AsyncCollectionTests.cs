@@ -26,7 +26,7 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			var MyTask = MyCollection.Add(42);
-			
+
 			//****************************************
 			
 			Assert.IsTrue(MyTask.IsCompleted, "Still waiting to add");

@@ -16,15 +16,9 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Provides an Observable List supporting BeginUpdate and EndUpdate for batch changes
 	/// </summary>
-	public class ObservableList<TValue> : IList<TValue>, IList, INotifyCollectionChanged, INotifyPropertyChanged
+	public class ObservableList<TValue> : ObservableBase<TValue>, IList<TValue>
 	{	//****************************************
-		private const string CountString = "Count";
-		private const string IndexerName = "Item[]";
-		//****************************************
 		private readonly List<TValue> _Items;
-
-		private int _UpdateCount = 0;
-		private bool _HasChanged = false;
 		//****************************************
 
 		/// <summary>
@@ -55,21 +49,14 @@ namespace Proximity.Utility.Collections
 
 		//****************************************
 
-		/// <summary>
-		/// Adds an element to the collection
-		/// </summary>
-		/// <param name="item">The element to add</param>
-		/// <exception cref="ArgumentNullException">Item was null</exception>
-		public void Add(TValue item)
+		/// <inheritdoc />
+		public override void Add(TValue item)
 		{
 			Insert(_Items.Count, item, true);
 		}
 
-		/// <summary>
-		/// Adds a range of elements to the collection
-		/// </summary>
-		/// <param name="items">The elements to add</param>
-		public void AddRange(IEnumerable<TValue> items)
+		/// <inheritdoc />
+		public override void AddRange(IEnumerable<TValue> items)
 		{
 			bool AddedItem = false;
 			int StartIndex = _Items.Count;
@@ -85,20 +72,6 @@ namespace Proximity.Utility.Collections
 
 			if (AddedItem)
 				OnCollectionChanged(NotifyCollectionChangedAction.Add, items, StartIndex);
-		}
-
-		/// <summary>
-		/// Begins a major update operation, suspending change notifications
-		/// </summary>
-		/// <remarks>Maintains a reference count. Each call to <see cref="BeginUpdate"/> must be matched with a call to <see cref="EndUpdate"/></remarks>
-		public void BeginUpdate()
-		{
-			if (_UpdateCount++ == 0)
-			{
-				OnPropertyChanged("IsUpdating");
-
-				_HasChanged = false;
-			}
 		}
 
 		/// <summary>
@@ -124,10 +97,8 @@ namespace Proximity.Utility.Collections
 			return _Items.BinarySearch(item, comparer);
 		}
 
-		/// <summary>
-		/// Removes all elements from the collection
-		/// </summary>
-		public void Clear()
+		/// <inheritdoc />
+		public override void Clear()
 		{
 			if (_Items.Count > 0)
 			{
@@ -137,59 +108,29 @@ namespace Proximity.Utility.Collections
 			}
 		}
 
-		/// <summary>
-		/// Determines whether the collection contains a specific item
-		/// </summary>
-		/// <param name="item">The item to locate</param>
-		/// <returns>True if the item is in the list, otherwise false</returns>
-		public bool Contains(TValue item)
+		/// <inheritdoc />
+		public override bool Contains(TValue item)
 		{
 			return _Items.Contains(item);
 		}
 
-		/// <summary>
-		/// Copies the elements of the collection to a given array, starting at a specified index
-		/// </summary>
-		/// <param name="array">The destination array</param>
-		/// <param name="arrayIndex">The index into the array to start writing</param>
-		public void CopyTo(TValue[] array, int arrayIndex)
+		/// <inheritdoc />
+		public override void CopyTo(TValue[] array, int arrayIndex)
 		{
 			_Items.CopyTo(array, arrayIndex);
-		}
-
-		/// <summary>
-		/// Ends a major update operation, resuming change notifications
-		/// </summary>
-		/// <remarks>Maintains a reference count. Each call to <see cref="BeginUpdate"/> must be matched with a call to <see cref="EndUpdate"/></remarks>
-		public void EndUpdate()
-		{
-			if (_UpdateCount == 0)
-				return;
-
-			if (--_UpdateCount == 0)
-			{
-				OnPropertyChanged("IsUpdating");
-
-				if (_HasChanged)
-					OnCollectionChanged();
-			}
 		}
 
 		/// <summary>
 		/// Returns an enumerator that iterates through the collection
 		/// </summary>
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
-		public IEnumerator<TValue> GetEnumerator()
+		public List<TValue>.Enumerator GetEnumerator()
 		{
 			return _Items.GetEnumerator();
 		}
 
-		/// <summary>
-		/// Determines the index of a specific item in the list
-		/// </summary>
-		/// <param name="item">The item to locate</param>
-		/// <returns>The index of the item if found, otherwise -1</returns>
-		public int IndexOf(TValue item)
+		/// <inheritdoc />
+		public override int IndexOf(TValue item)
 		{
 			return _Items.IndexOf(item);
 		}
@@ -231,11 +172,8 @@ namespace Proximity.Utility.Collections
 			}
 		}
 
-		/// <summary>
-		/// Removes an element from the collection
-		/// </summary>
-		/// <param name="item">The element to remove</param>
-		public bool Remove(TValue item)
+		/// <inheritdoc />
+		public override bool Remove(TValue item)
 		{
 			var MyIndex = _Items.IndexOf(item);
 
@@ -247,6 +185,54 @@ namespace Proximity.Utility.Collections
 			OnCollectionChanged(NotifyCollectionChangedAction.Remove, item, MyIndex);
 
 			return true;
+		}
+
+		/// <inheritdoc />
+		public override int RemoveAll(Predicate<TValue> predicate)
+		{
+			int Index = 0;
+
+			// Find the first item we need to remove
+			while (Index < _Items.Count && !predicate(_Items[Index]))
+				Index++;
+
+			// Did we find anything?
+			if (Index >= _Items.Count)
+				return 0;
+
+			var RemovedItems = new List<TValue>();
+
+			RemovedItems.Add(_Items[Index]);
+
+			int InnerIndex = Index + 1;
+
+			while (InnerIndex < _Items.Count)
+			{
+				// Skip the items we need to remove
+				while (InnerIndex < _Items.Count && predicate(_Items[InnerIndex]))
+				{
+					RemovedItems.Add(_Items[InnerIndex]);
+
+					InnerIndex++;
+				}
+
+				// If we reached the end, abort
+				if (InnerIndex >= _Items.Count)
+					break;
+
+				// We found one we're not removing, so move it up
+				_Items[Index] = _Items[InnerIndex];
+
+				Index++;
+				InnerIndex++;
+			}
+
+			// Clear the removed items
+			_Items.RemoveRange(Index, _Items.Count - Index);
+
+			OnCollectionChanged(NotifyCollectionChangedAction.Remove, RemovedItems);
+
+			return InnerIndex - Index;
 		}
 
 		/// <summary>
@@ -264,57 +250,34 @@ namespace Proximity.Utility.Collections
 
 		//****************************************
 
-		IEnumerator IEnumerable.GetEnumerator()
+		/// <inheritdoc />
+		protected override TValue InternalGet(int index)
 		{
-			return ((IEnumerable)_Items).GetEnumerator();
+			return _Items[index];
 		}
 
-		int IList.Add(object value)
+		/// <inheritdoc />
+		protected override IEnumerator<TValue> InternalGetEnumerator()
 		{
-			var Count = _Items.Count;
-
-			Insert(Count, (TValue)value, true);
-
-			return Count;
+			return _Items.GetEnumerator();
 		}
 
-		bool IList.Contains(object value)
+		/// <inheritdoc />
+		protected override void InternalInsert(int index, TValue item)
 		{
-			return value is TValue && Contains((TValue)value);
+			_Items.Insert(index, item);
 		}
 
-		int IList.IndexOf(object value)
+		/// <inheritdoc />
+		protected override void InternalRemoveAt(int index)
 		{
-			if (value is TValue)
-				return IndexOf((TValue)value);
-
-			return -1;
+			_Items.RemoveAt(index);
 		}
 
-		void IList.Insert(int index, object value)
+		/// <inheritdoc />
+		protected override void InternalSet(int index, TValue value)
 		{
-			Insert(index, (TValue)value, false);
-		}
-
-		void IList.Remove(object value)
-		{
-			if (value is TValue)
-				Remove((TValue)value);
-		}
-
-		void ICollection.CopyTo(Array array, int index)
-		{
-			((IList)_Items).CopyTo(array, index);
-		}
-
-		/// <summary>
-		/// Raises the PropertyChanged event
-		/// </summary>
-		/// <param name="propertyName">The name of the property that has changed</param>
-		protected virtual void OnPropertyChanged(string propertyName)
-		{
-			if (_UpdateCount == 0 && PropertyChanged != null)
-				PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+			_Items[index] = value;
 		}
 
 		//****************************************
@@ -336,75 +299,7 @@ namespace Proximity.Utility.Collections
 			}
 		}
 
-		private void OnPropertyChanged()
-		{
-			OnPropertyChanged(CountString);
-			OnPropertyChanged(IndexerName);
-		}
-
-		private void OnCollectionChanged()
-		{
-			_HasChanged = true;
-
-			if (_UpdateCount != 0)
-				return;
-
-			OnPropertyChanged();
-
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
-		}
-
-		private void OnCollectionChanged(NotifyCollectionChangedAction action, TValue changedItem, int index)
-		{
-			_HasChanged = true;
-
-			if (_UpdateCount != 0)
-				return;
-
-			OnPropertyChanged();
-
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, changedItem, index));
-		}
-
-		private void OnCollectionChanged(NotifyCollectionChangedAction action, TValue newItem, TValue oldItem, int index)
-		{
-			_HasChanged = true;
-
-			if (_UpdateCount != 0)
-				return;
-
-			OnPropertyChanged(IndexerName); // Only the indexer has changed, the count is the same
-
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItem, oldItem, index));
-		}
-
-		private void OnCollectionChanged(NotifyCollectionChangedAction action, IEnumerable<TValue> newItems, int startIndex)
-		{
-			_HasChanged = true;
-
-			if (_UpdateCount != 0)
-				return;
-
-			OnPropertyChanged();
-
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItems.ToArray(), startIndex));
-		}
-
 		//****************************************
-
-		/// <summary>
-		/// Raised when the collection changes
-		/// </summary>
-		public event NotifyCollectionChangedEventHandler CollectionChanged;
-
-		/// <summary>
-		/// Raised when a property of the collection changes
-		/// </summary>
-		public event PropertyChangedEventHandler PropertyChanged;
 
 		/// <summary>
 		/// Gets/Sets the value at the provided index
@@ -416,28 +311,10 @@ namespace Proximity.Utility.Collections
 			set { Insert(index, value, false); }
 		}
 
-		/// <summary>
-		/// Gets the number of items in the collection
-		/// </summary>
-		public int Count
+		/// <inheritdoc />
+		public override int Count
 		{
 			get { return _Items.Count; }
-		}
-
-		/// <summary>
-		/// Gets whether this collection is read-only
-		/// </summary>
-		public bool IsReadOnly
-		{
-			get { return false; }
-		}
-
-		/// <summary>
-		/// Gets whether an update is in progress via <see cref="BeginUpdate" /> and <see cref="EndUpdate" />
-		/// </summary>
-		public bool IsUpdating
-		{
-			get { return _UpdateCount != 0; }
 		}
 
 		/// <summary>
@@ -446,27 +323,6 @@ namespace Proximity.Utility.Collections
 		protected List<TValue> Items
 		{
 			get { return _Items; }
-		}
-
-		object IList.this[int index]
-		{
-			get { return _Items[index]; }
-			set { Insert(index, (TValue)value, false); }
-		}
-
-		bool IList.IsFixedSize
-		{
-			get { return false; }
-		}
-
-		bool ICollection.IsSynchronized
-		{
-			get { return false; }
-		}
-
-		object ICollection.SyncRoot
-		{
-			get { return this; }
 		}
 	}
 }

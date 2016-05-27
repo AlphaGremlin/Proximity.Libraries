@@ -15,10 +15,8 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Implements an Observable Sorted List for WPF binding
 	/// </summary>
-	public class ObservableSortedList<TKey, TValue> : IDictionary<TKey, TValue>, IList<KeyValuePair<TKey, TValue>>, IList, INotifyCollectionChanged, INotifyPropertyChanged
+	public class ObservableSortedList<TKey, TValue> : ObservableBase<KeyValuePair<TKey, TValue>>, IDictionary<TKey, TValue>, IList<KeyValuePair<TKey, TValue>>
 	{	//****************************************
-		private const string CountString = "Count";
-		private const string IndexerName = "Item[]";
 		private const string KeysName = "Keys";
 		private const string ValuesName = "Values";
 		//****************************************
@@ -26,10 +24,9 @@ namespace Proximity.Utility.Collections
 		private TValue[] _Values;
 		private readonly IComparer<TKey> _Comparer;
 
-		private readonly ObservableDictionaryCollection<TKey> _KeyCollection;
-		private readonly ObservableDictionaryCollection<TValue> _ValueCollection;
+		private readonly KeyCollection _KeyCollection;
+		private readonly ValueCollection _ValueCollection;
 
-		private int _UpdateCount = 0;
 		private int _Size = 0;
 		//****************************************
 
@@ -100,8 +97,8 @@ namespace Proximity.Utility.Collections
 			Array.Sort<TKey, TValue>(_Keys, _Values, _Comparer);
 #endif
 
-			_KeyCollection = new ObservableDictionaryCollection<TKey>(new KeyCollection(this));
-			_ValueCollection = new ObservableDictionaryCollection<TValue>(new ValueCollection(this));
+			_KeyCollection = new KeyCollection(this);
+			_ValueCollection = new ValueCollection(this);
 		}
 
 		/// <summary>
@@ -115,8 +112,8 @@ namespace Proximity.Utility.Collections
 			_Values = new TValue[capacity];
 			_Comparer = comparer;
 
-			_KeyCollection = new ObservableDictionaryCollection<TKey>(new KeyCollection(this));
-			_ValueCollection = new ObservableDictionaryCollection<TValue>(new ValueCollection(this));
+			_KeyCollection = new KeyCollection(this);
+			_ValueCollection = new ValueCollection(this);
 		}
 
 		//****************************************
@@ -131,12 +128,8 @@ namespace Proximity.Utility.Collections
 			Add(new KeyValuePair<TKey, TValue>(key, value));
 		}
 
-		/// <summary>
-		/// Adds an element to the collection
-		/// </summary>
-		/// <param name="item">The element to add</param>
-		/// <exception cref="ArgumentNullException">Item was null</exception>
-		public void Add(KeyValuePair<TKey, TValue> item)
+		/// <inheritdoc />
+		public override void Add(KeyValuePair<TKey, TValue> item)
 		{	//****************************************
 			int Index = Insert(item);
 			//****************************************
@@ -147,11 +140,8 @@ namespace Proximity.Utility.Collections
 			OnCollectionChanged(NotifyCollectionChangedAction.Add, item, Index);
 		}
 
-		/// <summary>
-		/// Adds a range of elements to the collection
-		/// </summary>
-		/// <param name="items">The elements to add</param>
-		public void AddRange(IEnumerable<KeyValuePair<TKey, TValue>> items)
+		/// <inheritdoc />
+		public override void AddRange(IEnumerable<KeyValuePair<TKey, TValue>> items)
 		{
 			if (items == null)
 				throw new ArgumentNullException("items");
@@ -171,15 +161,6 @@ namespace Proximity.Utility.Collections
 		}
 
 		/// <summary>
-		/// Begins a major update operation, suspending change notifications
-		/// </summary>
-		/// <remarks>Maintains a reference count. Each call to <see cref="BeginUpdate"/> must be matched with a call to <see cref="EndUpdate"/></remarks>
-		public void BeginUpdate()
-		{
-			_UpdateCount++;
-		}
-
-		/// <summary>
 		/// Performs a Binary Search for the given key
 		/// </summary>
 		/// <param name="item">The item to search for</param>
@@ -189,10 +170,8 @@ namespace Proximity.Utility.Collections
 			return Array.BinarySearch<TKey>(_Keys, 0, _Size, item, _Comparer);
 		}
 
-		/// <summary>
-		/// Removes all elements from the collection
-		/// </summary>
-		public void Clear()
+		/// <inheritdoc />
+		public override void Clear()
 		{
 			if (_Size > 0)
 			{
@@ -204,12 +183,8 @@ namespace Proximity.Utility.Collections
 			}
 		}
 
-		/// <summary>
-		/// Determines whether the collection contains a specific item
-		/// </summary>
-		/// <param name="item">The item to locate</param>
-		/// <returns>True if the item is in the list, otherwise false</returns>
-		public bool Contains(KeyValuePair<TKey, TValue> item)
+		/// <inheritdoc />
+		public override bool Contains(KeyValuePair<TKey, TValue> item)
 		{
 			return IndexOf(item) >= 0;
 		}
@@ -234,37 +209,23 @@ namespace Proximity.Utility.Collections
 			return IndexOfValue(value) >= 0;
 		}
 
-		/// <summary>
-		/// Copies the elements of the collection to a given array, starting at a specified index
-		/// </summary>
-		/// <param name="array">The destination array</param>
-		/// <param name="arrayIndex">The index into the array to start writing</param>
-		public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
+		/// <inheritdoc />
+		public override void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
 		{
 			Array.Copy(_Values, 0, array, arrayIndex, _Size);
 		}
 
 		/// <summary>
-		/// Ends a major update operation, resuming change notifications
+		/// Returns an enumerator that iterates through the collection
 		/// </summary>
-		/// <remarks>Maintains a reference count. Each call to <see cref="BeginUpdate"/> must be matched with a call to <see cref="EndUpdate"/></remarks>
-		public void EndUpdate()
+		/// <returns>An enumerator that can be used to iterate through the collection</returns>
+		public KeyValueEnumerator GetEnumerator()
 		{
-			if (_UpdateCount == 0)
-				return;
-
-			_UpdateCount--;
-
-			// Raise changes (only if we're zero)
-			OnCollectionChanged();
+			return new KeyValueEnumerator(this);
 		}
 
-		/// <summary>
-		/// Searches for the specified key/value pair and returns the zero-based index within the ObservableSortedList
-		/// </summary>
-		/// <param name="item">The key/value pair to search for</param>
-		/// <returns>True if a matching key/value pair was found, otherwise -1</returns>
-		public int IndexOf(KeyValuePair<TKey, TValue> item)
+		/// <inheritdoc />
+		public override int IndexOf(KeyValuePair<TKey, TValue> item)
 		{
 			var MyIndex = IndexOfKey(item.Key);
 
@@ -330,11 +291,8 @@ namespace Proximity.Utility.Collections
 			return true;
 		}
 
-		/// <summary>
-		/// Removes an element from the collection
-		/// </summary>
-		/// <param name="item">The element to remove</param>
-		public bool Remove(KeyValuePair<TKey, TValue> item)
+		/// <inheritdoc />
+		public override bool Remove(KeyValuePair<TKey, TValue> item)
 		{
 			if (item.Key == null) throw new ArgumentNullException("key");
 
@@ -350,6 +308,72 @@ namespace Proximity.Utility.Collections
 			OnCollectionChanged(NotifyCollectionChangedAction.Remove, item, Index);
 
 			return true;
+		}
+
+		/// <inheritdoc />
+		public override int RemoveAll(Predicate<KeyValuePair<TKey, TValue>> predicate)
+		{	//****************************************
+			int Index = 0;
+			var MyItem = default(KeyValuePair<TKey, TValue>);
+			//****************************************
+
+			// Find the first item we need to remove
+			while (Index < _Size)
+			{
+				MyItem = new KeyValuePair<TKey, TValue>(_Keys[Index], _Values[Index]);
+
+				if (predicate(MyItem))
+					break;
+
+				Index++;
+			}
+
+			// Did we find anything?
+			if (Index >= _Size)
+				return 0;
+
+			var RemovedItems = new List<KeyValuePair<TKey, TValue>>();
+
+			RemovedItems.Add(MyItem);
+
+			int InnerIndex = Index + 1;
+
+			while (InnerIndex < _Size)
+			{
+				// Skip the items we need to remove
+				while (InnerIndex < _Size)
+				{
+					MyItem = new KeyValuePair<TKey, TValue>(_Keys[InnerIndex], _Values[InnerIndex]);
+
+					if (!predicate(MyItem))
+						break;
+
+					RemovedItems.Add(MyItem);
+
+					InnerIndex++;
+				}
+
+				// If we reached the end, abort
+				if (InnerIndex >= _Size)
+					break;
+
+				// We found one we're not removing, so move it up
+				_Keys[Index] = _Keys[InnerIndex];
+				_Values[Index] = _Values[InnerIndex];
+
+				Index++;
+				InnerIndex++;
+			}
+
+			// Clear the removed items
+			Array.Clear(_Keys, Index, _Size - Index);
+			Array.Clear(_Values, Index, _Size - Index);
+
+			_Size = Index;
+
+			OnCollectionChanged(NotifyCollectionChangedAction.Remove, RemovedItems);
+
+			return InnerIndex - Index;
 		}
 
 		/// <summary>
@@ -402,83 +426,109 @@ namespace Proximity.Utility.Collections
 			return true;
 		}
 
-		/// <summary>
-		/// Returns an enumerator that iterates through the collection
-		/// </summary>
-		/// <returns>An enumerator that can be used to iterate through the collection</returns>
-		public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
-		{
-			return new KeyValueEnumerator(this);
-		}
-
 		//****************************************
 
-		IEnumerator IEnumerable.GetEnumerator()
+		/// <inheritdoc />
+		protected override KeyValuePair<TKey, TValue> InternalGet(int index)
+		{
+			return new KeyValuePair<TKey, TValue>(_Keys[index], _Values[index]);
+		}
+
+		/// <inheritdoc />
+		protected override IEnumerator<KeyValuePair<TKey, TValue>> InternalGetEnumerator()
 		{
 			return new KeyValueEnumerator(this);
 		}
 
-		int IList.Add(object value)
-		{	//****************************************
-			int Index;
-			KeyValuePair<TKey, TValue> NewValue;
-			//****************************************
-
-			if (!(value is KeyValuePair<TKey, TValue>))
-				throw new ArgumentException("Value is not of the required type");
-
-			NewValue = (KeyValuePair<TKey, TValue>)value;
-
-			Index = Insert(NewValue);
-
-			if (Index != -1)
-				OnCollectionChanged(NotifyCollectionChangedAction.Add, NewValue, Index);
-
-			return Index;
-		}
-
-		bool IList.Contains(object value)
-		{
-			return value is KeyValuePair<TKey, TValue> && Contains((KeyValuePair<TKey, TValue>)value);
-		}
-
-		void ICollection.CopyTo(Array array, int arrayIndex)
-		{
-			Array.Copy(_Values, 0, array, arrayIndex, _Size);
-		}
-
-		int IList.IndexOf(object value)
-		{
-			if (value is KeyValuePair<TKey, TValue>)
-				return IndexOf((KeyValuePair<TKey, TValue>)value);
-
-			return -1;
-		}
-
-		void IList<KeyValuePair<TKey, TValue>>.Insert(int index, KeyValuePair<TKey, TValue> item)
+		/// <inheritdoc />
+		protected override void InternalInsert(int index, KeyValuePair<TKey, TValue> item)
 		{
 			throw new NotSupportedException("Cannot insert into a dictionary");
 		}
 
-		void IList.Insert(int index, object value)
+		/// <inheritdoc />
+		protected override void InternalRemoveAt(int index)
 		{
-			throw new NotSupportedException();
+			RemoveAt(index);
 		}
 
-		void IList.Remove(object value)
+		/// <inheritdoc />
+		protected override void InternalSet(int index, KeyValuePair<TKey, TValue> value)
 		{
-			if (value is KeyValuePair<TKey, TValue>)
-				Remove((KeyValuePair<TKey, TValue>)value);
+			if (index < 0 || index >= _Size)
+				throw new ArgumentOutOfRangeException("index");
+
+			// Are we changing the key?
+			var OldKey = _Keys[index];
+
+			if (!Equals(OldKey, value.Key))
+				throw new InvalidOperationException();
+
+			var OldValue = _Values[index];
+
+			if (Equals(OldValue, value.Value))
+				return;
+
+			_Values[index] = value.Value;
+
+			OnCollectionChanged(NotifyCollectionChangedAction.Replace, value, new KeyValuePair<TKey, TValue>(OldKey, OldValue), index);
 		}
 
-		/// <summary>
-		/// Raises the PropertyChanged event
-		/// </summary>
-		/// <param name="propertyName">The name of the property that has changed</param>
-		protected virtual void OnPropertyChanged(string propertyName)
+		/// <inheritdoc />
+		protected override void OnPropertyChanged()
 		{
-			if (_UpdateCount == 0 && PropertyChanged != null)
-				PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+			base.OnPropertyChanged();
+
+			OnPropertyChanged(KeysName);
+			OnPropertyChanged(ValuesName);
+		}
+
+		/// <inheritdoc />
+		protected override void OnCollectionChanged()
+		{
+			base.OnCollectionChanged();
+
+			if (IsUpdating)
+				return;
+
+			_KeyCollection.OnCollectionChanged();
+			_ValueCollection.OnCollectionChanged();
+		}
+
+		/// <inheritdoc />
+		protected override void OnCollectionChanged(NotifyCollectionChangedAction action, KeyValuePair<TKey, TValue> changedItem, int index)
+		{
+			base.OnCollectionChanged(action, changedItem, index);
+
+			if (IsUpdating)
+				return;
+
+			_KeyCollection.OnCollectionChanged(action, changedItem.Key, index);
+			_ValueCollection.OnCollectionChanged(action, changedItem.Value, index);
+		}
+
+		/// <inheritdoc />
+		protected override void OnCollectionChanged(NotifyCollectionChangedAction action, KeyValuePair<TKey, TValue> newItem, KeyValuePair<TKey, TValue> oldItem, int index)
+		{
+			base.OnCollectionChanged(action, newItem, oldItem, index);
+
+			if (IsUpdating)
+				return;
+
+			_KeyCollection.OnCollectionChanged(action, newItem.Key, oldItem.Key, index);
+			_ValueCollection.OnCollectionChanged(action, newItem.Value, oldItem.Value, index);
+		}
+
+		/// <inheritdoc />
+		protected override void OnCollectionChanged(NotifyCollectionChangedAction action, IEnumerable<KeyValuePair<TKey, TValue>> changedItems)
+		{
+			base.OnCollectionChanged(action, changedItems);
+
+			if (IsUpdating)
+				return;
+
+			_KeyCollection.OnCollectionChanged(action, changedItems.Select(pair => pair.Key));
+			_ValueCollection.OnCollectionChanged(action, changedItems.Select(pair => pair.Value));
 		}
 
 		//****************************************
@@ -560,116 +610,18 @@ namespace Proximity.Utility.Collections
 			_Size++;
 		}
 
-		private void OnPropertyChanged()
-		{
-			OnPropertyChanged(CountString);
-			OnPropertyChanged(IndexerName);
-			OnPropertyChanged(KeysName);
-			OnPropertyChanged(ValuesName);
-		}
-
-		private void OnCollectionChanged()
-		{
-			if (_UpdateCount != 0)
-				return;
-
-			OnPropertyChanged();
-
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
-
-			_KeyCollection.OnCollectionChanged();
-			_ValueCollection.OnCollectionChanged();
-		}
-
-		private void OnCollectionChanged(NotifyCollectionChangedAction action, KeyValuePair<TKey, TValue> changedItem)
-		{
-			if (_UpdateCount != 0)
-				return;
-
-			OnPropertyChanged();
-
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, changedItem));
-
-			_KeyCollection.OnCollectionChanged(action, changedItem.Key);
-			_ValueCollection.OnCollectionChanged(action, changedItem.Value);
-		}
-
-		private void OnCollectionChanged(NotifyCollectionChangedAction action, KeyValuePair<TKey, TValue> changedItem, int index)
-		{
-			if (_UpdateCount != 0)
-				return;
-
-			OnPropertyChanged();
-
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, changedItem, index));
-
-			_KeyCollection.OnCollectionChanged(action, changedItem.Key, index);
-			_ValueCollection.OnCollectionChanged(action, changedItem.Value, index);
-		}
-
-		private void OnCollectionChanged(NotifyCollectionChangedAction action, KeyValuePair<TKey, TValue> newItem, KeyValuePair<TKey, TValue> oldItem, int index)
-		{
-			if (_UpdateCount != 0)
-				return;
-
-			OnPropertyChanged();
-
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItem, oldItem, index));
-
-			_KeyCollection.OnCollectionChanged(action, newItem.Key, oldItem.Key, index);
-			_ValueCollection.OnCollectionChanged(action, newItem.Value, oldItem.Value, index);
-		}
-
-		private void OnCollectionChanged(NotifyCollectionChangedAction action, IEnumerable<KeyValuePair<TKey, TValue>> newItems)
-		{
-			if (_UpdateCount != 0)
-				return;
-
-			OnPropertyChanged();
-
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItems.ToArray()));
-
-			_KeyCollection.OnCollectionChanged(action, newItems.Select(pair => pair.Key));
-			_ValueCollection.OnCollectionChanged(action, newItems.Select(pair => pair.Value));
-		}
-
 		//****************************************
 
-		/// <summary>
-		/// Raised when the collection changes
-		/// </summary>
-		public event NotifyCollectionChangedEventHandler CollectionChanged;
-
-		/// <summary>
-		/// Raised when a property of the dictionary changes
-		/// </summary>
-		public event PropertyChangedEventHandler PropertyChanged;
-
-		/// <summary>
-		/// Gets the number of items in the collection
-		/// </summary>
-		public int Count
+		/// <inheritdoc />
+		public override int Count
 		{
 			get { return _Size; }
 		}
 
 		/// <summary>
-		/// Gets whether this collection is read-only
-		/// </summary>
-		public bool IsReadOnly
-		{
-			get { return false; }
-		}
-
-		/// <summary>
 		/// Gets a read-only collection of the dictionary keys
 		/// </summary>
-		public ObservableDictionaryCollection<TKey> Keys
+		public KeyCollection Keys
 		{
 			get { return _KeyCollection; }
 		}
@@ -677,7 +629,7 @@ namespace Proximity.Utility.Collections
 		/// <summary>
 		/// Gets a read-only collection of the dictionary values
 		/// </summary>
-		public ObservableDictionaryCollection<TValue> Values
+		public ValueCollection Values
 		{
 			get { return _ValueCollection; }
 		}
@@ -698,14 +650,6 @@ namespace Proximity.Utility.Collections
 				throw new KeyNotFoundException();
 			}
 			set { SetKey(key, value); }
-		}
-
-		/// <summary>
-		/// Gets whether an update is in progress via <see cref="BeginUpdate" /> and <see cref="EndUpdate" />
-		/// </summary>
-		public bool IsUpdating
-		{
-			get { return _UpdateCount != 0; }
 		}
 
 		/// <summary>
@@ -761,185 +705,35 @@ namespace Proximity.Utility.Collections
 			get { return _ValueCollection; }
 		}
 
-		KeyValuePair<TKey, TValue> IList<KeyValuePair<TKey, TValue>>.this[int index]
-		{
-			get { return new KeyValuePair<TKey, TValue>(_Keys[index], _Values[index]); }
-			set
-			{
-				if (index < 0 || index >= _Size)
-					throw new ArgumentOutOfRangeException("index");
-
-				// Are we changing the key?
-				var OldKey = _Keys[index];
-
-				if (!Equals(OldKey, value.Key))
-					throw new InvalidOperationException();
-
-				var OldValue = _Values[index];
-
-				if (Equals(OldValue, value.Value))
-					return;
-
-				_Values[index] = value.Value;
-
-				OnCollectionChanged(NotifyCollectionChangedAction.Replace, value, new KeyValuePair<TKey, TValue>(OldKey, OldValue), index);
-			}
-		}
-
-		object IList.this[int index]
-		{
-			get { return _Values[index]; }
-			set { throw new NotSupportedException("List is read-only"); }
-		}
-
-		bool IList.IsFixedSize
-		{
-			get { return false; }
-		}
-
-		bool ICollection.IsSynchronized
-		{
-			get { return false; }
-		}
-
-		object ICollection.SyncRoot
-		{
-			get { return this; }
-		}
-
 		//****************************************
 
-		private class KeyCollection : IList<TKey>
+		/// <summary>
+		/// Provides an observable collection over the Sorted List Keys
+		/// </summary>
+		public sealed class KeyCollection : ObservableDictionaryCollection<TKey>
 		{	//****************************************
 			private readonly ObservableSortedList<TKey, TValue> _Parent;
 			//****************************************
 
-			public KeyCollection(ObservableSortedList<TKey, TValue> parent)
+			internal KeyCollection(ObservableSortedList<TKey, TValue> parent)
 			{
 				_Parent = parent;
 			}
 
 			//****************************************
 
-			int IList<TKey>.IndexOf(TKey item)
-			{
-				return _Parent.IndexOfKey(item);
-			}
-
-			void IList<TKey>.Insert(int index, TKey item)
-			{
-				throw new NotSupportedException("Collection is read-only");
-			}
-
-			void IList<TKey>.RemoveAt(int index)
-			{
-				throw new NotSupportedException("Collection is read-only");
-			}
-
-			void ICollection<TKey>.Add(TKey item)
-			{
-				throw new NotSupportedException("Collection is read-only");
-			}
-
-			void ICollection<TKey>.Clear()
-			{
-				throw new NotSupportedException("Collection is read-only");
-			}
-
-			bool ICollection<TKey>.Contains(TKey item)
+			/// <inheritdoc />
+			public override bool Contains(TKey item)
 			{
 				return _Parent.ContainsKey(item);
 			}
 
-			void ICollection<TKey>.CopyTo(TKey[] array, int arrayIndex)
-			{
-				var MyKeys = _Parent._Keys;
+			/// <inheritdoc />
+			public override void CopyTo(TKey[] array, int arrayIndex)
+			{	//****************************************
+				var MyValues = _Parent._Keys;
 				var MySize = _Parent._Size;
-
-				for (int Index = 0; Index < MySize; Index++)
-				{
-					array[arrayIndex++] = MyKeys[Index];
-				}
-			}
-
-			bool ICollection<TKey>.Remove(TKey item)
-			{
-				throw new NotSupportedException("Collection is read-only");
-			}
-
-			IEnumerator<TKey> IEnumerable<TKey>.GetEnumerator()
-			{
-				return new KeyEnumerator(_Parent);
-			}
-
-			IEnumerator IEnumerable.GetEnumerator()
-			{
-				return new KeyEnumerator(_Parent);
-			}
-
-			TKey IList<TKey>.this[int index]
-			{
-				get { return _Parent._Keys[index]; }
-				set { throw new NotSupportedException("Collection is read-only"); }
-			}
-
-			int ICollection<TKey>.Count
-			{
-				get { return _Parent._Size; }
-			}
-
-			bool ICollection<TKey>.IsReadOnly
-			{
-				get { return true; }
-			}
-		}
-
-		private class ValueCollection : IList<TValue>
-		{	//****************************************
-			private readonly ObservableSortedList<TKey, TValue> _Parent;
-			//****************************************
-
-			public ValueCollection(ObservableSortedList<TKey, TValue> parent)
-			{
-				_Parent = parent;
-			}
-
-			//****************************************
-
-			int IList<TValue>.IndexOf(TValue item)
-			{
-				return _Parent.IndexOfValue(item);
-			}
-
-			void IList<TValue>.Insert(int index, TValue item)
-			{
-				throw new NotSupportedException("Collection is read-only");
-			}
-
-			void IList<TValue>.RemoveAt(int index)
-			{
-				throw new NotSupportedException("Collection is read-only");
-			}
-
-			void ICollection<TValue>.Add(TValue item)
-			{
-				throw new NotSupportedException("Collection is read-only");
-			}
-
-			void ICollection<TValue>.Clear()
-			{
-				throw new NotSupportedException("Collection is read-only");
-			}
-
-			bool ICollection<TValue>.Contains(TValue item)
-			{
-				return _Parent.ContainsValue(item);
-			}
-
-			void ICollection<TValue>.CopyTo(TValue[] array, int arrayIndex)
-			{
-				var MyValues = _Parent._Values;
-				var MySize = _Parent._Size;
+				//****************************************
 
 				for (int Index = 0; Index < MySize; Index++)
 				{
@@ -947,39 +741,136 @@ namespace Proximity.Utility.Collections
 				}
 			}
 
-			bool ICollection<TValue>.Remove(TValue item)
+			/// <inheritdoc />
+			public new KeyEnumerator GetEnumerator()
 			{
-				throw new NotSupportedException("Collection is read-only");
+				return new KeyEnumerator(_Parent);
 			}
 
-			IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator()
+			/// <inheritdoc />
+			public override int IndexOf(TKey item)
 			{
-				return new ValueEnumerator(_Parent);
+				return _Parent.IndexOfKey(item);
 			}
 
-			IEnumerator IEnumerable.GetEnumerator()
-			{
-				return new ValueEnumerator(_Parent);
+			//****************************************
+
+			internal override void InternalCopyTo(Array array, int arrayIndex)
+			{	//****************************************
+				var MyValues = _Parent._Keys;
+				var MySize = _Parent._Size;
+				//****************************************
+
+				for (int Index = 0; Index < MySize; Index++)
+				{
+					array.SetValue(MyValues[Index], arrayIndex++);
+				}
 			}
 
-			TValue IList<TValue>.this[int index]
+			internal override IEnumerator<TKey> InternalGetEnumerator()
 			{
-				get { return _Parent._Values[index]; }
-				set { throw new NotSupportedException("Collection is read-only"); }
+				return new KeyEnumerator(_Parent);
 			}
 
-			int ICollection<TValue>.Count
+			//****************************************
+
+			/// <inheritdoc />
+			public override TKey this[int index]
+			{
+				get { return _Parent._Keys[index]; }
+			}
+
+			/// <inheritdoc />
+			public override int Count
 			{
 				get { return _Parent._Size; }
 			}
+		}
 
-			bool ICollection<TValue>.IsReadOnly
+		/// <summary>
+		/// Provides an observable collection over the Sorted List Values
+		/// </summary>
+		public sealed class ValueCollection : ObservableDictionaryCollection<TValue>
+		{	//****************************************
+			private readonly ObservableSortedList<TKey, TValue> _Parent;
+			//****************************************
+
+			internal ValueCollection(ObservableSortedList<TKey, TValue> parent)
 			{
-				get { return true; }
+				_Parent = parent;
+			}
+
+			//****************************************
+
+			/// <inheritdoc />
+			public override bool Contains(TValue item)
+			{
+				return _Parent.ContainsValue(item);
+			}
+
+			/// <inheritdoc />
+			public override void CopyTo(TValue[] array, int arrayIndex)
+			{	//****************************************
+				var MyValues = _Parent._Values;
+				var MySize = _Parent._Size;
+				//****************************************
+
+				for (int Index = 0; Index < MySize; Index++)
+				{
+					array[arrayIndex++] = MyValues[Index];
+				}
+			}
+
+			/// <inheritdoc />
+			public new ValueEnumerator GetEnumerator()
+			{
+				return new ValueEnumerator(_Parent);
+			}
+
+			/// <inheritdoc />
+			public override int IndexOf(TValue item)
+			{
+				return _Parent.IndexOfValue(item);
+			}
+
+			//****************************************
+
+			internal override void InternalCopyTo(Array array, int arrayIndex)
+			{	//****************************************
+				var MyValues = _Parent._Values;
+				var MySize = _Parent._Size;
+				//****************************************
+
+				for (int Index = 0; Index < MySize; Index++)
+				{
+					array.SetValue(MyValues[Index], arrayIndex++);
+				}
+			}
+
+			internal override IEnumerator<TValue> InternalGetEnumerator()
+			{
+				return new ValueEnumerator(_Parent);
+			}
+
+			//****************************************
+
+			/// <inheritdoc />
+			public override TValue this[int index]
+			{
+				get { return _Parent._Values[index]; }
+			}
+
+			/// <inheritdoc />
+			public override int Count
+			{
+				get { return _Parent._Size; }
 			}
 		}
 
-		private sealed class KeyValueEnumerator : IEnumerator<KeyValuePair<TKey, TValue>>, IEnumerator
+		/// <summary>
+		/// Enumerates the sorted list while avoiding memory allocations
+		/// </summary>
+		public struct KeyValueEnumerator : IEnumerator<KeyValuePair<TKey, TValue>>, IEnumerator
 		{	//****************************************
 			private readonly ObservableSortedList<TKey, TValue> _Parent;
 
@@ -987,18 +878,27 @@ namespace Proximity.Utility.Collections
 			private KeyValuePair<TKey, TValue> _Current;
 			//****************************************
 
-			public KeyValueEnumerator(ObservableSortedList<TKey, TValue> parent)
+			internal KeyValueEnumerator(ObservableSortedList<TKey, TValue> parent)
 			{
 				_Parent = parent;
+				_Index = 0;
+				_Current = default(KeyValuePair<TKey, TValue>);
 			}
 
 			//****************************************
 
+			/// <summary>
+			/// Disposes of the enumerator
+			/// </summary>
 			public void Dispose()
 			{
 				_Current = default(KeyValuePair<TKey, TValue>);
 			}
 
+			/// <summary>
+			/// Tries to move to the next item
+			/// </summary>
+			/// <returns>True if there's another item to enumerate, otherwise False</returns>
 			public bool MoveNext()
 			{
 				if (_Index >= _Parent._Size)
@@ -1016,7 +916,7 @@ namespace Proximity.Utility.Collections
 				return true;
 			}
 
-			public void Reset()
+			void IEnumerator.Reset()
 			{
 				_Index = 0;
 				_Current = default(KeyValuePair<TKey, TValue>);
@@ -1024,6 +924,9 @@ namespace Proximity.Utility.Collections
 
 			//****************************************
 
+			/// <summary>
+			/// Gets the current item being enumerated
+			/// </summary>
 			public KeyValuePair<TKey, TValue> Current
 			{
 				get { return _Current; }
@@ -1035,7 +938,10 @@ namespace Proximity.Utility.Collections
 			}
 		}
 
-		private sealed class KeyEnumerator : IEnumerator<TKey>, IEnumerator
+		/// <summary>
+		/// Enumerates the sorted list keys while avoiding memory allocations
+		/// </summary>
+		public struct KeyEnumerator : IEnumerator<TKey>, IEnumerator
 		{	//****************************************
 			private readonly ObservableSortedList<TKey, TValue> _Parent;
 
@@ -1043,18 +949,27 @@ namespace Proximity.Utility.Collections
 			private TKey _Current;
 			//****************************************
 
-			public KeyEnumerator(ObservableSortedList<TKey, TValue> parent)
+			internal KeyEnumerator(ObservableSortedList<TKey, TValue> parent)
 			{
 				_Parent = parent;
+				_Index = 0;
+				_Current = default(TKey);
 			}
 
 			//****************************************
 
+			/// <summary>
+			/// Disposes of the enumerator
+			/// </summary>
 			public void Dispose()
 			{
 				_Current = default(TKey);
 			}
 
+			/// <summary>
+			/// Tries to move to the next item
+			/// </summary>
+			/// <returns>True if there's another item to enumerate, otherwise False</returns>
 			public bool MoveNext()
 			{
 				if (_Index >= _Parent._Size)
@@ -1070,7 +985,7 @@ namespace Proximity.Utility.Collections
 				return true;
 			}
 
-			public void Reset()
+			void IEnumerator.Reset()
 			{
 				_Index = 0;
 				_Current = default(TKey);
@@ -1078,6 +993,9 @@ namespace Proximity.Utility.Collections
 
 			//****************************************
 
+			/// <summary>
+			/// Gets the current item being enumerated
+			/// </summary>
 			public TKey Current
 			{
 				get { return _Current; }
@@ -1089,7 +1007,10 @@ namespace Proximity.Utility.Collections
 			}
 		}
 
-		private sealed class ValueEnumerator : IEnumerator<TValue>, IEnumerator
+		/// <summary>
+		/// Enumerates the sorted list values while avoiding memory allocations
+		/// </summary>
+		public struct ValueEnumerator : IEnumerator<TValue>, IEnumerator
 		{	//****************************************
 			private readonly ObservableSortedList<TKey, TValue> _Parent;
 
@@ -1097,18 +1018,27 @@ namespace Proximity.Utility.Collections
 			private TValue _Current;
 			//****************************************
 
-			public ValueEnumerator(ObservableSortedList<TKey, TValue> parent)
+			internal ValueEnumerator(ObservableSortedList<TKey, TValue> parent)
 			{
 				_Parent = parent;
+				_Index = 0;
+				_Current = default(TValue);
 			}
 
 			//****************************************
 
+			/// <summary>
+			/// Disposes of the enumerator
+			/// </summary>
 			public void Dispose()
 			{
 				_Current = default(TValue);
 			}
 
+			/// <summary>
+			/// Tries to move to the next item
+			/// </summary>
+			/// <returns>True if there's another item to enumerate, otherwise False</returns>
 			public bool MoveNext()
 			{
 				if (_Index >= _Parent._Size)
@@ -1124,7 +1054,7 @@ namespace Proximity.Utility.Collections
 				return true;
 			}
 
-			public void Reset()
+			void IEnumerator.Reset()
 			{
 				_Index = 0;
 				_Current = default(TValue);
@@ -1132,6 +1062,9 @@ namespace Proximity.Utility.Collections
 
 			//****************************************
 
+			/// <summary>
+			/// Gets the current item being enumerated
+			/// </summary>
 			public TValue Current
 			{
 				get { return _Current; }

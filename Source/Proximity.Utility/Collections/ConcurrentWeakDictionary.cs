@@ -21,25 +21,14 @@ namespace Proximity.Utility.Collections
 	public class ConcurrentWeakDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>> where TValue : class
 	{	//****************************************
 		private readonly ConcurrentDictionary<TKey, GCReference> _Dictionary;
+		private readonly IEqualityComparer<TKey> _Comparer;
+		private readonly GCHandleType _HandleType;
 		//****************************************
 
-		private ConcurrentWeakDictionary(ConcurrentDictionary<TKey, GCReference> dictionary)
-		{
-			_Dictionary = dictionary;
-		}
-		
 		/// <summary>
 		/// Creates a new Concurrent Weak Dictionary
 		/// </summary>
-		public ConcurrentWeakDictionary() : this(new ConcurrentDictionary<TKey, GCReference>())
-		{
-		}
-		
-		/// <summary>
-		/// Creates a new Concurrent Weak Dictionary of references to the contents of the collection
-		/// </summary>
-		/// <param name="collection">The collection holding the key/value pairs to add</param>
-		public ConcurrentWeakDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection) : this(collection, null)
+		public ConcurrentWeakDictionary() : this(EqualityComparer<TKey>.Default, GCHandleType.Weak)
 		{
 		}
 		
@@ -47,7 +36,27 @@ namespace Proximity.Utility.Collections
 		/// Creates a new Concurrent Weak Dictionary with the given equality comparer
 		/// </summary>
 		/// <param name="comparer">The equality comparer to use when comparing keys</param>
-		public ConcurrentWeakDictionary(IEqualityComparer<TKey> comparer) : this(new ConcurrentDictionary<TKey, GCReference>(comparer))
+		public ConcurrentWeakDictionary(IEqualityComparer<TKey> comparer) : this(comparer, GCHandleType.Weak)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Concurrent Weak Dictionary with the given equality comparer
+		/// </summary>
+		/// <param name="comparer">The equality comparer to use when comparing keys</param>
+		/// <param name="handleType">The type of GCHandle to use</param>
+		public ConcurrentWeakDictionary(IEqualityComparer<TKey> comparer, GCHandleType handleType)
+		{
+			_Dictionary = new ConcurrentDictionary<TKey, GCReference>(comparer);
+			_Comparer = comparer;
+			_HandleType = handleType;
+		}
+
+		/// <summary>
+		/// Creates a new Concurrent Weak Dictionary of references to the contents of the collection
+		/// </summary>
+		/// <param name="collection">The collection holding the key/value pairs to add</param>
+		public ConcurrentWeakDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection) : this(collection, EqualityComparer<TKey>.Default, GCHandleType.Weak)
 		{
 		}
 		
@@ -56,8 +65,21 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="collection">The collection holding the key/value pairs to add</param>
 		/// <param name="comparer">The equality comparer to use when comparing keys</param>
-		public ConcurrentWeakDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey> comparer) : this(new ConcurrentDictionary<TKey, GCReference>(collection.Select((value) => new KeyValuePair<TKey, GCReference>(value.Key, CreateFrom(value.Value))), comparer))
+		public ConcurrentWeakDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey> comparer) : this(collection, comparer, GCHandleType.Weak)
 		{
+		}
+
+		/// <summary>
+		/// Creates a new Concurrent Weak Dictionary of references to the contents of the collection with the given equality comparer
+		/// </summary>
+		/// <param name="collection">The collection holding the key/value pairs to add</param>
+		/// <param name="comparer">The equality comparer to use when comparing keys</param>
+		/// <param name="handleType">The type of GCHandle to use</param>
+		public ConcurrentWeakDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey> comparer, GCHandleType handleType)
+		{
+			_Dictionary = new ConcurrentDictionary<TKey, GCReference>(collection.Select((value) => new KeyValuePair<TKey, GCReference>(value.Key, new GCReference(value.Value, handleType))), comparer);
+			_Comparer = comparer;
+			_HandleType = handleType;
 		}
 		
 		//****************************************
@@ -93,9 +115,9 @@ namespace Proximity.Utility.Collections
 						// The GCHandle was disposed, try again
 						continue;
 					}
-					
+
 					// Reference has changed, create a new GCReference
-					NewHandle = CreateFrom(value);
+					NewHandle = new GCReference(value, _HandleType);
 					
 					// Try and update the dictionary with the replacement value
 					if (_Dictionary.TryUpdate(key, NewHandle, MyHandle))
@@ -113,7 +135,7 @@ namespace Proximity.Utility.Collections
 				}
 				
 				// Create a GC Handle to reference the object
-				NewHandle = CreateFrom(value);
+				NewHandle = new GCReference(value, _HandleType);
 				
 				// Try and add it to the dictionary
 				if (_Dictionary.TryAdd(key, NewHandle))
@@ -175,7 +197,7 @@ namespace Proximity.Utility.Collections
 					}
 
 					// Reference has changed, create a new GCReference
-					NewHandle = CreateFrom(NewValue);
+					NewHandle = new GCReference(NewValue, _HandleType);
 					
 					// Try and update the dictionary with the replacement value
 					if (_Dictionary.TryUpdate(key, NewHandle, MyHandle))
@@ -199,7 +221,7 @@ namespace Proximity.Utility.Collections
 					throw new InvalidOperationException("Cannot add null to a Weak Dictionary");
 			
 				// Create a GC Handle to reference the object
-				NewHandle = CreateFrom(NewValue);
+				NewHandle = new GCReference(NewValue, _HandleType);
 				
 				// Try and add it to the dictionary
 				if (_Dictionary.TryAdd(key, NewHandle))
@@ -306,8 +328,8 @@ namespace Proximity.Utility.Collections
 					
 					if (NewValue == null)
 						throw new InvalidOperationException("Cannot add null to a Weak Dictionary");
-					
-					NewHandle = CreateFrom(NewValue);
+
+					NewHandle = new GCReference(NewValue, _HandleType);
 					
 					// Try and update the dictionary with the replacement value
 					if (_Dictionary.TryUpdate(key, NewHandle, MyHandle))
@@ -329,9 +351,9 @@ namespace Proximity.Utility.Collections
 				
 				if (NewValue == null)
 					throw new InvalidOperationException("Cannot add null to a Weak Dictionary");
-			
+
 				// Create a GC Handle to reference the object
-				NewHandle = CreateFrom(NewValue);
+				NewHandle = new GCReference(NewValue, _HandleType);
 				
 				// Try and add it to the dictionary
 				if (_Dictionary.TryAdd(key, NewHandle))
@@ -470,7 +492,7 @@ namespace Proximity.Utility.Collections
 				{
 					// Key not found, so let's try and add it
 					// Create a GC Handle to reference the object
-					NewHandle = CreateFrom(value);
+					NewHandle = new GCReference(value, _HandleType);
 					
 					// Try and add it to the dictionary
 					if (_Dictionary.TryAdd(key, NewHandle))
@@ -487,7 +509,7 @@ namespace Proximity.Utility.Collections
 					return false; // Yes, can't add
 				
 				// Target reference has vanished, we can replace it with the new value
-				NewHandle = CreateFrom(value);
+				NewHandle = new GCReference(value, _HandleType);
 				
 				// Try and update the dictionary with the replacement value
 				if (_Dictionary.TryUpdate(key, NewHandle, MyHandle))
@@ -623,7 +645,7 @@ namespace Proximity.Utility.Collections
 				}
 				
 				// Reference has changed, create a new GCReference
-				NewHandle = CreateFrom(NewValue);
+				NewHandle = new GCReference(NewValue, _HandleType);
 				
 				// Try and update the dictionary with the replacement value
 				if (_Dictionary.TryUpdate(key, NewHandle, MyHandle))
@@ -686,9 +708,9 @@ namespace Proximity.Utility.Collections
 				// Check now, rather than earlier, so we can return true if it was 'updated' correctly
 				if (object.ReferenceEquals(OldValue, newValue))
 					return true;
-				
+
 				// Reference has changed, create a new GCReference
-				NewHandle = CreateFrom(newValue);
+				NewHandle = new GCReference(newValue, _HandleType);
 				
 				// Try and update the dictionary with the replacement value
 				if (_Dictionary.TryUpdate(key, NewHandle, MyHandle))
@@ -737,9 +759,9 @@ namespace Proximity.Utility.Collections
 		/// Returns an enumerator that iterates through the live values in the dictionary
 		/// </summary>
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
-		public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
+		public Enumerator GetEnumerator()
 		{
-			return GetContents().GetEnumerator();
+			return new Enumerator(_Dictionary);
 		}
 		
 		/// <summary>
@@ -748,8 +770,14 @@ namespace Proximity.Utility.Collections
 		/// <returns>A list containing all the live values in this dictionary</returns>
 		/// <remarks>Changes made to the returned list will not be reflected in the Weak Dictionary</remarks>
 		public IList<TValue> ToValueList()
-		{
-			return GetValues().ToList();
+		{	//****************************************
+			var MyList = new List<TValue>(_Dictionary.Count);
+			//****************************************
+
+			foreach (var MyPair in this)
+				MyList.Add(MyPair.Value);
+
+			return MyList;
 		}
 
 		/// <summary>
@@ -758,8 +786,13 @@ namespace Proximity.Utility.Collections
 		/// <returns>A list containing all the live keys/value pairs in this dictionary</returns>
 		/// <remarks>Changes made to the returned list will not be reflected in the Weak Dictionary</remarks>
 		public IList<KeyValuePair<TKey, TValue>> ToList()
-		{
-			return GetContents().ToArray();
+		{	//****************************************
+			var MyList = new List<KeyValuePair<TKey, TValue>>(_Dictionary.Count);
+			//****************************************
+
+			MyList.AddRange(this);
+
+			return MyList;
 		}
 
 		/// <summary>
@@ -768,73 +801,26 @@ namespace Proximity.Utility.Collections
 		/// <returns>A dictionary containing all the live values in this dictionary</returns>
 		/// <remarks>Changes made to the returned dictionary will not be reflected in the Weak Dictionary</remarks>
 		public IDictionary<TKey, TValue> ToDictionary()
-		{
-			return GetContents().ToDictionary(item => item.Key, item => item.Value);
+		{	//****************************************
+			var MyDictionary = new Dictionary<TKey, TValue>(_Dictionary.Count, _Comparer);
+			//****************************************
+
+			foreach (var MyPair in this)
+				MyDictionary.Add(MyPair.Key, MyPair.Value);
+
+			return MyDictionary;
 		}
 		
 		//****************************************
+
+		IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator()
+		{
+			return new Enumerator(_Dictionary);
+		}
 		
 		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
 		{
-			return GetContents().GetEnumerator();
-		}
-		
-		private static GCReference CreateFrom(TValue item)
-		{
-			return new GCReference(item, GCHandleType.Weak);
-		}
-		
-		private IEnumerable<KeyValuePair<TKey, TValue>> GetContents()
-		{
-			foreach(var MyResult in _Dictionary)
-			{
-				TValue MyValue;
-
-				try
-				{
-					// Iterators are SecurityTransparent, so we have to use an accessor method
-					MyValue = ValueFromPair(MyResult);
-				}
-				catch (InvalidOperationException)
-				{
-					// The GCHandle was disposed, try again
-					continue;
-				}
-
-				if (MyValue == null)
-					continue;
-
-				yield return new KeyValuePair<TKey, TValue>(MyResult.Key, MyValue);
-			}
-		}
-		
-		private IEnumerable<TValue> GetValues()
-		{
-			foreach(var MyResult in _Dictionary) // Get the base dictionary enumerator, as on ConcurrentDictionary getting Values will make a copy
-			{
-				TValue MyValue;
-
-				try
-				{
-					// Iterators are SecurityTransparent, so we have to use an accessor method
-					MyValue = ValueFromPair(MyResult);
-				}
-				catch (InvalidOperationException)
-				{
-					// The GCHandle was disposed, try again
-					continue;
-				}
-				
-				if (MyValue == null)
-					continue;
-				
-				yield return MyValue;
-			}
-		}
-
-		private static TValue ValueFromPair(KeyValuePair<TKey, GCReference> pair)
-		{
-			return (TValue)pair.Value.Target;
+			return new Enumerator(_Dictionary);
 		}
 		
 		//****************************************
@@ -869,6 +855,104 @@ namespace Proximity.Utility.Collections
 				throw new KeyNotFoundException();
 			}
 			set { AddOrReplace(key, value); }
+		}
+
+		/// <summary>
+		/// Gets the equality comparer being used for the Key
+		/// </summary>
+		public IEqualityComparer<TKey> Comparer
+		{
+			get { return _Comparer; }
+		}
+
+		//****************************************
+
+		/// <summary>
+		/// Enumerates the dictionary while avoiding memory allocations
+		/// </summary>
+		public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
+		{	//****************************************
+			private readonly IEnumerator<KeyValuePair<TKey, GCReference>> _Enumerator;
+			private KeyValuePair<TKey, TValue> _Current;
+			//****************************************
+
+			internal Enumerator(ConcurrentDictionary<TKey, GCReference> dictionary)
+			{
+				_Enumerator = dictionary.GetEnumerator();
+				_Current = default(KeyValuePair<TKey, TValue>);
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Disposes of the enumerator
+			/// </summary>
+			[SecuritySafeCritical]
+			public void Dispose()
+			{
+			}
+
+			/// <summary>
+			/// Tries to move to the next item
+			/// </summary>
+			/// <returns>True if there's another item to enumerate, otherwise False</returns>
+			[SecuritySafeCritical]
+			public bool MoveNext()
+			{
+				for (; ; )
+				{
+					if (!_Enumerator.MoveNext())
+					{
+						_Current = default(KeyValuePair<TKey, TValue>);
+
+						return false;
+					}
+
+					var MyCurrent = _Enumerator.Current;
+					TValue MyValue;
+
+					try
+					{
+						MyValue = (TValue)MyCurrent.Value.Target;
+					}
+					catch (InvalidOperationException)
+					{
+						// The GCHandle was disposed, try again
+						continue;
+					}
+
+					if (MyValue == null)
+						continue;
+
+					_Current = new KeyValuePair<TKey, TValue>(MyCurrent.Key, MyValue);
+
+					return true;
+				}
+			}
+
+			[SecuritySafeCritical]
+			void IEnumerator.Reset()
+			{
+				_Enumerator.Reset();
+				_Current = default(KeyValuePair<TKey, TValue>);
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Gets the current item being enumerated
+			/// </summary>
+			public KeyValuePair<TKey, TValue> Current
+			{
+				[SecuritySafeCritical]
+				get { return _Current; }
+			}
+
+			object IEnumerator.Current
+			{
+				[SecuritySafeCritical]
+				get { return _Current; }
+			}
 		}
 	}
 }
