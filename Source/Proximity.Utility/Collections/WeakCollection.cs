@@ -54,10 +54,13 @@ namespace Proximity.Utility.Collections
 		{
 			_HandleType = handleType;
 
-			if (collection == null)
-				_Values = new List<GCReference>();
-			else
-				_Values = new List<GCReference>(collection.Where(item => item != null).Select(CreateFrom));
+			_Values = new List<GCReference>();
+
+			foreach (var MyItem in collection)
+			{
+				if (MyItem != null)
+					_Values.Add(new GCReference(MyItem, handleType));
+			}
 		}
 		
 		//****************************************
@@ -72,7 +75,7 @@ namespace Proximity.Utility.Collections
 			if (item == null)
 				throw new ArgumentNullException("Cannot add null to a Weak Collection");
 			
-			_Values.Add(CreateFrom(item));
+			_Values.Add(new GCReference(item, _HandleType));
 		}
 		
 		/// <summary>
@@ -82,7 +85,11 @@ namespace Proximity.Utility.Collections
 		/// <remarks>Ignores any null items, rather than throwing an exception</remarks>
 		public void AddRange(IEnumerable<TItem> collection)
 		{
-			_Values.AddRange(collection.Where(item => item != null).Select(CreateFrom));
+			foreach (var MyItem in collection)
+			{
+				if (MyItem != null)
+					_Values.Add(new GCReference(MyItem, _HandleType));
+			}
 		}
 
 		/// <summary>
@@ -112,9 +119,9 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
 		/// <remarks>Will perform a compaction. May not be identical between enumerations</remarks>
-		public IEnumerator<TItem> GetEnumerator()
+		public Enumerator GetEnumerator()
 		{
-			return GetContents().GetEnumerator();
+			return new Enumerator(_Values);
 		}
 
 		/// <summary>
@@ -161,52 +168,117 @@ namespace Proximity.Utility.Collections
 		/// <returns>A list of strong references to the collection</returns>
 		/// <remarks>Will perform a compaction.</remarks>
 		public IList<TItem> ToStrongList()
-		{
-			return GetContents().ToList();
+		{	//****************************************
+			var MyList = new List<TItem>(_Values.Count);
+			//****************************************
+
+			MyList.AddRange(this);
+
+			return MyList;
 		}
 		
 		//****************************************
 		
-		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+		IEnumerator IEnumerable.GetEnumerator()
 		{
-			return GetContents().GetEnumerator();
+			return new Enumerator(_Values);
 		}
 
-		private GCReference CreateFrom(TItem item)
+		IEnumerator<TItem> IEnumerable<TItem>.GetEnumerator()
 		{
-			return new GCReference(item, _HandleType);
+			return new Enumerator(_Values);
 		}
 
-		private TItem ValueAt(int index)
-		{
-			var Handle = _Values[index];
-			var TargetItem = (TItem)Handle.Target;
+		//****************************************
 
-			if (TargetItem == null)
+		/// <summary>
+		/// Enumerates the dictionary while avoiding memory allocations
+		/// </summary>
+		public struct Enumerator : IEnumerator<TItem>
+		{	//****************************************
+			private readonly List<GCReference> _List;
+
+			private int _Index;
+			private TItem _Current;
+			//****************************************
+
+			internal Enumerator(List<GCReference> list)
 			{
-				_Values.RemoveAt(index);
-
-				Handle.Dispose();
+				_List = list;
+				_Index = 0;
+				_Current = null;
 			}
 
-			return TargetItem;
-		}
-		
-		private IEnumerable<TItem> GetContents()
-		{
-			int Index = 0;
-			
-			while (Index < _Values.Count)
-			{
-				// Iterators are SecurityTransparent, so we have to use an accessor method
-				var TargetItem = ValueAt(Index);
+			//****************************************
 
-				if (TargetItem != null)
+			/// <summary>
+			/// Disposes of the enumerator
+			/// </summary>
+			[SecuritySafeCritical]
+			public void Dispose()
+			{
+				_Current = null;
+			}
+
+			/// <summary>
+			/// Tries to move to the next item
+			/// </summary>
+			/// <returns>True if there's another item to enumerate, otherwise False</returns>
+			[SecuritySafeCritical]
+			public bool MoveNext()
+			{
+				for (; ; )
 				{
-					yield return TargetItem;
-					
-					Index++;
+					if (_Index >= _List.Count)
+					{
+						_Current = null;
+
+						return false;
+					}
+
+					var Handle = _List[_Index];
+
+					try
+					{
+						_Current = (TItem)Handle.Target;
+
+						_Index++;
+
+						return true;
+					}
+					catch (InvalidOperationException)
+					{
+						// The GCHandle was disposed
+					}
+
+					_List.RemoveAt(_Index);
+
+					Handle.Dispose();
 				}
+			}
+
+			[SecuritySafeCritical]
+			void IEnumerator.Reset()
+			{
+				_Index = 0;
+				_Current = null;
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Gets the current item being enumerated
+			/// </summary>
+			public TItem Current
+			{
+				[SecuritySafeCritical]
+				get { return _Current; }
+			}
+
+			object IEnumerator.Current
+			{
+				[SecuritySafeCritical]
+				get { return _Current; }
 			}
 		}
 	}

@@ -77,9 +77,9 @@ namespace Proximity.Utility.Collections
 		/// <param name="handleType">The type of GCHandle to use</param>
 		public ConcurrentWeakDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey> comparer, GCHandleType handleType)
 		{
-			_Dictionary = new ConcurrentDictionary<TKey, GCReference>(collection.Select((value) => new KeyValuePair<TKey, GCReference>(value.Key, new GCReference(value.Value, handleType))), comparer);
-			_Comparer = comparer;
 			_HandleType = handleType;
+			_Dictionary = new ConcurrentDictionary<TKey, GCReference>(collection.Select((value) => new KeyValuePair<TKey, GCReference>(value.Key, new GCReference(value.Value, _HandleType))), comparer);
+			_Comparer = comparer;
 		}
 		
 		//****************************************
