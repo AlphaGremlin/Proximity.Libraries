@@ -76,7 +76,7 @@ namespace Proximity.Utility.Collections
 			_Values = new KeyValuePair<TKey, TValue>[0];
 
 			// Can't use Array.Sort(key, value, comparer) since it doesn't exist on portable
-			foreach (var MyPair in dictionary.Select(pair => new KeyValuePair<int, KeyValuePair<TKey, TValue>>(_Comparer.GetHashCode(pair.Key), pair)).OrderBy(pair => pair.Key))
+			foreach (var MyPair in dictionary.Select(CreatePair).OrderBy(SelectKey))
 			{
 				if (_Size == _Keys.Length)
 					EnsureCapacity(_Size + 1);
@@ -144,24 +144,132 @@ namespace Proximity.Utility.Collections
 			OnCollectionChanged(NotifyCollectionChangedAction.Add, item, Index);
 		}
 
-		/// <inheritdoc />
+		/// <summary>
+		/// Adds a range of elements to the dictionary
+		/// </summary>
+		/// <param name="items">The elements to add</param>
+		/// <exception cref="ArgumentException">The input elements have duplicated keys, or the key already exists in the dictionary</exception>
 		public override void AddRange(IEnumerable<KeyValuePair<TKey, TValue>> items)
 		{
 			if (items == null)
 				throw new ArgumentNullException("items");
 
-			var NewItems = new List<KeyValuePair<TKey, TValue>>(items);
+			// Gather all the items to add, calculating their keys as we go
+			var NewItems = items.Select((pair) => new RangeKeyValue(_Comparer.GetHashCode(pair.Key), pair.Key, pair.Value)).ToArray();
 
-			if (NewItems.Count == 0)
+			if (NewItems.Length == 0)
 				return;
 
-			if (items.Any(pair => IndexOfKey(pair.Key) >= 0))
-				throw new ArgumentException("An item with the same key has already been added.");
+			// Get everything into KeyHash order
+			Array.Sort(NewItems);
 
-			foreach (var NewItem in NewItems)
-				Insert(NewItem);
+			//****************************************
 
-			OnCollectionChanged(NotifyCollectionChangedAction.Add, NewItems);
+			// Check the new items don't have any duplicates
+			{
+				int Index = 0;
+
+				while (Index < NewItems.Length)
+				{
+					int StartIndex = Index;
+					var CurrentItem = NewItems[Index];
+
+					// Find all the items that have the same Hash
+					do
+					{
+						Index++;
+					}
+					while (Index < NewItems.Length && NewItems[Index].KeyHash == CurrentItem.KeyHash);
+
+					// Is there more than one item with the same Hash?
+					while (Index - StartIndex > 1)
+					{
+						// Compare the first item to the others
+						for (int SubIndex = StartIndex + 1; SubIndex < Index; SubIndex++)
+						{
+							if (_Comparer.Equals(CurrentItem.Key, NewItems[SubIndex].Key))
+								throw new ArgumentException("Input collection has duplicates");
+						}
+
+						// Move up the first item
+						StartIndex++;
+					}
+				}
+			}
+
+			// No duplicates in the new items. Check the keys aren't already in the Dictionary
+			for (int Index = 0; Index < NewItems.Length; Index++)
+			{
+				var CurrentItem = NewItems[Index];
+				int InnerIndex = Array.BinarySearch<int>(_Keys, 0, _Size, CurrentItem.KeyHash);
+
+				// No exact match?
+				if (InnerIndex < 0)
+				{
+					NewItems[Index].EstimatedIndex = ~InnerIndex;
+
+					continue;
+				}
+
+				NewItems[Index].EstimatedIndex = InnerIndex;
+
+				// BinarySearch is not guaranteed to return the first matching value, so we may need to move back
+				while (InnerIndex > 0 && _Keys[InnerIndex - 1] == CurrentItem.KeyHash)
+					InnerIndex--;
+
+				for (; ; )
+				{
+					// Do we match this item?
+					if (_Comparer.Equals(_Values[InnerIndex].Key, CurrentItem.Key))
+						throw new ArgumentException("Key already exists in the dictionary");
+
+					InnerIndex++;
+
+					// Are we at the end of the list?
+					if (InnerIndex == _Size)
+						break; // Yes, so we didn't find the item
+
+					// Is there another item with the same key?
+					if (_Keys[InnerIndex] != CurrentItem.KeyHash)
+						break; // Nope, so we didn't find the item
+
+					// Yes, so loop back and check that
+				}
+			}
+
+			//****************************************
+
+			// Ensure we have enough space for the new items
+			EnsureCapacity(_Size + NewItems.Length);
+
+			var ItemsNotify = new KeyValuePair<TKey, TValue>[NewItems.Length];
+
+			// Add the new items
+			for (int Index = 0; Index < NewItems.Length; Index++)
+			{
+				var CurrentItem = NewItems[Index];
+
+				// We need to adjust where we're inserting since these are the old indexes
+				// Since the new items are ordered by key, we can just add the number of already added items
+				var NewIndex = CurrentItem.EstimatedIndex + Index;
+
+				// Move things up, unless we're adding at the end
+				if (NewIndex < _Size)
+				{
+					Array.Copy(_Keys, NewIndex, _Keys, NewIndex + 1, _Size - NewIndex);
+					Array.Copy(_Values, NewIndex, _Values, NewIndex + 1, _Size - NewIndex);
+				}
+
+				var NewValue = new KeyValuePair<TKey,TValue>(CurrentItem.Key, CurrentItem.Value);
+
+				_Keys[NewIndex] = CurrentItem.KeyHash;
+				_Values[NewIndex] = NewValue;
+				ItemsNotify[Index] = NewValue;
+
+				_Size++;
+			}
+
+			OnCollectionChanged(NotifyCollectionChangedAction.Add, ItemsNotify);
 		}
 
 		/// <inheritdoc />
@@ -657,6 +765,18 @@ namespace Proximity.Utility.Collections
 
 		//****************************************
 
+		private KeyValuePair<int, KeyValuePair<TKey, TValue>> CreatePair(KeyValuePair<TKey, TValue> input)
+		{
+			return new KeyValuePair<int, KeyValuePair<TKey, TValue>>(_Comparer.GetHashCode(input.Key), input);
+		}
+
+		private static int SelectKey(KeyValuePair<int, KeyValuePair<TKey, TValue>> input)
+		{
+			return input.Key;
+		}
+
+		//****************************************
+
 		/// <inheritdoc />
 		public override int Count
 		{
@@ -1116,6 +1236,51 @@ namespace Proximity.Utility.Collections
 			object IEnumerator.Current
 			{
 				get { return _Current; }
+			}
+		}
+
+		private struct RangeKeyValue : IComparable<RangeKeyValue>
+		{	//****************************************
+			private readonly int _KeyHash;
+			private readonly TKey _Key;
+			private readonly TValue _Value;
+			private int _EstimatedIndex;
+			//****************************************
+
+			public RangeKeyValue(int keyHash, TKey key, TValue value)
+			{
+				_KeyHash = keyHash;
+				_Key = key;
+				_Value = value;
+				_EstimatedIndex = 0;
+			}
+
+			//****************************************
+
+			int IComparable<RangeKeyValue>.CompareTo(RangeKeyValue other)
+			{
+				return _KeyHash - other._KeyHash;
+			}
+
+			public int KeyHash
+			{
+				get { return _KeyHash; }
+			}
+
+			public TKey Key
+			{
+				get { return _Key; }
+			}
+
+			public TValue Value
+			{
+				get { return _Value; }
+			}
+
+			public int EstimatedIndex
+			{
+				get { return _EstimatedIndex; }
+				set { _EstimatedIndex = value; }
 			}
 		}
 	}

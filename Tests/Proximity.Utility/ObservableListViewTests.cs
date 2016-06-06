@@ -4,6 +4,7 @@
 \****************************************/
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Threading;
 using NUnit.Framework;
@@ -605,6 +606,181 @@ namespace Proximity.Utility.Tests
 			CollectionAssert.AreEqual(MySortedRecords, MyView, "Bad Seed was {0}", MySeed);
 
 			Thread.Sleep(1);
+		}
+
+		//****************************************
+
+		[Test(), Timeout(1000)]
+		public void EventAdd()
+		{	//****************************************
+			var MySeed = Environment.TickCount;
+			var MyRandom = new Random(MySeed);
+			var MyRecords = new ObservableList<int>(1);
+			NotifyCollectionChangedEventArgs MyEventArgs = null;
+			//****************************************
+
+			var MyView = new ObservableListView<int>(MyRecords);
+
+			MyView.CollectionChanged += (sender, e) => MyEventArgs = e;
+
+			MyRecords.Add(42);
+
+			//****************************************
+
+			Assert.AreEqual(1, MyView.Count, "Item count does not match");
+			Assert.IsNotNull(MyEventArgs, "No Event Raised");
+			Assert.AreEqual(NotifyCollectionChangedAction.Add, MyEventArgs.Action);
+			Assert.IsNotNull(MyEventArgs.NewItems, "No New Items");
+			Assert.AreEqual(0, MyEventArgs.NewStartingIndex, "Starting Index incorrect");
+			Assert.AreEqual(1, MyEventArgs.NewItems.Count, "New Items Count incorrect");
+			Assert.AreEqual(42, MyEventArgs.NewItems[0], "New Items Value incorrect");
+		}
+
+		[Test(), Timeout(1000)]
+		public void EventAddMany()
+		{	//****************************************
+			var MySeed = Environment.TickCount;
+			var MyRandom = new Random(MySeed);
+			var MyRecords = new ObservableList<int>(1024);
+			int EventCount = 0;
+			//****************************************
+
+			var MyView = new ObservableListView<int>(MyRecords);
+
+			MyView.CollectionChanged += (sender, e) => { if (e.Action == NotifyCollectionChangedAction.Add) EventCount++; };
+
+			for (int Index = 0; Index < 1024; Index++)
+				MyRecords.Add(MyRandom.Next(short.MaxValue));
+
+			//****************************************
+
+			Assert.AreEqual(1024, MyView.Count, "Item count does not match");
+			Assert.AreEqual(1024, EventCount, "Event Count does not match");
+		}
+
+		[Test(), Timeout(1000)]
+		public void EventReplace()
+		{	//****************************************
+			var MySeed = Environment.TickCount;
+			var MyRandom = new Random(MySeed);
+			var MyRecords = new ObservableList<int>(1);
+			NotifyCollectionChangedEventArgs MyEventArgs = null;
+			//****************************************
+
+			var MyView = new ObservableListView<int>(MyRecords);
+
+			MyRecords.Add(42);
+
+			MyView.CollectionChanged += (sender, e) => MyEventArgs = e;
+
+			MyRecords[0] = 84;
+
+			//****************************************
+
+			Assert.AreEqual(1, MyView.Count, "Item count does not match");
+			Assert.IsNotNull(MyEventArgs, "No Event Raised");
+			Assert.AreEqual(NotifyCollectionChangedAction.Replace, MyEventArgs.Action);
+
+			Assert.IsNotNull(MyEventArgs.OldItems, "No Old Items");
+			Assert.AreEqual(0, MyEventArgs.OldStartingIndex, "Starting Index incorrect");
+			Assert.AreEqual(1, MyEventArgs.OldItems.Count, "Old Items Count incorrect");
+			Assert.AreEqual(42, MyEventArgs.OldItems[0], "Old Items Value incorrect");
+
+			Assert.IsNotNull(MyEventArgs.NewItems, "No New Items");
+			Assert.AreEqual(0, MyEventArgs.NewStartingIndex, "Starting Index incorrect");
+			Assert.AreEqual(1, MyEventArgs.NewItems.Count, "New Items Count incorrect");
+			Assert.AreEqual(84, MyEventArgs.NewItems[0], "New Items Value incorrect");
+		}
+
+		[Test(), Timeout(1000)]
+		public void EventMove()
+		{	//****************************************
+			var MySeed = Environment.TickCount;
+			var MyRandom = new Random(MySeed);
+			var MyRecords = new ObservableList<int>(1);
+			NotifyCollectionChangedEventArgs MyFirstEventArgs = null, MySecondEventArgs = null;
+			//****************************************
+
+			var MyView = new ObservableListView<int>(MyRecords);
+
+			for (int Index = 0; Index < 1024; Index++)
+				MyRecords.Add(MyRandom.Next(short.MaxValue));
+
+			MyView.CollectionChanged += (sender, e) => { if (MyFirstEventArgs == null) MyFirstEventArgs = e; else MySecondEventArgs = e; };
+
+			var OldValue = MyRecords[512];
+			var NewValue = OldValue + 1024;
+
+			MyRecords[512] = NewValue;
+
+			//****************************************
+
+			Assert.AreEqual(1024, MyView.Count, "Item count does not match");
+			Assert.IsNotNull(MyFirstEventArgs, "No First Event Raised");
+			Assert.AreEqual(NotifyCollectionChangedAction.Remove, MyFirstEventArgs.Action);
+			Assert.IsNotNull(MySecondEventArgs, "No Second Event Raised");
+			Assert.AreEqual(NotifyCollectionChangedAction.Add, MySecondEventArgs.Action);
+
+			Assert.IsNotNull(MyFirstEventArgs.OldItems, "No Old Items");
+			Assert.AreEqual(1, MyFirstEventArgs.OldItems.Count, "Old Items Count incorrect");
+			Assert.AreEqual(OldValue, MyFirstEventArgs.OldItems[0], "Old Items Value incorrect");
+
+			Assert.IsNotNull(MySecondEventArgs.NewItems, "No New Items");
+			Assert.AreEqual(1, MySecondEventArgs.NewItems.Count, "New Items Count incorrect");
+			Assert.AreEqual(NewValue, MySecondEventArgs.NewItems[0], "New Items Value incorrect");
+		}
+
+		[Test(), Timeout(1000)]
+		public void EventRemove()
+		{	//****************************************
+			var MySeed = Environment.TickCount;
+			var MyRandom = new Random(MySeed);
+			var MyRecords = new ObservableList<int>(1);
+			NotifyCollectionChangedEventArgs MyEventArgs = null;
+			//****************************************
+
+			var MyView = new ObservableListView<int>(MyRecords);
+
+			MyRecords.Add(42);
+
+			MyView.CollectionChanged += (sender, e) => MyEventArgs = e;
+
+			MyRecords.RemoveAt(0);
+
+			//****************************************
+
+			Assert.AreEqual(0, MyView.Count, "Item count does not match");
+			Assert.IsNotNull(MyEventArgs, "No Event Raised");
+			Assert.AreEqual(NotifyCollectionChangedAction.Remove, MyEventArgs.Action);
+			Assert.IsNotNull(MyEventArgs.OldItems, "No Old Items");
+			Assert.AreEqual(0, MyEventArgs.OldStartingIndex, "Starting Index incorrect");
+			Assert.AreEqual(1, MyEventArgs.OldItems.Count, "Old Items Count incorrect");
+			Assert.AreEqual(42, MyEventArgs.OldItems[0], "Old Items Value incorrect");
+		}
+
+		[Test(), Timeout(1000)]
+		public void EventRemoveMany()
+		{	//****************************************
+			var MySeed = Environment.TickCount;
+			var MyRandom = new Random(MySeed);
+			var MyRecords = new ObservableList<int>(1024);
+			int EventCount = 0;
+			//****************************************
+
+			var MyView = new ObservableListView<int>(MyRecords);
+
+			for (int Index = 0; Index < 1024; Index++)
+				MyRecords.Add(MyRandom.Next(short.MaxValue));
+
+			MyView.CollectionChanged += (sender, e) => { if (e.Action == NotifyCollectionChangedAction.Remove) EventCount++; };
+
+			while (MyRecords.Count > 0)
+				MyRecords.RemoveAt(MyRecords.Count - 1);
+
+			//****************************************
+
+			Assert.AreEqual(0, MyView.Count, "Item count does not match");
+			Assert.AreEqual(1024, EventCount, "Event Count does not match");
 		}
 
 		//****************************************

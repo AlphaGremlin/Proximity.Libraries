@@ -324,5 +324,14 @@ namespace Proximity.Utility.Collections
 		{
 			get { return _Items; }
 		}
+
+		/// <summary>
+		/// Gets/Sets the current item capacity
+		/// </summary>
+		public int Capacity
+		{
+			get { return _Items.Capacity; }
+			set { _Items.Capacity = value; }
+		}
 	}
 }

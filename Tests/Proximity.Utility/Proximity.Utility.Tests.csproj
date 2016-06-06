@@ -130,6 +130,7 @@
     <Compile Include="LinqExtensionTests.cs" />
     <Compile Include="ListExtensionTests.cs" />
     <Compile Include="LoggingTests.cs" />
+    <Compile Include="ObservableDictionaryTests.cs" />
     <Compile Include="ObservableListViewTests.cs" />
     <Compile Include="RemoteTaskTests.cs" />
     <None Include="packages.config" />
