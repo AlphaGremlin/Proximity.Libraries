@@ -299,6 +299,20 @@ namespace Proximity.Utility.Collections
 		/// <param name="valueCallback">A callback providing the new value if the key doesn't exist</param>
 		/// <returns>The new or existing value</returns>
 		public TValue GetOrAdd(TKey key, Func<TKey, TValue> valueCallback)
+		{
+			bool WasAdded;
+
+			return GetOrAdd(key, valueCallback, out WasAdded);
+		}
+		
+		/// <summary>
+		/// Adds or retrieves a value based on the key
+		/// </summary>
+		/// <param name="key">The key to add or retrieve</param>
+		/// <param name="valueCallback">A callback providing the new value if the key doesn't exist</param>
+		/// <param name="wasAdded">A value receiving true if the value was added, or false if it was retrieved</param>
+		/// <returns>The new or existing value</returns>
+		public TValue GetOrAdd(TKey key, Func<TKey, TValue> valueCallback, out bool wasAdded)
 		{	//****************************************
 			GCReference MyHandle, NewHandle;
 			TValue NewValue;
@@ -315,7 +329,11 @@ namespace Proximity.Utility.Collections
 
 						// Yes, does the target still exist?
 						if (MyValue != null)
+						{
+							wasAdded = false;
+
 							return MyValue; // Yes, return it
+						}
 					}
 					catch (InvalidOperationException)
 					{
@@ -336,6 +354,8 @@ namespace Proximity.Utility.Collections
 					{
 						// Success, now we can safely expire the old handle
 						MyHandle.Dispose();
+
+						wasAdded = true;
 						
 						return NewValue;
 					}
@@ -357,7 +377,11 @@ namespace Proximity.Utility.Collections
 				
 				// Try and add it to the dictionary
 				if (_Dictionary.TryAdd(key, NewHandle))
+				{
+					wasAdded = true;
+
 					return NewValue; // Success, return the result
+				}
 				
 				// Key was added concurrently, free the handle we no longer need
 				NewHandle.Dispose();
@@ -374,7 +398,20 @@ namespace Proximity.Utility.Collections
 		/// <returns>The new or existing value</returns>
 		public TValue GetOrAdd(TKey key, TValue value)
 		{
-			return GetOrAdd(key, (innerKey) => value);
+			bool WasAdded;
+
+			return GetOrAdd(key, (innerKey) => value, out WasAdded);
+		}
+
+		/// <summary>
+		/// Adds or retrieves a value based on the key
+		/// </summary>
+		/// <param name="key">The key to add or retrieve</param>
+		/// <param name="value">A value to associate if the key doesn't exist</param>
+		/// <returns>The new or existing value</returns>
+		public TValue GetOrAdd(TKey key, TValue value, out bool wasAdded)
+		{
+			return GetOrAdd(key, (innerKey) => value, out wasAdded);
 		}
 
 		/// <summary>
