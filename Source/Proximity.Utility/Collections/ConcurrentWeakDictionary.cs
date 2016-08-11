@@ -408,6 +408,7 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="key">The key to add or retrieve</param>
 		/// <param name="value">A value to associate if the key doesn't exist</param>
+		/// <param name="wasAdded">Receives whether the value was added or simply retrieved</param>
 		/// <returns>The new or existing value</returns>
 		public TValue GetOrAdd(TKey key, TValue value, out bool wasAdded)
 		{
