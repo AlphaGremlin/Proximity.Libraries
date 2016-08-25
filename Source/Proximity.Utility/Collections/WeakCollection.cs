@@ -25,7 +25,7 @@ namespace Proximity.Utility.Collections
 		/// <summary>
 		/// Creates a new WeakCollection
 		/// </summary>
-		public WeakCollection() : this(null, GCHandleType.Weak)
+		public WeakCollection() : this(GCHandleType.Weak)
 		{
 		}
 
@@ -33,8 +33,10 @@ namespace Proximity.Utility.Collections
 		/// Creates a new WeakCollection
 		/// </summary>
 		/// <param name="handleType">The type of GCHandle to use</param>
-		public WeakCollection(GCHandleType handleType) : this(null, handleType)
+		public WeakCollection(GCHandleType handleType)
 		{
+			_HandleType = handleType;
+			_Values = new List<GCReference>();
 		}
 		
 		/// <summary>
@@ -52,6 +54,9 @@ namespace Proximity.Utility.Collections
 		/// <param name="handleType">The type of GCHandle to use</param>
 		public WeakCollection(IEnumerable<TItem> collection, GCHandleType handleType)
 		{
+			if (collection == null)
+				throw new ArgumentNullException("collection", "Collection cannot be null");
+
 			_HandleType = handleType;
 
 			_Values = new List<GCReference>();
