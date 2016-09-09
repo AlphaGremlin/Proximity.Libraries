@@ -66,7 +66,8 @@ namespace Proximity.Utility.Configuration
 						Result = GetType().AssemblyQualifiedName;
 					}
 
-					SetPropertyValue(Properties["Type"], Result, true);
+					if (!IsReadOnly())
+						SetPropertyValue(Properties["Type"], Result, true);
 				}
 				
 				return Result;
@@ -88,7 +89,8 @@ namespace Proximity.Utility.Configuration
 					{
 						_InstanceType = MyAttribute.ConfigType;
 						
-						SetPropertyValue(Properties["Type"], _InstanceType.AssemblyQualifiedName, true);
+						if (!IsReadOnly())
+							SetPropertyValue(Properties["Type"], _InstanceType.AssemblyQualifiedName, true);
 					}
 				}
 				
