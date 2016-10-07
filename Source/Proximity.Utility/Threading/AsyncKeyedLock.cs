@@ -22,6 +22,7 @@ namespace Proximity.Utility.Threading
 	/// <typeparam name="TKey">The type of key to lock on</typeparam>
 	public sealed class AsyncKeyedLock<TKey> : IDisposable
 	{	//****************************************
+		[SecurityCritical]
 		private readonly ConcurrentDictionary<TKey, ImmutableQueue<TaskCompletionSource<IDisposable>>> _Locks;
 		private TaskCompletionSource<IDisposable> _Dispose;
 		//****************************************

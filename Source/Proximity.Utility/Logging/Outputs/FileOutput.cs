@@ -60,9 +60,10 @@ namespace Proximity.Utility.Logging.Outputs
 		}
 		
 		/// <inheritdoc />
+		[SecuritySafeCritical]
 		protected internal sealed override void Start()
 		{
-			_LogTask = PerformLogging();
+			_LogTask = UnsafeTask.Run((Func<Task>)PerformLogging);
 		}
 		
 		/// <inheritdoc />
@@ -156,7 +157,7 @@ namespace Proximity.Utility.Logging.Outputs
 		{	//****************************************
 			FullLogEntry MyEntry;
 			//****************************************
-			
+
 			try
 			{
 				CheckOutput();
