@@ -147,8 +147,12 @@ namespace Proximity.Utility.Threading
 		
 		private void ProcessDelayTaskFlag(object state)
 		{
-			// Wait a bit before acknowledging the flag
-			_DelayTimer.Change(_Delay, new TimeSpan(0, 0, 0, 0, -1));
+			var MyTimer = _DelayTimer;
+
+			// Ensure we're not disposing
+			if (MyTimer != null)
+				// Wait a bit before acknowledging the flag
+				_DelayTimer.Change(_Delay, new TimeSpan(0, 0, 0, 0, -1));
 		}
 		
 		private void ProcessTaskFlag(object state)
