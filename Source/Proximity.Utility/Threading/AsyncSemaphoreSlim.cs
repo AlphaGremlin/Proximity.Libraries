@@ -137,20 +137,180 @@ namespace Proximity.Utility.Threading
 			if (TryIncrement())
 				Decrement();
 
+			return PrepareWaiter(NewWaiter, token);
+		}
+
+		/// <summary>
+		/// Tries to take a counter without waiting
+		/// </summary>
+		/// <param name="handle">An IDisposable to release the counter if TryTake succeeds</param>
+		/// <returns>True if the counter was taken without waiting, otherwise False</returns>
+		public bool TryTake(out IDisposable handle)
+		{
+			// Are we disposed?
+			if (_Dispose == null && _Waiters.IsEmpty && TryIncrement())
+			{
+				handle = new AsyncLockInstance(this);
+				return true;
+			}
+
+			handle = null;
+
+			return false;
+		}
+		
+		/// <summary>
+		/// Blocks attempting to take a counter
+		/// </summary>
+		/// <param name="handle">An IDisposable to release the counter if TryTake succeeds</param>
+		/// <param name="token">A cancellation token that can be used to abort waiting on a counter</param>
+		/// <returns>True if the counter was taken without waiting, otherwise False due to disposal</returns>
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		public bool TryTake(out IDisposable handle, CancellationToken token)
+		{
+#if NET40
+			return TryTake(out handle, new TimeSpan(0, 0, 0, 0, -1), token);
+#else
+			return TryTake(out handle, Timeout.InfiniteTimeSpan, token);
+#endif
+		}
+		
+		/// <summary>
+		/// Blocks attempting to take a counter
+		/// </summary>
+		/// <param name="handle">An IDisposable to release the counter if TryTake succeeds</param>
+		/// <param name="timeout">Number of milliseconds to block for a counter to become available. Pass zero to not block, or Timeout.InfiniteTimeSpan to block indefinitely</param>
+		/// <returns>True if the counter was taken, otherwise False due to timeout or disposal</returns>
+		public bool TryTake(out IDisposable handle, TimeSpan timeout)
+		{
+			return TryTake(out handle, timeout, CancellationToken.None);
+		}
+
+		/// <summary>
+		/// Blocks attempting to take a counter
+		/// </summary>
+		/// <param name="handle">An IDisposable to release the counter if TryTake succeeds</param>
+		/// <param name="timeout">Number of milliseconds to block for a counter to become available. Pass zero to not block, or Timeout.InfiniteTimeSpan to block indefinitely</param>
+		/// <param name="token">A cancellation token that can be used to abort waiting on the counter</param>
+		/// <returns>True if the counter was taken, otherwise False due to timeout or disposal</returns>
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		public bool TryTake(out IDisposable handle, TimeSpan timeout, CancellationToken token)
+		{	//****************************************
+			TaskCompletionSource<IDisposable> NewWaiter;
+			//****************************************
+
+			// First up, try and take the counter if possible
+			if (_Dispose == null && _Waiters.IsEmpty && TryIncrement())
+			{
+				handle = new AsyncLockInstance(this);
+				return true;
+			}
+
+			handle = null;
+
+			// If we're not okay with blocking, then we fail
+			if (timeout == TimeSpan.Zero)
+				return false;
+
+			//****************************************
+
+#if NET40
+			if (timeout == new TimeSpan(0, 0, 0, 0, -1) && timeout < TimeSpan.Zero)
+#else
+			if (timeout == Timeout.InfiniteTimeSpan && timeout < TimeSpan.Zero)
+#endif
+				throw new ArgumentOutOfRangeException("timeout", "Timeout must be Timeout.InfiniteTimeSpan or a positive time");
+
+			// We're okay with blocking, so create our waiter and add it to the queue
+			NewWaiter = new TaskCompletionSource<IDisposable>();
+
+			_Waiters.Enqueue(NewWaiter);
+
+			// Was a counter added while we were busy?
+			if (TryIncrement())
+				Decrement(); // Try and activate a waiter, or at least increment
+
+			//****************************************
+
+			// Are we okay with blocking indefinitely (or until the token is raised)?
+#if NET40
+			if (timeout == new TimeSpan(0, 0, 0, 0, -1))
+#else
+			if (timeout == Timeout.InfiniteTimeSpan)
+#endif
+			{
+				// Prepare the cancellation token (if any)
+				PrepareWaiter(NewWaiter, token);
+
+				try
+				{
+					// Wait indefinitely for a definitive result
+					handle = NewWaiter.Task.Result;
+
+					return true;
+				}
+				catch
+				{
+					// We may get a cancel or dispose exception
+					if (!token.IsCancellationRequested)
+						return false; // Original token was not cancelled, so return false
+
+					throw; // Throw the cancellation
+				}
+			}
+
+			// We want to be able to timeout and possibly cancel too
+			using (var MySource = CancellationTokenSource.CreateLinkedTokenSource(token))
+			{
+				// Prepare the cancellation token (if any)
+				PrepareWaiter(NewWaiter, MySource.Token);
+
+				// If the task is completed, all good!
+				if (NewWaiter.Task.IsCompleted)
+				{
+					handle = NewWaiter.Task.Result;
+
+					return true;
+				}
+
+				// We can't just use Decrement(token).Wait(timeout) because that won't cancel the decrement attempt
+				// Instead, we have to cancel on the original token
+				MySource.CancelAfter(timeout);
+
+				try
+				{
+					// Wait for the task to complete, knowing it will either cancel due to the token, the timeout, or because we're zero and disposed
+					handle = NewWaiter.Task.Result;
+
+					return true;
+				}
+				catch
+				{
+					// We may get a cancel or dispose exception
+					if (!token.IsCancellationRequested)
+						return false; // Original token was not cancelled, so either we timed out or are disposed. Return false
+
+					throw; // Throw the cancellation
+				}
+			}
+		}
+
+		//****************************************
+
+		private Task<IDisposable> PrepareWaiter(TaskCompletionSource<IDisposable> waiter, CancellationToken token)
+		{
 			// Check if we can get cancelled
 			if (token.CanBeCanceled)
 			{
 				// Register for cancellation
-				var MyRegistration = token.Register(Cancel, NewWaiter);
+				var MyRegistration = token.Register(Cancel, waiter);
 
 				// If we complete and haven't been cancelled, dispose of the registration
-				NewWaiter.Task.ContinueWith((task, state) => ((CancellationTokenRegistration)state).Dispose(), MyRegistration, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
+				waiter.Task.ContinueWith((Action<Task<IDisposable>, object>)CleanupCancelRegistration, MyRegistration, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
 			}
-					
-			return NewWaiter.Task;
-		}
 
-		//****************************************
+			return waiter.Task;
+		}
 
 		private bool TryIncrement()
 		{	//****************************************
@@ -243,6 +403,11 @@ namespace Proximity.Utility.Threading
 			// Success, now close any pending waiters
 			while (_Waiters.TryDequeue(out MyWaiter))
 				MyWaiter.TrySetException(new ObjectDisposedException("AsyncSemaphore", "Counter has been disposed of"));
+		}
+
+		private static void CleanupCancelRegistration(Task task, object state)
+		{
+			((CancellationTokenRegistration)state).Dispose();
 		}
 
 		//****************************************

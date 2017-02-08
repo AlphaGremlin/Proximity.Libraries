@@ -28,6 +28,7 @@ namespace Proximity.Utility.Collections
 		private readonly ValueCollection _ValueCollection;
 
 		private int _Size = 0;
+		private bool _DefaultIndexer;
 		//****************************************
 
 		/// <summary>
@@ -647,7 +648,10 @@ namespace Proximity.Utility.Collections
 				if (TryGetValue(key, out ResultValue))
 					return ResultValue;
 
-				throw new KeyNotFoundException();
+				if (_DefaultIndexer)
+					throw new KeyNotFoundException();
+
+				return default(TValue);
 			}
 			set { SetKey(key, value); }
 		}
@@ -693,6 +697,16 @@ namespace Proximity.Utility.Collections
 		public IComparer<TKey> Comparer
 		{
 			get { return _Comparer; }
+		}
+
+		/// <summary>
+		/// Gets/Sets whether indexer access will return the default for TValue when the key is not found
+		/// </summary>
+		/// <remarks>Improves functionality when used in certain data-binding situations. Defaults to False</remarks>
+		public bool DefaultIndexer
+		{
+			get { return _DefaultIndexer; }
+			set { _DefaultIndexer = value; }
 		}
 
 		ICollection<TKey> IDictionary<TKey, TValue>.Keys

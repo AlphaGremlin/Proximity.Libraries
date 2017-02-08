@@ -28,6 +28,7 @@ namespace Proximity.Utility.Collections
 		private readonly ValueCollection _ValueCollection;
 		
 		private int _Size = 0;
+		private bool _DefaultIndexer;
 		//****************************************
 
 		/// <summary>
@@ -357,7 +358,7 @@ namespace Proximity.Utility.Collections
 			while (Index > 0 && _Keys[Index - 1] == KeyHash)
 				Index--;
 
-			for (; ; )
+			do
 			{
 				// Do we match this item?
 				if (_Comparer.Equals(_Values[Index].Key, key))
@@ -365,16 +366,10 @@ namespace Proximity.Utility.Collections
 
 				Index++;
 
-				// Are we at the end of the list?
-				if (Index == _Size)
-					return -1; // Yes, so we didn't find the item
+				// Loop while we're not at the end of the list and there's another item with the same key
+			} while (Index != _Size && _Keys[Index] == KeyHash);
 
-				// Is there another item with the same key?
-				if (_Keys[Index] != KeyHash)
-					return -1; // Nope, so we didn't find the item
-
-				// Yes, so loop back and check that
-			}
+			return -1; // We didn't find the exact item
 		}
 
 		/// <summary>
@@ -812,7 +807,10 @@ namespace Proximity.Utility.Collections
 				if (TryGetValue(key, out ResultValue))
 					return ResultValue;
 
-				throw new KeyNotFoundException();
+				if (_DefaultIndexer)
+					throw new KeyNotFoundException();
+
+				return default(TValue);
 			}
 			set { SetKey(key, value); }
 		}
@@ -858,6 +856,16 @@ namespace Proximity.Utility.Collections
 		public IEqualityComparer<TKey> Comparer
 		{
 			get { return _Comparer; }
+		}
+
+		/// <summary>
+		/// Gets/Sets whether indexer access will return the default for TValue when the key is not found
+		/// </summary>
+		/// <remarks>Improves functionality when used in certain data-binding situations. Defaults to False</remarks>
+		public bool DefaultIndexer
+		{
+			get { return _DefaultIndexer; }
+			set { _DefaultIndexer = value; }
 		}
 
 		ICollection<TKey> IDictionary<TKey, TValue>.Keys
