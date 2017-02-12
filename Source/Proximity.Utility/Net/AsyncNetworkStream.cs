@@ -4,6 +4,7 @@
 \****************************************/
 #if !PORTABLE
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
@@ -20,16 +21,16 @@ namespace Proximity.Utility.Net
 	/// Provides a NetworkStream-esque interface that uses SocketAwaitable and tasks
 	/// </summary>
 	[SecuritySafeCritical]
-	public sealed class AsyncNetworkStream : Stream
+	internal sealed class AsyncNetworkStream : Stream
 	{	//****************************************
+		private readonly static ConcurrentStack<SmartEventArgs> _ArgsPool = new ConcurrentStack<SmartEventArgs>();
+		//****************************************
 		private readonly Socket _Socket;
-		
-		private readonly SocketAwaitableEventArgs _WriteEventArgs = new SocketAwaitableEventArgs(), _ReadEventArgs = new SocketAwaitableEventArgs();
-		
-		private Task _LastWrite;
-		private long _PendingWriteBytes = 0;
+
+		private SmartEventArgs _ReadEventArgs, _WriteEventArgs;
 
 		private long _InBytes = 0, _OutBytes = 0;
+		private readonly Action _CompleteRead, _CompleteWrite;
 		//****************************************
 
 		/// <summary>
@@ -39,23 +40,11 @@ namespace Proximity.Utility.Net
 		public AsyncNetworkStream(Socket socket)
 		{
 			_Socket = socket;
+
+			_CompleteRead = CompleteReadOperation;
+			_CompleteWrite = CompleteWriteOperation;
 		}
 
-		//****************************************
-		
-		/// <inheritdoc />
-		[SecuritySafeCritical]
-		protected override void Dispose(bool disposing)
-		{
-			base.Dispose(disposing);
-			
-			if (disposing)
-			{
-				_ReadEventArgs.Dispose();
-				_WriteEventArgs.Dispose();
-			}
-		}
-		
 		//****************************************
 
 		/// <inheritdoc />
@@ -67,7 +56,7 @@ namespace Proximity.Utility.Net
 		/// <inheritdoc />
 		public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
 		{
-			return SendData(buffer, offset, count, callback, state);
+			return WriteData(buffer, offset, count, callback, state);
 		}
 
 		/// <summary>
@@ -79,7 +68,7 @@ namespace Proximity.Utility.Net
 		/// <returns>An async result representing the write operation</returns>
 		public IAsyncResult BeginWrite(IList<ArraySegment<byte>> buffers, AsyncCallback callback, object state)
 		{
-			return SendData(buffers, callback, state);
+			return WriteData(buffers, callback, state);
 		}
 
 		/// <inheritdoc />
@@ -95,18 +84,19 @@ namespace Proximity.Utility.Net
 			// Use GetResult() so exceptions are thrown without being wrapped in AggregateException
 			((Task)asyncResult).GetAwaiter().GetResult();
 		}
-		
+
 		/// <inheritdoc />
 		public override void Flush()
 		{
 		}
 
+#if NET40
 		/// <inheritdoc />
-		public
-#if !NET40
-		override
+		public Task FlushAsync(CancellationToken cancellationToken)
+#else
+		/// <inheritdoc />
+		public override Task FlushAsync(CancellationToken cancellationToken)
 #endif
-		Task FlushAsync(CancellationToken cancellationToken)
 		{
 			return VoidStruct.EmptyTask;
 		}
@@ -117,16 +107,31 @@ namespace Proximity.Utility.Net
 			if (count == 0)
 				return 0;
 
-			// Use GetResult() so exceptions are thrown without being wrapped in AggregateException
-			return ReadData(buffer, offset, count).GetAwaiter().GetResult();
+			try
+			{
+				// Use GetResult() so exceptions are thrown without being wrapped in AggregateException
+				var InBytes = _Socket.Receive(buffer, offset, count, SocketFlags.None);
+
+				Interlocked.Add(ref _InBytes, InBytes);
+
+				return InBytes;
+			}
+			catch (Exception e)
+			{
+				if (!(e is ThreadAbortException) && !(e is StackOverflowException) && !(e is OutOfMemoryException))
+					throw new IOException("Receive failed", e);
+
+				throw;
+			}
 		}
 
+#if NET40
 		/// <inheritdoc />
-		public
-#if !NET40
-		override
+		public Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+#else
+		/// <inheritdoc />
+		public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
 #endif
-		Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
 		{
 			if (cancellationToken.IsCancellationRequested)
 			{
@@ -139,15 +144,51 @@ namespace Proximity.Utility.Net
 
 			return ReadData(buffer, offset, count);
 		}
-		
+
+		/// <summary>
+		/// Asynchronously reads from a Socket with minimal allocations
+		/// </summary>
+		/// <param name="buffer">The buffer to write the received data into</param>
+		/// <param name="offset">The offset into the buffer to begin writing</param>
+		/// <param name="count">The maximum number of bytes that can be written</param>
+		/// <returns>An awaitable that completes when the Socket has been read from</returns>
+		public ReadAwaitable ReadAwait(byte[] buffer, int offset, int count)
+		{
+			BeginOperation(ref _ReadEventArgs);
+
+			try
+			{
+				// Prepare the receive buffer
+				_ReadEventArgs.SetBuffer(buffer, offset, count);
+				_ReadEventArgs.UserToken = this;
+
+				// Begin the receive operation
+				_ReadEventArgs.Receive(_Socket);
+			}
+			catch (ObjectDisposedException)
+			{
+				EndOperation(ref _ReadEventArgs);
+
+				return new ReadAwaitable(null); // Socket was closed, return a null awaiter
+			}
+			catch
+			{
+				EndOperation(ref _ReadEventArgs);
+
+				throw;
+			}
+
+			return new ReadAwaitable(_ReadEventArgs);
+		}
+
 		/// <inheritdoc />
 		public override int ReadByte()
 		{
 			var MyBuffer = new byte[0];
 
-			var MyTask = ReadData(MyBuffer, 0, 1);
+			var ReadBytes = Read(MyBuffer, 0, 1);
 
-			if (MyTask.Result == 0)
+			if (ReadBytes == 0)
 				return -1;
 
 			return MyBuffer[0];
@@ -170,10 +211,21 @@ namespace Proximity.Utility.Net
 		{
 			if (count == 0)
 				return;
-			
-			// There is no synchronous sending with SocketAsyncEventArgs
-			// Use GetResult() so exceptions are thrown without being wrapped in AggregateException
-			SendData(buffer, offset, count).GetAwaiter().GetResult();
+
+			try
+			{
+				// Use GetResult() so exceptions are thrown without being wrapped in AggregateException
+				_Socket.Send(buffer, offset, count, SocketFlags.None);
+
+				Interlocked.Add(ref _OutBytes, count);
+			}
+			catch (Exception e)
+			{
+				if (!(e is ThreadAbortException) && !(e is StackOverflowException) && !(e is OutOfMemoryException))
+					throw new IOException("Send failed", e);
+
+				throw;
+			}
 		}
 
 		/// <summary>
@@ -185,30 +237,42 @@ namespace Proximity.Utility.Net
 			if (buffers.Count == 0)
 				return;
 
-			// There is no synchronous sending with SocketAsyncEventArgs
-			// Use GetResult() so exceptions are thrown without being wrapped in AggregateException
-			SendData(buffers).GetAwaiter().GetResult();
+			try
+			{
+				_Socket.Send(buffers, SocketFlags.None);
+
+				for (int Index = 0; Index < buffers.Count; Index++)
+					Interlocked.Add(ref _OutBytes, buffers[Index].Count);
+			}
+			catch (Exception e)
+			{
+				if (!(e is ThreadAbortException) && !(e is StackOverflowException) && !(e is OutOfMemoryException))
+					throw new IOException("Send failed", e);
+
+				throw;
+			}
 		}
 
+#if NET40
 		/// <inheritdoc />
-		public
-#if !NET40
-		override
+		public Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+#else
+		/// <inheritdoc />
+		public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
 #endif
-		Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
 		{
 			if (cancellationToken.IsCancellationRequested)
 			{
 #if NET40
 				return TaskEx.Run(() => { }, cancellationToken);
 #else
-				return Task.Run(() => {}, cancellationToken);
+				return Task.Run(() => { }, cancellationToken);
 #endif
 			}
 
-			return SendData(buffer, offset, count);
+			return WriteData(buffer, offset, count);
 		}
-		
+
 		/// <summary>
 		/// Asynchronously writes a set of buffers to the Socket
 		/// </summary>
@@ -225,185 +289,416 @@ namespace Proximity.Utility.Net
 #if NET40
 				return TaskEx.Run(() => { }, cancellationToken);
 #else
-				return Task.Run(() => {}, cancellationToken);
+				return Task.Run(() => { }, cancellationToken);
 #endif
 			}
-			
-			return SendData(buffers);
+
+			return WriteData(buffers);
 		}
-		
+
+		/// <summary>
+		/// Asynchronously writes a buffer to the Socket with minimal allocations
+		/// </summary>
+		/// <param name="buffer">The buffer to write to the Socket</param>
+		/// <param name="offset">The offset into the buffer to write from</param>
+		/// <param name="count">The number of bytes to write</param>
+		/// <returns>An awaitable that completes when the Socket has been written to</returns>
+		public WriteAwaitable WriteAwait(byte[] buffer, int offset, int count)
+		{
+			BeginOperation(ref _WriteEventArgs);
+
+			try
+			{
+				// Prepare the receive buffer
+				_WriteEventArgs.SetBuffer(buffer, offset, count);
+				_WriteEventArgs.UserToken = this;
+
+				// Begin the receive operation
+				_WriteEventArgs.Send(_Socket);
+			}
+			catch (ObjectDisposedException)
+			{
+				EndOperation(ref _WriteEventArgs);
+
+				return new WriteAwaitable(null); // Socket was closed, return a null awaiter
+			}
+			catch
+			{
+				EndOperation(ref _WriteEventArgs);
+
+				throw;
+			}
+
+			return new WriteAwaitable(_WriteEventArgs);
+		}
+
 		/// <inheritdoc />
 		public override void WriteByte(byte value)
 		{
 			// There is no synchronous sending with SocketAsyncEventArgs
-			SendData(new byte[] { value }, 0, 1).GetAwaiter().GetResult();
+			Write(new byte[] { value }, 0, 1);
 		}
 
 		//****************************************
-		
-		private Task<int> ReadData(byte[] buffer, int index, int count, AsyncCallback callback = null, object state = null)
+
+		private void BeginOperation(ref SmartEventArgs targetArgs)
 		{	//****************************************
-			var MyOperation = new ReadOperation(this, callback, state); // 2 allocations (TaskCompletionSource and Task)
+			SmartEventArgs MyArgs;
 			//****************************************
-			
-			// Prepare a receive buffer
-			_ReadEventArgs.SetBuffer(buffer, index, count);
+
+			// Retrieve an existing args from the pool
+			if (!_ArgsPool.TryPop(out MyArgs))
+				// None found, so create a new one
+				MyArgs = new SmartEventArgs();
+
+			// Ensure we're not already executing this operation
+			if (Interlocked.CompareExchange(ref targetArgs, MyArgs, null) != null)
+			{
+				// Return the args we just retrieved/created
+				_ArgsPool.Push(MyArgs);
+
+				throw new InvalidOperationException("Operation already in progress");
+			}
+		}
+
+		private void EndOperation(ref SmartEventArgs targetArgs)
+		{	//****************************************
+			var MyArgs = Interlocked.Exchange(ref targetArgs, null);
+			//****************************************
+
+			if (MyArgs == null)
+				return; // End without a start?!
 
 			try
 			{
+				// Clean the send buffers, so SocketAsyncEventArgs doesn't hold a pinned reference to it
+				if (MyArgs.Buffer != null)
+					MyArgs.SetBuffer(null, 0, 0);
+				else if (MyArgs.BufferList != null)
+					MyArgs.BufferList = null;
+
+				MyArgs.UserToken = null;
+
+				// Return it to the writer pool
+				_ArgsPool.Push(MyArgs);
+			}
+			catch
+			{
+				// Something bad happened, so cleanup
+				MyArgs.Dispose();
+			}
+		}
+
+		/*
+		 * Read await completes synchronously: 0 allocations
+		 * Read await completes synchronously with error: 1 allocation (Exception)
+		 * Read completes synchronously: 1 allocation (Task)
+		 * Read completes synchronously with state: 2 allocations (TCS+Task)
+		 * Read completes synchronously with error: 3 allocations (TCS+Task+Exception)
+		 * Read await waits: 0 allocations
+		 * Read await waits with error: 1 allocation (Exception)
+		 * Read waits: 2 allocations (TCS+Task)
+		 * Read waits with error: 3 allocations (TCS+Task+Exception)
+		 */
+
+		private Task<int> ReadData(byte[] buffer, int index, int count, AsyncCallback callback = null, object state = null)
+		{
+			BeginOperation(ref _ReadEventArgs);
+
+			try
+			{
+				// Prepare the receive buffer
+				_ReadEventArgs.SetBuffer(buffer, index, count);
+
 				// Start waiting for some data
-				_ReadEventArgs.ReceiveAsync(_Socket);
-	
-				if (_ReadEventArgs.IsCompleted)
+				if (_ReadEventArgs.Receive(_Socket))
 				{
-					MyOperation.ProcessCompletedReceive();
+					// We completed synchronously, so go straight to completion
+					return CompleteReadOperation(callback, state, null);
 				}
-				else
-				{
-					((INotifyCompletion)_ReadEventArgs).OnCompleted(MyOperation.ProcessCompletedReceive); // 1 allocation (Action)
-				}
-	
-				return MyOperation.Task;
 			}
 			catch (ObjectDisposedException) // Socket was closed, no need to continue
 			{
-				MyOperation.SetResult(0);
-
-				return MyOperation.Task;
+				return CompleteRead(callback, state, null, null, 0);
 			}
 			catch (Exception e)
 			{
-				MyOperation.Fail(e);
-				
-				return MyOperation.Task;
-			}
-		}
-		
-		private Task SendData(IList<ArraySegment<byte>> buffers, AsyncCallback callback = null, object state = null)
-		{	//****************************************
-			SendBulkOperation MyOperation;
-			int TotalBytes = 0;
-			//****************************************
-
-			// Total the bytes to be sent
-			foreach (var MyBuffer in buffers)
-				TotalBytes += buffers.Count;
-
-			Interlocked.Add(ref _PendingWriteBytes, TotalBytes);
-
-			MyOperation = new SendBulkOperation(this, buffers, TotalBytes, callback, state); // 2 allocations (TaskCompletionSource and Task)
-
-			//****************************************
-			
-			// Swap out the previous write task with ours
-			var OldTask = Interlocked.Exchange(ref _LastWrite, MyOperation.Task);
-			
-			// Has that write completed?
-			if (OldTask == null || OldTask.IsCompleted)
-			{
-				// Yes, directly queue it
-				DoSendData(MyOperation);
-			}
-			else
-			{
-				// No, wait until it finishes to queue our write
-				OldTask.ContinueWith(MyOperation.DoSendData); // 2 allocations (Task and Action)
+				return CompleteRead(callback, state, null, e, 0);
 			}
 
-			return MyOperation.Task;
-		}
-		
-		private Task SendData(byte[] buffer, int offset, int count, AsyncCallback callback = null, object state = null)
-		{	//****************************************
-			var MyOperation = new SendOperation(this, buffer, offset, count, callback, state); // 2 allocations (TaskCompletionSource and Task)
-			//****************************************
+			// We're running asynchronously, so create our Task
+			var MyOperation = new AsyncOperation(callback, state); // 2 allocations (TaskCompletionSource and Task)
 
-			// Add the bytes to be sent
-			Interlocked.Add(ref _PendingWriteBytes, count);
-
-			// Swap out the previous write task with ours
-			var OldTask = Interlocked.Exchange(ref _LastWrite, MyOperation.Task);
-			
-			// Has that write completed?
-			if (OldTask == null || OldTask.IsCompleted)
-			{
-				// Yes, directly queue it
-				DoSendData(MyOperation);
-			}
-			else
-			{
-				// No, wait until it finishes to queue our write
-				OldTask.ContinueWith(MyOperation.DoSendData); // 2 allocations (Task and Action)
-			}
+			_ReadEventArgs.UserToken = MyOperation;
+			_ReadEventArgs.OnCompleted(_CompleteRead);
 
 			return MyOperation.Task;
 		}
 
-		private void DoSendData(SendOperation operation)
+		private int CompleteReadAwait()
 		{
 			try
 			{
-				_WriteEventArgs.BufferList = null;
-				operation.Apply();
-			
-				_WriteEventArgs.SendAsync(_Socket);
+				if (_ReadEventArgs.SocketError != SocketError.Success)
+					throw new IOException("Receive failed", new SocketException((int)_ReadEventArgs.SocketError));
 
-				if (_WriteEventArgs.IsCompleted)
+				Interlocked.Add(ref _InBytes, _ReadEventArgs.BytesTransferred);
+
+				return _ReadEventArgs.BytesTransferred;
+			}
+			finally
+			{
+				// End the read operation before we set the result, since that can call continuations that perform more reads
+				EndOperation(ref _ReadEventArgs);
+			}
+		}
+
+		private void CompleteReadOperation()
+		{
+			var MyOperation = (AsyncOperation)_ReadEventArgs.UserToken;
+
+			CompleteReadOperation(MyOperation.Callback, MyOperation.Task.AsyncState, MyOperation);
+		}
+
+		private Task<int> CompleteReadOperation(AsyncCallback callback, object state, TaskCompletionSource<int> taskSource)
+		{
+			// Handle the result
+			if (_ReadEventArgs.SocketError == SocketError.Success)
+			{
+				// Success
+				Interlocked.Add(ref _InBytes, _ReadEventArgs.BytesTransferred);
+
+				return CompleteRead(callback, state, taskSource, null, _ReadEventArgs.BytesTransferred);
+			}
+
+			return CompleteRead(callback, state, taskSource, new IOException("Receive failed", new SocketException((int)_ReadEventArgs.SocketError)), 0);
+		}
+
+		private Task<int> CompleteRead(AsyncCallback callback, object state, TaskCompletionSource<int> taskSource, Exception exception, int result)
+		{	//****************************************
+			Task<int> MyResult;
+			//****************************************
+
+			// End the read operation before we set the result, since that can call continuations that perform more reads
+			EndOperation(ref _ReadEventArgs);
+
+			// If there's no exception, we were disposed of, so complete as if we got a final read
+			if (exception == null)
+			{
+				// If there's a state, we need to create a task completion source that wraps it
+				if (state != null && taskSource == null)
+					taskSource = new TaskCompletionSource<int>(state);
+
+				if (taskSource != null)
 				{
-					operation.ProcessCompletedSend();
+					taskSource.SetResult(result);
+
+					MyResult = taskSource.Task;
 				}
 				else
 				{
-					_WriteEventArgs.OnCompleted(operation.ProcessCompletedSend); // 1 allocation (Action)
+#if NET40
+					MyResult = TaskEx.FromResult(result);
+#else
+					MyResult = Task.FromResult(result);
+#endif
 				}
 			}
-			catch (ObjectDisposedException)
+			else
 			{
-				operation.Dispose();
+				// We're returning an exception, so we always need a TaskCompletionSource
+				if (taskSource == null)
+					taskSource = new TaskCompletionSource<int>(state);
+
+				taskSource.SetException(exception);
+
+				MyResult = taskSource.Task;
+			}
+
+			try
+			{
+				// Raise the async callback (if any)
+				if (callback != null)
+					callback(MyResult);
 			}
 			catch (Exception e)
 			{
-				operation.Fail(e);
+				// Callback can raise exceptions. If it's our exception, ignore
+				if (MyResult.Exception == null || MyResult.Exception.InnerException != e)
+					throw;
 			}
+
+			return MyResult;
 		}
-		
-		private void DoSendData(SendBulkOperation operation)
+
+		/*
+		 * Write await completes synchronously: 0 allocations
+		 * Write await completes synchronously with error: 1 allocation (Exception)
+		 * Write completes synchronously: 0 allocations
+		 * Write completes synchronously with state: 2 allocations (TCS+Task)
+		 * Write completes synchronously with error: 3 allocations (TCS+Task+Exception)
+		 * Write await waits: 0 allocations
+		 * Write await waits with error: 1 allocation (Exception)
+		 * Write waits: 2 allocations (TCS+Task)
+		 * Write waits with error: 3 allocations (TCS+Task+Exception)
+		 * 
+		 * NOTE: All async-capable writes include one extra allocation due to the WriterPool Push operation
+		 */
+
+		private Task WriteData(IList<ArraySegment<byte>> buffers, AsyncCallback callback = null, object state = null)
+		{
+			BeginOperation(ref _WriteEventArgs);
+
+			try
+			{
+				// Prepare the writer
+				_WriteEventArgs.BufferList = buffers;
+
+				// Start writing our data
+				if (_WriteEventArgs.Send(_Socket))
+				{
+					// We completed synchronously, so go straight to completion
+					return CompleteWriteOperation(callback, state, null);
+				}
+			}
+			catch (ObjectDisposedException) // Socket was closed, no need to continue
+			{
+				return CompleteWrite(callback, state, null, null);
+			}
+			catch (Exception e)
+			{
+				return CompleteWrite(callback, state, null, e);
+			}
+
+			// We're running asynchronously, so create our Task
+			var MyOperation = new AsyncOperation(callback, state); // 2 allocations (TaskCompletionSource and Task)
+
+			_WriteEventArgs.UserToken = MyOperation;
+			_WriteEventArgs.OnCompleted(_CompleteWrite);
+
+			return MyOperation.Task;
+		}
+
+		private Task WriteData(byte[] buffer, int offset, int count, AsyncCallback callback = null, object state = null)
+		{
+			BeginOperation(ref _WriteEventArgs);
+
+			try
+			{
+				// Prepare the writer
+				_WriteEventArgs.SetBuffer(buffer, offset, count);
+
+				// Start writing our data
+				if (_WriteEventArgs.Send(_Socket))
+				{
+					// We completed synchronously, so go straight to completion
+					return CompleteWriteOperation(callback, state, null);
+				}
+			}
+			catch (ObjectDisposedException) // Socket was closed, no need to continue
+			{
+				return CompleteWrite(callback, state, null, null);
+			}
+			catch (Exception e)
+			{
+				return CompleteWrite(callback, state, null, e);
+			}
+
+			var MyOperation = new AsyncOperation(callback, state); // 2 allocations (TaskCompletionSource and Task)
+
+			_WriteEventArgs.UserToken = MyOperation;
+			_WriteEventArgs.OnCompleted(_CompleteWrite);
+
+			return MyOperation.Task;
+		}
+
+		private void CompleteWriteAwait()
 		{
 			try
 			{
-				_WriteEventArgs.SetBuffer(null, 0, 0);
-				operation.Apply();
+				if (_WriteEventArgs.SocketError != SocketError.Success)
+					throw new IOException("Send failed", new SocketException((int)_WriteEventArgs.SocketError));
 
-				_WriteEventArgs.SendAsync(_Socket);
+				Interlocked.Add(ref _OutBytes, _WriteEventArgs.BytesTransferred);
+			}
+			finally
+			{
+				EndOperation(ref _WriteEventArgs);
+			}
+		}
 
-				if (_WriteEventArgs.IsCompleted)
+		private void CompleteWriteOperation()
+		{
+			var Operation = (AsyncOperation)_WriteEventArgs.UserToken;
+
+			CompleteWriteOperation(Operation.Callback, Operation.Task.AsyncState, Operation);
+		}
+
+		private Task CompleteWriteOperation(AsyncCallback callback, object state, TaskCompletionSource<int> taskSource)
+		{
+			// Handle the result
+			if (_WriteEventArgs.SocketError == SocketError.Success)
+			{
+				// Success
+				Interlocked.Add(ref _OutBytes, _WriteEventArgs.BytesTransferred);
+
+				return CompleteWrite(callback, state, taskSource, null);
+			}
+
+			return CompleteWrite(callback, state, taskSource, new IOException("Send failed", new SocketException((int)_WriteEventArgs.SocketError)));
+		}
+
+		private Task CompleteWrite(AsyncCallback callback, object state, TaskCompletionSource<int> taskSource, Exception exception)
+		{	//****************************************
+			Task MyResult;
+			//****************************************
+
+			// End the write operation before we set the result, since that can call continuations that perform more writes
+			EndOperation(ref _WriteEventArgs);
+
+			// If there's no exception, we were disposed of, so complete as if we got a final read
+			if (exception == null)
+			{
+				// If there's a state, we need to create a task completion source that wraps it
+				if (state != null && taskSource == null)
+					taskSource = new TaskCompletionSource<int>(state); // 2 allocations (TaskCompletionSource and Task)
+
+				if (taskSource != null)
 				{
-					operation.ProcessCompletedSend();
+					taskSource.SetResult(0);
+
+					MyResult = taskSource.Task;
 				}
 				else
 				{
-					_WriteEventArgs.OnCompleted(operation.ProcessCompletedSend); // 1 allocation (Action)
+					MyResult = VoidStruct.EmptyTask;
 				}
 			}
-			catch (ObjectDisposedException)
+			else
 			{
-				operation.Dispose();
+				// We're returning an exception, so we always need a TaskCompletionSource
+				if (taskSource == null)
+					taskSource = new TaskCompletionSource<int>(state);
+
+				taskSource.SetException(exception);
+
+				MyResult = taskSource.Task;
+			}
+
+			try
+			{
+				// Raise the async callback (if any)
+				if (callback != null)
+					callback(MyResult);
 			}
 			catch (Exception e)
 			{
-				operation.Fail(e);
+				// Callback can raise exceptions. If it's our exception, ignore
+				if (MyResult.Exception == null || MyResult.Exception.InnerException != e)
+					throw;
 			}
-		}
 
-		private void CompleteReceive(long totalBytes)
-		{
-			Interlocked.Add(ref _InBytes, totalBytes);
-		}
-
-		private void CompleteSend(long bytesSent)
-		{
-			Interlocked.Add(ref _PendingWriteBytes, -bytesSent);
-			Interlocked.Add(ref _OutBytes, bytesSent);
+			return MyResult;
 		}
 
 		//****************************************
@@ -438,7 +733,7 @@ namespace Proximity.Utility.Net
 			get { throw new NotSupportedException(); }
 			set { throw new NotSupportedException(); }
 		}
-		
+
 		/// <summary>
 		/// Gets the socket this AsyncNetworkStream is wrapping
 		/// </summary>
@@ -463,238 +758,223 @@ namespace Proximity.Utility.Net
 			get { return _OutBytes; }
 		}
 
+		//****************************************
+
 		/// <summary>
-		/// Gets the bytes that are awaiting being sent
+		/// Empties the SocketEventArgs object pool
 		/// </summary>
-		/// <remarks>This does not necessarily include data that is in the send buffer for the Socket</remarks>
-		public long PendingWriteBytes
-		{
-			get { return _PendingWriteBytes; }
+		/// <remarks>SocketEventArgs being used by currently executing operations will not be affected</remarks>
+		public static void EmptyPool()
+		{	//****************************************
+			SmartEventArgs MyEventArgs;
+			//****************************************
+
+			while (_ArgsPool.TryPop(out MyEventArgs))
+			{
+				MyEventArgs.Dispose();
+			}
 		}
 
 		//****************************************
-		
-		private sealed class ReadOperation : TaskCompletionSource<int>
+
+		/// <summary>
+		/// Provides an awaitable for read operations
+		/// </summary>
+		public struct ReadAwaitable : INotifyCompletion
 		{	//****************************************
-			private readonly AsyncNetworkStream _Stream;
+			private readonly SmartEventArgs _EventArgs;
+			//****************************************
+
+			internal ReadAwaitable(SmartEventArgs eventArgs)
+			{
+				_EventArgs = eventArgs;
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Gets the awaiter for this awaitable
+			/// </summary>
+			/// <returns>This awaitable</returns>
+			public ReadAwaitable GetAwaiter()
+			{
+				return this;
+			}
+
+			/// <summary>
+			/// Gets the result of the read operation
+			/// </summary>
+			/// <returns>The number of bytes read, or zero</returns>
+			public int GetResult()
+			{
+				if (_EventArgs == null)
+					return 0;
+
+				return ((AsyncNetworkStream)_EventArgs.UserToken).CompleteReadAwait();
+			}
+
+			/// <summary>
+			/// Attaches a completion to this Awaitable
+			/// </summary>
+			/// <param name="action">The action to raise when the read operation has completed</param>
+			public void OnCompleted(Action action)
+			{
+				// Attach to our EventArgs. If the event has completed already, will raise on another thread
+				_EventArgs.OnCompleted(action);
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Gets whether the operation has completed
+			/// </summary>
+			public bool IsCompleted
+			{
+				get { return _EventArgs == null || _EventArgs.IsCompleted; }
+			}
+		}
+
+		/// <summary>
+		/// Provides an awaitable for write operations
+		/// </summary>
+		public struct WriteAwaitable : INotifyCompletion
+		{	//****************************************
+			private readonly SmartEventArgs _EventArgs;
+			//****************************************
+
+			internal WriteAwaitable(SmartEventArgs eventArgs)
+			{
+				_EventArgs = eventArgs;
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Gets the awaiter for this awaitable
+			/// </summary>
+			/// <returns>This awaitable</returns>
+			public WriteAwaitable GetAwaiter()
+			{
+				return this;
+			}
+
+			/// <summary>
+			/// Gets the result of the write operation
+			/// </summary>
+			public void GetResult()
+			{
+				if (_EventArgs != null)
+					((AsyncNetworkStream)_EventArgs.UserToken).CompleteWriteAwait();
+			}
+
+			/// <summary>
+			/// Attaches a completion to this Awaitable
+			/// </summary>
+			/// <param name="action">The action to raise when the write operation has completed</param>
+			public void OnCompleted(Action action)
+			{
+				// Attach to our EventArgs. If the event has completed already, will raise on another thread
+				_EventArgs.OnCompleted(action);
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Gets whether the operation has completed
+			/// </summary>
+			public bool IsCompleted
+			{
+				get { return _EventArgs == null || _EventArgs.IsCompleted; }
+			}
+		}
+
+		private sealed class AsyncOperation : TaskCompletionSource<int>
+		{	//****************************************
 			private readonly AsyncCallback _Callback;
 			//****************************************
-			
-			internal ReadOperation(AsyncNetworkStream stream, AsyncCallback callback, object state) : base(state)
+
+			internal AsyncOperation(AsyncCallback callback, object state) : base(state)
 			{
-				_Stream = stream;
 				_Callback = callback;
 			}
-			
+
 			//****************************************
-			
-			internal void ProcessCompletedReceive()
-			{	//****************************************
-				var EventArgs = _Stream._ReadEventArgs;
-				//****************************************
 
-				try
-				{
-					EventArgs.SetBuffer(null, 0, 0);
-				}
-				catch (ObjectDisposedException)
-				{
-				}
-
-				if (EventArgs.SocketError == SocketError.Success)
-				{
-					_Stream.CompleteReceive(EventArgs.BytesTransferred);
-
-					SetResult(EventArgs.BytesTransferred);
-				}
-				else
-				{
-					SetException(new IOException("Receive failed", new SocketException((int)EventArgs.SocketError)));
-				}
-
-				try
-				{
-					// Raise the async callback (if any)
-					if (_Callback != null)
-						_Callback(Task);
-				}
-				catch (Exception e)
-				{
-					// Callback can raise exceptions. If it's our exception, ignore
-					if (Task.Exception == null || Task.Exception.InnerException != e)
-						throw;
-				}
-			}
-			
-			internal void Fail(Exception e)
+			internal AsyncCallback Callback
 			{
-				// Ensure the completed task we return has the appropriate state
-				SetException(e);
-
-				try
-				{
-					// Raise the async callback (if any)
-					if (_Callback != null)
-						_Callback(Task);
-				}
-				catch (Exception)
-				{
-					// Callback can raise exceptions. If it's our exception, ignore
-					if (Task.Exception == null || Task.Exception.InnerException != e)
-						throw;
-				}
+				get { return _Callback; }
 			}
 		}
-		
-		private abstract class BaseSendOperation : TaskCompletionSource<VoidStruct>
+
+		[SecuritySafeCritical]
+		internal sealed class SmartEventArgs : SocketAsyncEventArgs
 		{	//****************************************
-			private readonly AsyncNetworkStream _Stream;
-			private readonly AsyncCallback _Callback;
+			private readonly static Action HasCompleted = () => { };
 			//****************************************
-			
-			internal BaseSendOperation(AsyncNetworkStream stream, AsyncCallback callback, object state) : base(state)
-			{
-				_Stream = stream;
-				_Callback = callback;
-			}
-			
+			private Action _Continuation;
 			//****************************************
 
-			internal void Dispose()
+			internal bool Receive(Socket socket)
 			{
-				_Stream.CompleteSend(TotalBytes);
+				_Continuation = null;
 
-				SetResult(VoidStruct.Empty);
+				if (socket.ReceiveAsync(this))
+					return false;
+
+				// We completed synchronously, so set our continuation To HasCompleted
+				if (Interlocked.CompareExchange(ref _Continuation, HasCompleted, null) != null)
+					// Our continuation has been set, someone is using this object concurrently
+					throw new InvalidOperationException("Operation is already in progress");
+
+				return true;
 			}
 
-			internal void Fail(Exception e)
+			internal bool Send(Socket socket)
 			{
-				_Stream.CompleteSend(TotalBytes);
+				_Continuation = null;
 
-				// Ensure the completed task we return has the appropriate state
-				SetException(e);
+				if (socket.SendAsync(this))
+					return false;
 
-				try
-				{
-					// Raise the async callback (if any)
-					if (_Callback != null)
-						_Callback(Task);
-				}
-				catch (Exception)
-				{
-					// Callback can raise exceptions. If it's our exception, ignore
-					if (Task.Exception == null || Task.Exception.InnerException != e)
-						throw;
-				}
-			}
-			
-			internal void ProcessCompletedSend()
-			{	//****************************************
-				var EventArgs = _Stream._WriteEventArgs;
-				//****************************************
+				// We completed synchronously, so set our continuation To HasCompleted
+				if (Interlocked.CompareExchange(ref _Continuation, HasCompleted, null) != null)
+					// Our continuation has been set, someone is using this object concurrently
+					throw new InvalidOperationException("Operation is already in progress");
 
-				_Stream.CompleteSend(TotalBytes);
-
-				// Clean the buffer, so SocketAsyncEventArgs don't hold a pinned reference to it
-				try
-				{
-					EventArgs.SetBuffer(null, 0, 0);
-				}
-				catch (ObjectDisposedException)
-				{
-				}
-
-				if (EventArgs.SocketError == SocketError.Success)
-					SetResult(VoidStruct.Empty);
-				else
-					SetException(new IOException("Send failed", new SocketException((int)EventArgs.SocketError)));
-
-				try
-				{
-					// Raise the async callback (if any)
-					if (_Callback != null)
-						_Callback(Task);
-				}
-				catch (Exception e)
-				{
-					// Callback can raise exceptions. If it's our exception, ignore
-					if (Task.Exception == null || Task.Exception.InnerException != e)
-						throw;
-				}
-			}
-			
-			//****************************************
-			
-			protected AsyncNetworkStream Stream
-			{
-				get { return _Stream; }
+				return true;
 			}
 
-			internal abstract long TotalBytes { get; }
-		}
-		
-		private sealed class SendOperation : BaseSendOperation
-		{	//****************************************
-			private readonly byte[] _Buffer;
-			private readonly int _Offset, _Count;
-			//****************************************
-			
-			internal SendOperation(AsyncNetworkStream stream, byte[] buffer, int offset, int count, AsyncCallback callback, object state) : base(stream, callback, state)
+			public void OnCompleted(Action continuation)
 			{
-				_Buffer = buffer;
-				_Offset = offset;
-				_Count = count;
+				// If our continuation is HasCompleted, OnCompleted has already executed
+				// If it's not, try and set it to the given continuation, as long as it's not completed
+				if (_Continuation != HasCompleted && Interlocked.CompareExchange(ref _Continuation, continuation, null) != HasCompleted)
+					// NOTE: If OnCompleted has already been called, the CompareExchange will never succeed (so only the first continuation will ever get raised)
+					return;
+
+				// If the continuation was HasCompleted, or got set to HasCompleted, run our continuation
+				// Since we don't want to blow the stack doing this, run it asynchronously
+				ThreadPool.QueueUserWorkItem((state) => ((Action)state)(), continuation); // 1 allocation
 			}
-			
-			//****************************************
-			
-			internal void DoSendData(Task ancestor)
+
+			[SecuritySafeCritical]
+			protected override void OnCompleted(SocketAsyncEventArgs e)
 			{
-				Stream.DoSendData(this);
-			}
-			
-			internal void Apply()
-			{
-				Stream._WriteEventArgs.SetBuffer(_Buffer, _Offset, _Count);
+				// Set our continuation to HasCompleted, and return what was previously there
+				var MyContinuation = Interlocked.Exchange(ref _Continuation, HasCompleted);
+
+				// If a continuation was previously set, call it
+				if (MyContinuation != null)
+					MyContinuation();
+
+				base.OnCompleted(e);
 			}
 
 			//****************************************
 
-			internal override long TotalBytes
+			public bool IsCompleted
 			{
-				get { return _Count; }
-			}
-		}
-		
-		private sealed class SendBulkOperation : BaseSendOperation
-		{	//****************************************
-			private readonly IList<ArraySegment<byte>> _Buffers;
-			private readonly long _TotalBytes;
-			//****************************************
-			
-			internal SendBulkOperation(AsyncNetworkStream stream, IList<ArraySegment<byte>> buffers, long totalBytes, AsyncCallback callback, object state) : base(stream, callback, state)
-			{
-				_Buffers = buffers;
-				_TotalBytes = totalBytes;
-			}
-			
-			//****************************************
-			
-			internal void DoSendData(Task ancestor)
-			{
-				Stream.DoSendData(this);
-			}
-			
-			internal void Apply()
-			{
-				Stream._WriteEventArgs.BufferList = _Buffers;
-			}
-
-			//****************************************
-
-			internal override long TotalBytes
-			{
-				get { return _TotalBytes; }
+				get { return object.ReferenceEquals(_Continuation, HasCompleted); }
 			}
 		}
 	}

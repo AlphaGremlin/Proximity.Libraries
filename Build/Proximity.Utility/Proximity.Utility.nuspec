@@ -2,14 +2,14 @@
 <package >
 	<metadata>
 		<id>Proximity.Utility</id>
-		<version>17.6.3.4</version>
+		<version>17.7.0.0</version>
 		<title>Proximity Utility Library</title>
 		<authors>Proximity Interactive</authors>
 		<owners>Proximity Interactive</owners>
 		<requireLicenseAcceptance>false</requireLicenseAcceptance>
 		<description>Proximity Utility Library</description>
 		<releaseNotes>https://iproximity.svn.cloudforge.com/libraries/trunk</releaseNotes>
-		<copyright>Copyright 2015</copyright>
+		<copyright>Copyright 2017</copyright>
 		<dependencies>
 			<group>
 				<dependency id="System.Collections.Immutable" version="1.1.36" />

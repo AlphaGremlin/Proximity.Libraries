@@ -76,8 +76,8 @@ namespace Proximity.Utility.IO
 		/// <summary>
 		/// Waits for the pipe stream to be fully written to
 		/// </summary>
-		/// <param name="token"></param>
-		/// <returns></returns>
+		/// <param name="token">A cancellation token to abort waiting</param>
+		/// <returns>A Task that completes when the pipe stream has been written to and Completed</returns>
 		public Task WaitForComplete(CancellationToken token)
 		{
 			if (_DataCollection.IsAddingCompleted)

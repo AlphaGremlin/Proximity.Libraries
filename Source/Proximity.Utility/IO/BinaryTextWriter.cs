@@ -119,7 +119,7 @@ namespace Proximity.Utility.IO
 		/// <summary>
 		/// Retrieves the bytes written so far to the Binary Text Writer
 		/// </summary>
-		/// <returns></returns>
+		/// <returns>A new byte array containing the bytes written</returns>
 		public byte[] ToArray()
 		{
 			Flush(true);

@@ -27,7 +27,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ObservableSortedSet.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\PagedSetResults.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)IO\PipeStream.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Threading\AsyncSemaphoreSlim.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Threading\AsyncSemaphore.cs" />
     <None Include="$(MSBuildThisFileDirectory)Collections\ObservableSortedSubset.cs" />
     <None Include="$(MSBuildThisFileDirectory)Diagnostics\ExceptionExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Xml\XmlReaderReadExtensions.cs" />
@@ -134,7 +134,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)Threading\AsyncCounter.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\AsyncCounterDecrementAny.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\AsyncSwitchLock.cs" />
-    <None Include="$(MSBuildThisFileDirectory)Threading\AsyncSemaphore.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\AsyncReadWriteLock.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\AsyncTaskFlag.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Threading\DedicatedThreadScheduler.cs" />
