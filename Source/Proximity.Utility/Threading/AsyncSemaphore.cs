@@ -215,9 +215,9 @@ namespace Proximity.Utility.Threading
 			//****************************************
 
 #if NET40
-			if (timeout == new TimeSpan(0, 0, 0, 0, -1) && timeout < TimeSpan.Zero)
+			if (timeout != new TimeSpan(0, 0, 0, 0, -1) && timeout < TimeSpan.Zero)
 #else
-			if (timeout == Timeout.InfiniteTimeSpan && timeout < TimeSpan.Zero)
+			if (timeout != Timeout.InfiniteTimeSpan && timeout < TimeSpan.Zero)
 #endif
 				throw new ArgumentOutOfRangeException("timeout", "Timeout must be Timeout.InfiniteTimeSpan or a positive time");
 
@@ -245,7 +245,7 @@ namespace Proximity.Utility.Threading
 				try
 				{
 					// Wait indefinitely for a definitive result
-					handle = NewWaiter.Task.Result;
+					handle = NewWaiter.Task.GetAwaiter().GetResult();
 
 					return true;
 				}
@@ -280,7 +280,7 @@ namespace Proximity.Utility.Threading
 				try
 				{
 					// Wait for the task to complete, knowing it will either cancel due to the token, the timeout, or because we're zero and disposed
-					handle = NewWaiter.Task.Result;
+					handle = NewWaiter.Task.GetAwaiter().GetResult();
 
 					return true;
 				}

@@ -565,7 +565,7 @@ namespace Proximity.Utility.Tests
 			var MyLock = new AsyncReadWriteLock();
 			Task<IDisposable> MyWriter1, MyWriter2;
 			//****************************************
-			
+
 			using (var MySource = new CancellationTokenSource())
 			{
 				using (await MyLock.LockRead())
@@ -577,11 +577,11 @@ namespace Proximity.Utility.Tests
 			
 				MyWriter2 = MyLock.LockWrite(MySource.Token);
 			}
-			
+
 			(await MyWriter1).Dispose();
 			
 			//****************************************
-			
+
 			try
 			{
 				await MyWriter2;
@@ -591,7 +591,7 @@ namespace Proximity.Utility.Tests
 			catch (OperationCanceledException)
 			{
 			}
-			
+
 			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
 			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
 			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
@@ -1026,6 +1026,38 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
+
+		[Test, Timeout(1000)]
+		public async Task WriteDisposeRead()
+		{	//****************************************
+			var MyLock = new AsyncReadWriteLock();
+			//****************************************
+
+			var MyWriter = MyLock.LockWrite();
+
+			var MyDispose = MyLock.Dispose();
+
+			try
+			{
+				(await MyLock.LockRead()).Dispose();
+
+				Assert.Fail("Should never reach this point");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
+
+			MyWriter.Result.Dispose();
+
+			await MyDispose;
+
+			//****************************************
+
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+		}
 		
 		[Test, Timeout(1000)]
 		public void WriteDisposeContinueWithWrite()
@@ -1070,16 +1102,51 @@ namespace Proximity.Utility.Tests
 			
 			try
 			{
-				MyReader.Result.Dispose();
+				(await MyReader).Dispose();
 				
 				Assert.Fail("Should never reach this point");
 			}
-			catch (AggregateException e)
+			catch (ObjectDisposedException)
 			{
-				Assert.IsInstanceOf(typeof(ObjectDisposedException), e.InnerException, "Inner exception not as expected");
 			}
 			
 			MyWriter.Result.Dispose();
+			
+			//****************************************
+
+			await MyDispose;
+			
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+		}
+		
+		[Test, Timeout(1000)]
+		public async Task WriteReadDisposeInterleave()
+		{	//****************************************
+			var MyLock = new AsyncReadWriteLock();
+			//****************************************
+			
+			var MyWriter = MyLock.LockWrite();
+			
+			var MyReader = MyLock.LockRead();
+			
+			var MyDispose = MyLock.Dispose();
+
+			// Release the Writer
+			MyWriter.Result.Dispose();
+
+			try
+			{
+				// Make sure the Reader didn't activate
+				(await MyReader).Dispose();
+				
+				Assert.Fail("Should never reach this point");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
 			
 			//****************************************
 

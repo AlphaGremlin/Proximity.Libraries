@@ -404,6 +404,7 @@ namespace Proximity.Utility.Threading
 					
 					return;
 				}
+
 #if !PORTABLE
 				// If we're not on the threadpool, run TrySetResult on there, so we don't blow the stack if the result calls Release too (and so on)
 				if (!onThreadPool)

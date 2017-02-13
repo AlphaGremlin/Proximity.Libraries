@@ -1239,7 +1239,6 @@ namespace Proximity.Utility.Tests
 		public void Complete()
 		{	//****************************************
 			var MyQueue = new TaskStream();
-			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			//****************************************
 
 			var CompletionTask = MyQueue.Complete();
