@@ -98,6 +98,22 @@ namespace Proximity.Utility.Collections
 		}
 
 		/// <summary>
+		/// Determines whether the collection contains a specific item
+		/// </summary>
+		/// <param name="item">The item to locate</param>
+		/// <returns>True if the item is in the collection, otherwise false</returns>
+		public bool Contains(TItem item)
+		{
+			for (int Index = 0; Index < _Values.Count; Index++)
+			{
+				if ((TItem)_Values[Index].Target == item)
+					return true;
+			}
+
+			return false;
+		}
+
+		/// <summary>
 		/// Removes all elements from the collection
 		/// </summary>
 		public void Clear()

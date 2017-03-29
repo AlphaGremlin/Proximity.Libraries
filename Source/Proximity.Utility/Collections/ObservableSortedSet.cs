@@ -112,6 +112,7 @@ namespace Proximity.Utility.Collections
 		/// Adds a range of elements to the collection
 		/// </summary>
 		/// <param name="items">The elements to add</param>
+		/// <remarks>Duplicate items will be automatically filtered out</remarks>
 		public override void AddRange(IEnumerable<TValue> items)
 		{	//****************************************
 			int Index = 0;
@@ -133,13 +134,26 @@ namespace Proximity.Utility.Collections
 				// Since we're empty, it's faster to load the contents by sorting and then copying
 				Array.Sort<TValue>(NewItems, _Comparer);
 
-				if (NewItems.Length > _Items.Length)
-					Capacity = NewItems.Length;
+				// Remove duplicates
+				for (Index = 1; Index < NewItems.Length; Index++)
+				{
+					// Is the leading item equal to the trailing item?
+					if (_Comparer.Compare(NewItems[Count], NewItem = NewItems[Index]) != 0)
+					{
+						// Shift the final item up one
+						NewItems[++Count] = NewItem;
+					}
+				}
 
-				Array.Copy(NewItems, _Items, NewItems.Length);
+				// Add one to the count, to cover the last item
+				if (++Count > _Items.Length)
+					Capacity = Count;
+
+				Array.Copy(NewItems, _Items, Count);
 
 				NewItem = _Items[0];
-				_Size = NewItems.Length;
+				_Size = Count;
+				Index = 0;
 			}
 			else
 			{

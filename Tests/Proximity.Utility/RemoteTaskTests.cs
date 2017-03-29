@@ -4,6 +4,8 @@
 \****************************************/
 using System;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Lifetime;
 using System.Threading;
@@ -28,9 +30,14 @@ namespace Proximity.Utility.Tests
 		[TestFixtureSetUp()]
 		public void Setup()
 		{
-			_OtherDomain = AppDomain.CreateDomain("Remote Task Tests", AppDomain.CurrentDomain.Evidence, AppDomain.CurrentDomain.SetupInformation);
-			
-			_OtherDomain.UnhandledException += (sender, e) => { throw new ApplicationException("Remote Exception", (Exception)e.ExceptionObject); };
+			var CurrentSetup = AppDomain.CurrentDomain.SetupInformation;
+			var MySetup = new AppDomainSetup();
+
+			MySetup.ApplicationBase = Path.Combine(CurrentSetup.ApplicationBase, "Base");
+
+			_OtherDomain = AppDomain.CreateDomain("Remote Task Tests", AppDomain.CurrentDomain.Evidence, MySetup);
+
+			_OtherDomain.UnhandledException += (sender, e) => { Trace.WriteLine(string.Format("Unhandled Remote Exception {0}", e.ExceptionObject.ToString())); throw new ApplicationException("Unhandled Remote Exception", (Exception)e.ExceptionObject); };
 			
 			_RemoteHost = (RemoteTaskHost)_OtherDomain.CreateInstanceAndUnwrap(typeof(RemoteTaskHost).Assembly.FullName, typeof(RemoteTaskHost).FullName);
 			
@@ -153,6 +160,40 @@ namespace Proximity.Utility.Tests
 		{
 			await _RemoteHost.ThrowTask();
 		}
+
+		[Test, Timeout(1000)]
+		public async Task ThrowTaskExternal()
+		{
+			try
+			{
+				await GetExceptionThrower().RaiseException("Test Exception");
+
+				Assert.Fail("Did not throw");
+			}
+			catch (ApplicationException e)
+			{
+				Assert.AreEqual("Test Exception", e.Message);
+			}
+
+			Assert.False(AppDomain.CurrentDomain.GetAssemblies().Any(assembly => assembly.FullName.StartsWith("Proximity.Utility.Tests.Help")), "Helper Assembly was loaded in our AppDomain");
+		}
+
+		[Test, Timeout(10000)]
+		public async Task ThrowTaskExternalCustom()
+		{
+			try
+			{
+				await GetExceptionThrower().RaiseCustomException("Test Exception");
+
+				Assert.Fail("Did not throw");
+			}
+			catch (Exception e)
+			{
+				Trace.WriteLine(e.ToString());
+			}
+
+			Assert.False(AppDomain.CurrentDomain.GetAssemblies().Any(assembly => assembly.FullName.StartsWith("Proximity.Utility.Tests.Help")), "Helper Assembly was loaded in our AppDomain");
+		}
 		
 		[Test(), Timeout(15000)]
 		public async Task LeaseTimeout()
@@ -212,7 +253,14 @@ namespace Proximity.Utility.Tests
 				}
 			}
 		}
-		
+
+		//****************************************
+
+		private IExceptionThrower GetExceptionThrower()
+		{
+			return (IExceptionThrower)_OtherDomain.CreateInstanceAndUnwrap("Proximity.Utility.Tests.Help", "Proximity.Utility.Tests.Help.ExceptionThrower");
+		}
+
 		//****************************************
 		
 		private class RemoteTaskHost : MarshalByRefObject
@@ -308,6 +356,13 @@ namespace Proximity.Utility.Tests
 						await Task.Yield();
 					});
 			}
+		}
+
+		public interface IExceptionThrower
+		{
+			RemoteTask RaiseException(string message);
+
+			RemoteTask RaiseCustomException(string message);
 		}
 	}
 }

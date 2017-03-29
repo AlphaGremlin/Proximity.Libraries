@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.Remoting;
 using System.Runtime.Remoting.Lifetime;
+using System.Runtime.Serialization;
 using System.Security;
 using System.Security.Permissions;
 using System.Threading;
@@ -64,12 +65,19 @@ namespace Proximity.Utility.Threading
 			var Source = (RemoteTaskCompletionSource<VoidStruct>)state;
 			//****************************************
 
-			if (task.IsFaulted)
-				Source.SetException(task.Exception.InnerException);
-			else if (task.IsCanceled)
-				Source.SetCancelled();
-			else
-				Source.SetResult(default(VoidStruct));
+			try
+			{
+				if (task.IsFaulted)
+					Source.SetException(task.Exception.InnerException);
+				else if (task.IsCanceled)
+					Source.SetCancelled();
+				else
+					Source.SetResult(default(VoidStruct));
+			}
+			catch (Exception e) // Can fail if the exception object is not serialisable to the calling AppDomain
+			{
+				Source.SetException(e);
+			}
 
 			Unregister();
 		}
@@ -252,7 +260,7 @@ namespace Proximity.Utility.Threading
 				else
 					Source.SetResult(task.Result);
 			}
-			catch (Exception e) // Can fail if the result object is not serialisable or marshalable
+			catch (Exception e) // Can fail if the result or exception object is not serialisable or marshalable to the calling AppDomain
 			{
 				Source.SetException(e);
 			}
