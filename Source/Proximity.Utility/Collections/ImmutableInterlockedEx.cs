@@ -16,7 +16,6 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Provides extra methods for manipulating immutable collections in a thread-safe manner
 	/// </summary>
-	[SecurityCritical]
 	public static class ImmutableInterlockedEx
 	{
 		/// <summary>

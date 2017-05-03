@@ -18,7 +18,6 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Describes a page in a Paged Set
 	/// </summary>
-	[SecurityCritical]
 	public class ImmutablePagedSetPage<TKey, TItem> : IComparable<ImmutablePagedSetPage<TKey, TItem>> where TKey : IComparable<TKey>
 	{
 		internal static readonly ImmutablePagedSetPage<TKey, TItem> Empty = new ImmutablePagedSetPage<TKey, TItem>(true, true, default(TKey), default(TKey));
@@ -71,7 +70,6 @@ namespace Proximity.Utility.Collections
 
 		//****************************************
 
-		[SecuritySafeCritical]
 		int IComparable<ImmutablePagedSetPage<TKey, TItem>>.CompareTo(ImmutablePagedSetPage<TKey, TItem> other)
 		{
 			return _Min.CompareTo(_Min);

@@ -14,7 +14,6 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Provides methods for creating an ImmutableCountedStack
 	/// </summary>
-	[SecurityCritical]
 	public static class ImmutableCountedStack
 	{
 		/// <summary>
@@ -118,7 +117,6 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Provides an Immutable Stack that also maintains a counter
 	/// </summary>
-	[SecurityCritical]
 	public sealed class ImmutableCountedStack<TItem> : IEnumerable<TItem>
 #if NET45
 		, System.Collections.Immutable.IImmutableStack<TItem>
@@ -168,7 +166,6 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <returns>The top item</returns>
 		/// <exception cref="InvalidOperationException">Thrown if the stack is empty</exception>
-		[SecurityCritical]
 		public TItem Peek()
 		{
 			if (IsEmpty)
@@ -218,26 +215,22 @@ namespace Proximity.Utility.Collections
 		
 		//****************************************
 
-		[SecuritySafeCritical]
 		IEnumerator IEnumerable.GetEnumerator()
 		{
 			return new Enumerator(this);
 		}
 
-		[SecuritySafeCritical]
 		IEnumerator<TItem> IEnumerable<TItem>.GetEnumerator()
 		{
 			return new Enumerator(this);
 		}
 		
 #if NET45
-		[SecurityCritical]
 		System.Collections.Immutable.IImmutableStack<TItem> System.Collections.Immutable.IImmutableStack<TItem>.Clear()
 		{
 			return Empty;
 		}
 
-		[SecurityCritical]
 		System.Collections.Immutable.IImmutableStack<TItem> System.Collections.Immutable.IImmutableStack<TItem>.Pop()
 		{
 			if (IsEmpty)
@@ -246,7 +239,6 @@ namespace Proximity.Utility.Collections
 			return _Tail;
 		}
 
-		[SecurityCritical]
 		System.Collections.Immutable.IImmutableStack<TItem> System.Collections.Immutable.IImmutableStack<TItem>.Push(TItem item)
 		{
 			return new ImmutableCountedStack<TItem>(item, this, _Count + 1);
@@ -259,7 +251,6 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		public bool IsEmpty
 		{
-			[SecurityCritical]
 			get { return _Tail == null; }
 		}
 		
@@ -293,7 +284,6 @@ namespace Proximity.Utility.Collections
 			/// <summary>
 			/// Disposes of the enumerator
 			/// </summary>
-			[SecuritySafeCritical]
 			public void Dispose()
 			{
 			}
@@ -302,7 +292,6 @@ namespace Proximity.Utility.Collections
 			/// Tries to move to the next item
 			/// </summary>
 			/// <returns>True if there's another item to enumerate, otherwise False</returns>
-			[SecuritySafeCritical]
 			public bool MoveNext()
 			{
 				if (_Current == null)
@@ -313,7 +302,6 @@ namespace Proximity.Utility.Collections
 				return !_Current.IsEmpty;
 			}
 
-			[SecuritySafeCritical]
 			void IEnumerator.Reset()
 			{
 				_Current = null;
@@ -326,7 +314,6 @@ namespace Proximity.Utility.Collections
 			/// </summary>
 			public TItem Current
 			{
-				[SecuritySafeCritical]
 				get
 				{
 					if (_Current == null || _Current.IsEmpty)
@@ -338,7 +325,6 @@ namespace Proximity.Utility.Collections
 			
 			object IEnumerator.Current
 			{
-				[SecuritySafeCritical]
 				get
 				{
 					if (_Current == null || _Current.IsEmpty)
