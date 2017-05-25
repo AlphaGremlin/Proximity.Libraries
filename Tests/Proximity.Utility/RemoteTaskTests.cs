@@ -27,7 +27,7 @@ namespace Proximity.Utility.Tests
 		private RemoteTaskHost _RemoteHost;
 		//****************************************
 		
-		[TestFixtureSetUp()]
+		[OneTimeSetUp()]
 		public void Setup()
 		{
 			var CurrentSetup = AppDomain.CurrentDomain.SetupInformation;
@@ -49,7 +49,7 @@ namespace Proximity.Utility.Tests
 			LifetimeServices.LeaseTime = new TimeSpan(0, 0, 2);
 		}
 
-		[TestFixtureTearDown()]
+		[OneTimeTearDown()]
 		public void Teardown()
 		{
 			_RemoteHost = null;
@@ -155,10 +155,10 @@ namespace Proximity.Utility.Tests
 			}
 		}
 		
-		[Test, Timeout(1000), ExpectedException(typeof(ApplicationException))]
-		public async Task ThrowTask()
+		[Test, Timeout(1000)]
+		public void ThrowTask()
 		{
-			await _RemoteHost.ThrowTask();
+			Assert.ThrowsAsync<ApplicationException>(() => _RemoteHost.ThrowTask().ToTask());
 		}
 
 		[Test, Timeout(1000)]
@@ -192,7 +192,7 @@ namespace Proximity.Utility.Tests
 				Trace.WriteLine(e.ToString());
 			}
 
-			Assert.False(AppDomain.CurrentDomain.GetAssemblies().Any(assembly => assembly.FullName.StartsWith("Proximity.Utility.Tests.Help")), "Helper Assembly was loaded in our AppDomain");
+			Assert.False(AppDomain.CurrentDomain.GetAssemblies().Any(assembly => assembly.FullName.StartsWith("Proximity.Utility.Tests.Help")), "Helper Assembly was loaded in our AppDomain. It should be in a subfolder and not with the test assembly");
 		}
 		
 		[Test(), Timeout(15000)]

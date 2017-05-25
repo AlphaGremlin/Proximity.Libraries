@@ -223,11 +223,11 @@ namespace Proximity.Utility.Tests
 				Assert.IsTrue(MyLeft.IsCompleted, "Left not completed");
 			}
 
+			MyLeft.Result.Dispose();
+
 			MyRight.Result.Dispose();
 
 			//****************************************
-
-			MyLeft.Result.Dispose();
 
 			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
 			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
@@ -281,11 +281,11 @@ namespace Proximity.Utility.Tests
 				Assert.IsTrue(MyRight.IsCompleted, "Right not completed");
 			}
 
+			MyRight.Result.Dispose();
+
 			MyLeft.Result.Dispose();
 
 			//****************************************
-
-			MyRight.Result.Dispose();
 
 			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
 			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");

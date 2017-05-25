@@ -364,7 +364,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 		
-		[Test, Timeout(1000), Repeat(4)]
+		[Test, Timeout(2000), Repeat(4)]
 		public async Task ConcurrentHoldMulti([Values(5, 10, 25, 50)] int startCount)
 		{	//****************************************
 			var MyLock = new AsyncSemaphore(startCount);

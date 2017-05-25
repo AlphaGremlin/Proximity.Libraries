@@ -562,7 +562,7 @@ namespace Proximity.Utility.Tests
 		
 		//****************************************
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, Timeout(1000), Repeat(4)]
 		public async Task Consume()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();

@@ -136,7 +136,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, Timeout(2000), Repeat(4)]
 		public async Task ShortReadLongWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -188,7 +188,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, Timeout(5000), Repeat(4)]
 		public async Task ShortWriteLongRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();

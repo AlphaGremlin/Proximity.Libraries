@@ -28,17 +28,15 @@ namespace Proximity.Utility.Tests
 			}
 		}
 		
-		[Test, Timeout(1000), ExpectedException(typeof(TaskCanceledException))]
-		public async Task WhenCancel()
+		[Test, Timeout(1000)]
+		public void WhenCancel()
 		{
 			using (var CancelSource = new CancellationTokenSource(50))
 			{
 				var MyTask = Task.Delay(100);
-				
-				await MyTask.When(CancelSource.Token);
+
+				Assert.ThrowsAsync<TaskCanceledException>(() => MyTask.When(CancelSource.Token));
 			}
-			
-			Assert.Fail("Should not complete");
 		}
 		
 		[Test, Timeout(1000)]
@@ -56,19 +54,17 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(100, Result);
 		}
 		
-		[Test, Timeout(1000), ExpectedException(typeof(TaskCanceledException))]
-		public async Task WhenResultCancel()
+		[Test, Timeout(1000)]
+		public void WhenResultCancel()
 		{
 			int Result;
 			
 			using (var CancelSource = new CancellationTokenSource(50))
 			{
 				var MyTask = Task.Delay(100).ContinueWith(task => 100);
-				
-				Result = await MyTask.When(CancelSource.Token);
+
+				Assert.ThrowsAsync<TaskCanceledException>(() => MyTask.When(CancelSource.Token));
 			}
-			
-			Assert.Fail("Should not complete");
 		}
 		
 		[Test, Timeout(1000)]

@@ -500,6 +500,28 @@ namespace Proximity.Utility.Collections
 		}
 
 		/// <summary>
+		/// Searches the dictionary for a given key and returns the equal key, if any
+		/// </summary>
+		/// <param name="equalKey">The key to search for</param>
+		/// <param name="actualKey">The key already in the collection, or the given key if not found</param>
+		/// <returns>True if an equal key was found, otherwise False</returns>
+		public bool TryGetKey(TKey equalKey, out TKey actualKey)
+		{
+			var Index = IndexOfKey(equalKey);
+
+			if (Index > 0)
+			{
+				actualKey = _Values[Index].Key;
+
+				return true;
+			}
+
+			actualKey = equalKey;
+
+			return false;
+		}
+
+		/// <summary>
 		/// Gets the value associated with the specified key
 		/// </summary>
 		/// <param name="key">The key whose value to get</param>
@@ -807,7 +829,7 @@ namespace Proximity.Utility.Collections
 				if (TryGetValue(key, out ResultValue))
 					return ResultValue;
 
-				if (_DefaultIndexer)
+				if (!_DefaultIndexer)
 					throw new KeyNotFoundException();
 
 				return default(TValue);

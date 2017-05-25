@@ -376,7 +376,8 @@ namespace Proximity.Utility
 
 			internal void Release()
 			{
-				_Unsubscribe(GetHandler());
+				if (_Unsubscribe != null)
+					_Unsubscribe(GetHandler());
 
 				_Target.Free();
 				GC.SuppressFinalize(this);

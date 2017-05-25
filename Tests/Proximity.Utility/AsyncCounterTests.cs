@@ -807,7 +807,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyResults.Take(2).Sum(), MyResults.Skip(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Skip(2).Sum(), MyCounter.CurrentCount);
 		}
 
-		[Test, Repeat(2), Timeout(2000)]
+		[Test, Repeat(2), Timeout(3000)]
 		public async Task ConsumeLotsIncrementLots()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -828,7 +828,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyResults.Take(5).Sum(), MyResults.Skip(5).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Skip(5).Sum(), MyCounter.CurrentCount);
 		}
 
-		[Test, Repeat(2), Timeout(2000)]
+		[Test, Repeat(2), Timeout(3000)]
 		public async Task ConsumeLotsIncrementLotsPeek()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();

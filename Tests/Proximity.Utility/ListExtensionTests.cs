@@ -27,7 +27,7 @@ namespace Proximity.Utility.Tests
 		
 		//****************************************
 		
-		[TestFixtureSetUp()]
+		[OneTimeSetUp()]
 		public void Setup()
 		{
 			_SortedRecords = new List<DateTime>();

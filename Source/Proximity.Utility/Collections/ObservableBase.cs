@@ -127,6 +127,28 @@ namespace Proximity.Utility.Collections
 		/// <returns>The number of items removed</returns>
 		public abstract int RemoveAll(Predicate<TValue> predicate);
 
+		/// <summary>
+		/// Searches the collection for a given value and returns the equal value, if any
+		/// </summary>
+		/// <param name="equalValue">The value to search for</param>
+		/// <param name="actualValue">The value already in the collection, or the given value if not found</param>
+		/// <returns>True if an equal value was found, otherwise False</returns>
+		public bool TryGetValue(TValue equalValue, out TValue actualValue)
+		{
+			var Index = IndexOf(equalValue);
+
+			if (Index > 0)
+			{
+				actualValue = InternalGet(Index);
+
+				return true;
+			}
+
+			actualValue = equalValue;
+
+			return false;
+		}
+
 		//****************************************
 
 		IEnumerator IEnumerable.GetEnumerator()

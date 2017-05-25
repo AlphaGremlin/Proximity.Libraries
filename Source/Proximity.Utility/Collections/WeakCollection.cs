@@ -193,7 +193,10 @@ namespace Proximity.Utility.Collections
 			var MyList = new List<TItem>(_Values.Count);
 			//****************************************
 
-			MyList.AddRange(this);
+			foreach (var MyItem in this)
+			{
+				MyList.Add(MyItem);
+			}
 
 			return MyList;
 		}
@@ -263,9 +266,12 @@ namespace Proximity.Utility.Collections
 					{
 						_Current = (TItem)Handle.Target;
 
-						_Index++;
+						if (_Current != null)
+						{
+							_Index++;
 
-						return true;
+							return true;
+						}
 					}
 					catch (InvalidOperationException)
 					{

@@ -21,7 +21,7 @@ namespace Proximity.Utility.Tests
 		private byte[] _TestInput;
 		//****************************************
 
-		[TestFixtureSetUp()]
+		[OneTimeSetUp()]
 		public void Setup()
 		{
 			using (var RawStream = new MemoryStream())

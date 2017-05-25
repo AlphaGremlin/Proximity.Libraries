@@ -17,6 +17,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ObservableBase.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ObservableBaseSet.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Collections\ObservableListView.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Collections\WeakHashSet.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)GCReference.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)IO\BinaryTextReader.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)IO\BinaryTextWriter.cs" />
