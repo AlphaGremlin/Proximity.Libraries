@@ -561,7 +561,24 @@ namespace Proximity.Utility.Tests
 		}
 		
 		//****************************************
-		
+
+		[Test, Timeout(1000), Repeat(4)]
+		public async Task ConsumePreFilled()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>();
+			//****************************************
+
+			var ProducerTask = Producer(MyCollection, 20, (index) => index);
+
+			var MyTask = Consumer(MyCollection);
+
+			await ProducerTask;
+
+			MyCollection.CompleteAdding();
+
+			await MyTask;
+		}
+
 		[Test, Timeout(1000), Repeat(4)]
 		public async Task Consume()
 		{	//****************************************
@@ -575,13 +592,76 @@ namespace Proximity.Utility.Tests
 				await MyCollection.Add(Item);
 			}
 			
-			await Task.Delay(100);
-			
 			MyCollection.CompleteAdding();
 			
 			await MyTask;
 		}
-		
+
+		[Test, Timeout(1000), Repeat(4)]
+		public async Task ConsumeLimit()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>(10);
+			//****************************************
+
+			var MyTask = ConsumerWithWait(MyCollection, TimeSpan.Zero);
+
+			foreach (var Item in Enumerable.Range(1, 100))
+			{
+				await MyCollection.Add(Item);
+			}
+
+			MyCollection.CompleteAdding();
+
+			await MyTask;
+		}
+
+		[Test, Timeout(1000), Repeat(4)]
+		public async Task ConsumeLimitPreFilled()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>(10);
+			//****************************************
+
+			var ProducerTask = Producer(MyCollection, 100, (index) => index);
+
+			var MyTask = ConsumerWithWait(MyCollection, TimeSpan.Zero);
+
+			await ProducerTask;
+
+			MyCollection.CompleteAdding();
+
+			await MyTask;
+		}
+
+		[Test, Timeout(1000), Repeat(4)]
+		public async Task ConsumeLimitPreFilledComplete()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>(10);
+			//****************************************
+
+			var ProducerTask = ProducerWithAddComplete(MyCollection, 10, (index) => index);
+
+			var MyTask = ConsumerWithWait(MyCollection, TimeSpan.Zero);
+
+			await ProducerTask;
+
+			await MyTask;
+		}
+
+		[Test, Timeout(1000), Repeat(4)]
+		public async Task ConsumeLimitOverFilledComplete()
+		{	//****************************************
+			var MyCollection = new AsyncCollection<int>(10);
+			//****************************************
+
+			var ProducerTask = ProducerWithAddComplete(MyCollection, 100, (index) => index);
+
+			var MyTask = ConsumerWithWait(MyCollection, TimeSpan.Zero);
+
+			await ProducerTask;
+
+			await MyTask;
+		}
+
 		[Test, Timeout(1000), Repeat(10)]
 		public async Task ConsumeEmpty()
 		{	//****************************************
@@ -943,7 +1023,32 @@ namespace Proximity.Utility.Tests
 		}
 		
 		//****************************************
-		
+
+		private async Task Producer<TItem>(AsyncCollection<TItem> collection, int count, Func<int, TItem> producer)
+		{
+			await Task.Yield();
+
+			for (int Index = 0; Index < count; Index++)
+			{
+				await collection.Add(producer(Index));
+
+				await Task.Yield();
+			}
+		}
+
+		private async Task ProducerWithAddComplete<TItem>(AsyncCollection<TItem> collection, int count, Func<int, TItem> producer)
+		{
+			for (int Index = 0; Index < count; Index++)
+			{
+				if (Index == count - 1)
+					await collection.AddComplete(producer(Index));
+				else
+					await collection.Add(producer(Index));
+
+				await Task.Yield();
+			}
+		}
+
 		private async Task<int> Consumer<TItem>(AsyncCollection<TItem> collection)
 		{
 			int TotalItems = 0;
@@ -962,6 +1067,32 @@ namespace Proximity.Utility.Tests
 				// Cancelled
 			}
 			
+			return TotalItems;
+		}
+
+		private async Task<int> ConsumerWithWait<TItem>(AsyncCollection<TItem> collection, TimeSpan delay)
+		{
+			int TotalItems = 0;
+
+			try
+			{
+				foreach (var MyTask in collection.GetConsumingEnumerable())
+				{
+					var MyResult = await MyTask;
+
+					TotalItems++;
+
+					if (delay == TimeSpan.Zero)
+						await Task.Yield();
+					else
+						await Task.Delay(delay);
+				}
+			}
+			catch (InvalidOperationException)
+			{
+				// Cancelled
+			}
+
 			return TotalItems;
 		}
 	}

@@ -303,10 +303,11 @@ namespace Proximity.Utility.Collections
 				throw new InvalidOperationException("Item was not returned by the underlying collection");
 			
 			// Is there a maximum size?
-			if (_FreeSlots != null && !_IsCompleted)
+			if (_FreeSlots != null)
 			{
 				// We've removed an item, so release any Adders
-				_FreeSlots.Increment();
+				// Use TryIncrement, so we ignore if we're disposed and there are no more adders
+				_FreeSlots.TryIncrement();
 			}
 			
 			// If the collection is empty, cancel anyone waiting for items
@@ -382,7 +383,8 @@ namespace Proximity.Utility.Collections
 			if (_FreeSlots != null)
 			{
 				// We've removed an item, so release any Adders
-				_FreeSlots.Increment();
+				// Use TryIncrement, so we ignore if we're disposed and there are no more adders
+				_FreeSlots.TryIncrement();
 			}
 			
 			// If the collection is now empty, cancel anyone waiting for items
@@ -477,7 +479,8 @@ namespace Proximity.Utility.Collections
 				if (_FreeSlots != null)
 				{
 					// We've removed an item, so release any Adders
-					_FreeSlots.Increment();
+					// Use TryIncrement, so we ignore if we're disposed and there are no more adders
+					_FreeSlots.TryIncrement();
 				}
 				
 				// If the collection is empty, cancel anyone waiting for items
@@ -565,7 +568,8 @@ namespace Proximity.Utility.Collections
 			if (_FreeSlots != null)
 			{
 				// We've removed an item, so release any Adders
-				_FreeSlots.Increment();
+				// Use TryIncrement, so we ignore if we're disposed and there are no more adders
+				_FreeSlots.TryIncrement();
 			}
 			
 			// If the collection is now empty, cancel anyone waiting for items

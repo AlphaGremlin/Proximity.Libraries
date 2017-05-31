@@ -324,7 +324,7 @@ namespace Proximity.Utility.Threading
 		/// Increments the Counter
 		/// </summary>
 		/// <remarks>The counter is not guaranteed to be incremented when this method returns, as waiters are evaluated on the ThreadPool. It will be incremented 'soon'.</remarks>
-		public void Increment()
+		public bool TryIncrement()
 		{	//****************************************
 			TaskCompletionSource<AsyncCounter> NextWaiter;
 			//****************************************
@@ -342,26 +342,38 @@ namespace Proximity.Utility.Threading
 #else
 				ThreadPool.QueueUserWorkItem(ReleaseWaiter, NextWaiter);
 #endif
-				return;
+				return true;
 			}
 
 			//****************************************
 
 			// Nobody is waiting, so we can try and increment the counter. This will release anybody peeking
-			if (!TryIncrement())
-				throw new ObjectDisposedException("AsyncCounter", "Counter has been disposed of");
+			if (!InternalTryIncrement())
+				return false;
 
 			// Is anybody waiting now?
 			if (_Waiters.IsEmpty)
-				return; // No, so nothing to do
+				return true; // No, so nothing to do
 
 			// Someone is waiting. Try and take the counter back
 			if (!InternalTryDecrement())
-				return; // Failed to take the counter back (pre-empted by a peek waiter or concurrent decrement), so we're done
+				return true; // Failed to take the counter back (pre-empted by a peek waiter or concurrent decrement), so we're done
 
 			// Success. Forcibly increment, even if we've been disposed
 			// This will attempt to pass the counter to a waiter and if it fails, will put it back even if we dispose
 			ForceIncrement();
+
+			return true;
+		}
+
+		/// <summary>
+		/// Increments the Counter
+		/// </summary>
+		/// <remarks>The counter is not guaranteed to be incremented when this method returns, as waiters are evaluated on the ThreadPool. It will be incremented 'soon'.</remarks>
+		public void Increment()
+		{
+			if (!TryIncrement())
+				throw new ObjectDisposedException("AsyncCounter", "Counter has been disposed of");
 		}
 
 		/// <summary>
@@ -493,7 +505,7 @@ namespace Proximity.Utility.Threading
 
 		//****************************************
 
-		private bool TryIncrement()
+		private bool InternalTryIncrement()
 		{	//****************************************
 			var MyWait = new SpinWait();
 			int OldCount;
