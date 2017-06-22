@@ -12,6 +12,7 @@ namespace Proximity.Utility.Logging
 	/// <summary>
 	/// Represents a logical grouping for entries
 	/// </summary>
+	[Serializable]
 	public sealed class LogSection : IDisposable
 	{	//****************************************
 		private LogEntry _Entry;
@@ -56,8 +57,6 @@ namespace Proximity.Utility.Logging
 		public void Dispose()
 		{
 			LogManager.FinishSection(this);
-			
-			GC.SuppressFinalize(this);
 		}
 		
 		//****************************************

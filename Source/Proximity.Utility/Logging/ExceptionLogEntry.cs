@@ -12,6 +12,7 @@ namespace Proximity.Utility.Logging
 	/// <summary>
 	/// A log Entry representing an Exception
 	/// </summary>
+	[Serializable]
 	public class ExceptionLogEntry : LogEntry
 	{	//****************************************
 		private Exception _Exception;

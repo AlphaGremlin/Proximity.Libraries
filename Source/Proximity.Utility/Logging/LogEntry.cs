@@ -15,9 +15,10 @@ namespace Proximity.Utility.Logging
 	/// <summary>
 	/// A single entry in the Log
 	/// </summary>
+	[Serializable]
 	public class LogEntry
 	{	//****************************************
-		private static int CurrentIndex = 1;
+		private static long CurrentIndex = 1;
 		//****************************************
 		private StackFrame _Source;
 		
