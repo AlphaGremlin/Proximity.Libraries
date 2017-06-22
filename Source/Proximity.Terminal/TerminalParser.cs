@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Remoting.Messaging;
+using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Proximity.Utility;
@@ -101,186 +102,30 @@ namespace Proximity.Terminal
 				Log.Info("{0}: {1}\t{2}", MyVariable.Name, MyVariable.Type.Name, MyVariable.Description);
 			}
 		}
-		
+
 		/// <summary>
 		/// Parses and executes a terminal command
 		/// </summary>
 		/// <param name="command">The command to execute</param>
 		/// <param name="registry">The command registry to use</param>
 		/// <returns>A task representing the execution result. True if the command ran successfully, otherwise False</returns>
+		[SecurityCritical]
 		public static Task<bool> Execute(string command, TerminalRegistry registry)
 		{
-			return Execute(command, new TerminalRegistry[] { registry });
+			return InternalExecute(command, new TerminalRegistry[] { registry });
 		}
-		
+
 		/// <summary>
 		/// Parses and executes a terminal command
 		/// </summary>
 		/// <param name="command">The command to execute</param>
 		/// <param name="registries">One or more command registries to use</param>
 		/// <returns>A task representing the execution result. True if the command ran successfully, otherwise False</returns>
+		[SecurityCritical]
 		public static Task<bool> Execute(string command, params TerminalRegistry[] registries)
-		{	//****************************************
-			string CommandText, ArgumentText;
-			string InstanceName, CurrentPath = "";
-
-			int CharIndex;
-			char WordDivider;
-			
-			TerminalTypeSet MyTypeSet = null;
-			TerminalInstance MyInstance = null;
-			Task<bool> MyResult;
-			//****************************************
-			
-			Context = registries;
-			
-			Log.Write(new ConsoleLogEntry(string.Format("> {0}", command)));
-			
-			// Find the first word (split on a space, equals)
-			CharIndex = command.IndexOfAny(new char[] {' ', '='});
-			
-			// Split off the arguments (if any)
-			if (CharIndex == -1)
-			{
-				CommandText = command;
-				ArgumentText = null;
-				WordDivider = '\0';
-			}
-			else
-			{
-				CommandText = command.Substring(0, CharIndex);
-				ArgumentText = command.Substring(CharIndex + 1);
-				WordDivider = command[CharIndex];
-			}
-			
-			//****************************************
-			
-			// Is there a dot divider identifying an instance path?
-			CharIndex = CommandText.IndexOf('.');
-			
-			if (CharIndex != -1 && WordDivider != '=')
-			{
-				InstanceName = CommandText.Substring(CharIndex + 1);
-				CommandText = CommandText.Substring(0, CharIndex);
-				
-				// Split into Type and Instance
-				foreach(var MyRegistry in registries)
-				{
-					MyTypeSet = MyRegistry.FindTypeSet(CommandText);
-					
-					if (MyTypeSet != null)
-					{
-						MyInstance = MyTypeSet.GetNamedInstance(InstanceName);
-						break;
-					}
-				}
-				
-				if (MyTypeSet == null)
-				{
-					Log.Info("{0} is not an Instance Type", CommandText);
-					
-					return Task.FromResult<bool>(false);
-				}
-				
-				if (MyInstance == null)
-				{
-					Log.Info("{0} is not a known Instance of {1}", InstanceName, MyTypeSet.TypeName);
-					
-					return Task.FromResult<bool>(false);
-				}
-				
-				CurrentPath = string.Format("{0}.{1}!", MyTypeSet.TypeName, MyInstance.Name);
-			}
-			
-			//****************************************
-			
-			if (MyTypeSet == null)
-			{
-				// Attempt to execute it as a command or variable
-				MyResult = TryExecute(registries, CurrentPath, null, CommandText, ArgumentText);
-				
-				if (MyResult != null)
-					return MyResult;
-				
-				// Perhaps it's an instance type, and we're calling the default instance
-				foreach(var MyRegistry in registries)
-				{
-					MyTypeSet = MyRegistry.FindTypeSet(CommandText);
-					
-					if (MyTypeSet != null)
-						break;
-				}
-				
-				// Do we have a match at all?
-				if (MyTypeSet == null)
-				{
-					Log.Info("{0} is not a Command, Variable, or Instance Type", CommandText);
-					
-					return Task.FromResult<bool>(false);
-				}
-				
-				// If there are no arguments, we should list all the instances that match
-				if (ArgumentText == null)
-				{
-					TerminalParser.HelpOn(MyTypeSet);
-					
-					return Task.FromResult<bool>(true);
-				}
-				
-				// We have arguments, so is there a default instance?
-				MyInstance = MyTypeSet.Default;
-				
-				if (MyInstance == null)
-				{
-					Log.Info("{0} does not have a default instance", MyTypeSet.TypeName);
-					
-					return Task.FromResult<bool>(false);
-				}
-				
-				CurrentPath = MyTypeSet.TypeName + " ";
-			}
-			
-			//****************************************
-			
-			// We're calling an Instance Type, are there any arguments?
-			if (ArgumentText == null)
-			{
-				// Display the instance details (ToString, available commands and variables)
-				TerminalParser.HelpOn(MyInstance);
-				
-				return Task.FromResult<bool>(true);
-			}
-			
-			// Repeat the argument process on the arguments themselves
-			CharIndex = ArgumentText.IndexOfAny(new char[] {' ', '='});
-			
-			// Split off the arguments (if any)
-			if (CharIndex == -1)
-			{
-				CommandText = ArgumentText;
-				ArgumentText = null;
-				WordDivider = '\0';
-			}
-			else
-			{
-				CommandText = ArgumentText.Substring(0, CharIndex);
-				WordDivider = ArgumentText[CharIndex];
-				ArgumentText = ArgumentText.Substring(CharIndex + 1);
-			}
-			
-			//****************************************
-			
-			// Attempt to execute it as a command or variable
-			MyResult = TryExecute(registries, CurrentPath, MyInstance, CommandText, ArgumentText);
-			
-			if (MyResult != null)
-				return MyResult;
-
-			Log.Info("{0}{1} is not a Command or Variable", CurrentPath, CommandText);
-			
-			return Task.FromResult<bool>(false);
+		{
+			return InternalExecute(command, registries);
 		}
-		
 		/// <summary>
 		/// Finds the next command for auto completion
 		/// </summary>
@@ -564,9 +409,171 @@ namespace Proximity.Terminal
 			
 			return null;
 		}
-		
+
 		//****************************************
-		
+
+		internal static Task<bool> InternalExecute(string command, params TerminalRegistry[] registries)
+		{ //****************************************
+			string CommandText, ArgumentText;
+			string InstanceName, CurrentPath = "";
+
+			int CharIndex;
+			char WordDivider;
+
+			TerminalTypeSet MyTypeSet = null;
+			TerminalInstance MyInstance = null;
+			Task<bool> MyResult;
+			//****************************************
+
+			Context = registries;
+
+			Log.Write(new ConsoleLogEntry(string.Format("> {0}", command)));
+
+			// Find the first word (split on a space, equals)
+			CharIndex = command.IndexOfAny(new char[] { ' ', '=' });
+
+			// Split off the arguments (if any)
+			if (CharIndex == -1)
+			{
+				CommandText = command;
+				ArgumentText = null;
+				WordDivider = '\0';
+			}
+			else
+			{
+				CommandText = command.Substring(0, CharIndex);
+				ArgumentText = command.Substring(CharIndex + 1);
+				WordDivider = command[CharIndex];
+			}
+
+			//****************************************
+
+			// Is there a dot divider identifying an instance path?
+			CharIndex = CommandText.IndexOf('.');
+
+			if (CharIndex != -1 && WordDivider != '=')
+			{
+				InstanceName = CommandText.Substring(CharIndex + 1);
+				CommandText = CommandText.Substring(0, CharIndex);
+
+				// Split into Type and Instance
+				foreach (var MyRegistry in registries)
+				{
+					MyTypeSet = MyRegistry.FindTypeSet(CommandText);
+
+					if (MyTypeSet != null)
+					{
+						MyInstance = MyTypeSet.GetNamedInstance(InstanceName);
+						break;
+					}
+				}
+
+				if (MyTypeSet == null)
+				{
+					Log.Info("{0} is not an Instance Type", CommandText);
+
+					return Task.FromResult<bool>(false);
+				}
+
+				if (MyInstance == null)
+				{
+					Log.Info("{0} is not a known Instance of {1}", InstanceName, MyTypeSet.TypeName);
+
+					return Task.FromResult<bool>(false);
+				}
+
+				CurrentPath = string.Format("{0}.{1}!", MyTypeSet.TypeName, MyInstance.Name);
+			}
+
+			//****************************************
+
+			if (MyTypeSet == null)
+			{
+				// Attempt to execute it as a command or variable
+				MyResult = TryExecute(registries, CurrentPath, null, CommandText, ArgumentText);
+
+				if (MyResult != null)
+					return MyResult;
+
+				// Perhaps it's an instance type, and we're calling the default instance
+				foreach (var MyRegistry in registries)
+				{
+					MyTypeSet = MyRegistry.FindTypeSet(CommandText);
+
+					if (MyTypeSet != null)
+						break;
+				}
+
+				// Do we have a match at all?
+				if (MyTypeSet == null)
+				{
+					Log.Info("{0} is not a Command, Variable, or Instance Type", CommandText);
+
+					return Task.FromResult<bool>(false);
+				}
+
+				// If there are no arguments, we should list all the instances that match
+				if (ArgumentText == null)
+				{
+					TerminalParser.HelpOn(MyTypeSet);
+
+					return Task.FromResult<bool>(true);
+				}
+
+				// We have arguments, so is there a default instance?
+				MyInstance = MyTypeSet.Default;
+
+				if (MyInstance == null)
+				{
+					Log.Info("{0} does not have a default instance", MyTypeSet.TypeName);
+
+					return Task.FromResult<bool>(false);
+				}
+
+				CurrentPath = MyTypeSet.TypeName + " ";
+			}
+
+			//****************************************
+
+			// We're calling an Instance Type, are there any arguments?
+			if (ArgumentText == null)
+			{
+				// Display the instance details (ToString, available commands and variables)
+				TerminalParser.HelpOn(MyInstance);
+
+				return Task.FromResult<bool>(true);
+			}
+
+			// Repeat the argument process on the arguments themselves
+			CharIndex = ArgumentText.IndexOfAny(new char[] { ' ', '=' });
+
+			// Split off the arguments (if any)
+			if (CharIndex == -1)
+			{
+				CommandText = ArgumentText;
+				ArgumentText = null;
+				WordDivider = '\0';
+			}
+			else
+			{
+				CommandText = ArgumentText.Substring(0, CharIndex);
+				WordDivider = ArgumentText[CharIndex];
+				ArgumentText = ArgumentText.Substring(CharIndex + 1);
+			}
+
+			//****************************************
+
+			// Attempt to execute it as a command or variable
+			MyResult = TryExecute(registries, CurrentPath, MyInstance, CommandText, ArgumentText);
+
+			if (MyResult != null)
+				return MyResult;
+
+			Log.Info("{0}{1} is not a Command or Variable", CurrentPath, CommandText);
+
+			return Task.FromResult<bool>(false);
+		}
+
 		private static Task<bool> TryExecute(TerminalRegistry[] registries, string path, TerminalInstance instance, string commandText, string argumentText)
 		{	//****************************************
 			TerminalVariable MyVariable = null;
@@ -775,7 +782,7 @@ namespace Proximity.Terminal
 			
 			//****************************************
 			
-			await MyCommand.InvokeAsync(instance, OutParams);
+			await MyCommand.InternalInvokeAsync(instance, OutParams);
 			
 			return true;
 		}
@@ -787,7 +794,9 @@ namespace Proximity.Terminal
 		/// </summary>
 		public static TerminalRegistry[] Context
 		{
+			[SecuritySafeCritical]
 			get { return (TerminalRegistry[])CallContext.LogicalGetData("Terminal.Parser.Context"); }
+			[SecuritySafeCritical]
 			private set { CallContext.LogicalSetData("Terminal.Parser.Context", value); }
 		}
 	}

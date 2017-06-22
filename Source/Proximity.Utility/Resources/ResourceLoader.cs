@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Resources;
+using System.Security;
 //****************************************
 
 namespace Proximity.Utility.Resources
@@ -46,12 +47,18 @@ namespace Proximity.Utility.Resources
 			string FileName;
 			//****************************************
 
-			FileName = Path.GetDirectoryName(source.Location);
-			FileName = Path.Combine(FileName, _ResourcePath);
-			FileName = Path.Combine(FileName, fullName);
+			try
+			{
+				FileName = Path.GetDirectoryName(source.Location);
+				FileName = Path.Combine(FileName, _ResourcePath);
+				FileName = Path.Combine(FileName, fullName);
 
-			if (File.Exists(FileName))
-				return File.OpenRead(FileName);
+				if (File.Exists(FileName))
+					return File.OpenRead(FileName);
+			}
+			catch (SecurityException) // No File IO permission, so just load from the assembly
+			{
+			}
 #endif
 
 			//****************************************

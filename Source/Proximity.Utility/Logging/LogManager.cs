@@ -11,6 +11,7 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.Remoting.Messaging;
 using System.Security;
+using System.Security.Permissions;
 using System.Threading;
 using Proximity.Utility.Collections;
 using Proximity.Utility.Logging.Config;
@@ -21,31 +22,58 @@ namespace Proximity.Utility.Logging
 	/// <summary>
 	/// Manages the logging framework
 	/// </summary>
-	[SecurityCritical]
 	public static class LogManager
 	{	//****************************************
 		private static LogOutput[] _Outputs = new LogOutput[0];
 		private static readonly ConcurrentDictionary<string, LogCategory> _Categories = new ConcurrentDictionary<string, LogCategory>();
 		
-		private static string _OutputPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).GetName().Name);
+		private static string _OutputPath;
 		private static PrecisionTimer _Timer = new PrecisionTimer();
 		private static bool _IsStarted;
-		private static DateTime _StartTime = Process.GetCurrentProcess().StartTime;
+		private static DateTime _StartTime;
+		//****************************************
+
+		[SecuritySafeCritical]
+		static LogManager()
+		{
+			try
+			{
+				new SecurityPermission(PermissionState.Unrestricted).Assert();
+
+				try
+				{
+					_StartTime = Process.GetCurrentProcess().StartTime;
+				}
+				finally
+				{
+					PermissionSet.RevertAssert();
+				}
+			}
+			catch
+			{
+			}
+		}
+
 		//****************************************
 
 		/// <summary>
 		/// Starts the logging framework
 		/// </summary>
+		[SecurityCritical]
 		public static void Start()
 		{
 			Start(LoggingConfig.OpenConfig());
 		}
-		
+
 		/// <summary>
 		/// Starts the logging framework
 		/// </summary>
+		[SecurityCritical]
 		public static void Start(LoggingConfig config)
 		{
+			if (_OutputPath == null)
+				_OutputPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).GetName().Name);
+
 			if (!Directory.Exists(_OutputPath))
 				Directory.CreateDirectory(_OutputPath);
 			
@@ -64,11 +92,12 @@ namespace Proximity.Utility.Logging
 				AddOutput(MyConfig.ToOutput());
 			}
 		}
-		
+
 		/// <summary>
 		/// Adds a new logging output
 		/// </summary>
 		/// <param name="output">A log output to receive logging information</param>
+		[SecurityCritical]
 		public static void AddOutput(LogOutput output)
 		{	//****************************************
 			LogOutput[] OldList, NewList;
@@ -88,11 +117,12 @@ namespace Proximity.Utility.Logging
 			if (_IsStarted)
 				output.Start();
 		}
-		
+
 		/// <summary>
 		/// Starts a new logging section
 		/// </summary>
 		/// <param name="newSection">The section to start</param>
+		[SecurityCritical]
 		public static void StartSection(LogSection newSection)
 		{	//****************************************
 			var MyOutputs = _Outputs;
@@ -103,7 +133,7 @@ namespace Proximity.Utility.Logging
 			
 			Context = Context.Push(newSection);
 		}
-		
+
 		/// <summary>
 		/// Resets the section context for this logical call, so future log operations are isolated
 		/// </summary>
@@ -111,20 +141,22 @@ namespace Proximity.Utility.Logging
 		{
 			Context = ImmutableCountedStack<LogSection>.Empty;
 		}
-		
+
 		/// <summary>
 		/// Flushes all outputs, ensuring all previously written log messages have been stored
 		/// </summary>
+		[SecurityCritical]
 		public static void Flush()
 		{
 			foreach(LogOutput MyOutput in _Outputs)
 				MyOutput.Flush();
 		}
-		
+
 		/// <summary>
 		/// Finishes a logging section
 		/// </summary>
 		/// <param name="oldSection">The section to finish</param>
+		[SecurityCritical]
 		public static void FinishSection(LogSection oldSection)
 		{	//****************************************
 			var MyContext = Context;
@@ -141,10 +173,11 @@ namespace Proximity.Utility.Logging
 			foreach(LogOutput MyOutput in _Outputs)
 				MyOutput.FinishSection(oldSection);
 		}
-		
+
 		/// <summary>
 		/// Ends the logging framework
 		/// </summary>
+		[SecurityCritical]
 		public static void Finish()
 		{
 			var OldOutputs = Interlocked.Exchange(ref _Outputs, new LogOutput[0]);
@@ -208,6 +241,7 @@ namespace Proximity.Utility.Logging
 		public static string OutputPath
 		{
 			get { return _OutputPath; }
+			[SecurityCritical]
 			set { _OutputPath = value; }
 		}
 		
@@ -224,7 +258,9 @@ namespace Proximity.Utility.Logging
 		/// </summary>
 		public static ImmutableCountedStack<LogSection> Context
 		{
+			[SecuritySafeCritical]
 			get { return (CallContext.LogicalGetData("Logging.Context") as ImmutableCountedStack<LogSection>) ?? ImmutableCountedStack<LogSection>.Empty; }
+			[SecuritySafeCritical]
 			private set { CallContext.LogicalSetData("Logging.Context", value); }
 		}
 		

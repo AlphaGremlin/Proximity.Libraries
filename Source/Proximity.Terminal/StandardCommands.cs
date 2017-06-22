@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -158,7 +159,7 @@ namespace Proximity.Terminal
 				if (MyLine == "" || MyLine.StartsWith("#"))
 					continue;
 				
-				await TerminalParser.Execute(MyLine, MyContext);
+				await TerminalParser.InternalExecute(MyLine, MyContext);
 			}
 		}
 		
@@ -169,6 +170,7 @@ namespace Proximity.Terminal
 		/// Outputs memory statistics
 		/// </summary>
 		[TerminalBinding("Displays statistics about the current memory usage")]
+		[SecuritySafeCritical]
 		public static void MemStatus()
 		{	//****************************************
 			Process MyProcess = Process.GetCurrentProcess();
@@ -183,6 +185,7 @@ namespace Proximity.Terminal
 		/// Outputs CPU statistics
 		/// </summary>
 		[TerminalBinding("Displays statistics about the current CPU usage")]
+		[SecuritySafeCritical]
 		public static void CpuStatus()
 		{	//****************************************
 			Process MyProcess = Process.GetCurrentProcess();
@@ -212,6 +215,7 @@ namespace Proximity.Terminal
 		/// Outputs process details
 		/// </summary>
 		[TerminalBinding("Displays statistics about the current Process")]
+		[SecuritySafeCritical]
 		public static void ProcessStatus()
 		{	//****************************************
 			Process MyProcess = Process.GetCurrentProcess();
@@ -234,10 +238,11 @@ namespace Proximity.Terminal
 		{
 			throw new ApplicationException("Requested Exception");
 		}
-		
+
 		/// <summary>
 		/// Clears the local terminal
 		/// </summary>
+		[SecuritySafeCritical]
 		public static void Clear()
 		{
 			TerminalManager.Clear();

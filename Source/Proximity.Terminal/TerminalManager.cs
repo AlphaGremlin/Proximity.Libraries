@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Security;
 using System.Text;
 using System.Threading;
 using Proximity.Utility;
@@ -17,6 +18,7 @@ namespace Proximity.Terminal
 	/// Provides a Terminal interface on top of the Console
 	/// </summary>
 	/// <remarks>Static, as there is only one system console</remarks>
+	[SecurityCritical]
 	public static class TerminalManager
 	{	//****************************************
 		private static object _LockObject = new object();

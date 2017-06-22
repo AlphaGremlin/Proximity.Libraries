@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
+using System.Security;
 using System.Threading.Tasks;
 using Proximity.Utility;
 //****************************************
@@ -36,7 +37,7 @@ namespace Proximity.Terminal
 			else if (method.ReturnType != typeof(void))
 				throw new FormatException("Return type must be Void or Task");
 		}
-		
+
 		//****************************************
 
 		/// <summary>
@@ -44,6 +45,7 @@ namespace Proximity.Terminal
 		/// </summary>
 		/// <param name="instance">The instance this command should be called on, if any</param>
 		/// <param name="arguments">The arguments to pass to the command</param>
+		[SecurityCritical]
 		public void Invoke(object instance, object[] arguments)
 		{
 			if (instance != null && !_Method.DeclaringType.IsInstanceOfType(instance))
@@ -71,14 +73,22 @@ namespace Proximity.Terminal
 				}
 			}
 		}
-		
+
 		/// <summary>
 		/// Asynchronously invokes a command
 		/// </summary>
 		/// <param name="instance">The instance this command should be called on, if any</param>
 		/// <param name="arguments">The arguments to pass to the command</param>
 		/// <returns>A task that completes with the result of the command</returns>
-		public async Task InvokeAsync(object instance, object[] arguments)
+		[SecurityCritical]
+		public Task InvokeAsync(object instance, object[] arguments)
+		{
+			return InternalInvokeAsync(instance, arguments);
+		}
+
+		//****************************************
+
+		internal async Task InternalInvokeAsync(object instance, object[] arguments)
 		{
 			if (instance != null && !_Method.DeclaringType.IsInstanceOfType(instance))
 				throw new ArgumentException("Instance is invalid for this Command");

@@ -6,6 +6,7 @@ using System;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Security;
 //****************************************
 
 [assembly: AssemblyTitle("Proximity Terminal Library")]
@@ -24,5 +25,8 @@ using System.Runtime.InteropServices;
 
 //****************************************
 
-[assembly: AssemblyVersion("16.1.0.0")]
-[assembly: AssemblyFileVersion("16.6.0.0")]
+[assembly: AssemblyVersion("17.1.0.0")]
+[assembly: AssemblyFileVersion("17.1.0.0")]
+
+[assembly: SecurityRules(SecurityRuleSet.Level2)]
+[assembly: AllowPartiallyTrustedCallers()]

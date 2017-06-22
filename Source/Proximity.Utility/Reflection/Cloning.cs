@@ -19,7 +19,7 @@ namespace Proximity.Utility.Reflection
 	/// <summary>
 	/// Provides methods for cloning objects
 	/// </summary>
-	[SecurityCritical]
+	[SecuritySafeCritical]
 	public static class Cloning
 	{
 		/// <summary>
