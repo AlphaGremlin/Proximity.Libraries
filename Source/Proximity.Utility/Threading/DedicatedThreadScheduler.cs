@@ -17,7 +17,6 @@ namespace Proximity.Utility.Threading
 	/// <summary>
 	/// Represents a scheduler placing everything on one thread
 	/// </summary>
-	[SecurityCritical]
 	public sealed class DedicatedThreadScheduler : TaskScheduler, IDisposable
 	{	//****************************************
 		private BlockingCollection<Task> _Tasks;
@@ -27,6 +26,7 @@ namespace Proximity.Utility.Threading
 		/// <summary>
 		/// Creates a new dedicated thread scheduler
 		/// </summary>
+		[SecuritySafeCritical]
 		public DedicatedThreadScheduler()
 		{
 			_Tasks = new BlockingCollection<Task>();
@@ -40,6 +40,7 @@ namespace Proximity.Utility.Threading
 		/// Creates a new dedicated thread scheduler with a specified name
 		/// </summary>
 		/// <param name="name">The name to assign to the new Thread</param>
+		[SecuritySafeCritical]
 		public DedicatedThreadScheduler(string name)
 		{
 			_Tasks = new BlockingCollection<Task>();
@@ -103,6 +104,7 @@ namespace Proximity.Utility.Threading
 
 		//****************************************
 		
+		[SecurityCritical]
 		private void ConsumeTasks(object state)
 		{
 			foreach (var MyTask in _Tasks.GetConsumingEnumerable())

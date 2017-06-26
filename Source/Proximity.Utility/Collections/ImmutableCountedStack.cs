@@ -5,6 +5,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
 using System.Security;
 using System.Threading;
 //****************************************
@@ -117,7 +118,10 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Provides an Immutable Stack that also maintains a counter
 	/// </summary>
-	public sealed class ImmutableCountedStack<TItem> : IEnumerable<TItem>
+#if !PORTABLE
+	[Serializable]
+#endif
+	public sealed class ImmutableCountedStack<TItem> : /*ISerializable,*/ IEnumerable<TItem>
 #if NET45
 		, System.Collections.Immutable.IImmutableStack<TItem>
 #endif
@@ -140,9 +144,30 @@ namespace Proximity.Utility.Collections
 			_Tail = tail;
 			_Count = count;
 		}
-		
+		/*
+		[SecurityCritical]
+		private ImmutableCountedStack(SerializationInfo info, StreamingContext context)
+		{	//****************************************
+			var Values = (TItem[])info.GetValue("Values", typeof(TItem[]));
+			var Node = Empty;
+			//****************************************
+
+			if (Values.Length > 0)
+			{
+				_Count = Values.Length;
+				_Head = Values[Values.Length - 1];
+
+				for (int Index = 0; Index < Values.Length - 1; Index++)
+				{
+					Node = new ImmutableCountedStack<TItem>(Values[Index], Node, Index + 1);
+				}
+
+				_Tail = Node;
+			}
+		}
+		*/
 		//****************************************
-		
+
 		/// <summary>
 		/// Clears the immutable stack
 		/// </summary>
@@ -150,6 +175,26 @@ namespace Proximity.Utility.Collections
 		public ImmutableCountedStack<TItem> Clear()
 		{
 			return Empty;
+		}
+
+		/// <summary>
+		/// Copies the contents of the stack in oldest-to-newest order to an array
+		/// </summary>
+		/// <param name="array">The array to copy to</param>
+		/// <param name="index">The index into the array to start writing at</param>
+		public void CopyTo(TItem[] array, int index)
+		{	//****************************************
+			var Node = this;
+			//****************************************
+
+			index += _Count;
+
+			while (Node._Count > 0)
+			{
+				array[--index] = Node._Head;
+
+				Node = Node._Tail;
+			}
 		}
 		
 		/// <summary>
@@ -224,7 +269,17 @@ namespace Proximity.Utility.Collections
 		{
 			return new Enumerator(this);
 		}
-		
+		/*
+		[SecurityCritical]
+		void ISerializable.GetObjectData(SerializationInfo info, StreamingContext context)
+		{
+			var Values = new TItem[_Count];
+
+			CopyTo(Values, 0);
+
+			info.AddValue("Values", Values, typeof(TItem[]));
+		}
+		*/
 #if NET45
 		System.Collections.Immutable.IImmutableStack<TItem> System.Collections.Immutable.IImmutableStack<TItem>.Clear()
 		{

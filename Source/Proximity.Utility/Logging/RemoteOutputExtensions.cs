@@ -4,9 +4,10 @@
 \****************************************/
 #if !MOBILE && !PORTABLE
 using System;
+using Proximity.Utility.Logging.Outputs;
 //****************************************
 
-namespace Proximity.Utility.Logging.Outputs
+namespace Proximity.Utility.Logging
 {
 	/// <summary>
 	/// Extension methods for the Remote Output
