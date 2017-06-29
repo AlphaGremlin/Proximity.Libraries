@@ -28,17 +28,19 @@ namespace Proximity.Utility.Reflection
 		/// <param name="input">The object to clone</param>
 		/// <returns>A copy of the provided object</returns>
 		/// <remarks>Supports Arrays, as a type-safe Array.Clone. Input must not be a derived type of TObject. Use CloneDynamic if so.</remarks>
+		[SecuritySafeCritical]
 		public static TObject Clone<TObject>(TObject input) where TObject : class
 		{
 			return Cloning<TObject>.GetClone()(input);
 		}
-		
+
 		/// <summary>
 		/// Perform a shallow clone of all fields, ignoring any serialisation attributes
 		/// </summary>
 		/// <param name="input">The object to clone</param>
 		/// <returns>A copy of the provided object</returns>
 		/// <remarks>Does not support Arrays. Use where the input is likely to be a derived type of TObject</remarks>
+		[SecuritySafeCritical]
 		public static TObject CloneDynamic<TObject>(TObject input) where TObject : class
 		{
 			var CloneType = typeof(Cloning<>).MakeGenericType(input.GetType());
@@ -46,35 +48,38 @@ namespace Proximity.Utility.Reflection
 			
 			return (TObject)CloneDelegate.DynamicInvoke(input);
 		}
-		
+
 		/// <summary>
 		/// Perform a shallow clone of all fields, ignoring any serialisation attributes
 		/// </summary>
 		/// <param name="source">The object to read from</param>
 		/// <param name="target">The object to write to</param>
 		/// <remarks>Does not support Arrays, and copies read-only (initonly) fields</remarks>
+		[SecuritySafeCritical]
 		public static void CloneToWithReadOnly<TObject>(TObject source, TObject target) where TObject : class
 		{
 			Cloning<TObject>.GetCloneToWithReadOnly()(source, target);
 		}
-		
+
 		/// <summary>
 		/// Perform a shallow clone of all writeable fields, ignoring any serialisation attributes
 		/// </summary>
 		/// <param name="source">The object to read from</param>
 		/// <param name="target">The object to write to</param>
 		/// <remarks>Does not support Arrays, and ignores read-only (initonly) fields</remarks>
+		[SecuritySafeCritical]
 		public static void CloneTo<TObject>(TObject source, TObject target) where TObject : class
 		{
 			Cloning<TObject>.GetCloneTo()(source, target);
 		}
-		
+
 		/// <summary>
 		/// Perform a shallow clone of all writeable fields, ignoring any serialisation attributes
 		/// </summary>
 		/// <param name="source">The object to read from</param>
 		/// <param name="target">The object to write to. Must be the same type as the source</param>
 		/// <remarks>Does not support Arrays. Use where the input is likely to be a derived type of TObject</remarks>
+		[SecuritySafeCritical]
 		public static void CloneToDynamic<TObject>(TObject source, TObject target) where TObject : class
 		{
 			if (source.GetType() != target.GetType())
@@ -85,13 +90,14 @@ namespace Proximity.Utility.Reflection
 			
 			CloneDelegate.DynamicInvoke(source, target);
 		}
-		
+
 		/// <summary>
 		/// Performs a shallow copy of all fields, paying attention to serialisation attributes
 		/// </summary>
 		/// <param name="input">The object to clone</param>
 		/// <returns>A copy of the provided object</returns>
 		/// <remarks>Supports <see cref="OnSerializingAttribute" />, <see cref="OnDeserializingAttribute" />, <see cref="OnDeserializedAttribute" /> and <see cref="OnSerializedAttribute" /></remarks>
+		[SecuritySafeCritical]
 		public static TObject CloneSmart<TObject>(TObject input) where TObject : class
 		{
 			return Cloning<TObject>.GetCloneSmart()(input);
