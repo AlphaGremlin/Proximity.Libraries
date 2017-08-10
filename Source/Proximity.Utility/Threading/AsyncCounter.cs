@@ -167,7 +167,7 @@ namespace Proximity.Utility.Threading
 
 			// No free counters, are we disposed?
 			if (_CurrentCount == -1)
-				throw new ObjectDisposedException("AsyncCounter", "Counter has been disposed of");
+				return new ObjectDisposedException("AsyncCounter", "Counter has been disposed of").ToTask();
 
 			//****************************************
 
@@ -404,7 +404,7 @@ namespace Proximity.Utility.Threading
 
 			// No free counters, are we disposed?
 			if (MyCount == -1)
-				throw new ObjectDisposedException("AsyncCounter", "Counter has been disposed of");
+				return new ObjectDisposedException("AsyncCounter", "Counter has been disposed of").ToTask<AsyncCounter>();
 
 			//****************************************
 

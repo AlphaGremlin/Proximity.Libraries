@@ -19,6 +19,9 @@ namespace Proximity.Utility.Collections
 	/// Provides a BlockingCollection that supports async/await
 	/// </summary>
 	public class AsyncCollection<TItem> : IEnumerable<TItem>
+#if !NET40
+		,IReadOnlyCollection<TItem>
+#endif
 	{	//****************************************
 		private readonly IProducerConsumerCollection<TItem> _Collection;
 		
@@ -124,8 +127,8 @@ namespace Proximity.Utility.Collections
 		public Task Add(TItem item, CancellationToken token)
 		{
 			if (_IsCompleted)
-				throw new InvalidOperationException("Adding has been completed");
-			
+				return new InvalidOperationException("Adding has been completed").ToTask();
+
 			// Is there a maximum size?
 			if (_FreeSlots != null)
 			{
@@ -143,7 +146,7 @@ namespace Proximity.Utility.Collections
 			
 			// Try and add our item to the collection
 			if (!_Collection.TryAdd(item))
-				throw new InvalidOperationException("Item was rejected by the underlying collection");
+				return new InvalidOperationException("Item was rejected by the underlying collection").ToTask();
 			
 			// Increment the slots counter, releasing any Takers
 			_UsedSlots.Increment();
@@ -172,7 +175,7 @@ namespace Proximity.Utility.Collections
 		public Task AddComplete(TItem item, CancellationToken token)
 		{
 			if (_IsCompleted)
-				throw new InvalidOperationException("Adding has already been completed");
+				return new InvalidOperationException("Adding has already been completed").ToTask();
 			
 			// Is there a maximum size?
 			if (_FreeSlots != null)
@@ -194,7 +197,7 @@ namespace Proximity.Utility.Collections
 			
 			// Try and add our item to the collection
 			if (!_Collection.TryAdd(item))
-				throw new InvalidOperationException("Item was rejected by the underlying collection");
+				return new InvalidOperationException("Item was rejected by the underlying collection").ToTask();
 			
 			// Flag as completed first, so any Takers will handle the cleanup
 			_IsCompleted = true;
@@ -285,7 +288,7 @@ namespace Proximity.Utility.Collections
 			//****************************************
 			
 			if (IsCompleted)
-				throw new InvalidOperationException("Collection is empty and adding has been completed");
+				return new InvalidOperationException("Collection is empty and adding has been completed").ToTask<TItem>();
 			
 			// Is there an item to take?
 			var MyTask = _UsedSlots.Decrement(token);
@@ -300,7 +303,7 @@ namespace Proximity.Utility.Collections
 			
 			// Try and remove an item from the collection
 			if (!_Collection.TryTake(out MyItem))
-				throw new InvalidOperationException("Item was not returned by the underlying collection");
+				return new InvalidOperationException("Item was not returned by the underlying collection").ToTask<TItem>();
 			
 			// Is there a maximum size?
 			if (_FreeSlots != null)
@@ -415,7 +418,16 @@ namespace Proximity.Utility.Collections
 			// If the collection is empty, cancel anyone waiting for items
 			_UsedSlots.DisposeIfZero();
 		}
-		
+
+		/// <summary>
+		/// Copies a snapshot of the collection to an array
+		/// </summary>
+		/// <returns>The current contents of the collection</returns>
+		public TItem[] ToArray()
+		{
+			return _Collection.ToArray();
+		}
+
 		/// <summary>
 		/// Creates an enumerable that can be used to consume items as they are added to this collection
 		/// </summary>
@@ -473,7 +485,11 @@ namespace Proximity.Utility.Collections
 				
 				// Try and remove an item from the collection
 				if (!_Collection.TryTake(out MyItem))
-					throw new InvalidOperationException("Item was not returned by the underlying collection");
+				{
+					yield return new InvalidOperationException("Item was not returned by the underlying collection").ToTask<TItem>();
+
+					yield break;
+				}
 				
 				// Is there a maximum size?
 				if (_FreeSlots != null)

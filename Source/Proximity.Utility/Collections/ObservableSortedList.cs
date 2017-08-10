@@ -16,7 +16,10 @@ namespace Proximity.Utility.Collections
 	/// Implements an Observable Sorted List for WPF binding
 	/// </summary>
 	public class ObservableSortedList<TKey, TValue> : ObservableBase<KeyValuePair<TKey, TValue>>, IDictionary<TKey, TValue>, IList<KeyValuePair<TKey, TValue>>
-	{	//****************************************
+#if !NET40
+		, IReadOnlyDictionary<TKey, TValue>
+#endif
+	{ //****************************************
 		private const string KeysName = "Keys";
 		private const string ValuesName = "Values";
 		//****************************************
@@ -147,18 +150,71 @@ namespace Proximity.Utility.Collections
 			if (items == null)
 				throw new ArgumentNullException("items");
 
-			var NewItems = new List<KeyValuePair<TKey, TValue>>(items);
+			var NewItems = items.Select(item => new RangeKeyValue(item.Key, item.Value)).ToArray();
 
-			if (NewItems.Count == 0)
+			if (NewItems.Length == 0)
 				return;
 
-			if (items.Any(pair => IndexOfKey(pair.Key) >= 0))
-				throw new ArgumentException("An item with the same key has already been added.");
+			Array.Sort(NewItems, CompareRange);
 
-			foreach (var NewItem in NewItems)
-				Insert(NewItem);
+			// Check the new items don't have any duplicates
+			{
+				int Index = 0;
 
-			OnCollectionChanged(NotifyCollectionChangedAction.Add, NewItems);
+				var CurrentItem = NewItems[0];
+
+				while (++Index < NewItems.Length)
+				{
+					var LastItem = CurrentItem;
+					CurrentItem = NewItems[Index];
+
+					if (_Comparer.Compare(LastItem.Key, CurrentItem.Key) == 0)
+						throw new ArgumentException("Input collection has duplicates");
+				}
+			}
+
+			// No duplicates in the new items. Check the keys aren't already in the Dictionary
+			for (int Index = 0; Index < NewItems.Length; Index++)
+			{
+				var CurrentItem = NewItems[Index];
+				int InnerIndex = Array.BinarySearch(_Keys, 0, _Size, CurrentItem.Key);
+
+				// No exact match?
+				if (InnerIndex >= 0)
+					throw new ArgumentException("An item with the same key has already been added.");
+
+				NewItems[Index].EstimatedIndex = ~InnerIndex;
+			}
+
+			// Ensure we have enough space for the new items
+			EnsureCapacity(_Size + NewItems.Length);
+
+			var ItemsNotify = new KeyValuePair<TKey, TValue>[NewItems.Length];
+
+			// Add the new items
+			for (int Index = 0; Index < NewItems.Length; Index++)
+			{
+				var CurrentItem = NewItems[Index];
+
+				// We need to adjust where we're inserting since these are the old indexes
+				// Since the new items are ordered by key, we can just add the number of already added items
+				var NewIndex = CurrentItem.EstimatedIndex + Index;
+
+				// Move things up, unless we're adding at the end
+				if (NewIndex < _Size)
+				{
+					Array.Copy(_Keys, NewIndex, _Keys, NewIndex + 1, _Size - NewIndex);
+					Array.Copy(_Values, NewIndex, _Values, NewIndex + 1, _Size - NewIndex);
+				}
+				
+				_Keys[NewIndex] = CurrentItem.Key;
+				_Values[NewIndex] = CurrentItem.Value;
+				ItemsNotify[Index] = new KeyValuePair<TKey, TValue>(CurrentItem.Key, CurrentItem.Value);
+
+				_Size++;
+			}
+			
+			OnCollectionChanged(NotifyCollectionChangedAction.Add, ItemsNotify);
 		}
 
 		/// <summary>
@@ -213,7 +269,10 @@ namespace Proximity.Utility.Collections
 		/// <inheritdoc />
 		public override void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
 		{
-			Array.Copy(_Values, 0, array, arrayIndex, _Size);
+			for (int Index = 0; Index < _Size; Index++)
+			{
+				array[Index + arrayIndex] = new KeyValuePair<TKey, TValue>( _Keys[Index], _Values[Index]);
+			}
 		}
 
 		/// <summary>
@@ -377,11 +436,8 @@ namespace Proximity.Utility.Collections
 			return InnerIndex - Index;
 		}
 
-		/// <summary>
-		/// Removes the element at the specified index
-		/// </summary>
-		/// <param name="index">The index of the element to remove</param>
-		public void RemoveAt(int index)
+		/// <inheritdoc />
+		public override void RemoveAt(int index)
 		{
 			if (index < 0 || index >= _Size)
 				throw new ArgumentOutOfRangeException("index");
@@ -399,9 +455,49 @@ namespace Proximity.Utility.Collections
 			}
 
 			// Ensure we don't hold a reference to the value
+			_Keys[_Size] = default(TKey);
 			_Values[_Size] = default(TValue);
 
 			OnCollectionChanged(NotifyCollectionChangedAction.Remove, new KeyValuePair<TKey, TValue>(Key, Value), index);
+		}
+
+		/// <inheritdoc />
+		public override void RemoveRange(int index, int count)
+		{
+			if (index < 0 || index + count > _Size)
+				throw new ArgumentOutOfRangeException("index");
+
+			var OldItems = new KeyValuePair<TKey, TValue>[count];
+
+			for (int SubIndex = 0; SubIndex < count; SubIndex++)
+			{
+				OldItems[SubIndex] = new KeyValuePair<TKey, TValue>(_Keys[index + SubIndex], _Values[index + SubIndex]);
+			}
+			
+			_Size -= count;
+
+			// If this is in the middle, move the values down
+			if (index + count <= _Size)
+			{
+				Array.Copy(_Keys, index + count, _Keys, index, _Size - index);
+				Array.Copy(_Values, index + count, _Values, index, _Size - index);
+			}
+
+			// Ensure we don't hold a reference to the values
+			Array.Clear(_Keys, _Size, count);
+			Array.Clear(_Values, _Size, count);
+
+			OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItems, index);
+		}
+
+		/// <inheritdoc />
+		public override KeyValuePair<TKey, TValue>[] ToArray()
+		{
+			var Result = new KeyValuePair<TKey, TValue>[_Size];
+
+			CopyTo(Result, 0);
+
+			return Result;
 		}
 
 		/// <summary>
@@ -432,6 +528,9 @@ namespace Proximity.Utility.Collections
 		/// <inheritdoc />
 		protected override KeyValuePair<TKey, TValue> InternalGet(int index)
 		{
+			if (index < 0 || index >= _Size)
+				throw new ArgumentOutOfRangeException("index");
+
 			return new KeyValuePair<TKey, TValue>(_Keys[index], _Values[index]);
 		}
 
@@ -446,13 +545,7 @@ namespace Proximity.Utility.Collections
 		{
 			throw new NotSupportedException("Cannot insert into a dictionary");
 		}
-
-		/// <inheritdoc />
-		protected override void InternalRemoveAt(int index)
-		{
-			RemoveAt(index);
-		}
-
+		
 		/// <inheritdoc />
 		protected override void InternalSet(int index, KeyValuePair<TKey, TValue> value)
 		{
@@ -611,6 +704,11 @@ namespace Proximity.Utility.Collections
 			_Size++;
 		}
 
+		private int CompareRange(RangeKeyValue left, RangeKeyValue right)
+		{
+			return _Comparer.Compare(left.Key, right.Key);
+		}
+
 		//****************************************
 
 		/// <inheritdoc />
@@ -649,9 +747,9 @@ namespace Proximity.Utility.Collections
 					return ResultValue;
 
 				if (_DefaultIndexer)
-					throw new KeyNotFoundException();
+					return default(TValue);
 
-				return default(TValue);
+				throw new KeyNotFoundException();
 			}
 			set { SetKey(key, value); }
 		}
@@ -718,6 +816,18 @@ namespace Proximity.Utility.Collections
 		{
 			get { return _ValueCollection; }
 		}
+
+#if !NET40
+		IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys
+		{
+			get { return _KeyCollection; }
+		}
+
+		IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values
+		{
+			get { return _ValueCollection; }
+		}
+#endif
 
 		//****************************************
 
@@ -1087,6 +1197,39 @@ namespace Proximity.Utility.Collections
 			object IEnumerator.Current
 			{
 				get { return _Current; }
+			}
+		}
+
+		private struct RangeKeyValue
+		{ //****************************************
+			private readonly TKey _Key;
+			private readonly TValue _Value;
+			private int _EstimatedIndex;
+			//****************************************
+
+			public RangeKeyValue(TKey key, TValue value)
+			{
+				_Key = key;
+				_Value = value;
+				_EstimatedIndex = 0;
+			}
+
+			//****************************************
+			
+			public TKey Key
+			{
+				get { return _Key; }
+			}
+
+			public TValue Value
+			{
+				get { return _Value; }
+			}
+
+			public int EstimatedIndex
+			{
+				get { return _EstimatedIndex; }
+				set { _EstimatedIndex = value; }
 			}
 		}
 	}

@@ -116,7 +116,7 @@ namespace Proximity.Utility.Threading
 		{
 			// Are we disposed?
 			if (_Dispose != null)
-				throw new ObjectDisposedException("AsyncSemaphore", "Semaphore has been disposed of");
+				return new ObjectDisposedException("AsyncSemaphore", "Semaphore has been disposed of").ToTask<IDisposable>();
 
 			// Try and add a counter as long as nobody is waiting on it
 			if (_Waiters.IsEmpty && TryIncrement())

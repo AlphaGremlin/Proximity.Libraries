@@ -145,33 +145,6 @@ namespace Proximity.Utility.Collections
 			Insert(index, item, true);
 		}
 
-		/// <summary>
-		/// Sorts the contents of this Observable List
-		/// </summary>
-		public void Sort()
-		{
-			if (_Items.Count != 0)
-			{
-				_Items.Sort();
-
-				OnCollectionChanged();
-			}
-		}
-
-		/// <summary>
-		/// Sorts the contents of this Observable List based on a comparer
-		/// </summary>
-		/// <param name="comparer">The comparer to sort by</param>
-		public void Sort(IComparer<TValue> comparer)
-		{
-			if (_Items.Count != 0)
-			{
-				_Items.Sort(comparer);
-
-				OnCollectionChanged();
-			}
-		}
-
 		/// <inheritdoc />
 		public override bool Remove(TValue item)
 		{
@@ -235,17 +208,59 @@ namespace Proximity.Utility.Collections
 			return InnerIndex - Index;
 		}
 
-		/// <summary>
-		/// Removes the element at the specified index
-		/// </summary>
-		/// <param name="index">The index of the element to remove</param>
-		public void RemoveAt(int index)
+		/// <inheritdoc />
+		public override void RemoveAt(int index)
 		{
 			var OldItem = _Items[index];
 
 			_Items.RemoveAt(index);
 
 			OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItem, index);
+		}
+
+		/// <inheritdoc />
+		public override void RemoveRange(int index, int count)
+		{
+			var OldItems = new TValue[count];
+
+			_Items.CopyTo(index, OldItems, 0, count);
+
+			_Items.RemoveRange(index, count);
+
+			OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItems, index);
+		}
+
+		/// <summary>
+		/// Sorts the contents of this Observable List
+		/// </summary>
+		public void Sort()
+		{
+			if (_Items.Count != 0)
+			{
+				_Items.Sort();
+
+				OnCollectionChanged();
+			}
+		}
+
+		/// <summary>
+		/// Sorts the contents of this Observable List based on a comparer
+		/// </summary>
+		/// <param name="comparer">The comparer to sort by</param>
+		public void Sort(IComparer<TValue> comparer)
+		{
+			if (_Items.Count != 0)
+			{
+				_Items.Sort(comparer);
+
+				OnCollectionChanged();
+			}
+		}
+
+		/// <inheritdoc />
+		public override TValue[] ToArray()
+		{
+			return _Items.ToArray();
 		}
 
 		//****************************************
@@ -267,13 +282,7 @@ namespace Proximity.Utility.Collections
 		{
 			_Items.Insert(index, item);
 		}
-
-		/// <inheritdoc />
-		protected override void InternalRemoveAt(int index)
-		{
-			_Items.RemoveAt(index);
-		}
-
+		
 		/// <inheritdoc />
 		protected override void InternalSet(int index, TValue value)
 		{

@@ -16,6 +16,9 @@ namespace Proximity.Utility.Collections
 	/// Implements an Observable Dictionary for WPF binding
 	/// </summary>
 	public class ObservableDictionary<TKey, TValue> : ObservableBase<KeyValuePair<TKey, TValue>>, IDictionary<TKey, TValue>, IList<KeyValuePair<TKey, TValue>>
+#if !NET40
+		,IReadOnlyDictionary<TKey, TValue>
+#endif
 	{	//****************************************
 		private const string KeysName = "Keys";
 		private const string ValuesName = "Values";
@@ -473,11 +476,8 @@ namespace Proximity.Utility.Collections
 			return InnerIndex - Index;
 		}
 
-		/// <summary>
-		/// Removes the element at the specified index
-		/// </summary>
-		/// <param name="index">The index of the element to remove</param>
-		public void RemoveAt(int index)
+		/// <inheritdoc />
+		public override void RemoveAt(int index)
 		{
 			if (index < 0 || index >= _Size)
 				throw new ArgumentOutOfRangeException("index");
@@ -497,6 +497,38 @@ namespace Proximity.Utility.Collections
 			_Values[_Size] = default(KeyValuePair<TKey, TValue>);
 
 			OnCollectionChanged(NotifyCollectionChangedAction.Remove, Item, index);
+		}
+
+		/// <inheritdoc />
+		public override void RemoveRange(int index, int count)
+		{
+			if (index < 0 || index + count > _Size)
+				throw new ArgumentOutOfRangeException("index");
+
+			var OldItems = new KeyValuePair<TKey, TValue>[count];
+
+			Array.Copy(_Values, index, OldItems, 0, count);
+
+			_Size -= count;
+
+			// If this is in the middle, move the values down
+			if (index + count <= _Size)
+			{
+				Array.Copy(_Keys, index + count, _Keys, index, _Size - index);
+				Array.Copy(_Values, index + count, _Values, index, _Size - index);
+			}
+
+			// Ensure we don't hold a reference to the values
+			for (int SubIndex = 0; SubIndex < count; SubIndex++)
+				_Values[_Size + SubIndex] = default(KeyValuePair<TKey, TValue>);
+
+			OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItems, index);
+		}
+
+		/// <inheritdoc />
+		public override KeyValuePair<TKey, TValue>[] ToArray()
+		{
+			return (KeyValuePair<TKey, TValue>[])_Values.Clone();
 		}
 
 		/// <summary>
@@ -754,13 +786,7 @@ namespace Proximity.Utility.Collections
 		{
 			throw new NotSupportedException("Cannot insert into a dictionary");
 		}
-
-		/// <inheritdoc />
-		protected override void InternalRemoveAt(int index)
-		{
-			RemoveAt(index);
-		}
-
+		
 		/// <inheritdoc />
 		protected override void InternalSet(int index, KeyValuePair<TKey, TValue> value)
 		{
@@ -829,10 +855,10 @@ namespace Proximity.Utility.Collections
 				if (TryGetValue(key, out ResultValue))
 					return ResultValue;
 
-				if (!_DefaultIndexer)
-					throw new KeyNotFoundException();
+				if (_DefaultIndexer)
+					return default(TValue);
 
-				return default(TValue);
+				throw new KeyNotFoundException();
 			}
 			set { SetKey(key, value); }
 		}
@@ -899,6 +925,18 @@ namespace Proximity.Utility.Collections
 		{
 			get { return _ValueCollection; }
 		}
+
+#if !NET40
+		IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys
+		{
+			get { return _KeyCollection; }
+		}
+
+		IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values
+		{
+			get { return _ValueCollection; }
+		}
+#endif
 
 		//****************************************
 

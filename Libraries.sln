@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.40629.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Gui", "Gui", "{23885097-BE81-43C6-8F13-B2FDD2DD3DC2}"
 EndProject
@@ -43,14 +43,17 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Utility.Portable"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Utility.Tests.Help", "Tests\Proximity.Utility.Tests.Help\Proximity.Utility.Tests.Help.csproj", "{1B18BA61-71A5-4D01-986D-12307B1E44C8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Utility.Net46", "Source\Proximity.Utility.Net46\Proximity.Utility.Net46.csproj", "{2F68E460-12E4-45EB-A909-54FFF6715FB1}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
-		Source\Proximity.Utility\Proximity.Utility.projitems*{e1e80f09-b342-4cfa-9bfa-9690b9148502}*SharedItemsImports = 4
-		Source\Proximity.Utility\Proximity.Utility.projitems*{94f0c3ea-0212-424b-bc39-67e00ab881ea}*SharedItemsImports = 4
 		Source\Proximity.Utility\Proximity.Utility.projitems*{2cc4a798-c7d5-44b8-9f3f-171e2cc051cb}*SharedItemsImports = 4
+		Source\Proximity.Utility\Proximity.Utility.projitems*{2f68e460-12e4-45eb-a909-54fff6715fb1}*SharedItemsImports = 4
 		Source\Proximity.Utility\Proximity.Utility.projitems*{5e14f771-3b14-422d-8b4c-26d50a7657fc}*SharedItemsImports = 4
 		Source\Proximity.Utility\Proximity.Utility.projitems*{8726484b-16d6-487f-84e2-d4ea5bce46bf}*SharedItemsImports = 13
+		Source\Proximity.Utility\Proximity.Utility.projitems*{94f0c3ea-0212-424b-bc39-67e00ab881ea}*SharedItemsImports = 4
 		Source\Proximity.Utility\Proximity.Utility.projitems*{977aba39-b89e-437a-9758-7395c68d4ee3}*SharedItemsImports = 4
+		Source\Proximity.Utility\Proximity.Utility.projitems*{e1e80f09-b342-4cfa-9bfa-9690b9148502}*SharedItemsImports = 4
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -211,6 +214,18 @@ Global
 		{1B18BA61-71A5-4D01-986D-12307B1E44C8}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{1B18BA61-71A5-4D01-986D-12307B1E44C8}.Release|Net40.ActiveCfg = Release|Any CPU
 		{1B18BA61-71A5-4D01-986D-12307B1E44C8}.Release|Net45.ActiveCfg = Release|Any CPU
+		{2F68E460-12E4-45EB-A909-54FFF6715FB1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2F68E460-12E4-45EB-A909-54FFF6715FB1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2F68E460-12E4-45EB-A909-54FFF6715FB1}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{2F68E460-12E4-45EB-A909-54FFF6715FB1}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{2F68E460-12E4-45EB-A909-54FFF6715FB1}.Debug|Net40.ActiveCfg = Debug|Any CPU
+		{2F68E460-12E4-45EB-A909-54FFF6715FB1}.Debug|Net45.ActiveCfg = Debug|Any CPU
+		{2F68E460-12E4-45EB-A909-54FFF6715FB1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2F68E460-12E4-45EB-A909-54FFF6715FB1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2F68E460-12E4-45EB-A909-54FFF6715FB1}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{2F68E460-12E4-45EB-A909-54FFF6715FB1}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{2F68E460-12E4-45EB-A909-54FFF6715FB1}.Release|Net40.ActiveCfg = Release|Any CPU
+		{2F68E460-12E4-45EB-A909-54FFF6715FB1}.Release|Net45.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -230,5 +245,6 @@ Global
 		{AD24E051-CE39-492E-9197-151B51C0C893} = {A288420E-CE92-438D-9DB5-C16C15CACD1F}
 		{E1E80F09-B342-4CFA-9BFA-9690B9148502} = {A288420E-CE92-438D-9DB5-C16C15CACD1F}
 		{1B18BA61-71A5-4D01-986D-12307B1E44C8} = {AD24E051-CE39-492E-9197-151B51C0C893}
+		{2F68E460-12E4-45EB-A909-54FFF6715FB1} = {A288420E-CE92-438D-9DB5-C16C15CACD1F}
 	EndGlobalSection
 EndGlobal

@@ -1,5 +1,5 @@
 ﻿/****************************************\
- ObservableDictionaryTests.cs
+ ObservableSortedListTests.cs
  Created: 2016-05-26
 \****************************************/
 using System;
@@ -15,16 +15,16 @@ using Proximity.Utility.Collections;
 namespace Proximity.Utility.Tests
 {
 	[TestFixture]
-	public class ObservableDictionaryTests
+	public class ObservableSortedListTests
 	{
 		[Test(), Timeout(2000), Repeat(2)]
 		public void Add()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
-			var MyRecords = new ObservableDictionary<int, int>();
+			var MyRecords = new ObservableSortedList<int, int>();
 
-			var MyDictionary = new Dictionary<int, int>(1024);
+			var MyDictionary = new SortedList<int, int>(1024);
 			//****************************************
 
 			for (int Index = 0; Index < 1024; Index++)
@@ -64,9 +64,9 @@ namespace Proximity.Utility.Tests
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
-			var MyRecords = new ObservableDictionary<int, int>(1024);
+			var MyRecords = new ObservableSortedList<int, int>(1024);
 
-			var MyDictionary = new Dictionary<int, int>(1024);
+			var MyDictionary = new SortedList<int, int>(1024);
 			//****************************************
 
 			for (int Index = 0; Index < 1024; Index++)
@@ -106,7 +106,7 @@ namespace Proximity.Utility.Tests
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
-			var MyRecords = new ObservableDictionary<CollideStruct, int>();
+			var MyRecords = new ObservableSortedList<CollideStruct, int>();
 
 			var MyDictionary = new Dictionary<CollideStruct, int>(64);
 			//****************************************
@@ -147,7 +147,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void AddExists()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<int, int>();
+			var MyRecords = new ObservableSortedList<int, int>();
 			//****************************************
 
 			MyRecords.Add(10, 84);
@@ -170,9 +170,9 @@ namespace Proximity.Utility.Tests
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
-			var MyRecords = new ObservableDictionary<int, int>(1024);
+			var MyRecords = new ObservableSortedList<int, int>(1024);
 
-			var MyDictionary = new Dictionary<int, int>(1024);
+			var MyDictionary = new SortedList<int, int>(1024);
 			//****************************************
 
 			for (int Index = 0; Index < 1024; Index++)
@@ -213,7 +213,7 @@ namespace Proximity.Utility.Tests
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
-			var MyRecords = new ObservableDictionary<CollideStruct, int>(64);
+			var MyRecords = new ObservableSortedList<CollideStruct, int>(64);
 
 			var MyDictionary = new Dictionary<CollideStruct, int>(64);
 			//****************************************
@@ -255,7 +255,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void AddRangeDuplicateInRange()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<int, int>(64);
+			var MyRecords = new ObservableSortedList<int, int>(64);
 			//****************************************
 
 			try
@@ -276,7 +276,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void AddRangeDuplicateInDictionary()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<int, int>(64);
+			var MyRecords = new ObservableSortedList<int, int>(64);
 			//****************************************
 
 			MyRecords[9] = 1;
@@ -304,9 +304,9 @@ namespace Proximity.Utility.Tests
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
-			var MyRecords = new ObservableDictionary<int, int>(1024);
+			var MyRecords = new ObservableSortedList<int, int>(1024);
 
-			var MyDictionary = new Dictionary<int, int>(1024);
+			var MyDictionary = new SortedList<int, int>(1024);
 			var MySecondSet = new List<KeyValuePair<int, int>>(512);
 			//****************************************
 
@@ -364,7 +364,7 @@ namespace Proximity.Utility.Tests
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
-			var MyRecords = new ObservableDictionary<CollideStruct, int>(64);
+			var MyRecords = new ObservableSortedList<CollideStruct, int>(64);
 
 			var MyDictionary = new Dictionary<CollideStruct, int>(64);
 			var MySecondSet = new List<KeyValuePair<CollideStruct, int>>(32);
@@ -424,7 +424,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void GetIndex()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<int, int>();
+			var MyRecords = new ObservableSortedList<int, int>();
 			//****************************************
 
 			MyRecords[10] = 42;
@@ -437,7 +437,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void GetIndexOutOfRange()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<int, int>();
+			var MyRecords = new ObservableSortedList<int, int>();
 			//****************************************
 
 			MyRecords[10] = 42;
@@ -468,7 +468,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void GetKey()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<int, int>();
+			var MyRecords = new ObservableSortedList<int, int>();
 			//****************************************
 
 			MyRecords[10] = 42;
@@ -481,7 +481,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void GetKeyMissing()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<int, int>();
+			var MyRecords = new ObservableSortedList<int, int>();
 			//****************************************
 
 			MyRecords[10] = 42;
@@ -502,7 +502,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void IndexOf()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<int, int>();
+			var MyRecords = new ObservableSortedList<int, int>();
 			//****************************************
 
 			MyRecords[10] = 42;
@@ -515,7 +515,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void IndexOfKey()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<int, int>();
+			var MyRecords = new ObservableSortedList<int, int>();
 			//****************************************
 
 			MyRecords[10] = 42;
@@ -528,7 +528,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void IndexOfKeyCollideMissing()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<CollideStruct, int>();
+			var MyRecords = new ObservableSortedList<CollideStruct, int>();
 			//****************************************
 
 			MyRecords[new CollideStruct(10)] = 42;
@@ -541,7 +541,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void IndexOfKeyCollideMissing2()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<CollideStruct, int>();
+			var MyRecords = new ObservableSortedList<CollideStruct, int>();
 			//****************************************
 
 			MyRecords[new CollideStruct(10)] = 42;
@@ -555,7 +555,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void IndexOfKeyMissing()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<int, int>();
+			var MyRecords = new ObservableSortedList<int, int>();
 			//****************************************
 
 			MyRecords[10] = 42;
@@ -568,7 +568,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void IndexOfMissingKey()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<int, int>();
+			var MyRecords = new ObservableSortedList<int, int>();
 			//****************************************
 
 			MyRecords[10] = 42;
@@ -581,7 +581,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void IndexOfMissingValue()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<int, int>();
+			var MyRecords = new ObservableSortedList<int, int>();
 			//****************************************
 
 			MyRecords[10] = 42;
@@ -597,7 +597,7 @@ namespace Proximity.Utility.Tests
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
 
-			var MyDictionary = new Dictionary<int, int>(1024);
+			var MyDictionary = new SortedList<int, int>(1024);
 			//****************************************
 
 			for (int Index = 0; Index < 1024; Index++)
@@ -614,7 +614,7 @@ namespace Proximity.Utility.Tests
 				MyDictionary.Add(Key, Value);
 			}
 
-			var MyRecords = new ObservableDictionary<int, int>(MyDictionary);
+			var MyRecords = new ObservableSortedList<int, int>(MyDictionary);
 
 			//****************************************
 
@@ -639,7 +639,7 @@ namespace Proximity.Utility.Tests
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
 
-			var MyDictionary = new Dictionary<int, int>(1024);
+			var MyDictionary = new SortedList<int, int>(1024);
 			//****************************************
 
 			for (int Index = 0; Index < 1024; Index++)
@@ -656,7 +656,7 @@ namespace Proximity.Utility.Tests
 				MyDictionary.Add(Key, Value);
 			}
 
-			var MyRecords = new ObservableDictionary<int, int>(MyDictionary);
+			var MyRecords = new ObservableSortedList<int, int>(MyDictionary);
 
 			//****************************************
 
@@ -693,7 +693,7 @@ namespace Proximity.Utility.Tests
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
 
-			var MyDictionary = new Dictionary<int, int>(1024);
+			var MyDictionary = new SortedList<int, int>(1024);
 			//****************************************
 
 			for (int Index = 0; Index < 1024; Index++)
@@ -710,7 +710,7 @@ namespace Proximity.Utility.Tests
 				MyDictionary.Add(Key, Value);
 			}
 
-			var MyRecords = new ObservableDictionary<int, int>(MyDictionary);
+			var MyRecords = new ObservableSortedList<int, int>(MyDictionary);
 
 			//****************************************
 
@@ -747,7 +747,7 @@ namespace Proximity.Utility.Tests
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
 
-			var MyDictionary = new Dictionary<int, int>(1024);
+			var MyDictionary = new SortedList<int, int>(1024);
 			//****************************************
 
 			for (int Index = 0; Index < 1024; Index++)
@@ -764,7 +764,7 @@ namespace Proximity.Utility.Tests
 				MyDictionary.Add(Key, Value);
 			}
 
-			var MyRecords = new ObservableDictionary<int, int>(MyDictionary);
+			var MyRecords = new ObservableSortedList<int, int>(MyDictionary);
 
 			//****************************************
 
@@ -791,7 +791,7 @@ namespace Proximity.Utility.Tests
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
 
-			var MyDictionary = new Dictionary<int, int>(1024);
+			var MyDictionary = new SortedList<int, int>(1024);
 			//****************************************
 
 			for (int Index = 0; Index < 1024; Index++)
@@ -808,7 +808,7 @@ namespace Proximity.Utility.Tests
 				MyDictionary.Add(Key, Value);
 			}
 
-			var MyRecords = new ObservableDictionary<int, int>(MyDictionary);
+			var MyRecords = new ObservableSortedList<int, int>(MyDictionary);
 
 			//****************************************
 
@@ -835,7 +835,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void Replace()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<int, int>();
+			var MyRecords = new ObservableSortedList<int, int>();
 			//****************************************
 
 			MyRecords.Add(9, 1);
@@ -852,7 +852,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void ReplaceCollide()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<CollideStruct, int>();
+			var MyRecords = new ObservableSortedList<CollideStruct, int>();
 			var MyKey = new CollideStruct(10);
 			//****************************************
 
@@ -871,7 +871,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void SetKey()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<int, int>();
+			var MyRecords = new ObservableSortedList<int, int>();
 			//****************************************
 
 			MyRecords[9] = 1;
@@ -889,7 +889,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void SetKeyCollide()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<CollideStruct, int>();
+			var MyRecords = new ObservableSortedList<CollideStruct, int>();
 			var MyKey = new CollideStruct(10);
 			//****************************************
 
@@ -912,7 +912,7 @@ namespace Proximity.Utility.Tests
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
-			var MyRecords = new ObservableDictionary<int, int>(1);
+			var MyRecords = new ObservableSortedList<int, int>(1);
 			NotifyCollectionChangedEventArgs MyEventArgs = null, MyKeyEventArgs = null, MyValueEventArgs = null;
 			//****************************************
 
@@ -955,7 +955,7 @@ namespace Proximity.Utility.Tests
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
-			var MyRecords = new ObservableDictionary<int, int>(1);
+			var MyRecords = new ObservableSortedList<int, int>(1);
 			NotifyCollectionChangedEventArgs MyEventArgs = null, MyKeyEventArgs = null, MyValueEventArgs = null;
 			//****************************************
 
@@ -996,7 +996,7 @@ namespace Proximity.Utility.Tests
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
-			var MyRecords = new ObservableDictionary<int, int>(1024);
+			var MyRecords = new ObservableSortedList<int, int>(1024);
 			int EventCount = 0;
 			//****************************************
 
@@ -1014,7 +1014,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void EventAddRangeEmpty()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<int, int>();
+			var MyRecords = new ObservableSortedList<int, int>();
 			NotifyCollectionChangedEventArgs MyEventArgs = null, MyKeyEventArgs = null, MyValueEventArgs = null;
 			//****************************************
 
@@ -1034,7 +1034,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void EventClear()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<int, int>();
+			var MyRecords = new ObservableSortedList<int, int>();
 			NotifyCollectionChangedEventArgs MyEventArgs = null, MyKeyEventArgs = null, MyValueEventArgs = null;
 			//****************************************
 
@@ -1063,7 +1063,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void EventClearEmpty()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<int, int>();
+			var MyRecords = new ObservableSortedList<int, int>();
 			NotifyCollectionChangedEventArgs MyEventArgs = null, MyKeyEventArgs = null, MyValueEventArgs = null;
 			//****************************************
 
@@ -1087,7 +1087,7 @@ namespace Proximity.Utility.Tests
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
-			var MyRecords = new ObservableDictionary<int, int>(1);
+			var MyRecords = new ObservableSortedList<int, int>(1);
 			NotifyCollectionChangedEventArgs MyEventArgs = null, MyKeyEventArgs = null, MyValueEventArgs = null;
 			//****************************************
 
@@ -1119,7 +1119,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(2000)]
 		public void EventReplaceUnchanged()
 		{	//****************************************
-			var MyRecords = new ObservableDictionary<int, int>();
+			var MyRecords = new ObservableSortedList<int, int>();
 			NotifyCollectionChangedEventArgs MyEventArgs = null, MyKeyEventArgs = null, MyValueEventArgs = null;
 			//****************************************
 
@@ -1148,7 +1148,7 @@ namespace Proximity.Utility.Tests
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
-			var MyRecords = new ObservableDictionary<int, int>(1);
+			var MyRecords = new ObservableSortedList<int, int>(1);
 			NotifyCollectionChangedEventArgs MyEventArgs = null, MyKeyEventArgs = null, MyValueEventArgs = null;
 			//****************************************
 
@@ -1190,7 +1190,7 @@ namespace Proximity.Utility.Tests
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
-			var MyRecords = new ObservableDictionary<int, int>(1024);
+			var MyRecords = new ObservableSortedList<int, int>(1024);
 			int EventCount = 0;
 			//****************************************
 
@@ -1210,7 +1210,7 @@ namespace Proximity.Utility.Tests
 
 		//****************************************
 
-		private struct CollideStruct : IEquatable<CollideStruct>
+		private struct CollideStruct : IComparable<CollideStruct>
 		{	//****************************************
 			private readonly int _Value;
 			//****************************************
@@ -1221,15 +1221,10 @@ namespace Proximity.Utility.Tests
 			}
 
 			//****************************************
-
-			public bool Equals(CollideStruct other)
+			
+			public int CompareTo(CollideStruct other)
 			{
-				return _Value == other._Value;
-			}
-
-			public override int GetHashCode()
-			{
-				return _Value > int.MaxValue / 2 ? 1 : 0;
+				return _Value - other._Value;
 			}
 
 			//****************************************

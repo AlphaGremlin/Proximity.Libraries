@@ -264,7 +264,7 @@ namespace Proximity.Terminal
 				}
 				else
 				{
-					// True
+					// Execution failed
 					_InputLine.Append(CurrentLine);
 					_InputIndex = _InputLine.Length;
 				}

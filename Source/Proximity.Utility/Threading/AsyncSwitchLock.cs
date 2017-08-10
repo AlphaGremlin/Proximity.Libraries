@@ -136,7 +136,7 @@ namespace Proximity.Utility.Threading
 			lock (_LockObject)
 			{
 				if (_Dispose != null)
-					throw new ObjectDisposedException("AsyncSwitchLock", "Lock has been disposed of");
+					return new ObjectDisposedException("AsyncSwitchLock", "Lock has been disposed of").ToTask<IDisposable>();
 				
 				// If there are zero or more lefts and no waiting rights (or we're in unfair mode)...
 				if (_Counter >= 0 && (_IsUnfair || _RightWaiting.Count == 0))
@@ -216,7 +216,7 @@ namespace Proximity.Utility.Threading
 			lock (_LockObject)
 			{
 				if (_Dispose != null)
-					throw new ObjectDisposedException("AsyncSwitchLock", "Lock has been disposed of");
+					return new ObjectDisposedException("AsyncSwitchLock", "Lock has been disposed of").ToTask<IDisposable>();
 				
 				// If there are zero or more rights and no waiting lefts (or we're in unfair mode)...
 				if (_Counter <= 0 && (_IsUnfair || _LeftWaiting.Count == 0))

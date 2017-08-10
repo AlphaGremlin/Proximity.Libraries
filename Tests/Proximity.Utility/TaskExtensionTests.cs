@@ -57,8 +57,6 @@ namespace Proximity.Utility.Tests
 		[Test, Timeout(1000)]
 		public void WhenResultCancel()
 		{
-			int Result;
-			
 			using (var CancelSource = new CancellationTokenSource(50))
 			{
 				var MyTask = Task.Delay(100).ContinueWith(task => 100);

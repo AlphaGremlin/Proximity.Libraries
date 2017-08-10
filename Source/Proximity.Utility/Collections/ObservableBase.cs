@@ -18,6 +18,9 @@ namespace Proximity.Utility.Collections
 	/// </summary>
 	/// <typeparam name="TValue">The type contained in the collection</typeparam>
 	public abstract class ObservableBase<TValue> : IList<TValue>, IList, INotifyCollectionChanged, INotifyPropertyChanged
+#if !NET40
+		, IReadOnlyList<TValue>
+#endif
 	{
 		/// <summary>
 		/// The name of the Count field
@@ -128,6 +131,25 @@ namespace Proximity.Utility.Collections
 		public abstract int RemoveAll(Predicate<TValue> predicate);
 
 		/// <summary>
+		/// Removes the element at the specified index
+		/// </summary>
+		/// <param name="index">The index of the element to remove</param>
+		public abstract void RemoveAt(int index);
+
+		/// <summary>
+		/// Removes the elements within the specified range
+		/// </summary>
+		/// <param name="index">The index of the element to remove</param>
+		/// <param name="count">The number of items to remove after the index</param>
+		public abstract void RemoveRange(int index, int count);
+
+		/// <summary>
+		/// Copies a snapshot of the collection to an array
+		/// </summary>
+		/// <returns>The current contents of the collection</returns>
+		public abstract TValue[] ToArray();
+
+		/// <summary>
 		/// Searches the collection for a given value and returns the equal value, if any
 		/// </summary>
 		/// <param name="equalValue">The value to search for</param>
@@ -201,12 +223,12 @@ namespace Proximity.Utility.Collections
 
 		void IList.RemoveAt(int index)
 		{
-			InternalRemoveAt(index);
+			RemoveAt(index);
 		}
 
 		void IList<TValue>.RemoveAt(int index)
 		{
-			InternalRemoveAt(index);
+			RemoveAt(index);
 		}
 
 		void ICollection.CopyTo(Array array, int index)
@@ -245,13 +267,7 @@ namespace Proximity.Utility.Collections
 		/// <param name="index">The index to insert the element</param>
 		/// <param name="item">The element to insert</param>
 		protected abstract void InternalInsert(int index, TValue item);
-
-		/// <summary>
-		/// Removes the element at the specified index
-		/// </summary>
-		/// <param name="index">The index of the element to remove</param>
-		protected abstract void InternalRemoveAt(int index);
-
+		
 		/// <summary>
 		/// Sets an item by index
 		/// </summary>
@@ -410,6 +426,13 @@ namespace Proximity.Utility.Collections
 			get { return InternalGet(index); }
 			set { InternalSet(index, value); }
 		}
+
+#if !NET40
+		TValue IReadOnlyList<TValue>.this[int index]
+		{
+			get { return InternalGet(index); }
+		}
+#endif
 
 		object IList.this[int index]
 		{

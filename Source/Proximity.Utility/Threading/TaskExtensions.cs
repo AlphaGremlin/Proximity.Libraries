@@ -228,6 +228,33 @@ namespace Proximity.Utility.Threading
 		{
 			return new Interleave<TResult>(source, token);
 		}
+
+		internal static Task ToTask(this Exception e)
+		{
+#if NET46
+			return Task.FromException(e);
+#else
+			var MyCompletionSource = new TaskCompletionSource<VoidStruct>();
+
+			MyCompletionSource.SetException(e);
+
+			return MyCompletionSource.Task;
+#endif
+		}
+
+		internal static Task<TResult> ToTask<TResult>(this Exception e)
+		{
+#if NET46
+			return Task.FromException<TResult>(e);
+#else
+			var MyCompletionSource = new TaskCompletionSource<TResult>();
+
+			MyCompletionSource.SetException(e);
+
+			return MyCompletionSource.Task;
+#endif
+		}
+
 		//****************************************
 		
 		private static void DoCompleteTaskSource(Task innerTask, object state)

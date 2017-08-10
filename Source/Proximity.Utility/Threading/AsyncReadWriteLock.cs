@@ -143,7 +143,7 @@ namespace Proximity.Utility.Threading
 			lock (_Writers)
 			{
 				if (_Disposed != null)
-					throw new ObjectDisposedException("AsyncReadWriteLock", "Lock has been disposed of");
+					return new ObjectDisposedException("AsyncReadWriteLock", "Lock has been disposed of").ToTask<IDisposable>();
 				
 				// If there are zero or more readers and no waiting writers (or we're in unfair mode)...
 				if (_Counter >=0 && (_IsUnfair || _Writers.Count == 0))
@@ -223,7 +223,7 @@ namespace Proximity.Utility.Threading
 			lock (_Writers)
 			{
 				if (_Disposed != null)
-					throw new ObjectDisposedException("AsyncReadWriteLock", "Lock has been disposed of");
+					return new ObjectDisposedException("AsyncReadWriteLock", "Lock has been disposed of").ToTask<IDisposable>();
 				
 				// If there are no readers or writers...
 				if (_Counter == 0)

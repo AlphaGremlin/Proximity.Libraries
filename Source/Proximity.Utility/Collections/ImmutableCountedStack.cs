@@ -125,6 +125,9 @@ namespace Proximity.Utility.Collections
 #if NET45
 		, System.Collections.Immutable.IImmutableStack<TItem>
 #endif
+#if !NET40
+		, IReadOnlyCollection<TItem>
+#endif
 	{
 		/// <summary>
 		/// An empty immutable counted stack

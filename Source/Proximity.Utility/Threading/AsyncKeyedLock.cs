@@ -22,7 +22,6 @@ namespace Proximity.Utility.Threading
 	/// <typeparam name="TKey">The type of key to lock on</typeparam>
 	public sealed class AsyncKeyedLock<TKey> : IDisposable
 	{	//****************************************
-		[SecurityCritical]
 		private readonly ConcurrentDictionary<TKey, ImmutableQueue<TaskCompletionSource<IDisposable>>> _Locks;
 		private TaskCompletionSource<IDisposable> _Dispose;
 		//****************************************
@@ -38,7 +37,6 @@ namespace Proximity.Utility.Threading
 		/// Creates a new keyed lock with a custom equality comparer
 		/// </summary>
 		/// <param name="comparer">The equality comparer to use for matching keys</param>
-		[SecuritySafeCritical]
 		public AsyncKeyedLock(IEqualityComparer<TKey> comparer)
 		{
 			_Locks = new ConcurrentDictionary<TKey, ImmutableQueue<TaskCompletionSource<IDisposable>>>(comparer);
@@ -110,7 +108,6 @@ namespace Proximity.Utility.Threading
 		/// <param name="key">The key to lock on</param>
 		/// <param name="token">A cancellation token that can be used to abort waiting on the lock</param>
 		/// <returns>A task that completes when the lock is taken, giving an IDisposable to release the lock</returns>
-		[SecuritySafeCritical]
 		public Task<IDisposable> Lock(TKey key, CancellationToken token)
 		{	//****************************************
 			TaskCompletionSource<IDisposable> NewWaiter;
@@ -125,7 +122,7 @@ namespace Proximity.Utility.Threading
 
 			// Is this keyed lock disposing?
 			if (_Dispose != null)
-				throw new ObjectDisposedException("AsyncKeyedLock", "Keyed Lock has been disposed of");
+				return new ObjectDisposedException("AsyncKeyedLock", "Keyed Lock has been disposed of").ToTask<IDisposable>();
 
 			// Try and add ourselves to the lock queue
 			for (; ;)
@@ -134,7 +131,7 @@ namespace Proximity.Utility.Threading
 				{
 					// Has the lock been disposed? We may have been disposed while adding
 					if (!OldValue.IsEmpty && OldValue.Peek().Task.AsyncState == null)
-						throw new ObjectDisposedException("AsyncKeyedLock", "Keyed Lock has been disposed of");
+						return new ObjectDisposedException("AsyncKeyedLock", "Keyed Lock has been disposed of").ToTask<IDisposable>();
 
 					// No, so add ourselves to the queue
 					NewValue = OldValue.Enqueue(NewWaiter);
@@ -150,7 +147,7 @@ namespace Proximity.Utility.Threading
 					// If we disposed during this, abort
 					((IDictionary<TKey, ImmutableQueue<TaskCompletionSource<IDisposable>>>)_Locks).Remove(key);
 
-					throw new ObjectDisposedException("AsyncKeyedLock", "Keyed Lock has been disposed of");
+					return new ObjectDisposedException("AsyncKeyedLock", "Keyed Lock has been disposed of").ToTask<IDisposable>();
 				}
 			}
 
@@ -182,7 +179,6 @@ namespace Proximity.Utility.Threading
 			MyWaiter.TrySetCanceled();
 		}
 
-		[SecuritySafeCritical]
 		private void Release(TKey key)
 		{	//****************************************
 			ImmutableQueue<TaskCompletionSource<IDisposable>> OldQueue, NewQueue;
@@ -257,7 +253,6 @@ namespace Proximity.Utility.Threading
 				Release(MyKey); // Failed so it was cancelled. We hold the lock so release it
 		}
 
-		[SecuritySafeCritical]
 		private void DisposeWaiters()
 		{	//****************************************
 			var MyWaitTasks = new List<Task>();
@@ -313,7 +308,6 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		public IEnumerable<TKey> KeysHeld
 		{
-			[SecuritySafeCritical]
 			get { return _Locks.Keys; }
 		}
 

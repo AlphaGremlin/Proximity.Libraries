@@ -252,11 +252,8 @@ namespace Proximity.Utility.Collections
 			return true;
 		}
 
-		/// <summary>
-		/// Removes the element at the specified index
-		/// </summary>
-		/// <param name="index">The index of the element to remove</param>
-		public void RemoveAt(int index)
+		/// <inheritdoc />
+		public override void RemoveAt(int index)
 		{
 			if (index < 0 || index >= _Size)
 				throw new ArgumentOutOfRangeException("index");
@@ -276,7 +273,37 @@ namespace Proximity.Utility.Collections
 			_Values[_Size] = default(TValue);
 
 			OnCollectionChanged(NotifyCollectionChangedAction.Remove, Item, index);
+		}
 
+		/// <inheritdoc />
+		public override void RemoveRange(int index, int count)
+		{
+			if (index < 0 || index + count > _Size)
+				throw new ArgumentOutOfRangeException("index");
+
+			var OldItems = new TValue[count];
+
+			Array.Copy(_Values, index, OldItems, 0, count);
+			
+			_Size -= count;
+
+			// If this is in the middle, move the values down
+			if (index + count <= _Size)
+			{
+				Array.Copy(_Keys, index + count, _Keys, index, _Size - index);
+				Array.Copy(_Values, index + count, _Values, index, _Size - index);
+			}
+
+			// Ensure we don't hold a reference to the values
+			Array.Clear(_Values, _Size, count);
+			
+			OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItems, index);
+		}
+
+		/// <inheritdoc />
+		public override TValue[] ToArray()
+		{
+			return (TValue[])_Values.Clone();
 		}
 
 		//****************************************
@@ -296,6 +323,9 @@ namespace Proximity.Utility.Collections
 		/// <inheritdoc />
 		protected override TValue InternalGet(int index)
 		{
+			if (index < 0 || index >= _Size)
+				throw new ArgumentOutOfRangeException("index");
+
 			return _Values[index];
 		}
 
@@ -356,13 +386,7 @@ namespace Proximity.Utility.Collections
 
 			return InnerIndex - Index;
 		}
-
-		/// <inheritdoc />
-		protected override void InternalRemoveAt(int index)
-		{
-			RemoveAt(index);
-		}
-
+		
 		/// <inheritdoc />
 		protected override void InternalSet(int index, TValue value)
 		{
