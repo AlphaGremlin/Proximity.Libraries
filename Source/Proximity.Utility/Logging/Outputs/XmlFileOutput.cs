@@ -27,8 +27,12 @@ namespace Proximity.Utility.Logging.Outputs
 		
 		private XmlWriter _Writer;
 		private readonly XmlWriterSettings WriterSettings;
+
+#if NET46
+		private static AsyncLocal<ImmutableCountedStack<ContextData>> _Context;
+#endif
 		//****************************************
-		
+
 		/// <summary>
 		/// Creates a new Xml Output writer
 		/// </summary>
@@ -182,8 +186,13 @@ namespace Proximity.Utility.Logging.Outputs
 		/// </summary>
 		private ImmutableCountedStack<ContextData> Context
 		{
+#if NET46
+			get { return _Context.Value ?? ImmutableCountedStack<ContextData>.Empty; }
+			private set { _Context.Value = value; }
+#else
 			get { return (CallContext.LogicalGetData(_UniqueID) as ImmutableCountedStack<ContextData>) ?? ImmutableCountedStack<ContextData>.Empty; }
 			set { CallContext.LogicalSetData(_UniqueID, value); }
+#endif
 		}
 		
 		//****************************************

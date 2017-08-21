@@ -104,7 +104,7 @@ namespace Proximity.Utility
 		///		// Run program as normal
 		///	}
 		/// </example>
-		public static Nullable<int> ExecDomain(string name)
+		public static int? ExecDomain(string name)
 		{	//****************************************
 			AppDomain MyDomain = CreateDomain(name);
 			Assembly MyAssembly;

@@ -87,7 +87,7 @@ namespace Proximity.Utility.Resources
 
 			//****************************************
 
-			ResourceStream = ResourceLoader.Load(MainAssembly, string.Format("{0}.{1}.xml", BaseNameField, culture.Name));
+			ResourceStream = ResourceLoader.Load(MainAssembly, string.Format("{0}.{1}.xml", BaseName, culture.Name));
 
 			if (ResourceStream == null)
 			{

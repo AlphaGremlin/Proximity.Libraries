@@ -20,7 +20,10 @@ namespace Proximity.Terminal
 	/// Provides parsing functionality for the terminal input
 	/// </summary>
 	public static class TerminalParser
-	{
+	{ //****************************************
+		private static AsyncLocal<TerminalRegistry[]> _Context = new AsyncLocal<TerminalRegistry[]>();
+		//****************************************
+
 		/// <summary>
 		/// Outputs usage information for a terminal object
 		/// </summary>
@@ -472,14 +475,14 @@ namespace Proximity.Terminal
 				{
 					Log.Info("{0} is not an Instance Type", CommandText);
 
-					return Task.FromResult<bool>(false);
+					return Task.FromResult(false);
 				}
 
 				if (MyInstance == null)
 				{
 					Log.Info("{0} is not a known Instance of {1}", InstanceName, MyTypeSet.TypeName);
 
-					return Task.FromResult<bool>(false);
+					return Task.FromResult(false);
 				}
 
 				CurrentPath = string.Format("{0}.{1}!", MyTypeSet.TypeName, MyInstance.Name);
@@ -509,7 +512,7 @@ namespace Proximity.Terminal
 				{
 					Log.Info("{0} is not a Command, Variable, or Instance Type", CommandText);
 
-					return Task.FromResult<bool>(false);
+					return Task.FromResult(false);
 				}
 
 				// If there are no arguments, we should list all the instances that match
@@ -517,7 +520,7 @@ namespace Proximity.Terminal
 				{
 					TerminalParser.HelpOn(MyTypeSet);
 
-					return Task.FromResult<bool>(true);
+					return Task.FromResult(true);
 				}
 
 				// We have arguments, so is there a default instance?
@@ -527,7 +530,7 @@ namespace Proximity.Terminal
 				{
 					Log.Info("{0} does not have a default instance", MyTypeSet.TypeName);
 
-					return Task.FromResult<bool>(false);
+					return Task.FromResult(false);
 				}
 
 				CurrentPath = MyTypeSet.TypeName + " ";
@@ -541,7 +544,7 @@ namespace Proximity.Terminal
 				// Display the instance details (ToString, available commands and variables)
 				TerminalParser.HelpOn(MyInstance);
 
-				return Task.FromResult<bool>(true);
+				return Task.FromResult(true);
 			}
 
 			// Repeat the argument process on the arguments themselves
@@ -571,7 +574,7 @@ namespace Proximity.Terminal
 
 			Log.Info("{0}{1} is not a Command or Variable", CurrentPath, CommandText);
 
-			return Task.FromResult<bool>(false);
+			return Task.FromResult(false);
 		}
 
 		private static Task<bool> TryExecute(TerminalRegistry[] registries, string path, TerminalInstance instance, string commandText, string argumentText)
@@ -589,7 +592,7 @@ namespace Proximity.Terminal
 				{
 					Log.Info("{0} is not a known Instance of {1}", instance.Name, instance.Type.Name);
 					
-					return Task.FromResult<bool>(false);
+					return Task.FromResult(false);
 				}
 			}
 			
@@ -615,7 +618,7 @@ namespace Proximity.Terminal
 					}
 				}
 				
-				return Task.FromResult<bool>(true);
+				return Task.FromResult(true);
 			}
 			
 			//****************************************
@@ -642,23 +645,23 @@ namespace Proximity.Terminal
 					{
 						Log.Info("{0}{1} is not writeable", path, MyVariable.Name);
 						
-						return Task.FromResult<bool>(false);
+						return Task.FromResult(false);
 					}
 					
 					if (!MyVariable.SetValue(MyInstance, argumentText))
 					{
 						Log.Info("{0}{1} is of type {2}", path, MyVariable.Name, MyVariable.Type);
 						
-						return Task.FromResult<bool>(false);
+						return Task.FromResult(false);
 					}
 					
-					return Task.FromResult<bool>(true);
+					return Task.FromResult(true);
 				}
 				else
 				{
 					Log.Info("{0}{1}={2}", path, MyVariable.Name, MyVariable.GetValue(MyInstance));
 					
-					return Task.FromResult<bool>(true);
+					return Task.FromResult(true);
 				}
 			}
 			
@@ -794,10 +797,8 @@ namespace Proximity.Terminal
 		/// </summary>
 		public static TerminalRegistry[] Context
 		{
-			[SecuritySafeCritical]
-			get { return (TerminalRegistry[])CallContext.LogicalGetData("Terminal.Parser.Context"); }
-			[SecuritySafeCritical]
-			private set { CallContext.LogicalSetData("Terminal.Parser.Context", value); }
+			get { return _Context.Value; }
+			private set { _Context.Value = value; }
 		}
 	}
 }

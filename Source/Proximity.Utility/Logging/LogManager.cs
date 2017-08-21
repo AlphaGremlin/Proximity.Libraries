@@ -31,6 +31,10 @@ namespace Proximity.Utility.Logging
 		private static PrecisionTimer _Timer = new PrecisionTimer();
 		private static bool _IsStarted;
 		private static DateTime _StartTime;
+
+#if NET46
+		private static AsyncLocal<ImmutableCountedStack<LogSection>> _Context = new AsyncLocal<ImmutableCountedStack<LogSection>>();
+#endif
 		//****************************************
 
 		[SecuritySafeCritical]
@@ -252,16 +256,21 @@ namespace Proximity.Utility.Logging
 		{
 			get { return _StartTime; }
 		}
-		
+
 		/// <summary>
 		/// Gets the current section stack for this logical context
 		/// </summary>
 		public static ImmutableCountedStack<LogSection> Context
 		{
+#if NET46
+			get { return _Context.Value ?? ImmutableCountedStack<LogSection>.Empty; }
+			private set { _Context.Value = value; }
+#else
 			[SecuritySafeCritical]
 			get { return (CallContext.LogicalGetData("Logging.Context") as ImmutableCountedStack<LogSection>) ?? ImmutableCountedStack<LogSection>.Empty; }
 			[SecuritySafeCritical]
 			private set { CallContext.LogicalSetData("Logging.Context", value); }
+#endif
 		}
 		
 		/// <summary>
