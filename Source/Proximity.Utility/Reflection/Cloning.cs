@@ -10,6 +10,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.Serialization;
 using System.Security;
+using System.Security.Permissions;
 using System.Threading;
 //****************************************
 
@@ -23,7 +24,7 @@ namespace Proximity.Utility.Reflection
 	public static class Cloning
 	{
 		/// <summary>
-		/// Perform a shallow clone of all fields, ignoring any serialisation attributes
+		/// Perform a shallow clone of all writable fields, ignoring any serialisation attributes
 		/// </summary>
 		/// <param name="input">The object to clone</param>
 		/// <returns>A copy of the provided object</returns>
@@ -31,11 +32,23 @@ namespace Proximity.Utility.Reflection
 		[SecuritySafeCritical]
 		public static TObject Clone<TObject>(TObject input) where TObject : class
 		{
-			return Cloning<TObject>.GetClone()(input);
+			return Cloning<TObject>.Clone(input);
 		}
 
 		/// <summary>
 		/// Perform a shallow clone of all fields, ignoring any serialisation attributes
+		/// </summary>
+		/// <param name="input">The object to clone</param>
+		/// <returns>A copy of the provided object</returns>
+		/// <remarks>Supports Arrays, as a type-safe Array.Clone. Input must not be a derived type of TObject. Use CloneDynamic if so.</remarks>
+		[SecuritySafeCritical]
+		public static TObject CloneWithReadOnly<TObject>(TObject input) where TObject : class
+		{
+			return Cloning<TObject>.CloneWithReadOnly(input);
+		}
+
+		/// <summary>
+		/// Perform a shallow clone of all writable fields, ignoring any serialisation attributes
 		/// </summary>
 		/// <param name="input">The object to clone</param>
 		/// <returns>A copy of the provided object</returns>
@@ -44,9 +57,8 @@ namespace Proximity.Utility.Reflection
 		public static TObject CloneDynamic<TObject>(TObject input) where TObject : class
 		{
 			var CloneType = typeof(Cloning<>).MakeGenericType(input.GetType());
-			var CloneDelegate = (Delegate)CloneType.GetMethod("GetClone", BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, null);
-			
-			return (TObject)CloneDelegate.DynamicInvoke(input);
+
+			return (TObject)CloneType.GetMethod("Clone", BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, new object[] { input });
 		}
 
 		/// <summary>
@@ -70,7 +82,7 @@ namespace Proximity.Utility.Reflection
 		[SecuritySafeCritical]
 		public static void CloneTo<TObject>(TObject source, TObject target) where TObject : class
 		{
-			Cloning<TObject>.GetCloneTo()(source, target);
+			Cloning<TObject>.CloneTo(source, target);
 		}
 
 		/// <summary>
@@ -86,9 +98,8 @@ namespace Proximity.Utility.Reflection
 				throw new ArgumentException("Objects are not of the same type");
 			
 			var CloneType = typeof(Cloning<>).MakeGenericType(source.GetType());
-			var CloneDelegate = (Delegate)CloneType.GetMethod("GetCloneTo", BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, null);
-			
-			CloneDelegate.DynamicInvoke(source, target);
+
+			CloneType.GetMethod("CloneTo", BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, new object[] { source, target });
 		}
 
 		/// <summary>
@@ -110,19 +121,27 @@ namespace Proximity.Utility.Reflection
 	[SecurityCritical]
 	internal static class Cloning<TObject> where TObject : class
 	{	//****************************************
-		private static Func<TObject, TObject> _CloneMethod, _SmartCloneMethod;
+		private static Func<TObject, TObject> _CloneMethod, _CloneWithReadOnlyMethod, _SmartCloneMethod;
 		private static Action<TObject, TObject> _CloneTargetWithReadOnlyMethod, _CloneTargetMethod;
 		private static Func<TObject, IDictionary<TObject, TObject>, TObject> _DeepCloneMethod;
 		
 		private static DynamicMethod _DeepCloneSource;
 		//****************************************
 		
-		internal static Func<TObject, TObject> GetClone()
+		internal static TObject Clone(TObject input)
 		{
 			if (_CloneMethod == null)
-				Interlocked.CompareExchange(ref _CloneMethod, BuildSimpleCloneMethod(), null);
+				Interlocked.CompareExchange(ref _CloneMethod, BuildSimpleCloneMethod(true), null);
 			
-			return _CloneMethod;
+			return _CloneMethod(input);
+		}
+
+		internal static TObject CloneWithReadOnly(TObject input)
+		{
+			if (_CloneWithReadOnlyMethod == null)
+				Interlocked.CompareExchange(ref _CloneWithReadOnlyMethod, BuildSimpleCloneMethod(false), null);
+
+			return _CloneWithReadOnlyMethod(input);
 		}
 
 		internal static Action<TObject, TObject> GetCloneToWithReadOnly()
@@ -133,24 +152,24 @@ namespace Proximity.Utility.Reflection
 			return _CloneTargetWithReadOnlyMethod;
 		}
 		
-		internal static Action<TObject, TObject> GetCloneTo()
+		internal static void CloneTo(TObject source, TObject target)
 		{
 			if (_CloneTargetMethod == null)
 				Interlocked.CompareExchange(ref _CloneTargetMethod, BuildTargetCloneMethod(true), null);
 			
-			return _CloneTargetMethod;
+			_CloneTargetMethod(source, target);
 		}
 		
 		internal static Func<TObject, TObject> GetCloneSmart()
 		{
 			if (_SmartCloneMethod == null)
-				Interlocked.CompareExchange(ref _SmartCloneMethod, BuildSmartCloneMethod(), null);
+				Interlocked.CompareExchange(ref _SmartCloneMethod, BuildSmartCloneMethod(true), null);
 			
 			return _SmartCloneMethod;
 		}
-		
+
 		//****************************************
-		
+
 		private static DynamicMethod GetDeepCloneMethod()
 		{
 			if (_DeepCloneSource == null)
@@ -158,18 +177,20 @@ namespace Proximity.Utility.Reflection
 			
 			return _DeepCloneSource;
 		}
-		
+
 		//****************************************
-		
-		private static Func<TObject, TObject> BuildSimpleCloneMethod()
+
+		[PermissionSet(SecurityAction.Assert, Unrestricted = true)]
+		private static Func<TObject, TObject> BuildSimpleCloneMethod(bool skipReadOnly)
 		{	//****************************************
 			var MyType = typeof(TObject);
 			var CurrentType = MyType;
-			var MyConstructor = MyType.GetConstructor(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, Type.DefaultBinder, new Type[0], null);
-			var MyEmitter = EmitHelper.FromFunction("CloneSimple", MyType, MyType, new Type[] { MyType });
+			var MyEmitter = EmitHelper.FromFunction("CloneSimple", MyType, MyType, MyType);
+			//var MyEmitter = new EmitHelper(new DynamicMethod("CloneSimple", MyType, new[] { MyType }, MyType, true));
 			//****************************************
 			
 			MyEmitter.DeclareLocal("Clone", MyType);
+			MyEmitter.Method.DefineParameter(0, ParameterAttributes.In, "source");
 			
 			//****************************************
 			
@@ -240,13 +261,31 @@ namespace Proximity.Utility.Reflection
 			}
 			else
 			{
-				MyEmitter
-					.LdToken(MyType) // Token
-					.Call(typeof(Type), "GetTypeFromHandle", typeof(RuntimeTypeHandle)) // Type
-					.Call(typeof(FormatterServices), "GetUninitializedObject", typeof(Type)) // Clone (untyped)
-					.CastClass(MyType) // Clone
-					.StLoc("Clone"); // -
-				
+				var MyConstructor = MyType.GetConstructor(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, Type.DefaultBinder, Type.EmptyTypes, null);
+
+				if (MyConstructor != null)
+				{
+					MyEmitter
+						.NewObj(MyConstructor) // Clone
+						.StLoc("Clone"); // -
+				}
+				else if (MyType.IsSecurityCritical || MyType.IsSecuritySafeCritical)
+				{
+					MyEmitter
+						.LdToken(MyType) // Token
+						.Call(typeof(Type), "GetTypeFromHandle", typeof(RuntimeTypeHandle)) // Type
+						.Call(typeof(FormatterServices), "GetUninitializedObject", typeof(Type)) // Clone (untyped)
+						.CastClass(MyType) // Clone
+						.StLoc("Clone"); // -
+				}
+				else
+				{
+					// Can't call SecurityCritical methods from a SecurityTransparent class
+					MyEmitter
+						.Call(CreateObjectMethod()) // Clone
+						.StLoc("Clone"); // -
+				}
+
 				do
 				{
 					foreach(var MyField in CurrentType.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
@@ -254,7 +293,10 @@ namespace Proximity.Utility.Reflection
 						// Skip if it's declared in a base type. We'll check it later
 						if (MyField.DeclaringType != CurrentType)
 							continue;
-						
+
+						if (MyField.IsInitOnly && skipReadOnly)
+							continue;
+
 						MyEmitter
 							.LdLoc("Clone") // Clone
 							.LdArg(0) // Clone, Source
@@ -276,12 +318,14 @@ namespace Proximity.Utility.Reflection
 			
 			return MyEmitter.ToDelegate<Func<TObject, TObject>>();
 		}
-		
+
+		[PermissionSet(SecurityAction.Assert, Unrestricted =true)]
 		private static Action<TObject, TObject> BuildTargetCloneMethod(bool skipReadOnly)
 		{	//****************************************
 			var MyType = typeof(TObject);
 			var CurrentType = MyType;
-			var MyEmitter = EmitHelper.FromAction(skipReadOnly ? "CloneTarget" : "CloneTargetReadOnly", MyType, new Type[] { MyType, MyType });
+			var MyEmitter = EmitHelper.FromAction(skipReadOnly ? "CloneTarget" : "CloneTargetReadOnly", MyType, MyType, MyType);
+			//var MyEmitter = new EmitHelper(new DynamicMethod(skipReadOnly ? "CloneTarget" : "CloneTargetReadOnly", null, new[] { MyType, MyType }, MyType, true));
 			//****************************************
 			
 			do
@@ -314,15 +358,17 @@ namespace Proximity.Utility.Reflection
 			
 			return MyEmitter.ToDelegate<Action<TObject, TObject>>();
 		}
-		
-		private static Func<TObject, TObject> BuildSmartCloneMethod()
+
+		[PermissionSet(SecurityAction.Assert, Unrestricted = true)]
+		private static Func<TObject, TObject> BuildSmartCloneMethod(bool skipReadOnly)
 		{	//****************************************
 			var MyType = typeof(TObject);
 			var CurrentType = MyType;
 			var MyConstructor = MyType.GetConstructor(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, Type.DefaultBinder, new Type[0], null);
-			var MyEmitter = EmitHelper.FromFunction("CloneSmart", MyType, MyType, new Type[] { MyType });
+			var MyEmitter = EmitHelper.FromFunction("CloneSmart", MyType, MyType, MyType);
+			//var MyEmitter = new EmitHelper(new DynamicMethod("CloneSmart", MyType, new[] { MyType }, MyType, true));
 			//****************************************
-			
+
 			MyEmitter
 				.DeclareLocal("Clone", MyType)
 				.NewObj(MyConstructor) // Clone
@@ -392,7 +438,10 @@ namespace Proximity.Utility.Reflection
 					// Skip if it's declared in a base type. We'll check it later
 					if (MyField.DeclaringType != CurrentType)
 						continue;
-					
+
+					if (MyField.IsInitOnly && skipReadOnly)
+						continue;
+
 					// Skip if it's marked as non-serialised
 					if (Attribute.GetCustomAttribute(MyField, typeof(NonSerializedAttribute)) != null)
 						continue;
@@ -473,7 +522,8 @@ namespace Proximity.Utility.Reflection
 			
 			return MyEmitter.ToDelegate<Func<TObject, TObject>>();
 		}
-		
+
+		[PermissionSet(SecurityAction.Assert, Unrestricted = true)]
 		private static void BuildDeepCloneMethod()
 		{	//****************************************
 			var MyType = typeof(TObject);
@@ -586,7 +636,7 @@ namespace Proximity.Utility.Reflection
 			if (Interlocked.CompareExchange(ref _DeepCloneSource, MyEmitter.Method, null) == null)
 				_DeepCloneMethod = MyEmitter.ToDelegate<Func<TObject, IDictionary<TObject, TObject>, TObject>>();
 		}
-		
+
 		private static void PrepareContext(EmitHelper emitter)
 		{
 			if (!emitter.HasLocal("Context"))
@@ -598,8 +648,27 @@ namespace Proximity.Utility.Reflection
 					.StLoc("Context");
 			}
 		}
+
+		[SecuritySafeCritical]
+		public static DynamicMethod CreateObjectMethod()
+		{ //****************************************
+			var MyType = typeof(TObject);
+			var MyEmitter = EmitHelper.FromFunction("CreateFactory", typeof(Cloning), typeof(TObject));
+			//****************************************
+
+			// Call this when it's attached to the Cloning type, which is SecuritySafeCritical
+			MyEmitter
+				.LdToken(MyType) // Token
+				.Call(typeof(Type), "GetTypeFromHandle", typeof(RuntimeTypeHandle)) // Type
+				.Call(typeof(FormatterServices), "GetUninitializedObject", typeof(Type)) // Clone (untyped)
+				.CastClass(MyType) // Clone
+				.Ret
+				.End();
+
+			return MyEmitter.Method;
+		}
 	}
-	
+
 	internal static class DeepClone<TValueType> where TValueType : struct
 	{	//****************************************
 		private static DynamicMethod _DeepCloneSource = null;

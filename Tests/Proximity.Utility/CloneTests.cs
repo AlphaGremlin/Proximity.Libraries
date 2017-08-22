@@ -36,7 +36,16 @@ namespace Proximity.Utility.Tests
 			
 			Assert.AreEqual(Left, Right, "Are not equal");
 		}
-		
+
+		[Test()]
+		public void ComplexObjectClone()
+		{
+			var Left = new CustomObjectComplex(new CustomObjectBasic(0, decimal.Zero, new object()), decimal.MaxValue, new object());
+			var Right = Cloning.Clone(Left);
+
+			Assert.AreEqual(Left, Right, "Are not equal");
+		}
+
 		[Test()]
 		public void ReadOnlyObjectClone()
 		{
@@ -54,7 +63,16 @@ namespace Proximity.Utility.Tests
 			
 			Assert.AreEqual(Left, Right, "Are not equal");
 		}
-		
+
+		[Test()]
+		public void ReadOnlyObjectInheritedClone()
+		{
+			var Left = new CustomObjectInheritedReadOnly(0, decimal.Zero, null, 'A');
+			var Right = Cloning.Clone(Left);
+
+			Assert.AreEqual(Left, Right, "Are not equal");
+		}
+
 		[Test()]
 		public void BasicObjectCloneTo()
 		{
@@ -173,7 +191,64 @@ namespace Proximity.Utility.Tests
 				get { return _Third; }
 			}
 		}
-		
+
+		private class CustomObjectComplex : IEquatable<CustomObjectComplex>
+		{ //****************************************
+			private readonly CustomObjectBasic _First;
+			private decimal? _Second;
+			private object _Third;
+			//****************************************
+
+			public CustomObjectComplex()
+			{
+			}
+
+			public CustomObjectComplex(CustomObjectBasic first, decimal? second, object third)
+			{
+				_First = first;
+				_Second = second;
+				_Third = third;
+			}
+
+			public override bool Equals(object obj)
+			{
+				return (obj is CustomObjectComplex) && Equals((CustomObjectComplex)obj);
+			}
+
+			public bool Equals(CustomObjectComplex other)
+			{
+				return _First == other._First && _Second == other._Second && _Third == other._Third;
+			}
+
+			public override int GetHashCode()
+			{
+				int hashCode = 0;
+				unchecked
+				{
+					hashCode += 1000000007 * _First.GetHashCode();
+					hashCode += 1000000009 * _Second.GetHashCode();
+					if (_Third != null)
+						hashCode += 1000000021 * _Third.GetHashCode();
+				}
+				return hashCode;
+			}
+
+			public CustomObjectBasic First
+			{
+				get { return _First; }
+			}
+
+			public decimal? Second
+			{
+				get { return _Second; }
+			}
+
+			public object Third
+			{
+				get { return _Third; }
+			}
+		}
+
 		private class CustomObjectReadOnly : IEquatable<CustomObjectReadOnly>
 		{	//****************************************
 			private readonly int _First;
@@ -257,6 +332,42 @@ namespace Proximity.Utility.Tests
 				return hashCode;
 			}
 			
+			public char Fourth
+			{
+				get { return _Fourth; }
+			}
+		}
+
+		private class CustomObjectInheritedReadOnly : CustomObjectReadOnly, IEquatable<CustomObjectInheritedReadOnly>
+		{ //****************************************
+			private char _Fourth;
+			//****************************************
+
+			public CustomObjectInheritedReadOnly(int first, decimal second, object third, char fourth) : base(first, second, third)
+			{
+				_Fourth = fourth;
+			}
+
+			public override bool Equals(object obj)
+			{
+				return (obj is CustomObjectInheritedReadOnly) && Equals((CustomObjectInheritedReadOnly)obj);
+			}
+
+			public bool Equals(CustomObjectInheritedReadOnly other)
+			{
+				return base.Equals(other) && _Fourth == other._Fourth;
+			}
+
+			public override int GetHashCode()
+			{
+				int hashCode = base.GetHashCode();
+				unchecked
+				{
+					hashCode += 1000000007 * _Fourth.GetHashCode();
+				}
+				return hashCode;
+			}
+
 			public char Fourth
 			{
 				get { return _Fourth; }
