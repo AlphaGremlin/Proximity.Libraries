@@ -117,11 +117,21 @@ namespace Proximity.Utility.Logging.Outputs
 
 			protected internal override void StartSection(LogSection newSection)
 			{
-				_Receiver.StartSection(newSection.Entry, newSection.Priority);
+				var NewEntry = newSection.Entry;
+
+				// Make sure it's a plain LogEntry, which is safe to serialise
+				if (NewEntry.GetType() != typeof(LogEntry))
+					NewEntry = new LogEntry(NewEntry);
+
+				_Receiver.StartSection(NewEntry, newSection.Priority);
 			}
 
 			protected internal override void Write(LogEntry newEntry)
 			{
+				// Make sure it's a plain LogEntry, which is safe to serialise
+				if (newEntry.GetType() != typeof(LogEntry))
+					newEntry = new LogEntry(newEntry);
+
 				_Receiver.Write(newEntry);
 			}
 		}

@@ -28,9 +28,17 @@ namespace Proximity.Utility.Logging
 		{
 			_Exception = exception;
 		}
-		
+
 		//****************************************
-		
+
+		/// <inheritdoc />
+		public override string ToString()
+		{
+			return Text + "\n" + _Exception.ToString();
+		}
+
+		//****************************************
+
 		/// <summary>
 		/// Gets the Exception represented
 		/// </summary>

@@ -49,13 +49,26 @@ namespace Proximity.Utility.Logging
 			_Severity = severity;
 			_Text = text;
 		}
+
+		/// <summary>
+		/// Clones an existing Log Entry
+		/// </summary>
+		/// <param name="source">The source Log Entry</param>
+		public LogEntry(LogEntry source)
+		{
+			_Index = source._Index;
+			_Timestamp = source._Timestamp;
+
+			_ThreadId = source._ThreadId;
+
+			_Source = source._Source;
+			_Severity = source._Severity;
+			_Text = source.ToString();
+		}
 		
 		//****************************************
 		
-		/// <summary>
-		/// Retrieves the text of this log entry
-		/// </summary>
-		/// <returns>The text of the log entry</returns>
+		/// <inheritdoc />
 		public override string ToString()
 		{
 			return _Text;

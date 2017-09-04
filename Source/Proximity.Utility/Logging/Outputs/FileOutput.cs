@@ -198,7 +198,13 @@ namespace Proximity.Utility.Logging.Outputs
 				
 				if (_Stream != null)
 				{
-					_Stream.Close();
+					try
+					{
+						_Stream.Dispose();
+					}
+					catch
+					{
+					}
 					
 					_Stream = null;
 				}
@@ -317,8 +323,13 @@ namespace Proximity.Utility.Logging.Outputs
 			if (CurrentStream != null && CurrentStream != _Stream)
 			{
 				//CurrentStream.Flush();
-				
-				CurrentStream.Close();
+				try
+				{
+					CurrentStream.Dispose();
+				}
+				catch
+				{
+				}
 			}
 			
 			//****************************************
