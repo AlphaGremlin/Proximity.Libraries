@@ -22,24 +22,24 @@ namespace Proximity.Utility.Threading
 	/// </summary>
 	/// <remarks>This object lives in the AppDomain where the Task is running</remarks>
 	public sealed class RemoteTask : MarshalByRefObject
-	{	//****************************************
+	{ //****************************************
 		private readonly Task _Task;
 		//****************************************
-		
+
 		internal RemoteTask(Task task)
 		{
 			_Task = task;
 		}
-		
+
 		internal RemoteTask(Task task, RemoteCancellationTokenSource tokenSource) : this(task)
 		{
 			// We only want to attach once the task callback has run, otherwise we cause a memory leak since the below Dispose will never run, causing an eternal sponsorship
 			tokenSource.Attach();
-			
+
 			// We're responsible for cleaning up the cancellatin token source upon completion of the task
 			task.ContinueWith((innerTask, state) => ((RemoteCancellationTokenSource)state).Dispose(), tokenSource, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
 		}
-		
+
 		//****************************************
 
 		[SecuritySafeCritical]
@@ -48,7 +48,7 @@ namespace Proximity.Utility.Threading
 			// Attach to the local task and pass the results on to the remote task source
 			_Task.ContinueWith(CompleteLocalTask, taskSource, TaskContinuationOptions.ExecuteSynchronously);
 		}
-		
+
 		//****************************************
 
 		/// <inheritdoc />
@@ -60,19 +60,35 @@ namespace Proximity.Utility.Threading
 
 		//****************************************
 
+		[SecuritySafeCritical]
 		private void CompleteLocalTask(Task task, object state)
-		{	//****************************************
+		{ //****************************************
 			var Source = (RemoteTaskCompletionSource<VoidStruct>)state;
 			//****************************************
 
 			try
 			{
 				if (task.IsFaulted)
-					Source.SetException(task.Exception.InnerException);
+				{
+					// Requires permissions to pass exceptions (that aren't being thrown) across app-domain boundaries
+					new SecurityPermission(SecurityPermissionFlag.SerializationFormatter).Assert();
+					try
+					{
+						Source.SetException(task.Exception.InnerException);
+					}
+					finally
+					{
+						PermissionSet.RevertAssert();
+					}
+				}
 				else if (task.IsCanceled)
+				{
 					Source.SetCancelled();
+				}
 				else
+				{
 					Source.SetResult(default(VoidStruct));
+				}
 			}
 			catch (Exception e) // Can fail if the exception object is not serialisable to the calling AppDomain
 			{
@@ -246,6 +262,7 @@ namespace Proximity.Utility.Threading
 
 		//****************************************
 
+		[SecuritySafeCritical]
 		private void CompleteLocalTask(Task<TResult> task, object state)
 		{	//****************************************
 			var Source = (RemoteTaskCompletionSource<TResult>)state;
@@ -254,11 +271,27 @@ namespace Proximity.Utility.Threading
 			try
 			{
 				if (task.IsFaulted)
-					Source.SetException(task.Exception.InnerException);
+				{
+					// Requires permissions to pass exceptions (that aren't being thrown) across app-domain boundaries
+					new SecurityPermission(SecurityPermissionFlag.SerializationFormatter).Assert();
+					try
+					{
+						Source.SetException(task.Exception.InnerException);
+					}
+					finally
+					{
+						PermissionSet.RevertAssert();
+					}
+				}
 				else if (task.IsCanceled)
+				{
 					Source.SetCancelled();
+				}
 				else
+				{
+					// We don't assert SerializationFormatter permissions here
 					Source.SetResult(task.Result);
+				}
 			}
 			catch (Exception e) // Can fail if the result or exception object is not serialisable or marshalable to the calling AppDomain
 			{

@@ -61,7 +61,7 @@ namespace Proximity.Utility.Logging
 
 			_ThreadId = source._ThreadId;
 
-			_Source = source._Source;
+			_Source = null; // We don't pass the source StackFrame, since it can result in assembly loading when crossing app-domains
 			_Severity = source._Severity;
 			_Text = source.ToString();
 		}
