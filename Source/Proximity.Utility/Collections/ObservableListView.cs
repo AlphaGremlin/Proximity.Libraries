@@ -30,11 +30,13 @@ namespace Proximity.Utility.Collections
 		private const string IndexerName = "Item[]";
 		//****************************************
 		private readonly IList<TValue> _Source;
-		private readonly List<TValue> _Items, _HiddenItems;
+		private readonly List<TValue> _Items, _FilteredItems;
 
 		private readonly IComparer<TValue> _Comparer;
 		private readonly Predicate<TValue> _Filter;
 		private readonly int? _Maximum;
+
+		private int _VisibleSize;
 		//****************************************
 		
 		/// <summary>
@@ -125,32 +127,39 @@ namespace Proximity.Utility.Collections
 		/// Creates a new Observable List View
 		/// </summary>
 		/// <param name="source">The source list to wrap</param>
+		/// <param name="comparison">A delegate to perform the comparison with</param>
+		/// <param name="filter">A filter to apply to the source list</param>
+		/// <param name="maximum">The maximum number of items to show</param>
+		public ObservableListView(IList<TValue> source, Comparison<TValue> comparison, Predicate<TValue> filter, int? maximum) : this(source, new ComparisonComparer<TValue>(comparison), filter, maximum)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Observable List View
+		/// </summary>
+		/// <param name="source">The source list to wrap</param>
 		/// <param name="comparer">The comparer to use for sorting</param>
 		/// <param name="filter">A filter to apply to the source list</param>
 		/// <param name="maximum">The maximum number of items to show</param>
 		public ObservableListView(IList<TValue> source, IComparer<TValue> comparer, Predicate<TValue> filter, int? maximum)
 		{
 			_Source = source;
-			_Comparer = comparer ?? GetDefaultComparer();
 			_Filter = filter;
 			_Maximum = maximum;
 			_Items = new List<TValue>(source.Count);
+			_Comparer = comparer ?? GetDefaultComparer();
 
-			if (maximum.HasValue)
-				_HiddenItems = new List<TValue>();
+			// If we're filtering, use the filter comparer
+			if (filter != null)
+				_Comparer = new FilterComparer(_Comparer, filter);
 
 			// Bring the collection up to date
 			if (source.Count > 0)
 			{
-				if (filter != null)
-					_Items.AddRange(source.Where(FilterItem));
-				else
-					_Items.AddRange(source);
-
+				_Items.AddRange(source);
 				_Items.Sort(comparer);
 
-				if (maximum.HasValue && _Items.Count > maximum.Value)
-					_Items.RemoveRange(maximum.Value, _Items.Count - maximum.Value);
+				_VisibleSize = GetVisibleCount();
 			}
 			
 			if (source is INotifyCollectionChanged)
@@ -164,9 +173,10 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="item">The item to search for</param>
 		/// <returns>The index of the item, or the one's complement of the index where it should be inserted</returns>
+		/// <remarks>Only searches the visible items</remarks>
 		public int BinarySearch(TValue item)
 		{
-			return _Items.BinarySearch(item, _Comparer);
+			return _Items.BinarySearch(0, Count, item, _Comparer);
 		}
 
 		/// <summary>
@@ -174,9 +184,10 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="item">The item to locate</param>
 		/// <returns>True if the item is in the list, otherwise false</returns>
+		/// <remarks>Only searches the visible items</remarks>
 		public bool Contains(TValue item)
 		{
-			return _Items.BinarySearch(item, _Comparer) >= 0;
+			return _Items.BinarySearch(0, Count, item, _Comparer) >= 0;
 		}
 
 		/// <summary>
@@ -184,9 +195,10 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="array">The destination array</param>
 		/// <param name="arrayIndex">The index into the array to start writing</param>
+		/// <remarks>Only copies the visible items</remarks>
 		public void CopyTo(TValue[] array, int arrayIndex)
 		{
-			_Items.CopyTo(array, arrayIndex);
+			_Items.CopyTo(0, array, arrayIndex, Count);
 		}
 
 		/// <summary>
@@ -203,9 +215,9 @@ namespace Proximity.Utility.Collections
 		/// Returns an enumerator that iterates through the collection
 		/// </summary>
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
-		public List<TValue>.Enumerator GetEnumerator()
+		public ValueEnumerator GetEnumerator()
 		{
-			return _Items.GetEnumerator();
+			return new ValueEnumerator(this);
 		}
 
 		/// <summary>
@@ -215,7 +227,7 @@ namespace Proximity.Utility.Collections
 		/// <returns>The index of the item if found, otherwise -1</returns>
 		public int IndexOf(TValue item)
 		{
-			var MyIndex = _Items.BinarySearch(item, _Comparer);
+			var MyIndex = _Items.BinarySearch(0, Count, item, _Comparer);
 
 			if (MyIndex < 0)
 				MyIndex = -1;
@@ -295,12 +307,12 @@ namespace Proximity.Utility.Collections
 
 		IEnumerator IEnumerable.GetEnumerator()
 		{
-			return _Items.GetEnumerator();
+			return new ValueEnumerator(this);
 		}
 
 		IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator()
 		{
-			return _Items.GetEnumerator();
+			return new ValueEnumerator(this);
 		}
 
 		/// <summary>
@@ -316,42 +328,301 @@ namespace Proximity.Utility.Collections
 		/// <summary>
 		/// Occurs when the collection has been reset
 		/// </summary>
-		/// <param name="oldItems">A list of the old items in the collection</param>
-		protected virtual void OnCollectionChanged(TValue[] oldItems)
+		/// <param name="oldItems">A list of the old items in the collection, including hidden items</param>
+		protected virtual void OnItemsReset(TValue[] oldItems)
 		{
-			OnPropertyChanged();
-
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
 		}
 
 		/// <summary>
-		/// Occurs when the collection has an item added or removed
+		/// Occurs when the collection has an item added
 		/// </summary>
-		/// <param name="action">The action that occurred</param>
-		/// <param name="changedItem">The old or new item</param>
+		/// <param name="newItem">The new item</param>
 		/// <param name="index">The index of the item</param>
-		protected virtual void OnCollectionChanged(NotifyCollectionChangedAction action, TValue changedItem, int index)
+		protected virtual void OnItemAdded(TValue newItem, int index)
 		{
-			OnPropertyChanged();
-
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, changedItem, index));
 		}
-		
+
+		/// <summary>
+		/// Occurs when the collection has an item removed
+		/// </summary>
+		/// <param name="oldItem">The new item</param>
+		/// <param name="index">The index of the item</param>
+		protected virtual void OnItemRemoved(TValue oldItem, int index)
+		{
+		}
+
 		/// <summary>
 		/// Occurs when the collection has an item replaced
 		/// </summary>
-		/// <param name="action">The action that occurred</param>
 		/// <param name="newItem">The new item</param>
 		/// <param name="oldItem">The old item</param>
 		/// <param name="index">The index of the item that was replaced</param>
-		protected virtual void OnCollectionChanged(NotifyCollectionChangedAction action, TValue newItem, TValue oldItem, int index)
+		protected virtual void OnItemReplaced(TValue newItem, TValue oldItem, int index)
 		{
-			OnPropertyChanged(IndexerName); // Only the indexer has changed, the count is the same
+		}
 
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItem, oldItem, index));
+		/// <summary>
+		/// Re-evaluates the sorting of an item
+		/// </summary>
+		/// <param name="newItem">The new state of the item to sort on</param>
+		/// <param name="oldIndex">The old index of the item</param>
+		/// <param name="newIndex">The new index of the item</param>
+		/// <param name="hasChanged">True if the value has also changed, otherwise false (if it's an object where the sorting parameter has changed)</param>
+		protected virtual void ResortItem(TValue newItem, int oldIndex, int newIndex, bool hasChanged)
+		{
+			// Where should the item be now?
+			var OldItem = _Items[oldIndex];
+
+			if (oldIndex >= _VisibleSize)
+			{
+				// Old location is hidden. Is the new item visible?
+				if ((newIndex < _VisibleSize && (_Filter == null || _Filter(newItem)))
+					|| (newIndex == _VisibleSize && (!_Maximum.HasValue || _Maximum.Value != _VisibleSize) && (_Filter == null || _Filter(newItem)))
+					)
+				{
+					// Old Index is hidden, New Index is visible
+					// Does this push an item off the list?
+					if (_Maximum.HasValue && _Maximum.Value == _VisibleSize)
+					{
+						// Yes, so first we need to 'remove' the item at the very top of the list
+						OldItem = _Items[--_VisibleSize];
+
+						OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItem, _VisibleSize);
+					}
+
+					_VisibleSize++; // Restore visible size
+
+					// Update the internal list and notify observers
+					_Items.RemoveAt(oldIndex);
+					_Items.Insert(newIndex, newItem); // New Index must be less than Old Index, so we don't need to adjust
+
+					OnCollectionChanged(NotifyCollectionChangedAction.Add, newItem, newIndex);
+
+					return;
+				}
+
+				// New item is not visible
+				// We don't need to raise any events because the old and new locations are hidden
+				if (oldIndex == newIndex || oldIndex + 1 == newIndex)
+				{
+					// Index hasn't changed at all
+					_Items[oldIndex] = newItem;
+
+					return;
+				}
+
+				_Items.RemoveAt(oldIndex);
+
+				// If the target index is after where removed the old item, we need to correct the index
+				if (newIndex > oldIndex)
+					newIndex--;
+
+				_Items.Insert(newIndex, newItem);
+
+				return;
+			}
+
+			// Our old location is visible. Is the new one also visible?
+			// Make sure we account for the fact that we'll be removing one item from 'below'
+			if (newIndex <= _VisibleSize)
+			{
+				if (_Filter == null || _Filter(newItem))
+				{
+					// Our new location is also visible, so we can process a move
+					// Is the item moving at all?
+					if (oldIndex == newIndex || oldIndex + 1 == newIndex)
+					{
+						// Nope, so just swap in-place
+						_Items[oldIndex] = newItem;
+
+						if (hasChanged)
+							OnCollectionChanged(NotifyCollectionChangedAction.Replace, newItem, OldItem, oldIndex);
+
+						return;
+					}
+
+					_Items.RemoveAt(oldIndex);
+
+					// Yes, so move it and notify observers
+					if (hasChanged)
+					{
+						// Item has changed value too, so we need to process as a Remove/Add
+						_VisibleSize--;
+
+						OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItem, oldIndex);
+
+						if (newIndex > oldIndex)
+							newIndex--; // Adjust the index if it's moving up in the list
+
+						_Items.Insert(newIndex, newItem);
+						_VisibleSize++;
+
+						OnCollectionChanged(NotifyCollectionChangedAction.Add, newItem, newIndex);
+					}
+					else
+					{
+						if (newIndex > oldIndex)
+							newIndex--; // Adjust the index if it's moving up in the list
+
+						_Items.Insert(newIndex, newItem);
+
+						OnCollectionChanged(NotifyCollectionChangedAction.Move, newItem, oldIndex, newIndex);
+					}
+
+					return;
+				}
+
+				// Item is being moved to the top of the visible range, but it's hidden
+			}
+
+			// This item is disappearing
+			// Get the next item that might potentially appear
+			var VisibleItem = _Items[_VisibleSize];
+			
+			// Adjust our display items
+			_Items.RemoveAt(oldIndex);
+			_Items.Insert(newIndex - 1, newItem); // Adjust since old index must be less
+
+			// Looks like a remove and size decrease
+			_VisibleSize--;
+			OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItem, oldIndex);
+
+			// Is there an item for us to show to replace it?
+			if (_Filter == null || _Filter(VisibleItem))
+			{
+				// New item is visible
+				_VisibleSize++;
+
+				OnCollectionChanged(NotifyCollectionChangedAction.Add, VisibleItem, _VisibleSize - 1);
+			}
+		}
+
+		//****************************************
+
+		private void OnAddCollectionItem(TValue newItem)
+		{
+			// Where should this item go based on the comparer?
+			var InsertIndex = _Items.BinarySearch(newItem, _Comparer);
+			
+			// If this is a new item, get the final index to insert at
+			if (InsertIndex < 0)
+				InsertIndex = ~InsertIndex;
+
+			// Could this change our visible size?
+			if (InsertIndex == _VisibleSize)
+			{
+				// We've been inserted at the very top of the visible set. Is the item filtered?
+				if (_Filter == null || _Filter(newItem))
+				{
+					// Item should be visible. Are we below the maximum (if any)?
+					if (!_Maximum.HasValue || _Maximum.Value > InsertIndex)
+						_VisibleSize++; // We can be shown. Go for it
+				}
+			}
+			else if (InsertIndex < _VisibleSize)
+			{
+				// We're inserting below the visible size, which means we have to be unfiltered
+				// Does this push an item off the list?
+				if (_Maximum.HasValue)
+				{
+					if (_Maximum.Value == _VisibleSize)
+					{
+						// Yes, so first we need to 'remove' the item at the very top of the list
+						var OldItem = _Items[--_VisibleSize];
+
+						// This affects observers, but not subclasses
+						OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItem, _VisibleSize);
+					}
+				}
+
+				_VisibleSize++;
+			}
+			// Otherwise, we've inserted above the visible size, so we must be either filtered or above the maximum
+
+			_Items.Insert(InsertIndex, newItem);
+
+			// Notify subclasses
+			OnItemAdded(newItem, InsertIndex);
+
+			// Only notify observers if we're visible
+			if (InsertIndex < _VisibleSize)
+				OnCollectionChanged(NotifyCollectionChangedAction.Add, newItem, InsertIndex);
+		}
+
+		private void OnRemoveCollectionItem(TValue oldItem)
+		{
+			// Where is this item currently?
+			var OldIndex = _Items.BinarySearch(oldItem, _Comparer);
+
+			if (OldIndex < 0)
+				throw new InvalidOperationException("Unknown Item being removed"); // Remove for an item we don't know?
+
+			_Items.RemoveAt(OldIndex);
+
+			// Notify subclasses
+			OnItemRemoved(oldItem, OldIndex);
+
+			if (OldIndex >= _VisibleSize)
+				return; // No need to do anything more, since we're removing a hidden item
+
+			// We're removing a visible item.
+			// Are there hidden items that might get shown?
+			if (_Items.Count < _VisibleSize)
+			{
+				// No, so just fix the Visible Size
+				_VisibleSize--;
+				OnCollectionChanged(NotifyCollectionChangedAction.Remove, oldItem, OldIndex);
+
+				return;
+			}
+
+			// We have hidden items that might potentially appear
+			var NewItem = _Items[_VisibleSize - 1];
+
+			// Is the new item filtered?
+			if (_Filter != null && !_Filter(NewItem))
+			{
+				// Can't show this item, so the Visible Size decreases
+				_VisibleSize--;
+				OnCollectionChanged(NotifyCollectionChangedAction.Remove, oldItem, OldIndex);
+
+				return; 
+			}
+
+			// The next item in the list can appear!
+			if (OldIndex == _VisibleSize - 1)
+			{
+				// We're removing the top item on the list, so optimise to a Replace
+				OnCollectionChanged(NotifyCollectionChangedAction.Replace, NewItem, oldItem, OldIndex);
+
+				return;
+			}
+
+			// Remove the old item first, so we never risk going above the maximum
+			_VisibleSize--;
+			OnCollectionChanged(NotifyCollectionChangedAction.Remove, oldItem, OldIndex);
+
+			// 'Add' the new item
+			_VisibleSize++;
+			OnCollectionChanged(NotifyCollectionChangedAction.Add, NewItem, _VisibleSize - 1);
+		}
+
+		private void OnReplaceCollectionItem(TValue oldItem, TValue newItem)
+		{
+			// Where is the old item currently?
+			var OldIndex = _Items.BinarySearch(oldItem, _Comparer);
+
+			if (OldIndex < 0)
+				throw new InvalidOperationException("Unknown Item being replaced"); // Replace for an item we don't know?
+
+			var NewIndex = _Items.BinarySearch(newItem, _Comparer);
+
+			// If this is a new item, get the final index to insert at
+			if (NewIndex < 0)
+				NewIndex = ~NewIndex;
+
+			// Relocate the item
+			ResortItem(newItem, OldIndex, NewIndex, true);
 		}
 
 		//****************************************
@@ -365,259 +636,53 @@ namespace Proximity.Utility.Collections
 
 				_Items.Clear();
 
-				if (_Filter != null)
-					_Items.AddRange(_Source.Where(FilterItem));
-				else
-					_Items.AddRange(_Source);
-
+				_Items.AddRange(_Source);
 				_Items.Sort(_Comparer);
+				
+				_VisibleSize = GetVisibleCount();
 
-				// Trim the bottom items if there's a limit
-				if (_Maximum.HasValue)
-				{
-					_HiddenItems.Clear();
-
-					if (_Items.Count > _Maximum.Value)
-					{
-						// Copy the already sorted items to the hidden items
-						for (int Index = _Maximum.Value; Index < _Items.Count; Index++)
-						{
-							_HiddenItems.Add(_Items[Index]);
-						}
-
-						_Items.RemoveRange(_Maximum.Value, _Items.Count - _Maximum.Value);
-					}
-				}
-
-				OnCollectionChanged(OldItems);
+				OnItemsReset(OldItems);
+				OnCollectionChanged();
 				break;
 
 			case NotifyCollectionChangedAction.Add:
 				for (int Index = 0; Index < e.NewItems.Count; Index++)
 				{
-					var NewItem = (TValue)e.NewItems[Index];
-
-					if (_Filter != null && !_Filter(NewItem))
-						continue;
-
-					// Where should this item go based on the comparer?
-					var InsertIndex = _Items.BinarySearch(NewItem, _Comparer);
-
-					// Is there a maximum?
-					if (_Maximum.HasValue)
-					{
-						// Are we inserting a new item?
-						if (InsertIndex < 0)
-						{
-							// Get the final index to insert at
-							InsertIndex = ~InsertIndex;
-
-							// If we're inserting at the very end past the limit, skip this item
-							if (InsertIndex == _Maximum.Value)
-							{
-								AddToHidden(NewItem);
-
-								continue;
-							}
-						}
-
-						// If this pushes us over the maximum, move the last visible item
-						if (_Items.Count == _Maximum.Value)
-							MoveLastVisibleToHidden();
-					}
-					else
-					{
-						// If this is a new item, get the final index to insert at
-						if (InsertIndex < 0)
-							InsertIndex = ~InsertIndex;
-					}
-
-					// Insert our new item
-					_Items.Insert(InsertIndex, NewItem);
-
-					OnCollectionChanged(NotifyCollectionChangedAction.Add, NewItem, InsertIndex);
+					OnAddCollectionItem((TValue)e.NewItems[Index]);
 				}
 				break;
 
 			case NotifyCollectionChangedAction.Remove:
 				for (int Index = 0; Index < e.OldItems.Count; Index++)
 				{
-					var OldItem = (TValue)e.OldItems[Index];
-
-					var OldIndex = _Items.BinarySearch(OldItem, _Comparer);
-
-					if (OldIndex < 0)
-					{
-						// If there's a maximum and we didn't find the item, ensure we remove it from the hidden list
-						if (_Maximum.HasValue)
-						{
-							OldIndex = _HiddenItems.BinarySearch(OldItem, _Comparer);
-
-							if (OldIndex >= 0)
-								_HiddenItems.RemoveAt(OldIndex);
-						}
-
-						continue;
-					}
-
-					_Items.RemoveAt(OldIndex);
-
-					OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItem, OldIndex);
-				}
-
-				// If there's a maximum, can we add more items from the hidden list?
-				if (_Maximum.HasValue)
-				{
-					var MaxItems = Math.Min(_Maximum.Value - _Items.Count, _HiddenItems.Count);
-
-					if (MaxItems != 0)
-					{
-						// Copy the already sorted items from the hidden list to the end of our visible list
-						for (int Index = 0; Index < MaxItems; Index++)
-						{
-							var NewItem = _HiddenItems[Index];
-
-							_Items.Add(NewItem);
-
-							OnCollectionChanged(NotifyCollectionChangedAction.Add, NewItem, _Items.Count - 1);
-						}
-
-						_HiddenItems.RemoveRange(0, MaxItems);
-					}
+					OnRemoveCollectionItem((TValue)e.OldItems[Index]);
 				}
 				break;
 
 			case NotifyCollectionChangedAction.Replace:
-				for (int Index = 0; Index < e.OldItems.Count; Index++)
+				var MinCount = Math.Min(e.OldItems.Count, e.NewItems.Count);
+
+				for (int Index = 0; Index < MinCount; Index++)
 				{
-					// Retrieve the old and new items
 					TValue OldItem = (TValue)e.OldItems[Index], NewItem = (TValue)e.NewItems[Index];
 
 					// Has the item changed?
 					if (_Comparer.Compare(OldItem, NewItem) == 0)
-						continue; // Item hasn't changed, so its sorting position won't either
+						return; // Item hasn't changed, so its sorting position won't either
 
-					// Is the old Item in the visible list?
-					int OldIndex = _Items.BinarySearch(OldItem, _Comparer), NewIndex;
+					OnReplaceCollectionItem(OldItem, NewItem);
+				}
 
-					if (OldIndex < 0)
-					{
-						if (_Maximum.HasValue)
-						{
-							// It's not in the visible list, but it might be in the hidden one
-							OldIndex = _HiddenItems.BinarySearch(OldItem, _Comparer);
+				// Replace may involve removing items
+				for (int Index = MinCount; MinCount < e.OldItems.Count; Index++)
+				{
+					OnRemoveCollectionItem((TValue)e.OldItems[Index]);
+				}
 
-							// If it's in the hidden list, remove it
-							if (OldIndex >= 0)
-								_HiddenItems.RemoveAt(OldIndex);
-						}
-
-						// It's not in the visible list or hidden list.
-
-						// Does the new item meet the filter?
-						if (_Filter != null && !_Filter(NewItem))
-							continue; // No, so ignore it
-
-						// Yes, so we might need to insert it somewhere
-
-						// Where should it go in the visible list?
-						NewIndex = _Items.BinarySearch(NewItem, _Comparer);
-
-						if (NewIndex < 0)
-							NewIndex = ~NewIndex;
-
-						// Is there a limit on the visible list?
-						if (_Maximum.HasValue)
-						{
-							// If we're inserting over the maximum, add to the hidden list instead
-							if (NewIndex == _Maximum.Value)
-							{
-								AddToHidden(NewItem);
-
-								continue;
-							}
-
-							// We're not adding to the end. Does this push us over the maximum?
-							if (_Items.Count == _Maximum.Value)
-								MoveLastVisibleToHidden();
-						}
-
-						// We're inserting somewhere into the visible list and we're guaranteed space
-						_Items.Insert(NewIndex, NewItem);
-						OnCollectionChanged(NotifyCollectionChangedAction.Add, NewItem, NewIndex);
-
-						continue;
-					}
-					
-					// The old item is visible and has changed
-
-					// Does it still meet the filter?
-					if (_Filter != null && !_Filter(NewItem))
-					{
-						// No, so remove it
-						_Items.RemoveAt(OldIndex);
-						OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItem, OldIndex);
-
-						// If there's a maximum and we've hidden items, move the first item to replace the one we removed
-						if (_Maximum.HasValue && _HiddenItems.Count > 0)
-							MoveFirstHiddenToVisible();
-
-						continue;
-					}
-
-					// It meets the filter, what is its new Index?
-					NewIndex = _Items.BinarySearch(NewItem, _Comparer);
-
-					if (NewIndex < 0)
-						NewIndex = ~NewIndex;
-					
-					// We're moving the new item. Is there a maximum?
-					if (_Maximum.HasValue)
-					{
-						// Are we moving it to the end and there are hidden items?
-						if (NewIndex == _Maximum.Value && _HiddenItems.Count > 0)
-						{
-							// Is it greater than the top-most hidden item?
-							if (_Comparer.Compare(NewItem, _HiddenItems[0]) > 0)
-							{
-								// Yes, so we need to remove ourselves from the visible list, then add the top-most hidden item
-								_Items.RemoveAt(OldIndex);
-								OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItem, OldIndex);
-
-								MoveFirstHiddenToVisible();
-
-								// Add the new item to the hidden list
-								AddToHidden(NewItem);
-
-								continue;
-							}
-
-							// Less than the top-most hidden item, so we'll just add it to the end
-						}
-					}
-
-					// Would we place this immediately before or after the old item?
-					if (NewIndex == OldIndex || NewIndex == OldIndex + 1)
-					{
-						// Yes, so just replace the old item instead
-						_Items[OldIndex] = NewItem;
-
-						OnCollectionChanged(NotifyCollectionChangedAction.Replace, NewItem, OldItem, OldIndex);
-
-						continue;
-					}
-
-					// It's going elsewhere, so first remove the old item
-					_Items.RemoveAt(OldIndex);
-					OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItem, OldIndex);
-
-					// If the target index is after where removed the old item, we need to correct the index
-					if (NewIndex > OldIndex)
-						NewIndex--;
-
-					// Now we can insert the new item where it belongs
-					_Items.Insert(NewIndex, NewItem);
-					OnCollectionChanged(NotifyCollectionChangedAction.Add, NewItem, NewIndex);
+				// Alternatively, it may involve adding new items
+				for (int Index = MinCount; MinCount < e.NewItems.Count; Index++)
+				{
+					OnAddCollectionItem((TValue)e.NewItems[Index]);
 				}
 				break;
 
@@ -633,48 +698,104 @@ namespace Proximity.Utility.Collections
 			OnPropertyChanged(IndexerName);
 		}
 
+		private void OnCollectionChanged()
+		{
+			OnPropertyChanged();
+
+			if (CollectionChanged != null)
+				CollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+		}
+
+		private void OnCollectionChanged(NotifyCollectionChangedAction action, TValue changedItem, int index)
+		{
+			OnPropertyChanged();
+
+			if (CollectionChanged != null)
+				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, changedItem, index));
+		}
+
+		private void OnCollectionChanged(NotifyCollectionChangedAction action, TValue changedItem, int oldIndex, int newIndex)
+		{
+			OnPropertyChanged(IndexerName); // Only the indexer has changed, the count is the same
+
+			if (CollectionChanged != null)
+				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, changedItem, newIndex, oldIndex));
+		}
+
+		private void OnCollectionChanged(NotifyCollectionChangedAction action, TValue newItem, TValue oldItem, int index)
+		{
+			OnPropertyChanged(IndexerName); // Only the indexer has changed, the count is the same
+
+			if (CollectionChanged != null)
+				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItem, oldItem, index));
+		}
+
 		private bool FilterItem(TValue item)
 		{
 			return _Filter(item); // Enumerable.Where requires an Action, but this is a Predicate, so we wrap it
 		}
-
-		private void AddToHidden(TValue item)
+		
+		private void CheckIndex(int index)
 		{
-			var InsertIndex = _HiddenItems.BinarySearch(item, _Comparer);
-
-			if (InsertIndex < 0)
-				InsertIndex = ~InsertIndex;
-
-			_HiddenItems.Insert(InsertIndex, item);
+			if (index >= _VisibleSize)
+				throw new ArgumentOutOfRangeException("index", "Index is outside the visible range of items");
 		}
 
-		private void MoveLastVisibleToHidden()
+		private int GetVisibleCount()
 		{
-			var OldIndex = _Items.Count - 1;
-			var OldItem = _Items[OldIndex];
+			if (Items.Count == 0)
+				return 0;
 
-			_Items.RemoveAt(OldIndex);
-			_HiddenItems.Insert(0, OldItem); // The bottom of the visible list is always the top of the hidden
+			if (_Filter == null)
+			{
+				if (_Maximum.HasValue)
+					return Math.Min(_Maximum.Value, Items.Count); // Trim if we're above the max
 
-			OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItem, OldIndex);
+				return Items.Count; // All visible
+			}
+
+			// Find the lowest item that's visible
+			int LowIndex = 0, HighIndex = Items.Count - 1;
+
+			if (_Maximum.HasValue) // If there's a maximum, our high cannot be above that.
+				HighIndex = _Maximum.Value;
+
+			while (LowIndex <= HighIndex)
+			{
+				int MiddleIndex = LowIndex + ((HighIndex - LowIndex) >> 1);
+
+				if (_Filter(Items[MiddleIndex]))
+					LowIndex = MiddleIndex + 1; // Visible, high must be above this
+				else
+					HighIndex = MiddleIndex - 1; // Hidden, high must be below
+			}
+
+			if (_Filter(Items[LowIndex]))
+				return LowIndex + 1;
+
+			return LowIndex;
 		}
 
-		private void MoveFirstHiddenToVisible()
+		protected void VerifyList()
 		{
-			var NewItem = _HiddenItems[0];
-			var NewIndex = _Items.Count;
+			var LastItem = _Items[0];
 
-			_HiddenItems.RemoveAt(0);
-			_Items.Add(NewItem); // The top of the hidden list is always the bottom of the visible
+			for (int SubIndex = 1; SubIndex < _Items.Count; SubIndex++)
+			{
+				var NextItem = _Items[SubIndex];
 
-			OnCollectionChanged(NotifyCollectionChangedAction.Add, NewItem, NewIndex);
+				if (_Comparer.Compare(LastItem, NextItem) > 0)
+					throw new InvalidOperationException("Out of order");
+
+				LastItem = NextItem;
+			}
 		}
 
 		//****************************************
 
-		/// <summary>
-		/// Raised when the collection changes
-		/// </summary>
+			/// <summary>
+			/// Raised when the collection changes
+			/// </summary>
 		public event NotifyCollectionChangedEventHandler CollectionChanged;
 
 		/// <summary>
@@ -688,7 +809,7 @@ namespace Proximity.Utility.Collections
 		[System.Runtime.CompilerServices.IndexerName("Item")]
 		public TValue this[int index]
 		{
-			get { return _Items[index]; }
+			get { CheckIndex(index); return _Items[index]; }
 		}
 
 		/// <summary>
@@ -696,7 +817,7 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		public int Count
 		{
-			get { return _Items.Count; }
+			get { return _VisibleSize; }
 		}
 
 		/// <summary>
@@ -734,13 +855,13 @@ namespace Proximity.Utility.Collections
 
 		TValue IList<TValue>.this[int index]
 		{
-			get { return _Items[index]; }
+			get { CheckIndex(index); return _Items[index]; }
 			set { throw new NotSupportedException("List is read-only"); }
 		}
 
 		object IList.this[int index]
 		{
-			get { return _Items[index]; }
+			get { CheckIndex(index); return _Items[index]; }
 			set { throw new NotSupportedException("List is read-only"); }
 		}
 
@@ -760,9 +881,17 @@ namespace Proximity.Utility.Collections
 		}
 
 		/// <summary>
-		/// Gets the internal list of items
+		/// Gets the internal list of items, including filtered and trimmed ones
 		/// </summary>
 		protected List<TValue> Items
+		{
+			get { return _Items; }
+		}
+
+		/// <summary>
+		/// Gets the internal list of items, including filtered and trimmed ones
+		/// </summary>
+		public List<TValue> AllItems
 		{
 			get { return _Items; }
 		}
@@ -781,6 +910,107 @@ namespace Proximity.Utility.Collections
 				throw new ArgumentException(string.Format("{0} does not implement IComparable or IComparable<>", typeof(TValue).FullName));
 
 			return Comparer<TValue>.Default;
+		}
+
+		//****************************************
+		
+		/// <summary>
+		/// Enumerates the sorted set while avoiding memory allocations
+		/// </summary>
+		public struct ValueEnumerator : IEnumerator<TValue>, IEnumerator
+		{ //****************************************
+			private readonly ObservableListView<TValue> _Parent;
+
+			private int _Index;
+			private TValue _Current;
+			//****************************************
+
+			internal ValueEnumerator(ObservableListView<TValue> parent)
+			{
+				_Parent = parent;
+				_Index = 0;
+				_Current = default(TValue);
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Disposes of the enumerator
+			/// </summary>
+			public void Dispose()
+			{
+				_Current = default(TValue);
+			}
+
+			/// <summary>
+			/// Tries to move to the next item
+			/// </summary>
+			/// <returns>True if there's another item to enumerate, otherwise False</returns>
+			public bool MoveNext()
+			{
+				if (_Index >= _Parent._VisibleSize)
+				{
+					_Index = _Parent._VisibleSize + 1;
+					_Current = default(TValue);
+
+					return false;
+				}
+
+				_Current = _Parent._Items[_Index++];
+
+				return true;
+			}
+
+			void IEnumerator.Reset()
+			{
+				_Index = 0;
+				_Current = default(TValue);
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Gets the current item being enumerated
+			/// </summary>
+			public TValue Current
+			{
+				get { return _Current; }
+			}
+
+			object IEnumerator.Current
+			{
+				get { return _Current; }
+			}
+		}
+
+		private sealed class FilterComparer : IComparer<TValue>
+		{ //****************************************
+			private readonly IComparer<TValue> _Comparer;
+			private readonly Predicate<TValue> _Filter;
+			//****************************************
+
+			internal FilterComparer(IComparer<TValue> comparer, Predicate<TValue> filter)
+			{
+				_Comparer = comparer;
+				_Filter = filter;
+			}
+
+			//****************************************
+
+			int IComparer<TValue>.Compare(TValue x, TValue y)
+			{
+				// Figure out if our values are filtered
+				var XResult = _Filter(x);
+				var YResult = _Filter(y);
+
+				// Are their filtering statuses the same?
+				if (XResult != YResult)
+					// No. Make sure True objects sort before False
+					return XResult ? -1 : 1;
+				
+				// Filtering status is the same. Use the normal comparer
+				return _Comparer.Compare(x, y);
+			}
 		}
 	}
 }

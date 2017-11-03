@@ -10,6 +10,9 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Security;
+using Proximity.Utility.Reflection;
 //****************************************
 
 namespace Proximity.Utility.Collections
@@ -19,232 +22,349 @@ namespace Proximity.Utility.Collections
 	/// </summary>
 	/// <typeparam name="TValue">The type of the values in the list</typeparam>
 	public class ObservableListViewDynamic<TValue> : ObservableListView<TValue> where TValue : class, INotifyPropertyChanged
-	{	//****************************************
-		private readonly HashSet<string> _PropertyNames;
+	{ //****************************************
+		private readonly ConditionalWeakTable<TValue, TValue> _PreviousValues = new ConditionalWeakTable<TValue, TValue>();
+
+		private readonly Func<TValue, TValue> _CloneMethod;
 		//****************************************
+
+		/// <summary>
+		/// Creates a new Observable List View
+		/// </summary>
+		/// <param name="source">The source list to wrap</param>
+		public ObservableListViewDynamic(IList<TValue> source) : this(source, null, (IComparer<TValue>)null, null, null)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Observable List View
+		/// </summary>
+		/// <param name="source">The source list to wrap</param>
+		/// <param name="cloneMethod">A method to clone the object for sorting and filtering purposes</param>
+		public ObservableListViewDynamic(IList<TValue> source, Func<TValue, TValue> cloneMethod) : this(source, cloneMethod, (IComparer<TValue>)null, null, null)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Observable List View
+		/// </summary>
+		/// <param name="source">The source list to wrap</param>
+		/// <param name="cloneMethod">A method to clone the object for sorting and filtering purposes</param>
+		/// <param name="comparison">A delegate to perform the comparison with</param>
+		public ObservableListViewDynamic(IList<TValue> source, Func<TValue, TValue> cloneMethod, Comparison<TValue> comparison) : this(source, cloneMethod, comparison, null, null)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Observable List View
+		/// </summary>
+		/// <param name="source">The source list to wrap</param>
+		/// <param name="cloneMethod">A method to clone the object for sorting and filtering purposes</param>
+		/// <param name="comparer">The comparer to use for sorting</param>
+		public ObservableListViewDynamic(IList<TValue> source, Func<TValue, TValue> cloneMethod, IComparer<TValue> comparer) : this(source, cloneMethod, comparer, null, null)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Observable List View
+		/// </summary>
+		/// <param name="source">The source list to wrap</param>
+		/// <param name="cloneMethod">A method to clone the object for sorting and filtering purposes</param>
+		/// <param name="filter">A filter to apply to the source list</param>
+		public ObservableListViewDynamic(IList<TValue> source, Func<TValue, TValue> cloneMethod, Predicate<TValue> filter) : this(source, cloneMethod, (IComparer<TValue>)null, filter, null)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Observable List View
+		/// </summary>
+		/// <param name="source">The source list to wrap</param>
+		/// <param name="cloneMethod">A method to clone the object for sorting and filtering purposes</param>
+		/// <param name="comparison">A delegate to perform the comparison with</param>
+		/// <param name="filter">A filter to apply to the source list</param>
+		public ObservableListViewDynamic(IList<TValue> source, Func<TValue, TValue> cloneMethod, Comparison<TValue> comparison, Predicate<TValue> filter) : this(source, cloneMethod, comparison, filter, null)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Observable List View
+		/// </summary>
+		/// <param name="source">The source list to wrap</param>
+		/// <param name="cloneMethod">A method to clone the object for sorting and filtering purposes</param>
+		/// <param name="comparer">The comparer to use for sorting</param>
+		/// <param name="filter">A filter to apply to the source list</param>
+		public ObservableListViewDynamic(IList<TValue> source, Func<TValue, TValue> cloneMethod, IComparer<TValue> comparer, Predicate<TValue> filter) : this(source, cloneMethod, comparer, filter, null)
+		{
+		}
 		
 		/// <summary>
 		/// Creates a new Observable List View
 		/// </summary>
 		/// <param name="source">The source list to wrap</param>
-		public ObservableListViewDynamic(IList<TValue> source) : this(source, (IComparer<TValue>)null, null, null)
-		{
-		}
-
-		/// <summary>
-		/// Creates a new Observable List View
-		/// </summary>
-		/// <param name="source">The source list to wrap</param>
-		/// <param name="comparison">A delegate to perform the comparison with</param>
-		public ObservableListViewDynamic(IList<TValue> source, Comparison<TValue> comparison) : this(source, comparison, null, null)
-		{
-		}
-
-		/// <summary>
-		/// Creates a new Observable List View
-		/// </summary>
-		/// <param name="source">The source list to wrap</param>
-		/// <param name="comparer">The comparer to use for sorting</param>
-		public ObservableListViewDynamic(IList<TValue> source, IComparer<TValue> comparer) : this(source, comparer, null, null)
-		{
-		}
-
-		/// <summary>
-		/// Creates a new Observable List View
-		/// </summary>
-		/// <param name="source">The source list to wrap</param>
-		/// <param name="filter">A filter to apply to the source list</param>
-		public ObservableListViewDynamic(IList<TValue> source, Predicate<TValue> filter) : this(source, (IComparer<TValue>)null, filter, null)
-		{
-		}
-		
-		/// <summary>
-		/// Creates a new Observable List View
-		/// </summary>
-		/// <param name="source">The source list to wrap</param>
+		/// <param name="cloneMethod">A method to clone the object for sorting and filtering purposes</param>
 		/// <param name="comparison">A delegate to perform the comparison with</param>
 		/// <param name="filter">A filter to apply to the source list</param>
-		public ObservableListViewDynamic(IList<TValue> source, Comparison<TValue> comparison, Predicate<TValue> filter) : this(source, comparison, filter, null)
+		/// <param name="maximum">The maximum number of items to show</param>
+		[SecuritySafeCritical]
+		public ObservableListViewDynamic(IList<TValue> source, Func<TValue, TValue> cloneMethod, Comparison<TValue> comparison, Predicate<TValue> filter, int? maximum) : base(source, comparison, filter, maximum)
 		{
-		}
-
-		/// <summary>
-		/// Creates a new Observable List View
-		/// </summary>
-		/// <param name="source">The source list to wrap</param>
-		/// <param name="comparer">The comparer to use for sorting</param>
-		/// <param name="filter">A filter to apply to the source list</param>
-		public ObservableListViewDynamic(IList<TValue> source, IComparer<TValue> comparer, Predicate<TValue> filter) : this(source, comparer, filter, null)
-		{
-		}
-
-		/// <summary>
-		/// Creates a new Observable List View
-		/// </summary>
-		/// <param name="source">The source list to wrap</param>
-		public ObservableListViewDynamic(IList<TValue> source, IEnumerable<string> propertyNames) : this(source, (IComparer<TValue>)null, null, propertyNames)
-		{
-		}
-
-		/// <summary>
-		/// Creates a new Observable List View
-		/// </summary>
-		/// <param name="source">The source list to wrap</param>
-		/// <param name="comparison">A delegate to perform the comparison with</param>
-		public ObservableListViewDynamic(IList<TValue> source, Comparison<TValue> comparison, IEnumerable<string> propertyNames) : this(source, comparison, null, propertyNames)
-		{
-		}
-
-		/// <summary>
-		/// Creates a new Observable List View
-		/// </summary>
-		/// <param name="source">The source list to wrap</param>
-		/// <param name="comparer">The comparer to use for sorting</param>
-		public ObservableListViewDynamic(IList<TValue> source, IComparer<TValue> comparer, IEnumerable<string> propertyNames) : this(source, comparer, null, propertyNames)
-		{
-		}
-
-		/// <summary>
-		/// Creates a new Observable List View
-		/// </summary>
-		/// <param name="source">The source list to wrap</param>
-		/// <param name="filter">A filter to apply to the source list</param>
-		public ObservableListViewDynamic(IList<TValue> source, Predicate<TValue> filter, IEnumerable<string> propertyNames) : this(source, (IComparer<TValue>)null, filter, propertyNames)
-		{
-		}
-
-		/// <summary>
-		/// Creates a new Observable List View
-		/// </summary>
-		/// <param name="source">The source list to wrap</param>
-		/// <param name="comparison">A delegate to perform the comparison with</param>
-		/// <param name="filter">A filter to apply to the source list</param>
-		public ObservableListViewDynamic(IList<TValue> source, Comparison<TValue> comparison, Predicate<TValue> filter, IEnumerable<string> propertyNames) : base(source, comparison, filter)
-		{
-			if (propertyNames != null)
-				_PropertyNames = new HashSet<string>(propertyNames);
+			_CloneMethod = cloneMethod ?? CreateCloneMethod();
 
 			foreach (var MyItem in this)
+			{
 				MyItem.PropertyChanged += OnChildPropertyChanged;
+
+				_PreviousValues.Add(MyItem, _CloneMethod(MyItem));
+			}
 		}
 
 		/// <summary>
 		/// Creates a new Observable List View
 		/// </summary>
 		/// <param name="source">The source list to wrap</param>
+		/// <param name="cloneMethod">A method to clone the object for sorting and filtering purposes</param>
 		/// <param name="comparer">The comparer to use for sorting</param>
 		/// <param name="filter">A filter to apply to the source list</param>
-		public ObservableListViewDynamic(IList<TValue> source, IComparer<TValue> comparer, Predicate<TValue> filter, IEnumerable<string> propertyNames) : base(source, comparer, filter)
+		[SecuritySafeCritical]
+		public ObservableListViewDynamic(IList<TValue> source, Func<TValue, TValue> cloneMethod, IComparer<TValue> comparer, Predicate<TValue> filter, int? maximum) : base(source, comparer, filter, maximum)
 		{
-			if (propertyNames != null)
-				_PropertyNames = new HashSet<string>(propertyNames);
+			_CloneMethod = cloneMethod ?? CreateCloneMethod();
 
 			foreach (var MyItem in this)
+			{
 				MyItem.PropertyChanged += OnChildPropertyChanged;
+
+				_PreviousValues.Add(MyItem, _CloneMethod(MyItem));
+			}
 		}
 
 		//****************************************
 
 		/// <inheritdoc />
+		[SecuritySafeCritical]
 		public override void Dispose()
 		{
 			base.Dispose();
 
 			foreach (var MyItem in this)
-				MyItem.PropertyChanged -= OnChildPropertyChanged;
-		}
-
-		/// <inheritdoc />
-		protected override void OnCollectionChanged(TValue[] oldItems)
-		{
-			foreach (var MyItem in oldItems)
-				MyItem.PropertyChanged -= OnChildPropertyChanged;
-
-			base.OnCollectionChanged(oldItems);
-		}
-
-		/// <inheritdoc />
-		protected override void OnCollectionChanged(NotifyCollectionChangedAction action, TValue changedItem, int index)
-		{
-			switch (action)
 			{
-			case NotifyCollectionChangedAction.Add:
-				changedItem.PropertyChanged += OnChildPropertyChanged;
-				break;
+				MyItem.PropertyChanged -= OnChildPropertyChanged;
 
-			case NotifyCollectionChangedAction.Remove:
-				changedItem.PropertyChanged -= OnChildPropertyChanged;
-				break;
+				_PreviousValues.Remove(MyItem);
 			}
-
-			base.OnCollectionChanged(action, changedItem, index);
-		}
-
-		/// <inheritdoc />
-		protected override void OnCollectionChanged(NotifyCollectionChangedAction action, TValue newItem, TValue oldItem, int index)
-		{
-			oldItem.PropertyChanged -= OnChildPropertyChanged;
-			newItem.PropertyChanged += OnChildPropertyChanged;
-
-			base.OnCollectionChanged(action, newItem, oldItem, index);
 		}
 
 		//****************************************
 
-		private void OnChildPropertyChanged(object sender, PropertyChangedEventArgs e)
+		/// <inheritdoc />
+		[SecuritySafeCritical]
+		protected override void OnItemsReset(TValue[] oldItems)
 		{
-			// Ensure the property that has changed will actually affect our sorting or filtering
-			if (_PropertyNames != null && !_PropertyNames.Contains(e.PropertyName))
-				return;
+			// Unsubscribe from the old items
+			foreach (var MyItem in oldItems)
+			{
+				MyItem.PropertyChanged -= OnChildPropertyChanged;
 
-			//****************************************
+				_PreviousValues.Remove(MyItem);
+			}
+
+			// Subscribe to the new ones
+			foreach (var MyItem in Items)
+			{
+				MyItem.PropertyChanged += OnChildPropertyChanged;
+
+				_PreviousValues.Add(MyItem, _CloneMethod(MyItem));
+			}
+		}
+
+		/// <inheritdoc />
+		[SecuritySafeCritical]
+		protected override void OnItemAdded(TValue newItem, int index)
+		{
+			newItem.PropertyChanged += OnChildPropertyChanged;
+
+			_PreviousValues.Add(newItem, _CloneMethod(newItem));
+		}
+
+		/// <inheritdoc />
+		[SecuritySafeCritical]
+		protected override void OnItemRemoved(TValue oldItem, int index)
+		{
+			oldItem.PropertyChanged -= OnChildPropertyChanged;
+
+			_PreviousValues.Remove(oldItem);
+		}
+
+		/// <inheritdoc />
+		[SecuritySafeCritical]
+		protected override void OnItemReplaced(TValue newItem, TValue oldItem, int index)
+		{
+			_PreviousValues.Add(newItem, _CloneMethod(newItem));
+
+			oldItem.PropertyChanged -= OnChildPropertyChanged;
+			newItem.PropertyChanged += OnChildPropertyChanged;
+
+			_PreviousValues.Remove(oldItem);
+		}
+
+		//****************************************
+
+		[SecuritySafeCritical]
+		private void OnChildPropertyChanged(object sender, PropertyChangedEventArgs e)
+		{	//****************************************
 			var CurrentItem = (TValue)sender;
-			var MyItems = Items;
-			var MyComparer = Comparer;
+			TValue PreviousItem;
 			//****************************************
 			
 			// No need to do anything if there's only one item
-			if (MyItems.Count == 1)
+			if (Count == 1)
 				return;
 
-			// Since we can't tell where the item used to be in the list, the best we can do is try and find it
-			// Since our list is out of order, this may return an index, but it's not necessarily where the item should be
-			var OldIndex = MyItems.BinarySearch(CurrentItem, MyComparer);
+			// What did we look like before?
+			if (!_PreviousValues.TryGetValue(CurrentItem, out PreviousItem))
+				throw new InvalidOperationException("Unknown Child Item");
+
+			// Has our sort changed relative to our previous state?
+			if (Comparer.Compare(CurrentItem, PreviousItem) == 0)
+				return; // No, so we don't even need to update the previous item
+
+			// Sorting has definitely changed
+			// Update the previous sort position
+			_PreviousValues.Remove(CurrentItem);
+			_PreviousValues.Add(CurrentItem, _CloneMethod(CurrentItem));
+
+			//****************************************
+			
+			// Where were we before?
+			var OldIndex = SearchOldPosition(CurrentItem, PreviousItem);
 
 			if (OldIndex == -1)
+				throw new InvalidOperationException("Unable to locate Child Item");
+
+			var NewIndex = SearchNewPosition(CurrentItem, PreviousItem);
+
+			// Tell the underlying ListView to resort the item at that position
+			ResortItem(CurrentItem, OldIndex, NewIndex, false);
+
+			//VerifyList();
+		}
+
+		//****************************************
+
+		private int SearchOldPosition(TValue currentValue, TValue previousValue)
+		{ //****************************************
+			var MyItems = Items;
+			var MyComparer = Comparer;
+			int LowIndex = 0, HighIndex = Items.Count - 1;
+			//****************************************
+
+			while (LowIndex <= HighIndex)
 			{
-				// No luck, so the change property altered the sorting. Find it the hard way.
-				// Since the comparer implements value equality, we can't use IndexOf
-				for (int Index = 0; Index < MyItems.Count; Index++)
+				int MiddleIndex = LowIndex + ((HighIndex - LowIndex) >> 1);
+				var MiddleValue = Items[MiddleIndex];
+
+				// If the reference is found, return its index
+				if (object.ReferenceEquals(MiddleValue, currentValue))
+					return MiddleIndex;
+
+				// Compare against the previous value, since that's what we're searching for the index of
+				var Result = MyComparer.Compare(MiddleValue, previousValue);
+
+				if (Result == 0)
 				{
-					if (MyComparer.Compare(CurrentItem, MyItems[Index]) == 0)
-						continue;
+					// We might match exactly because there are duplicates
+					LowIndex = MiddleIndex;
 
-					OldIndex = Index;
+					// Check below our current match
+					while (LowIndex > 0)
+					{
+						MiddleValue = Items[--LowIndex];
 
-					break;
+						if (object.ReferenceEquals(MiddleValue, currentValue))
+							return LowIndex;
+
+						if (MyComparer.Compare(MiddleValue, previousValue) != 0)
+							break;
+					}
+
+					HighIndex = MiddleIndex;
+
+					// Check above our current match
+					while (HighIndex < Items.Count - 1)
+					{
+						MiddleValue = Items[++HighIndex];
+
+						if (object.ReferenceEquals(MiddleValue, currentValue))
+							return HighIndex;
+
+						if (MyComparer.Compare(MiddleValue, previousValue) != 0)
+							break;
+					}
+
+					// No match found
+					return -1;
 				}
 
-				if (OldIndex == -1)
-					return; // Notification for something that's not even in the list?
+				if (Result < 0)
+					LowIndex = MiddleIndex + 1;
+				else
+					HighIndex = MiddleIndex - 1;
 			}
 
-			// We know where it was. Now figure out where it ought to be
-			// Subtract 2 here instead of 1, since we want to ignore our existing item
-			int LowerBound = 0, UpperBound = MyItems.Count - 2;
-
-			while (LowerBound <= UpperBound)
-			{
-				int MiddleIndex = LowerBound + ((UpperBound - LowerBound) >> 1);
-				int CompareResult = MyComparer.Compare(MyItems[MiddleIndex >= OldIndex ? MiddleIndex + 1 : MiddleIndex], CurrentItem);
-
-				if (CompareResult < 0)
-					LowerBound = MiddleIndex + 1;
-				else if (CompareResult > 0)
-					UpperBound = MiddleIndex - 1;
-
-
-			}
+			return -1; // No match found
 		}
+
+		private int SearchNewPosition(TValue currentValue, TValue previousValue)
+		{ //****************************************
+			var MyItems = Items;
+			var MyComparer = Comparer;
+			int LowIndex = 0, HighIndex = Items.Count - 1;
+			//****************************************
+
+			while (LowIndex <= HighIndex)
+			{
+				int MiddleIndex = LowIndex + ((HighIndex - LowIndex) >> 1);
+				var MiddleValue = Items[MiddleIndex];
+
+				// If the reference is found, use the old value for comparisions
+				if (object.ReferenceEquals(MiddleValue, currentValue))
+					MiddleValue = previousValue;
+
+				// Compare against the current value, since that's what we're searching for the new index of
+				var Result = MyComparer.Compare(MiddleValue, currentValue);
+
+				if (Result == 0)
+					return MiddleIndex;
+
+				if (Result < 0)
+					LowIndex = MiddleIndex + 1;
+				else
+					HighIndex = MiddleIndex - 1;
+			}
+
+			return LowIndex; // No match found
+		}
+
+		//****************************************
+
+#if PORTABLE
+		private static Func<TValue, TValue> CreateCloneMethod()
+		{
+			throw new ArgumentNullException("cloneMethod", "Clone Method must be provided");
+		}
+#else
+		private static Func<TValue, TValue> CreateCloneMethod()
+		{
+			if (typeof(ICloneable).IsAssignableFrom(typeof(TValue)))
+				return CloneWithICloneable;
+
+			throw new NotSupportedException("TValue must implement ICloneable");
+		}
+
+		private static TValue CloneWithICloneable(TValue source)
+		{
+			return (TValue)(source as ICloneable).Clone();
+		}
+#endif
 	}
 }

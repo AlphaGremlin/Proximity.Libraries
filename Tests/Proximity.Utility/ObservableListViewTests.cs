@@ -93,7 +93,7 @@ namespace Proximity.Utility.Tests
 		}
 
 		[Test(), Timeout(2000), Repeat(5)]
-		public void PrePopulateMaximum([Values(512, 1024, 2048)] int maximum)
+		public void PrePopulateMaximum([Values(256, 512, 1024, 2048)] int maximum)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
@@ -169,7 +169,7 @@ namespace Proximity.Utility.Tests
 		}
 
 		[Test(), Timeout(2000), Repeat(5)]
-		public void PopulateMaximum([Values(512, 1024, 2048)] int maximum)
+		public void PopulateMaximum([Values(256, 512, 1024, 2048)] int maximum)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
@@ -193,9 +193,9 @@ namespace Proximity.Utility.Tests
 
 			Thread.Sleep(1);
 		}
-
+		
 		[Test(), Timeout(2000), Repeat(5)]
-		public void PopulateMaximumFilter([Values(512, 1024, 2048)] int maximum)
+		public void PopulateMaximumFilter([Values(256, 512, 1024, 2048)] int maximum)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
@@ -277,7 +277,7 @@ namespace Proximity.Utility.Tests
 		}
 
 		[Test(), Timeout(2000), Repeat(5)]
-		public void PopulateBeginEndMaximum([Values(512, 1024, 2048)] int maximum)
+		public void PopulateBeginEndMaximum([Values(256, 512, 1024, 2048)] int maximum)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
@@ -334,7 +334,7 @@ namespace Proximity.Utility.Tests
 
 			Thread.Sleep(1);
 		}
-
+		
 		[Test(), Timeout(2000), Repeat(20)]
 		public void ReplaceFilter()
 		{	//****************************************
@@ -364,8 +364,42 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
+		[Test(), Timeout(2000), Repeat(20)]
+		public void ReplaceFilterSeed([Values(357656222)] int seed)
+		{ //****************************************
+			var MyRandom = new Random(seed);
+			var MyRecords = new ObservableList<int>(1024);
+			//****************************************
+
+			var MyView = new ObservableListView<int>(MyRecords, FilterLessThan512);
+
+			for (int Index = 0; Index < 1024; Index++)
+				MyRecords.Add(MyRandom.Next(short.MaxValue));
+
+			for (int Index = 0; Index < 1024; Index++)
+			{
+				var MyInnerRecords = MyRecords.Where(FilterLessThan512).ToArray();
+
+				Array.Sort(MyInnerRecords);
+
+				CollectionAssert.AreEqual(MyInnerRecords, MyView, "Iteration {0}", Index);
+
+				MyRecords[MyRandom.Next(1024)] = MyRandom.Next(short.MaxValue);
+			}
+
+			//****************************************
+
+			var MySortedRecords = MyRecords.Where(FilterLessThan512).ToArray();
+
+			Array.Sort(MySortedRecords);
+
+			CollectionAssert.AreEqual(MySortedRecords, MyView);
+
+			Thread.Sleep(1);
+		}
+
 		[Test(), Timeout(2000), Repeat(5)]
-		public void ReplaceMaximum([Values(512, 1024, 2048)] int maximum)
+		public void ReplaceMaximum([Values(256, 512, 1024, 2048)] int maximum)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
@@ -396,7 +430,7 @@ namespace Proximity.Utility.Tests
 		}
 
 		[Test(), Timeout(2000), Repeat(10)]
-		public void ReplaceMaximumFilter([Values(512, 1024, 2048)] int maximum)
+		public void ReplaceMaximumFilter([Values(256, 512, 1024, 2048)] int maximum)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
@@ -427,7 +461,48 @@ namespace Proximity.Utility.Tests
 		}
 
 		[Test(), Timeout(2000), Repeat(10)]
-		public void ReplaceMaximumFilter2([Values(512, 1024, 2048)] int maximum)
+		public void ReplaceMaximumFilterSeed()
+		{ //****************************************
+			var MySeed = 356114168;
+			var MyRandom = new Random(MySeed);
+			var MyRecords = new ObservableList<int>(1024);
+			//****************************************
+
+			var MyView = new ObservableListView<int>(MyRecords, FilterLessThan512, 256);
+
+			for (int Index = 0; Index < 1024; Index++)
+			{
+				MyRecords.Add(MyRandom.Next(short.MaxValue));
+			}
+
+			for (int Index = 0; Index < 1024; Index++)
+			{
+				var MyInnerRecords = MyRecords.Where(FilterLessThan512).ToArray();
+
+				Array.Sort(MyInnerRecords);
+				if (MyInnerRecords.Length > 256)
+					Array.Resize(ref MyInnerRecords, 256);
+
+				CollectionAssert.AreEqual(MyInnerRecords, MyView, "Iteration {0}", Index);
+
+				MyRecords[MyRandom.Next(1024)] = MyRandom.Next(short.MaxValue);
+			}
+
+			//****************************************
+
+			var MySortedRecords = MyRecords.Where(FilterLessThan512).ToArray();
+
+			Array.Sort(MySortedRecords);
+			if (MySortedRecords.Length > 256)
+				Array.Resize(ref MySortedRecords, 256);
+
+			CollectionAssert.AreEqual(MySortedRecords, MyView, "Bad Seed was {0}", MySeed);
+
+			Thread.Sleep(1);
+		}
+
+		[Test(), Timeout(2000), Repeat(10)]
+		public void ReplaceMaximumFilter2([Values(256, 512, 1024, 2048)] int maximum)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
@@ -516,7 +591,7 @@ namespace Proximity.Utility.Tests
 		}
 
 		[Test(), Timeout(2000), Repeat(5)]
-		public void RemoveMaximum([Values(512, 1024, 2048)] int maximum)
+		public void RemoveMaximum([Values(256, 512, 1024, 2048)] int maximum)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
@@ -545,9 +620,9 @@ namespace Proximity.Utility.Tests
 
 			Thread.Sleep(1);
 		}
-
+		
 		[Test(), Timeout(2000), Repeat(5)]
-		public void RemoveMaximumFilter([Values(512, 1024, 2048)] int maximum)
+		public void RemoveMaximumFilter([Values(256, 512, 1024, 2048)] int maximum)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
@@ -578,7 +653,7 @@ namespace Proximity.Utility.Tests
 		}
 
 		[Test(), Timeout(2000), Repeat(5)]
-		public void RemoveMaximumFilter2([Values(512, 1024, 2048)] int maximum)
+		public void RemoveMaximumFilter2([Values(256, 512, 1024, 2048)] int maximum)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
@@ -781,6 +856,221 @@ namespace Proximity.Utility.Tests
 
 			Assert.AreEqual(0, MyView.Count, "Item count does not match");
 			Assert.AreEqual(1024, EventCount, "Event Count does not match");
+		}
+
+		[Test(), Timeout(2000), Repeat(5)]
+		public void EventMaximum([Values(256, 512, 1024)] int maximum)
+		{ //****************************************
+			var MySeed = Environment.TickCount;
+			var MyRandom = new Random(MySeed);
+			var MyRecords = new ObservableList<int>(1024);
+			//****************************************
+
+			var MyView = new ObservableListView<int>(MyRecords, maximum);
+			var MyTopView = new ObservableListView<int>(MyView);
+
+			for (int Index = 0; Index < 1024; Index++)
+				MyRecords.Add(MyRandom.Next(short.MaxValue));
+
+			//****************************************
+
+			var MySortedRecords = MyRecords.ToArray();
+
+			Array.Sort(MySortedRecords);
+			if (MySortedRecords.Length > maximum)
+				Array.Resize(ref MySortedRecords, maximum);
+
+			CollectionAssert.AreEqual(MySortedRecords, MyTopView, "Bad Seed was {0}", MySeed);
+
+			Thread.Sleep(1);
+		}
+
+		[Test(), Timeout(2000), Repeat(5)]
+		public void EventMaximumFilter([Values(256, 512, 1024)] int maximum)
+		{ //****************************************
+			var MySeed = Environment.TickCount;
+			var MyRandom = new Random(MySeed);
+			var MyRecords = new ObservableList<int>(1024);
+			//****************************************
+
+			var MyView = new ObservableListView<int>(MyRecords, FilterLessThan512, maximum);
+			var MyTopView = new ObservableListView<int>(MyView);
+
+			for (int Index = 0; Index < 1024; Index++)
+				MyRecords.Add(MyRandom.Next(short.MaxValue));
+
+			//****************************************
+
+			var MySortedRecords = MyRecords.Where(FilterLessThan512).ToArray();
+
+			Array.Sort(MySortedRecords);
+			if (MySortedRecords.Length > maximum)
+				Array.Resize(ref MySortedRecords, maximum);
+
+			CollectionAssert.AreEqual(MySortedRecords, MyTopView, "Bad Seed was {0}", MySeed);
+
+			Thread.Sleep(1);
+		}
+
+		[Test(), Timeout(2000), Repeat(5)]
+		public void EventReplaceMaximum([Values(256, 512, 1024)] int maximum)
+		{ //****************************************
+			var MySeed = Environment.TickCount;
+			var MyRandom = new Random(MySeed);
+			var MyRecords = new ObservableList<int>(1024);
+			//****************************************
+
+			var MyView = new ObservableListView<int>(MyRecords, maximum);
+			var MyTopView = new ObservableListView<int>(MyView);
+
+			for (int Index = 0; Index < 1024; Index++)
+				MyRecords.Add(MyRandom.Next(short.MaxValue));
+
+			for (int Index = 0; Index < 1024; Index++)
+			{
+				MyRecords[MyRandom.Next(1024)] = MyRandom.Next(short.MaxValue);
+			}
+
+			//****************************************
+
+			var MySortedRecords = MyRecords.ToArray();
+
+			Array.Sort(MySortedRecords);
+			if (MySortedRecords.Length > maximum)
+				Array.Resize(ref MySortedRecords, maximum);
+
+			CollectionAssert.AreEqual(MySortedRecords, MyTopView, "Bad Seed was {0}", MySeed);
+
+			Thread.Sleep(1);
+		}
+		
+		[Test(), Timeout(2000), Repeat(10)]
+		public void EventReplaceMaximumFilter([Values(256, 512, 1024)] int maximum)
+		{ //****************************************
+			var MySeed = Environment.TickCount;
+			var MyRandom = new Random(MySeed);
+			var MyRecords = new ObservableList<int>(1024);
+			//****************************************
+
+			var MyView = new ObservableListView<int>(MyRecords, FilterLessThan512, maximum);
+			var MyTopView = new ObservableListView<int>(MyView);
+
+			for (int Index = 0; Index < 1024; Index++)
+				MyRecords.Add(MyRandom.Next(short.MaxValue));
+
+			for (int Index = 0; Index < 1024; Index++)
+			{
+				MyRecords[MyRandom.Next(1024)] = MyRandom.Next(short.MaxValue);
+			}
+
+			//****************************************
+
+			var MySortedRecords = MyRecords.Where(FilterLessThan512).ToArray();
+
+			Array.Sort(MySortedRecords);
+			if (MySortedRecords.Length > maximum)
+				Array.Resize(ref MySortedRecords, maximum);
+
+			CollectionAssert.AreEqual(MySortedRecords, MyTopView, "Bad Seed was {0}", MySeed);
+
+			Thread.Sleep(1);
+		}
+
+		[Test(), Sequential()]
+		public void EventReplaceMaximumSeed([Values(355591720, 356919648)] int seed, [Values(256, 512)] int maximum)
+		{ //****************************************
+			var MyRandom = new Random(seed);
+			var MyRecords = new ObservableList<int>(1024);
+			//****************************************
+
+			var MyView = new ObservableListView<int>(MyRecords, maximum);
+			var MyTopView = new ObservableListView<int>(MyView);
+
+			for (int Index = 0; Index < 1024; Index++)
+				MyRecords.Add(MyRandom.Next(short.MaxValue));
+
+			for (int Index = 0; Index < 1024; Index++)
+			{
+				CollectionAssert.AreEqual(MyView, MyTopView, "Iteration {0}", Index);
+
+				MyRecords[MyRandom.Next(1024)] = MyRandom.Next(short.MaxValue);
+			}
+
+			//****************************************
+
+			var MySortedRecords = MyRecords.ToArray();
+
+			Array.Sort(MySortedRecords);
+			if (MySortedRecords.Length > maximum)
+				Array.Resize(ref MySortedRecords, maximum);
+
+			CollectionAssert.AreEqual(MySortedRecords, MyTopView);
+
+			Thread.Sleep(1);
+		}
+
+		[Test(), Timeout(2000), Repeat(5)]
+		public void EventRemoveMaximum([Values(256, 512, 1024)] int maximum)
+		{ //****************************************
+			var MySeed = Environment.TickCount;
+			var MyRandom = new Random(MySeed);
+			var MyRecords = new ObservableList<int>(1024);
+			//****************************************
+
+			var MyView = new ObservableListView<int>(MyRecords, maximum);
+			var MyTopView = new ObservableListView<int>(MyView);
+
+			for (int Index = 0; Index < 1024; Index++)
+				MyRecords.Add(MyRandom.Next(short.MaxValue));
+
+			for (int Index = 0; Index < 512; Index++)
+			{
+				MyRecords.RemoveAt(MyRandom.Next(MyRecords.Count));
+			}
+
+			//****************************************
+
+			var MySortedRecords = MyRecords.ToArray();
+
+			Array.Sort(MySortedRecords);
+			if (MySortedRecords.Length > maximum)
+				Array.Resize(ref MySortedRecords, maximum);
+
+			CollectionAssert.AreEqual(MySortedRecords, MyTopView, "Bad Seed was {0}", MySeed);
+
+			Thread.Sleep(1);
+		}
+
+		[Test(), Timeout(2000), Repeat(5)]
+		public void EventRemoveMaximumFilter([Values(256, 512, 1024)] int maximum)
+		{ //****************************************
+			var MySeed = Environment.TickCount;
+			var MyRandom = new Random(MySeed);
+			var MyRecords = new ObservableList<int>(1024);
+			//****************************************
+
+			var MyView = new ObservableListView<int>(MyRecords, FilterLessThan512, maximum);
+			var MyTopView = new ObservableListView<int>(MyView);
+
+			for (int Index = 0; Index < 1024; Index++)
+				MyRecords.Add(MyRandom.Next(short.MaxValue));
+
+			for (int Index = 0; Index < 512; Index++)
+			{
+				MyRecords.RemoveAt(MyRandom.Next(MyRecords.Count));
+			}
+
+			//****************************************
+
+			var MySortedRecords = MyRecords.Where(FilterLessThan512).ToArray();
+
+			Array.Sort(MySortedRecords);
+			if (MySortedRecords.Length > maximum)
+				Array.Resize(ref MySortedRecords, maximum);
+
+			CollectionAssert.AreEqual(MySortedRecords, MyTopView, "Bad Seed was {0}", MySeed);
+
+			Thread.Sleep(1);
 		}
 
 		//****************************************
