@@ -30,7 +30,7 @@ namespace Proximity.Utility.Collections
 		private const string IndexerName = "Item[]";
 		//****************************************
 		private readonly IList<TValue> _Source;
-		private readonly List<TValue> _Items, _FilteredItems;
+		private readonly List<TValue> _Items;
 
 		private readonly IComparer<TValue> _Comparer;
 		private readonly Predicate<TValue> _Filter;
@@ -157,7 +157,7 @@ namespace Proximity.Utility.Collections
 			if (source.Count > 0)
 			{
 				_Items.AddRange(source);
-				_Items.Sort(comparer);
+				_Items.Sort(_Comparer);
 
 				_VisibleSize = GetVisibleCount();
 			}
@@ -770,12 +770,12 @@ namespace Proximity.Utility.Collections
 					HighIndex = MiddleIndex - 1; // Hidden, high must be below
 			}
 
-			if (_Filter(Items[LowIndex]))
+			if (LowIndex < Items.Count && _Filter(Items[LowIndex]))
 				return LowIndex + 1;
 
 			return LowIndex;
 		}
-
+#if DEBUG
 		protected void VerifyList()
 		{
 			var LastItem = _Items[0];
@@ -790,7 +790,7 @@ namespace Proximity.Utility.Collections
 				LastItem = NextItem;
 			}
 		}
-
+#endif
 		//****************************************
 
 			/// <summary>

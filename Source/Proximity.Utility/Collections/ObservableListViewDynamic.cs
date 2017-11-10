@@ -125,6 +125,7 @@ namespace Proximity.Utility.Collections
 		/// <param name="cloneMethod">A method to clone the object for sorting and filtering purposes</param>
 		/// <param name="comparer">The comparer to use for sorting</param>
 		/// <param name="filter">A filter to apply to the source list</param>
+		/// <param name="maximum">The maximum number of items to show</param>
 		[SecuritySafeCritical]
 		public ObservableListViewDynamic(IList<TValue> source, Func<TValue, TValue> cloneMethod, IComparer<TValue> comparer, Predicate<TValue> filter, int? maximum) : base(source, comparer, filter, maximum)
 		{

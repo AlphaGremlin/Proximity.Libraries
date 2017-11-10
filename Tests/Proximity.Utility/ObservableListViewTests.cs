@@ -66,24 +66,24 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(20)]
-		public void PrePopulateFilter()
+		[Test(), Timeout(2000), Repeat(5)]
+		public void PrePopulateFilter([Values(16, 24, 777, 1024)] int count)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
-			var MyRecords = new ObservableList<int>(1024);
+			var MyRecords = new ObservableList<int>(count);
 			//****************************************
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (int Index = 0; Index < count; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
 			//****************************************
 
-			var MyView = new ObservableListView<int>(MyRecords, FilterLessThan512);
+			var MyView = new ObservableListView<int>(MyRecords, FilterMoreThan512);
 
 			//****************************************
 
-			var MySortedRecords = MyRecords.Where(FilterLessThan512).ToArray();
+			var MySortedRecords = MyRecords.Where(FilterMoreThan512).ToArray();
 
 			Array.Sort(MySortedRecords);
 
