@@ -2,7 +2,7 @@
  Cloning.cs
  Created: 2013-10-01
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !NETSTANDARD1_3 && !NETSTANDARD2_0
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -58,7 +58,7 @@ namespace Proximity.Utility.Reflection
 		{
 			var CloneType = typeof(Cloning<>).MakeGenericType(input.GetType());
 
-			return (TObject)CloneType.GetMethod("Clone", BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, new object[] { input });
+			return (TObject)CloneType.GetMethod(nameof(Cloning<object>.Clone), BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, new object[] { input });
 		}
 
 		/// <summary>
@@ -99,7 +99,7 @@ namespace Proximity.Utility.Reflection
 			
 			var CloneType = typeof(Cloning<>).MakeGenericType(source.GetType());
 
-			CloneType.GetMethod("CloneTo", BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, new object[] { source, target });
+			CloneType.GetMethod(nameof(Cloning<object>.CloneTo), BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, new object[] { source, target });
 		}
 
 		/// <summary>
@@ -273,8 +273,8 @@ namespace Proximity.Utility.Reflection
 				{
 					MyEmitter
 						.LdToken(MyType) // Token
-						.Call(typeof(Type), "GetTypeFromHandle", typeof(RuntimeTypeHandle)) // Type
-						.Call(typeof(FormatterServices), "GetUninitializedObject", typeof(Type)) // Clone (untyped)
+						.Call(typeof(Type), nameof(Type.GetTypeFromHandle), typeof(RuntimeTypeHandle)) // Type
+						.Call(typeof(FormatterServices), nameof(FormatterServices.GetUninitializedObject), typeof(Type)) // Clone (untyped)
 						.CastClass(MyType) // Clone
 						.StLoc("Clone"); // -
 				}
@@ -567,7 +567,7 @@ namespace Proximity.Utility.Reflection
 					if (MyFieldType.IsValueType)
 					{
 						FieldClone = typeof(DeepClone<>).MakeGenericType(MyFieldType);
-						FieldCloneMethod = (DynamicMethod)FieldClone.GetMethod("GetDeepCloneMethod", BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, null);
+						FieldCloneMethod = (DynamicMethod)FieldClone.GetMethod(nameof(DeepClone<int>.GetDeepCloneMethod), BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, null);
 					
 						continue;
 					}
@@ -576,7 +576,7 @@ namespace Proximity.Utility.Reflection
 					if (MyFieldType.IsByRef)
 					{
 						FieldClone = typeof(Cloning<>).MakeGenericType(MyFieldType);
-						FieldCloneMethod = (DynamicMethod)FieldClone.GetMethod("GetDeepCloneMethod", BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, null);
+						FieldCloneMethod = (DynamicMethod)FieldClone.GetMethod(nameof(DeepClone<int>.GetDeepCloneMethod), BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, null);
 						
 						var StoreRefLabel = MyEmitter.DeclareLabel();
 						
@@ -593,7 +593,7 @@ namespace Proximity.Utility.Reflection
 							.LdArg(1) // Dictionary
 							.LdLoc("Object") // Dictionary, Value (typed)
 							.LdLocA("Object") // Dictionary, Value (typed), &Target Field
-							.CallVirt(MyDictionaryType, "TryGetValue", typeof(object), typeof(object).MakeByRefType()) // Item Found
+							.CallVirt(MyDictionaryType, nameof(IDictionary<object, object>.TryGetValue), typeof(object), typeof(object).MakeByRefType()) // Item Found
 						// Jump to the end if we found this object's duplicate in the cache
 							.BrTrue(StoreRefLabel); // -
 						
@@ -648,9 +648,8 @@ namespace Proximity.Utility.Reflection
 					.StLoc("Context");
 			}
 		}
-
-		[SecuritySafeCritical]
-		public static DynamicMethod CreateObjectMethod()
+		
+		private static DynamicMethod CreateObjectMethod()
 		{ //****************************************
 			var MyType = typeof(TObject);
 			var MyEmitter = EmitHelper.FromFunction("CreateFactory", typeof(Cloning), typeof(TObject));
@@ -659,8 +658,8 @@ namespace Proximity.Utility.Reflection
 			// Call this when it's attached to the Cloning type, which is SecuritySafeCritical
 			MyEmitter
 				.LdToken(MyType) // Token
-				.Call(typeof(Type), "GetTypeFromHandle", typeof(RuntimeTypeHandle)) // Type
-				.Call(typeof(FormatterServices), "GetUninitializedObject", typeof(Type)) // Clone (untyped)
+				.Call(typeof(Type), nameof(Type.GetTypeFromHandle), typeof(RuntimeTypeHandle)) // Type
+				.Call(typeof(FormatterServices), nameof(FormatterServices.GetUninitializedObject), typeof(Type)) // Clone (untyped)
 				.CastClass(MyType) // Clone
 				.Ret
 				.End();
@@ -674,15 +673,15 @@ namespace Proximity.Utility.Reflection
 		private static DynamicMethod _DeepCloneSource = null;
 		//****************************************
 		
-		private static DynamicMethod GetDeepCloneMethod()
+		internal static DynamicMethod GetDeepCloneMethod()
 		{
 			if (_DeepCloneSource == null)
 				BuildDeepCloneMethod();
 			
 			return _DeepCloneSource;
 		}
-		
-		private static void BuildDeepCloneMethod()
+
+		internal static void BuildDeepCloneMethod()
 		{
 			
 		}

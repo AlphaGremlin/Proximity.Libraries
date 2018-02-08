@@ -2,7 +2,7 @@
  AssemblyElementCollection.cs
  Created: 2011-08-03
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Collections;
 using System.Collections.Generic;

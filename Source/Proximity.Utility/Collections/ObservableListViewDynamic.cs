@@ -348,7 +348,7 @@ namespace Proximity.Utility.Collections
 
 		//****************************************
 
-#if PORTABLE
+#if NETSTANDARD1_3
 		private static Func<TValue, TValue> CreateCloneMethod()
 		{
 			throw new ArgumentNullException("cloneMethod", "Clone Method must be provided");

@@ -2,7 +2,7 @@
  StreamTaskScheduler.cs
  Created: 2012-09-13
 \****************************************/
-#if !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;

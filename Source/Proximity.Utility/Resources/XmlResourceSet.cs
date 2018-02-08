@@ -2,7 +2,7 @@
  XmlResourceSet.cs
  Created: 25-05-2010
 \****************************************/
-#if !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Collections;
 using System.Globalization;

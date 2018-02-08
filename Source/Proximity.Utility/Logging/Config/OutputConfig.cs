@@ -2,6 +2,7 @@
  OutputConfig.cs
  Created: 2-06-2009
 \****************************************/
+#if !NETSTANDARD1_3 && !NETSTANDARD2_0
 using System;
 using System.Xml;
 using System.Reflection;
@@ -131,3 +132,4 @@ namespace Proximity.Utility.Logging.Config
 		}
 	}
 }
+#endif

@@ -82,7 +82,7 @@ namespace Proximity.Utility.Collections
 			_Comparer = comparer;
 
 			// Ensure we add all the values in the order sorted by hash code
-#if PORTABLE
+#if NETSTANDARD1_3
 			_Keys = new int[0];
 			_Values = new TValue[0];
 

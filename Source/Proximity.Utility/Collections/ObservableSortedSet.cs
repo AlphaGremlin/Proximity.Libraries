@@ -622,7 +622,7 @@ namespace Proximity.Utility.Collections
 
 		private static IComparer<TValue> GetDefaultComparer()
 		{
-#if PORTABLE
+#if NETSTANDARD1_3
 			var MyInfo = typeof(TValue).GetTypeInfo();
 
 			if (!typeof(IComparable<TValue>).GetTypeInfo().IsAssignableFrom(MyInfo) && !typeof(IComparable).GetTypeInfo().IsAssignableFrom(MyInfo))

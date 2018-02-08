@@ -11,7 +11,7 @@ namespace Proximity.Utility.Threading
 	/// <summary>
 	/// Provides a dummy structure for TaskCompletionSource
 	/// </summary>
-#if !PORTABLE
+#if !NETSTANDARD1_3
 	[Serializable]
 #endif
 	public struct VoidStruct

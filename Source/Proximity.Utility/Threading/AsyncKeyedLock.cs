@@ -229,7 +229,7 @@ namespace Proximity.Utility.Threading
 						break;
 
 					// Don't want to activate waiters on the calling thread, since it can cause a stack overflow if Wait gets called from a Release continuation
-#if PORTABLE
+#if NETSTANDARD1_3
 					Task.Factory.StartNew(ReleaseWaiter, NextWaiter);
 #else
 					ThreadPool.QueueUserWorkItem(ReleaseWaiter, NextWaiter);

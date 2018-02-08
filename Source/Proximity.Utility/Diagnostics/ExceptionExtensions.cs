@@ -2,7 +2,7 @@
  Extensions.cs
  Created: 2013-04-30
 \****************************************/
-#if !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Collections;
 using System.Diagnostics;

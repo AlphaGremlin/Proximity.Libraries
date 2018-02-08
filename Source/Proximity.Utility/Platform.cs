@@ -2,7 +2,7 @@
  Platform.cs
  Created: 14-03-2009
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !NETSTANDARD1_3 && !NETSTANDARD2_0
 using System;
 using System.Diagnostics;
 using System.IO;

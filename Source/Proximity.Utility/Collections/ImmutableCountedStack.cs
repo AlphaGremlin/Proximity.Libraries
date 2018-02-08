@@ -5,7 +5,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+#if !NETSTANDARD1_3
 using System.Runtime.Serialization;
+#endif
 using System.Security;
 using System.Threading;
 //****************************************
@@ -118,7 +120,7 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Provides an Immutable Stack that also maintains a counter
 	/// </summary>
-#if !PORTABLE
+#if !NETSTANDARD1_3
 	[Serializable]
 #endif
 	public sealed class ImmutableCountedStack<TItem> : /*ISerializable,*/ IEnumerable<TItem>

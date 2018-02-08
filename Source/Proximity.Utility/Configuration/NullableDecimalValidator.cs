@@ -2,7 +2,7 @@
  NullableDecimalValidator.cs
  Created: 2014-06-11
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !NETSTANDARD1_3 && !NETSTANDARD2_0
 using System;
 using System.Configuration;
 using System.Globalization;

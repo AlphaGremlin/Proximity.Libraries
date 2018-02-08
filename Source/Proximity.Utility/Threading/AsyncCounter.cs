@@ -337,7 +337,7 @@ namespace Proximity.Utility.Threading
 					continue; // Yes, so find another
 
 				// Don't want to activate waiters on the calling thread though, since it can cause a stack overflow if Increment gets called from a Decrement continuation
-#if PORTABLE
+#if NETSTANDARD1_3
 				Task.Factory.StartNew(ReleaseWaiter, NextWaiter);
 #else
 				ThreadPool.QueueUserWorkItem(ReleaseWaiter, NextWaiter);
@@ -455,7 +455,7 @@ namespace Proximity.Utility.Threading
 						continue; // Yes, so find another
 
 					// Don't want to activate waiters on the calling thread though, since it can cause a stack overflow if Increment gets called from a Decrement continuation
-#if PORTABLE
+#if NETSTANDARD1_3
 					Task.Factory.StartNew(ReleaseWaiter, NextWaiter);
 #else
 					ThreadPool.QueueUserWorkItem(ReleaseWaiter, NextWaiter);
@@ -605,7 +605,7 @@ namespace Proximity.Utility.Threading
 			if (_PeekWaiters.TryDequeue(out NextWaiter))
 			{
 				// Yes, release it on another thread so we don't hold up the caller
-#if PORTABLE
+#if NETSTANDARD1_3
 				Task.Factory.StartNew(ReleasePeeker, NextWaiter);
 #else
 				ThreadPool.QueueUserWorkItem(ReleasePeeker, NextWaiter);

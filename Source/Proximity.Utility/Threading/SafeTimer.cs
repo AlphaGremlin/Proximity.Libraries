@@ -2,7 +2,7 @@
  SafeTimer.cs
  Created: 2012-05-11
 \****************************************/
-#if !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Collections.Generic;
 using System.Linq;

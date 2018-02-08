@@ -25,7 +25,7 @@ namespace Proximity.Utility.Reflection
 			return type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance);
 		}
 #endif
-#if !PORTABLE
+#if !NETSTANDARD1_3
 		/// <summary>
 		/// Checks for the existence of an interface on this Type, and returns the matching method info
 		/// </summary>

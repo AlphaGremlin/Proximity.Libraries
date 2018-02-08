@@ -1,161 +1,19 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <ProjectGuid>{887C7D16-0E23-4055-8535-46AA76DD4DEA}</ProjectGuid>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">Net45</Platform>
-    <OutputType>Library</OutputType>
-    <RootNamespace>Proximity.Utility.Tests</RootNamespace>
-    <AssemblyName>Proximity.Utility.Tests</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <SourceAnalysisOverrideSettingsFile>C:\Users\Danielc\AppData\Roaming\ICSharpCode/SharpDevelop3.0\Settings.SourceAnalysis</SourceAnalysisOverrideSettingsFile>
-    <AllowUnsafeBlocks>False</AllowUnsafeBlocks>
-    <NoStdLib>False</NoStdLib>
-    <WarningLevel>4</WarningLevel>
-    <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
-    <OutputPath>..\..\..\Tests\</OutputPath>
-    <ProductVersion>9.0.21022</ProductVersion>
-    <SchemaVersion>2.0</SchemaVersion>
-    <TargetFrameworkProfile />
-    <NoWin32Manifest>False</NoWin32Manifest>
-    <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
+    <TargetFrameworks>net462</TargetFrameworks>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Platform)' == 'Net45' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <RegisterForComInterop>False</RegisterForComInterop>
-    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
-    <BaseAddress>4194304</BaseAddress>
-    <FileAlignment>4096</FileAlignment>
-    <Prefer32Bit>False</Prefer32Bit>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>Full</DebugType>
-    <Optimize>False</Optimize>
-    <CheckForOverflowUnderflow>True</CheckForOverflowUnderflow>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <BaseIntermediateOutputPath>obj\</BaseIntermediateOutputPath>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-    <DebugSymbols>False</DebugSymbols>
-    <DebugType>None</DebugType>
-    <Optimize>True</Optimize>
-    <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
-    <DefineConstants>TRACE</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|Net45' ">
-    <DebugType>Full</DebugType>
-    <Optimize>False</Optimize>
-    <OutputPath>..\..\Build\</OutputPath>
-    <WarningLevel>4</WarningLevel>
-    <CheckForOverflowUnderflow>True</CheckForOverflowUnderflow>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|Net45' ">
-    <DebugType>none</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>..\..\..\Tests\</OutputPath>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Platform)' == 'Net40' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <RegisterForComInterop>False</RegisterForComInterop>
-    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
-    <BaseAddress>4194304</BaseAddress>
-    <FileAlignment>4096</FileAlignment>
-    <Prefer32Bit>False</Prefer32Bit>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|Net40' ">
-    <DebugType>Full</DebugType>
-    <Optimize>False</Optimize>
-    <OutputPath>..\..\Build\</OutputPath>
-    <WarningLevel>4</WarningLevel>
-    <CheckForOverflowUnderflow>True</CheckForOverflowUnderflow>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|Net40' ">
-    <DebugType>none</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>..\..\..\Tests\</OutputPath>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Platform)' == 'AnyCPU' ">
-    <BaseAddress>4194304</BaseAddress>
-    <PlatformTarget>x86</PlatformTarget>
-    <RegisterForComInterop>False</RegisterForComInterop>
-    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
-    <FileAlignment>4096</FileAlignment>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net462|AnyCPU'">
     <OutputPath>..\..\Build\Tests\</OutputPath>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net462|AnyCPU'">
     <OutputPath>..\..\Build\Tests\</OutputPath>
-    <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
-  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
-    <Reference Include="nunit.framework, Version=3.6.1.0, Culture=neutral, PublicKeyToken=2638cd05610744eb, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\NUnit.3.6.1\lib\net45\nunit.framework.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Collections.Immutable, Version=1.2.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\System.Collections.Immutable.1.3.1\lib\portable-net45+win8+wp8+wpa81\System.Collections.Immutable.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System.Configuration" />
-    <Reference Include="System.Core">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-    </Reference>
-    <Reference Include="System.Xml" />
-    <Reference Include="System.Xml.Linq">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-    </Reference>
+    <PackageReference Include="NUnit" Version="3.9.0" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.4.0" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AsyncCollectionTests.cs" />
-    <Compile Include="AsyncCounterTests.cs" />
-    <Compile Include="AsyncKeyedLockTests.cs" />
-    <Compile Include="AsyncReadWriteLockTests.cs" />
-    <Compile Include="AsyncSemaphoreTests.cs" />
-    <Compile Include="AsyncSwitchLockTests.cs" />
-    <Compile Include="AsyncTaskFlagTests.cs" />
-    <Compile Include="BinaryTextReaderTests.cs" />
-    <Compile Include="BinaryTextWriterTests.cs" />
-    <Compile Include="CloneTests.cs" />
-    <Compile Include="ConfigurationTests.cs" />
-    <Compile Include="EmitterTests.cs" />
-    <Compile Include="EqualityTests.cs" />
-    <Compile Include="ImmutablePagedSetTests.cs" />
-    <Compile Include="LinqExtensionTests.cs" />
-    <Compile Include="ListExtensionTests.cs" />
-    <Compile Include="LoggingTests.cs" />
-    <Compile Include="ObservableListViewDynamicTests.cs" />
-    <Compile Include="ObservableSortedListTests.cs" />
-    <Compile Include="ObservableDictionaryTests.cs" />
-    <Compile Include="ObservableListViewTests.cs" />
-    <Compile Include="RemoteTaskTests.cs" />
-    <Compile Include="WeakHashSetTests.cs" />
-    <None Include="packages.config" />
-    <None Include="SafeThreadPoolTests.cs" />
-    <Compile Include="SafeTimerTests.cs" />
-    <Compile Include="TaskExtensionTests.cs" />
-    <Compile Include="TaskFlagTests.cs" />
-    <None Include="TaskStreamSlimTests.cs" />
-    <Compile Include="TaskStreamTests.cs" />
-    <Compile Include="WeakCollectionTests.cs" />
-    <Compile Include="WeakDelegateSlimTests.cs" />
-    <Compile Include="WeakEventArgs.cs" />
-    <Compile Include="WeakEventTests.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\Source\Proximity.Utility.Net45\Proximity.Utility.Net45.csproj">
-      <Project>{5e14f771-3b14-422d-8b4c-26d50a7657fc}</Project>
-      <Name>Proximity.Utility.Net45</Name>
-    </ProjectReference>
+    <ProjectReference Include="..\..\Source\Proximity.Utility\Proximity.Utility.csproj" />
   </ItemGroup>
 </Project>

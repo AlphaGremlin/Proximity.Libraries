@@ -2,7 +2,7 @@
  TaskFlag.cs
  Created: 2012-09-13
 \****************************************/
-#if !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Linq;
 using System.Security;

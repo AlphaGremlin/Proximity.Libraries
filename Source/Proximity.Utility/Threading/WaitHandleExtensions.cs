@@ -2,7 +2,7 @@
  WaitHandleExtensions.cs
  Created: 2014-12-05
 \****************************************/
-#if !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;

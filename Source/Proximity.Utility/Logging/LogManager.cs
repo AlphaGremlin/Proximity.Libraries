@@ -2,14 +2,16 @@
  LogManager.cs
  Created: 3-06-2009
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+#if !NETSTANDARD2_0
 using System.Runtime.Remoting.Messaging;
+#endif
 using System.Security;
 using System.Security.Permissions;
 using System.Threading;
@@ -32,7 +34,7 @@ namespace Proximity.Utility.Logging
 		private static bool _IsStarted;
 		private static DateTime _StartTime;
 
-#if NET46
+#if NET462 || NETSTANDARD2_0
 		private static AsyncLocal<ImmutableCountedStack<LogSection>> _Context = new AsyncLocal<ImmutableCountedStack<LogSection>>();
 #endif
 		//****************************************
@@ -40,6 +42,9 @@ namespace Proximity.Utility.Logging
 		[SecuritySafeCritical]
 		static LogManager()
 		{
+#if NETSTANDARD2_0
+			_StartTime = DateTime.Now;
+#else
 			try
 			{
 				new SecurityPermission(PermissionState.Unrestricted).Assert();
@@ -56,6 +61,7 @@ namespace Proximity.Utility.Logging
 			catch
 			{
 			}
+#endif
 		}
 
 		//****************************************
@@ -262,7 +268,7 @@ namespace Proximity.Utility.Logging
 		/// </summary>
 		public static ImmutableCountedStack<LogSection> Context
 		{
-#if NET46
+#if NET462 || NETSTANDARD2_0
 			get { return _Context.Value ?? ImmutableCountedStack<LogSection>.Empty; }
 			private set { _Context.Value = value; }
 #else

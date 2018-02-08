@@ -79,7 +79,7 @@ namespace Proximity.Utility.Collections
 		
 		//****************************************
 		
-#if PORTABLE
+#if NETSTANDARD1_3
 		private static ReverseComparer<TValue> CreateComparer()
 		{
 			return new WrappedComparer<TValue>(Comparer<TValue>.Default);

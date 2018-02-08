@@ -2,7 +2,7 @@
  SocketAwaitableEventArgs.cs
  Created: 2014-12-16
 \****************************************/
-#if !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;

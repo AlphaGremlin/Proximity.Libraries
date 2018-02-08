@@ -291,7 +291,7 @@ namespace Proximity.Terminal
 		[SecuritySafeCritical]
 		private void OnAssemblyLoad(object sender, AssemblyLoadEventArgs args)
 		{
-			if (args.LoadedAssembly.ManifestModule.Assembly is AssemblyBuilder)
+			if (args.LoadedAssembly.ManifestModule.Assembly.IsDynamic)
 				return;
 			
 			try

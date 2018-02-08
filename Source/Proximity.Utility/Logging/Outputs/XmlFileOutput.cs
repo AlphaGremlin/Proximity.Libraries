@@ -28,7 +28,7 @@ namespace Proximity.Utility.Logging.Outputs
 		private XmlWriter _Writer;
 		private readonly XmlWriterSettings WriterSettings;
 
-#if NET46
+#if NET462
 		private static AsyncLocal<ImmutableCountedStack<ContextData>> _Context;
 #endif
 		//****************************************
@@ -186,7 +186,7 @@ namespace Proximity.Utility.Logging.Outputs
 		/// </summary>
 		private ImmutableCountedStack<ContextData> Context
 		{
-#if NET46
+#if NET462
 			get { return _Context.Value ?? ImmutableCountedStack<ContextData>.Empty; }
 			private set { _Context.Value = value; }
 #else

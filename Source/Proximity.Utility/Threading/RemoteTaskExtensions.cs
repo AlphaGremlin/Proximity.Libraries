@@ -2,7 +2,7 @@
  RemoteTaskExtensions.cs
  Created: 2014-05-15
 \****************************************/
-#if NET45 && !MOBILE && !PORTABLE
+#if NET45 || NET462
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading;

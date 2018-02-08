@@ -2,7 +2,7 @@
  UnsafeTask.cs
  Created: 2014-08-07
 \****************************************/
-#if !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;

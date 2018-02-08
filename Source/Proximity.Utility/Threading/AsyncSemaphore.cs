@@ -352,7 +352,7 @@ namespace Proximity.Utility.Threading
 						continue; // Yes, so find another
 
 					// Don't want to activate waiters on the calling thread though, since it can cause a stack overflow if Increment gets called from a Decrement continuation
-#if PORTABLE
+#if NETSTANDARD1_3
 					Task.Factory.StartNew(ReleaseWaiter, NextWaiter);
 #else
 					ThreadPool.QueueUserWorkItem(ReleaseWaiter, NextWaiter);

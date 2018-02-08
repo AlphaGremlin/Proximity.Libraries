@@ -2,7 +2,7 @@
  SteppedTimer.cs
  Created: 2010-09-18
 \****************************************/
-#if !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Diagnostics;
 //****************************************

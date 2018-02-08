@@ -2,7 +2,7 @@
  EmitHelper.cs
  Created: 8-06-2009
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !NETSTANDARD1_3 && !NETSTANDARD2_0
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -1443,7 +1443,7 @@ namespace Proximity.Utility
 			
 			return this;
 		}
-		
+#if !NETSTANDARD2_0
 		/// <summary>
 		/// Emits an instruction to indirectly call a method
 		/// </summary>
@@ -1456,8 +1456,8 @@ namespace Proximity.Utility
 			_Generator.EmitCalli(OpCodes.Calli, callingConvention, returnType, parameterTypes);
 			
 			return this;
-		}		
-		
+		}
+#endif
 		/// <summary>
 		/// Emits an instruction to indirectly call a varargs method
 		/// </summary>

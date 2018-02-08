@@ -494,7 +494,7 @@ namespace Proximity.Utility.IO
 
 					PreambleLength = 2;
 				}
-#if !PORTABLE
+#if !NETSTANDARD1_3
 				else
 				{
 					_Encoding = new UTF32Encoding(false, true);
@@ -510,7 +510,7 @@ namespace Proximity.Utility.IO
 
 				PreambleLength = 3;
 			}
-#if !PORTABLE
+#if !NETSTANDARD1_3
 			// Detect big-endian UTF32
 			else if (_Length >= 4 && FirstByte == 0 && SecondByte == 0 && ThirdByte == 0xFE && FourthByte == 0xFF)
 			{

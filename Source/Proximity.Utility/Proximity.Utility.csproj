@@ -1,305 +1,67 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>Library</OutputType>
-    <RootNamespace>Proximity.Utility</RootNamespace>
-    <AssemblyName>Proximity.Utility</AssemblyName>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">Net45</Platform>
-    <ProjectGuid>{B003D333-C349-4713-94E2-7B80095D9C0D}</ProjectGuid>
+    <TargetFrameworks>net40;net45;net462;netstandard2.0;netstandard1.3</TargetFrameworks>
+	<Authors>Daniel Chandler</Authors>
+    <Company>Proximity Interactive</Company>
+    <Copyright>Copyright © Daniel Chandler 2018</Copyright>
+    <Product>Proximity Utility Library</Product>
+    <AssemblyVersion>18.0.0.0</AssemblyVersion>
+    <FileVersion>18.0.0.0</FileVersion>
+    <Version>18.0.0</Version>
+    <Description>Proximity Utility Library</Description>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <SignAssembly>true</SignAssembly>
-    <AssemblyOriginatorKeyFile>Proximity.Utility.snk</AssemblyOriginatorKeyFile>
-    <DelaySign>False</DelaySign>
-    <AssemblyOriginatorKeyMode>File</AssemblyOriginatorKeyMode>
-    <AllowUnsafeBlocks>False</AllowUnsafeBlocks>
-    <NoStdLib>False</NoStdLib>
-    <RegisterForComInterop>False</RegisterForComInterop>
-    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
-    <BaseAddress>88080384</BaseAddress>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <FileAlignment>4096</FileAlignment>
-    <WarningLevel>4</WarningLevel>
-    <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
-    <NoWarn>0162</NoWarn>
-    <SourceAnalysisOverrideSettingsFile>C:\Documents and Settings\Administrator\Application Data\ICSharpCode/SharpDevelop3.0\Settings.SourceAnalysis</SourceAnalysisOverrideSettingsFile>
-    <ProductVersion>9.0.21022</ProductVersion>
-    <SchemaVersion>2.0</SchemaVersion>
-    <TargetFrameworkProfile />
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
-    <DocumentationFile>..\..\Build\Proximity.Utility.xml</DocumentationFile>
-    <RunCodeAnalysis>False</RunCodeAnalysis>
-    <RunSourceAnalysis>False</RunSourceAnalysis>
-    <NoWin32Manifest>False</NoWin32Manifest>
+    <AssemblyOriginatorKeyFile>..\Proximity.snk</AssemblyOriginatorKeyFile>
+    <OutputPath>..\..\Build\Proximity.Utility</OutputPath>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-    <IntermediateOutputPath>obj\Debug\</IntermediateOutputPath>
-    <OutputPath>..\..\Build\</OutputPath>
-    <Optimize>False</Optimize>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <DebugType>Full</DebugType>
-    <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
-    <StartAction>Program</StartAction>
-    <StartProgram>..\..\..\Paritech.Zenith\Build\Paritech.Zenith.Feed.Proxy.exe</StartProgram>
-    <StartArguments>-c</StartArguments>
-    <BaseIntermediateOutputPath>obj\</BaseIntermediateOutputPath>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'ReleasePPC' ">
-    <IntermediateOutputPath>obj\Release\</IntermediateOutputPath>
-    <OutputPath>..\PocketPC\</OutputPath>
-    <Optimize>True</Optimize>
-    <DefineConstants>DEBUG;TRACE,PPC</DefineConstants>
-    <DebugType>None</DebugType>
-    <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'DebugPPC' ">
-    <IntermediateOutputPath>obj\Debug\</IntermediateOutputPath>
-    <OutputPath>..\PocketPC\</OutputPath>
-    <Optimize>False</Optimize>
-    <DefineConstants>DEBUG;TRACE;PPC</DefineConstants>
-    <DebugType>Full</DebugType>
-    <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-    <IntermediateOutputPath>obj\Release\</IntermediateOutputPath>
-    <OutputPath>..\</OutputPath>
-    <Optimize>True</Optimize>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <DebugType>None</DebugType>
-    <CheckForOverflowUnderflow>False</CheckForOverflowUnderflow>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|Net45' ">
-    <DebugType>Full</DebugType>
-    <Optimize>False</Optimize>
-    <WarningLevel>4</WarningLevel>
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>..\..\Build\Proximity.Utility\</OutputPath>
-    <DocumentationFile>..\..\Build\Proximity.Utility\Proximity.Utility.XML</DocumentationFile>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'ReleasePPC|Net45' ">
-    <DebugType>None</DebugType>
-    <Optimize>true</Optimize>
-    <WarningLevel>4</WarningLevel>
-    <DebugSymbols>false</DebugSymbols>
-    <OutputPath>..\..\Build\Proximity.Utility\</OutputPath>
-    <DocumentationFile>..\..\Build\Proximity.Utility\Proximity.Utility.XML</DocumentationFile>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'DebugPPC|Net45' ">
-    <DebugType>Full</DebugType>
-    <Optimize>false</Optimize>
-    <WarningLevel>4</WarningLevel>
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>..\..\Build\Proximity.Utility\</OutputPath>
-    <DocumentationFile>..\..\Build\Proximity.Utility\Proximity.Utility.XML</DocumentationFile>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|Net45' ">
-    <DebugType>None</DebugType>
-    <Optimize>true</Optimize>
-    <WarningLevel>4</WarningLevel>
-    <DebugSymbols>false</DebugSymbols>
-    <OutputPath>..\..\Build\Proximity.Utility\</OutputPath>
-    <DocumentationFile>..\..\Build\Proximity.Utility\Proximity.Utility.XML</DocumentationFile>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Platform)' == 'Net45' ">
-    <Prefer32Bit>False</Prefer32Bit>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|Net40' ">
-    <DebugType>Full</DebugType>
-    <Optimize>False</Optimize>
-    <WarningLevel>4</WarningLevel>
-    <DebugSymbols>true</DebugSymbols>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'ReleasePPC|Net40' ">
-    <DebugType>None</DebugType>
-    <Optimize>true</Optimize>
-    <WarningLevel>4</WarningLevel>
-    <DebugSymbols>false</DebugSymbols>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'DebugPPC|Net40' ">
-    <DebugType>Full</DebugType>
-    <Optimize>false</Optimize>
-    <WarningLevel>4</WarningLevel>
-    <DebugSymbols>true</DebugSymbols>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|Net40' ">
-    <DebugType>None</DebugType>
-    <Optimize>true</Optimize>
-    <WarningLevel>4</WarningLevel>
-    <DebugSymbols>false</DebugSymbols>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Platform)' == 'Net40' ">
-    <Prefer32Bit>False</Prefer32Bit>
-  </PropertyGroup>
-  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Collections.Immutable, Version=1.0.34.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\packages\Microsoft.Bcl.Immutable.1.0.34\lib\portable-net45+win8+wp8+wpa81\System.Collections.Immutable.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Configuration" />
-    <Reference Include="System.Core">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-    </Reference>
-    <Reference Include="System.Data" />
-    <Reference Include="System.Data.DataSetExtensions">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-    </Reference>
-    <Reference Include="System.Xml" />
-    <Reference Include="System.Xml.Linq">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-    </Reference>
+    <Compile Remove="Collections\ObservableSortedSubset.cs" />
+    <Compile Remove="Diagnostics\ExceptionExtensions.cs" />
+    <Compile Remove="Logging\Outputs\XmlFileOutput.cs" />
+    <Compile Remove="Logging\Outputs\XmlFileOutputElement.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ActionGroup.cs" />
-    <Compile Include="ActionGroupAttribute.cs" />
-    <Compile Include="ActionNameAttribute.cs" />
-    <Compile Include="AssemblyInfo.cs" />
-    <Compile Include="Collections\AsyncCollection.cs" />
-    <Compile Include="Xml\XmlReaderReadExtensions.cs" />
-    <Compile Include="Xml\XmlReaderTryReadExtensions.cs" />
-    <None Include="Collections\AsyncEnumerable.cs" />
-    <None Include="Collections\AsyncLinq.cs" />
-    <Compile Include="Collections\AsyncCollectionTakeFromAny.cs" />
-    <Compile Include="Collections\BiDictionary.cs" />
-    <Compile Include="Collections\CastEnumerator.cs" />
-    <Compile Include="Collections\ConcurrentExtensions.cs" />
-    <Compile Include="Collections\ConcurrentWeakDictionary.cs" />
-    <None Include="Collections\IAsyncEnumerable.cs" />
-    <None Include="Collections\IAsyncEnumerator.cs" />
-    <Compile Include="Collections\ImmutableCountedStack.cs" />
-    <Compile Include="Collections\ImmutableInterlockedEx.cs" />
-    <None Include="Collections\AsyncInterleave.cs" />
-    <Compile Include="Collections\ImmutablePagedSet.cs" />
-    <Compile Include="Collections\ImmutablePagedSetPage.cs" />
-    <Compile Include="Collections\LinqExtensions.cs" />
-    <Compile Include="Collections\ListExtensions.cs" />
-    <Compile Include="Collections\ObservableDictionary.cs" />
-    <Compile Include="Collections\ObservableDictionaryCollection.cs" />
-    <Compile Include="Collections\ObservableList.cs" />
-    <Compile Include="Collections\ObservableSet.cs" />
-    <Compile Include="Collections\PagedSet.cs" />
-    <Compile Include="Collections\PagedSetBase.cs" />
-    <Compile Include="Collections\PagedSetItem.cs" />
-    <Compile Include="Collections\PagedSetPage.cs" />
-    <Compile Include="Collections\ReadOnlyCollection.cs" />
-    <Compile Include="Collections\ReadOnlyCollectionCast.cs" />
-    <Compile Include="Collections\ReadOnlyCollectionTyped.cs" />
-    <Compile Include="Collections\ReadOnlyDictionary.cs" />
-    <Compile Include="Collections\ReadOnlyDictionaryChild.cs" />
-    <Compile Include="Collections\ReadOnlyDictionaryKeySet.cs" />
-    <Compile Include="Collections\ReadOnlyList.cs" />
-    <Compile Include="Collections\ReadOnlyListTyped.cs" />
-    <Compile Include="Collections\ReadOnlySet.cs" />
-    <Compile Include="Collections\ReverseComparer.cs" />
-    <Compile Include="Collections\Reverse\GenericComparer.cs" />
-    <Compile Include="Collections\Reverse\NullableComparer.cs" />
-    <Compile Include="Collections\Reverse\ObjectComparer.cs" />
-    <Compile Include="Collections\Reverse\WrappedComparer.cs" />
-    <Compile Include="Collections\TypedEnumerator.cs" />
-    <Compile Include="Collections\WeakCollection.cs" />
-    <Compile Include="Collections\WeakDictionary.cs" />
-    <Compile Include="Configuration\AssemblyElement.cs" />
-    <Compile Include="Configuration\AssemblyElementAttribute.cs" />
-    <Compile Include="Configuration\AssemblyElementCollection.cs" />
-    <Compile Include="Configuration\ConfigCollection.cs" />
-    <Compile Include="Configuration\ConfigEnumerator.cs" />
-    <Compile Include="Configuration\ConfigurationTextElement.cs" />
-    <Compile Include="Configuration\NullableDecimalValidator.cs" />
-    <Compile Include="Configuration\NullableDecimalValidatorAttribute.cs" />
-    <Compile Include="Configuration\NullableIntegerValidator.cs" />
-    <Compile Include="Configuration\NullableIntegerValidatorAttribute.cs" />
-    <Compile Include="Configuration\NullableTimeSpanValidator.cs" />
-    <Compile Include="Configuration\NullableTimeSpanValidatorAttribute.cs" />
-    <Compile Include="Configuration\TypedElement.cs" />
-    <Compile Include="Configuration\TypedElementAttribute.cs" />
-    <Compile Include="Configuration\TypedElementCollection.cs" />
-    <Compile Include="Configuration\TypedPropertyElement.cs" />
-    <Compile Include="Configuration\TypedPropertySection.cs" />
-    <Compile Include="Diagnostics\Profiler.cs" />
-    <Compile Include="Diagnostics\ProfileSection.cs" />
-    <Compile Include="Diagnostics\Statistic.cs" />
-    <Compile Include="Diagnostics\StatisticManager.cs" />
-    <Compile Include="EmitHelper.cs" />
-    <Compile Include="Events\ParallelEvent.cs" />
-    <Compile Include="Events\WeakEvent.cs" />
-    <Compile Include="Events\WeakEventDelegate.cs" />
-    <Compile Include="Extensions.cs" />
-    <Compile Include="FieldOptions.cs" />
-    <Compile Include="Log.cs" />
-    <Compile Include="Logging\Config\LoggingConfig.cs" />
-    <Compile Include="Logging\Config\OutputCollection.cs" />
-    <Compile Include="Logging\Config\OutputElement.cs" />
-    <Compile Include="Logging\ExceptionLogEntry.cs" />
-    <Compile Include="Logging\LogCategory.cs" />
-    <Compile Include="Logging\LogEntry.cs" />
-    <Compile Include="Logging\LogListener.cs" />
-    <Compile Include="Logging\LogManager.cs" />
-    <Compile Include="Logging\LogOutput.cs" />
-    <Compile Include="Logging\LogSection.cs" />
-    <Compile Include="Logging\Outputs\FileOutput.cs" />
-    <Compile Include="Logging\Outputs\FileOutputElement.cs" />
-    <Compile Include="Logging\Outputs\RolloverType.cs" />
-    <Compile Include="Logging\Outputs\TextFileOutput.cs" />
-    <Compile Include="Logging\Outputs\TextFileOutputElement.cs" />
-    <Compile Include="Logging\Outputs\TraceOutput.cs" />
-    <Compile Include="Logging\Outputs\TraceOutputElement.cs" />
+    <None Include="Collections\ObservableSortedSubset.cs" />
+    <None Include="Diagnostics\ExceptionExtensions.cs" />
     <None Include="Logging\Outputs\XmlFileOutput.cs" />
     <None Include="Logging\Outputs\XmlFileOutputElement.cs" />
-    <Compile Include="Logging\Severity.cs" />
-    <Compile Include="Logging\TraceLogEntry.cs" />
-    <Compile Include="Net\AsyncNetworkListener.cs" />
-    <Compile Include="Net\AsyncNetworkStream.cs" />
-    <Compile Include="Net\SocketAwaitable.cs" />
-    <Compile Include="Net\SocketAwaitableEventArgs.cs" />
-    <Compile Include="Net\SocketExtensions.cs" />
-    <Compile Include="OptionCodeAttribute.cs" />
-    <Compile Include="Platform.cs" />
-    <Compile Include="PrecisionTimer.cs" />
-    <Compile Include="Reflection\Cloning.cs" />
-    <Compile Include="Reflection\Equality.cs" />
-    <Compile Include="Reflection\TypeExtensions.cs" />
-    <Compile Include="Resources\ResourceLoader.cs" />
-    <Compile Include="Resources\XmlResourceManager.cs" />
-    <Compile Include="Resources\XmlResourceReader.cs" />
-    <Compile Include="Resources\XmlResourceSet.cs" />
-    <Compile Include="SteppedTimer.cs" />
-    <Compile Include="Threading\AggregateException.cs" />
-    <Compile Include="Threading\AsyncCounter.cs" />
-    <None Include="packages.config" />
-    <Compile Include="Threading\AsyncCounterDecrementAny.cs" />
-    <Compile Include="Threading\AsyncSwitchLock.cs" />
-    <Compile Include="Threading\AsyncSemaphore.cs" />
-    <Compile Include="Threading\AsyncReadWriteLock.cs" />
-    <Compile Include="Threading\AsyncTaskFlag.cs" />
-    <Compile Include="Threading\DedicatedThreadScheduler.cs" />
-    <Compile Include="Threading\LinkedCancellationToken.cs" />
-    <Compile Include="Threading\TaskExtensions.cs" />
-    <Compile Include="Threading\Interleave.cs" />
-    <Compile Include="Threading\OperationCollection.cs" />
-    <Compile Include="Threading\ReaderWriterLockSlimExtensions.cs" />
-    <Compile Include="Threading\ReadLock.cs" />
-    <Compile Include="Threading\RemoteCancellationToken.cs" />
-    <Compile Include="Threading\RemoteCancellationTokenSource.cs" />
-    <Compile Include="Threading\RemoteTask.cs" />
-    <Compile Include="Threading\RemoteTaskCompletionSource.cs" />
-    <Compile Include="Threading\RemoteTaskExtensions.cs" />
-    <None Include="Proximity.Utility.nuspec" />
-    <None Include="Threading\SafeThreadPool.cs" />
-    <Compile Include="Threading\SafeTimer.cs" />
-    <Compile Include="Threading\StreamTaskScheduler.cs" />
-    <Compile Include="Threading\TaskFlag.cs" />
-    <Compile Include="Threading\TaskStream.cs" />
-    <None Include="Threading\TaskStreamSlim.cs" />
-    <Compile Include="Threading\UnsafeTask.cs" />
-    <Compile Include="Threading\VoidStruct.cs" />
-    <Compile Include="Threading\WaitHandleExtensions.cs" />
-    <Compile Include="Threading\WorkingEnumerator.cs" />
-    <Compile Include="Threading\WorkingList.cs" />
-    <Compile Include="Threading\WriteLock.cs" />
-    <Compile Include="WeakDelegate.cs" />
-    <Compile Include="WeakDelegateSlim.cs" />
-    <None Include="Logging\Style.xsl" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup Condition="'$(TargetFramework)' == 'net462'">
+    <PackageReference Include="System.Configuration.ConfigurationManager">
+      <Version>4.4.1</Version>
+    </PackageReference>
+    <PackageReference Include="System.Reflection.Emit.Lightweight">
+      <Version>4.3.0</Version>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="System.Configuration.ConfigurationManager">
+      <Version>4.4.1</Version>
+    </PackageReference>
+    <PackageReference Include="System.Reflection.Emit.Lightweight">
+      <Version>4.3.0</Version>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net45'">
+    <PackageReference Include="System.Reflection.Emit.Lightweight">
+      <Version>4.3.0</Version>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net40' ">
+    <Reference Include="AsyncBridge">
+      <HintPath>..\..\Libraries\AsyncBridge.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net40' or '$(TargetFramework)' == 'net45'">
+    <Reference Include="System.Configuration" />
+  </ItemGroup>
+  <Choose>
+    <When Condition=" '$(TargetFramework)' != 'net40' ">
+      <ItemGroup>
+        <PackageReference Include="System.Collections.Immutable" Version="1.4.0" />
+      </ItemGroup>
+    </When>
+  </Choose>
 </Project>

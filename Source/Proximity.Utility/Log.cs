@@ -2,7 +2,7 @@
  Log.cs
  Created: 4-06-2009
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

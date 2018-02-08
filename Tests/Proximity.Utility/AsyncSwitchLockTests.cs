@@ -750,19 +750,19 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000)]
-		public void LeftDisposeLeft()
+		public async Task LeftDisposeLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
 			//****************************************
 			
 			var MyLeft = MyLock.LockLeft();
 			
-			MyLock.Dispose();
+			var MyDispose = MyLock.Dispose();
 			
 			try
 			{
-				MyLock.LockLeft().Result.Dispose();
-				
+				(await MyLock.LockLeft()).Dispose();
+
 				Assert.Fail("Should never reach this point");
 			}
 			catch (ObjectDisposedException)
@@ -770,9 +770,11 @@ namespace Proximity.Utility.Tests
 			}
 			
 			MyLeft.Result.Dispose();
-			
+
+			await MyDispose;
+
 			//****************************************
-			
+
 			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
 			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
 			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
@@ -867,26 +869,30 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000)]
-		public void RightDisposeRight()
+		public async Task RightDisposeRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
 			//****************************************
 			
 			var MyRight = MyLock.LockRight();
 			
-			MyLock.Dispose();
-			
+			var MyDispose = MyLock.Dispose();
+
 			try
 			{
-				MyLock.LockRight().Result.Dispose();
-				
+				(await MyLock.LockRight()).Dispose();
+
 				Assert.Fail("Should never reach this point");
 			}
 			catch (ObjectDisposedException)
 			{
 			}
-			
+
+			Assert.IsFalse(MyDispose.IsCompleted, "Dispose completed");
+
 			MyRight.Result.Dispose();
+
+			await MyDispose;
 			
 			//****************************************
 			
@@ -976,16 +982,18 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000)]
-		public void DisposeLeft()
+		public async Task DisposeLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
 			//****************************************
 			
-			MyLock.Dispose();
-			
+			var MyDispose = MyLock.Dispose();
+
+			Assert.IsTrue(MyDispose.IsCompleted, "Dispose did not complete");
+
 			try
 			{
-				MyLock.LockLeft().Result.Dispose();
+				(await MyLock.LockLeft()).Dispose();
 				
 				Assert.Fail("Should never reach this point");
 			}
@@ -1002,17 +1010,19 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000)]
-		public void DisposeRight()
+		public async Task DisposeRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
 			//****************************************
-			
-			MyLock.Dispose();
-			
+
+			var MyDispose = MyLock.Dispose();
+
+			Assert.IsTrue(MyDispose.IsCompleted, "Dispose did not complete");
+
 			try
 			{
-				MyLock.LockRight().Result.Dispose();
-				
+				(await MyLock.LockRight()).Dispose();
+
 				Assert.Fail("Should never reach this point");
 			}
 			catch (ObjectDisposedException)
@@ -1028,7 +1038,7 @@ namespace Proximity.Utility.Tests
 		}
 		
 		[Test, Timeout(1000)]
-		public void LeftDisposeContinueWithLeft()
+		public async Task LeftDisposeContinueWithLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
 			//****************************************
@@ -1037,27 +1047,44 @@ namespace Proximity.Utility.Tests
 			
 			var MyLeftTask = MyLock.LockLeft();
 			
-			var MyInnerTask = MyLeftTask.ContinueWith((task) => MyLock.LockLeft(), TaskContinuationOptions.ExecuteSynchronously);
+			var MyInnerTask = MyLeftTask.ContinueWith((task) => MyLock.LockLeft(), TaskContinuationOptions.ExecuteSynchronously).Unwrap();
 			
-			MyLock.Dispose();
+			var MyDispose = MyLock.Dispose();
 			
 			MyRight.Dispose();
-			
+
+			await MyDispose;
+
 			//****************************************
-			
+
+			try
+			{
+				await MyLeftTask;
+
+				Assert.Fail("Should never reach this point");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
+
+			try
+			{
+				await MyInnerTask;
+
+				Assert.Fail("Should never reach this point");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
+
 			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
 			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
 			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
-			
-			Assert.IsTrue(MyLeftTask.IsFaulted, "Left did not fault");
-			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyLeftTask.Exception.InnerException, "Left is not disposed");
-			Assert.IsTrue(MyInnerTask.IsFaulted, "Inner Left did not fault");
-			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyInnerTask.Exception.InnerException, "Inner Left is not disposed");
 		}
 		
 		[Test, Timeout(1000)]
-		public void RightDisposeContinueWithRight()
+		public async Task RightDisposeContinueWithRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
 			//****************************************
@@ -1066,23 +1093,40 @@ namespace Proximity.Utility.Tests
 			
 			var MyRightTask = MyLock.LockRight();
 			
-			var MyInnerTask = MyRightTask.ContinueWith((task) => MyLock.LockRight(), TaskContinuationOptions.ExecuteSynchronously);
+			var MyInnerTask = MyRightTask.ContinueWith((task) => MyLock.LockRight(), TaskContinuationOptions.ExecuteSynchronously).Unwrap();
 			
-			MyLock.Dispose();
+			var MyDispose = MyLock.Dispose();
 			
 			MyLeft.Dispose();
-			
+
+			await MyDispose;
+
 			//****************************************
-			
+
+			try
+			{
+				await MyRightTask;
+
+				Assert.Fail("Should never reach this point");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
+
+			try
+			{
+				await MyInnerTask;
+
+				Assert.Fail("Should never reach this point");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
+
 			Assert.AreEqual(0, MyLock.WaitingRight, "Rights still waiting");
 			Assert.AreEqual(0, MyLock.WaitingLeft, "Lefts still waiting");
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 			Assert.IsFalse(MyLock.IsLeft, "Lefts still running");
-			
-			Assert.IsTrue(MyRightTask.IsFaulted, "Right did not fault");
-			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyRightTask.Exception.InnerException, "Right is not disposed");
-			Assert.IsTrue(MyInnerTask.IsFaulted, "Inner Right did not fault");
-			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyInnerTask.Exception.InnerException, "Inner Right is not disposed");
 		}
 	}
 }

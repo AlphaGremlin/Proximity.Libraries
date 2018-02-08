@@ -2,7 +2,7 @@
  RolloverType.cs
  Created: 2014-07-29
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 //****************************************
 

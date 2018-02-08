@@ -2,7 +2,7 @@
  TypedElementAttribute.cs
  Created: 2011-07-25
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 //****************************************
 

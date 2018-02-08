@@ -287,7 +287,7 @@ namespace Proximity.Utility.Threading
 			}
 			
 			// Activate the next waiter
-#if PORTABLE
+#if NETSTANDARD1_3
 			TryRelease(NextTask);
 #else
 			ThreadPool.UnsafeQueueUserWorkItem(TryRelease, NextTask);
@@ -341,7 +341,7 @@ namespace Proximity.Utility.Threading
 			}
 			
 			// Activate the next waiter
-#if PORTABLE
+#if NETSTANDARD1_3
 			TryRelease(NextTask);
 #else
 			ThreadPool.UnsafeQueueUserWorkItem(TryRelease, NextTask);
@@ -377,7 +377,7 @@ namespace Proximity.Utility.Threading
 			
 			if (NextRight != null)
 			{
-#if PORTABLE
+#if NETSTANDARD1_3
 				TryRelease(NextRight);
 #else
 				ThreadPool.UnsafeQueueUserWorkItem(TryRelease, NextRight);
@@ -420,7 +420,7 @@ namespace Proximity.Utility.Threading
 			
 			if (NextLeft != null)
 			{
-#if PORTABLE
+#if NETSTANDARD1_3
 				TryRelease(NextLeft);
 #else
 				ThreadPool.UnsafeQueueUserWorkItem(TryRelease, NextLeft);

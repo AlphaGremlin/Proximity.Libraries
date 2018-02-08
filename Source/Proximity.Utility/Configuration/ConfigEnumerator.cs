@@ -2,7 +2,7 @@
  ConfigEnumerator.cs
  Created: 12-09-2009
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Collections;
 using System.Collections.Generic;

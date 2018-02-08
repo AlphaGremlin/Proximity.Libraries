@@ -294,7 +294,7 @@ namespace Proximity.Utility.Threading
 				}
 			}
 			
-#if PORTABLE
+#if NETSTANDARD1_3
 			TryReleaseRead(NextTask);
 #else
 			ThreadPool.UnsafeQueueUserWorkItem(TryReleaseRead, NextTask);
@@ -405,7 +405,7 @@ namespace Proximity.Utility.Threading
 					return;
 				}
 
-#if !PORTABLE
+#if !NETSTANDARD1_3
 				// If we're not on the threadpool, run TrySetResult on there, so we don't blow the stack if the result calls Release too (and so on)
 				if (!onThreadPool)
 				{

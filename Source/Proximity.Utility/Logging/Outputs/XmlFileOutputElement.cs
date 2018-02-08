@@ -2,7 +2,7 @@
  XmlFileOutputElement.cs
  Created: 2014-07-30
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Configuration;
 using Proximity.Utility.Configuration;

@@ -2,7 +2,7 @@
  TypedElement.cs
  Created: 2011-05-09
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Configuration;
 using System.Reflection;

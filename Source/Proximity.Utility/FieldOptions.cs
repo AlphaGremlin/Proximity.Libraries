@@ -76,7 +76,7 @@ namespace Proximity.Utility
 				Enum MyValue;
 				//****************************************
 				
-#if PORTABLE
+#if NETSTANDARD1_3
 				if (!optionType.GetTypeInfo().IsEnum)
 #else
 				if (!optionType.IsEnum)

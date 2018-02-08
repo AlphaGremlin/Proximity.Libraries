@@ -2,7 +2,7 @@
  LogOutput.cs
  Created: 2-06-2009
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using Proximity.Utility.Logging.Config;
 using System.Xml;

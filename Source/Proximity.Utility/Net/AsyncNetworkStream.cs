@@ -2,7 +2,7 @@
  AsyncNetworkStream.cs
  Created: 2014-10-02
 \****************************************/
-#if !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;

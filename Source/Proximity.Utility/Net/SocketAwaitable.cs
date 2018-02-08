@@ -2,7 +2,7 @@
  SocketAwaitable.cs
  Created: 2013-10-01
 \****************************************/
-#if !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;

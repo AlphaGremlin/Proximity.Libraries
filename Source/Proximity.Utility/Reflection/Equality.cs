@@ -2,7 +2,7 @@
  Equality.cs
  Created: 2013-10-01
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !NETSTANDARD1_3 && !NETSTANDARD2_0
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -91,11 +91,11 @@ namespace Proximity.Utility.Reflection
 					
 					// No equality operator, see if there's an IEquatable
 					if (CheckMethod == null)
-						CheckMethod = MyField.FieldType.GetMethodOnInterface(typeof(IEquatable<>).MakeGenericType(MyField.FieldType), "Equals", new Type[] { MyField.FieldType });
+						CheckMethod = MyField.FieldType.GetMethodOnInterface(typeof(IEquatable<>).MakeGenericType(MyField.FieldType), nameof(IEquatable<object>.Equals), new Type[] { MyField.FieldType });
 					
 					// No IEquatable, see if there's a normal equals
 					if (CheckMethod == null)
-						MyField.FieldType.GetMethod("Equals", BindingFlags.Instance | BindingFlags.Public, null, new Type[] { MyField.FieldType }, null);
+						MyField.FieldType.GetMethod(nameof(object.Equals), BindingFlags.Instance | BindingFlags.Public, null, new Type[] { MyField.FieldType }, null);
 					
 					// Still no luck, use Object.Equals(left, right)
 					if (CheckMethod == null)

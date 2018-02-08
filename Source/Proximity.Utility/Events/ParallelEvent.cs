@@ -2,6 +2,7 @@
  ParallelEvent.cs
  Created: 2011-09-16
 \****************************************/
+#if !NETSTANDARD1_3
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -100,3 +101,4 @@ namespace Proximity.Utility.Events
 		}
 	}
 }
+#endif

@@ -7,16 +7,10 @@
 \****************************************/
 using System;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Security;
 //****************************************
 
-[assembly: AssemblyTitle("Proximity Utility Library")]
-[assembly: AssemblyDescription("Proximity Utility Library")]
-[assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Proximity Interactive")]
-[assembly: AssemblyProduct("Proximity Utilities")]
-[assembly: AssemblyCopyright("Daniel Chandler")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -25,7 +19,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 [assembly: CLSCompliant(true)]
 
-//****************************************
-
-[assembly: AssemblyVersion("17.1.0.0")]
-[assembly: AssemblyFileVersion("17.10.0.0")]
+#if !NETSTANDARD1_3
+[assembly: SecurityRules(SecurityRuleSet.Level2)]
+#endif
+[assembly: AllowPartiallyTrustedCallers()]

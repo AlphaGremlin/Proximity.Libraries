@@ -9,12 +9,6 @@ using System.Runtime.InteropServices;
 using System.Security;
 //****************************************
 
-[assembly: AssemblyTitle("Proximity Terminal Library")]
-[assembly: AssemblyDescription("Proximity Terminal Library")]
-[assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Proximity Interactive")]
-[assembly: AssemblyProduct("Proximity Utilities")]
-[assembly: AssemblyCopyright("Daniel Chandler")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -24,9 +18,6 @@ using System.Security;
 [assembly: CLSCompliant(true)]
 
 //****************************************
-
-[assembly: AssemblyVersion("17.1.0.0")]
-[assembly: AssemblyFileVersion("17.1.0.0")]
 
 [assembly: SecurityRules(SecurityRuleSet.Level2)]
 [assembly: AllowPartiallyTrustedCallers()]

@@ -2,7 +2,7 @@
  LogListener.cs
  Created: 5-06-2009
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Diagnostics;
 using System.Globalization;

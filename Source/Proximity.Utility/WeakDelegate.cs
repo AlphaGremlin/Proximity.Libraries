@@ -2,7 +2,7 @@
  WeakDelegate.cs
  Created: 10-09-2008
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !NETSTANDARD1_3 && !NETSTANDARD2_0
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -103,8 +103,8 @@ namespace Proximity.Utility
 					// Retrieve the object from our weak reference
 					Emitter
 						.LdArg(0) // WeakDelegate
-						.LdFldA(typeof(WeakDelegate<TDelegate>), "_Target") // GCHandle
-						.Call(typeof(GCHandle), "get_Target") // Target Object
+						.LdFldA(typeof(WeakDelegate<TDelegate>), nameof(_Target)) // GCHandle
+						.Call(typeof(GCHandle), "get_" + nameof(GCHandle.Target)) // Target Object
 						.StLoc("Target"); // -
 					
 					// If it's null, run the unregister callback
@@ -112,10 +112,10 @@ namespace Proximity.Utility
 						.LdLoc("Target") // Target Object
 						.BrTrue("NotNull")
 						.LdArg(0) // WeakDelegate
-						.LdFld(typeof(WeakDelegate<TDelegate>), "_UnregisterHandler") // Unregister Callback
+						.LdFld(typeof(WeakDelegate<TDelegate>), nameof(_UnregisterHandler)) // Unregister Callback
 						.LdArg(0) // Callback, WeakDelegate
-						.LdFld(typeof(WeakDelegate<TDelegate>), "_EventHandler") // Callback, Handler
-						.CallVirt(typeof(Action<TDelegate>), "Invoke", typeof(TDelegate)) // -
+						.LdFld(typeof(WeakDelegate<TDelegate>), nameof(_CallbackHandler)) // Callback, Handler
+						.CallVirt(typeof(Action<TDelegate>), nameof(Action<TDelegate>.Invoke), typeof(TDelegate)) // -
 						.Br("End"); // -
 						
 					// Otherwise, call the delegate on the target object

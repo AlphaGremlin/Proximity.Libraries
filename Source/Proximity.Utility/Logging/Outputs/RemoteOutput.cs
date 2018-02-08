@@ -2,7 +2,7 @@
  RemoteOutput.cs
  Created: 2-06-2009
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !NETSTANDARD1_3 && !NETSTANDARD2_0
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;

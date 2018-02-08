@@ -20,7 +20,7 @@ namespace Proximity.Utility.Resources
 		private static string _ResourcePath = "Resources";
 		//****************************************
 		
-#if !PORTABLE
+#if !NETSTANDARD1_3
 		/// <summary>
 		/// Retrieves a resource data stream for the calling assembly
 		/// </summary>
@@ -42,7 +42,7 @@ namespace Proximity.Utility.Resources
 		/// <remarks>The directory containing the assembly will be searched first, and if no file is found, the assembly resources will be searched</remarks>
 		public static Stream Load(Assembly source, string fullName)
 		{
-#if !PORTABLE
+#if !NETSTANDARD1_3
 			//****************************************
 			string FileName;
 			//****************************************
@@ -74,7 +74,7 @@ namespace Proximity.Utility.Resources
 			return null;
 		}
 		
-#if !PORTABLE
+#if !NETSTANDARD1_3
 		/// <summary>
 		/// Retrieves a resource data stream localised to the current thread culture
 		/// </summary>

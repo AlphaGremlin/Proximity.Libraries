@@ -2,7 +2,7 @@
  ConfigurationTextElement.cs
  Created: 2014-06-13
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;

@@ -39,7 +39,7 @@ namespace Proximity.Utility
 			
 			//****************************************
 			
-#if PORTABLE
+#if NETSTANDARD1_3
 			var MyParams = MyCallback.GetMethodInfo().GetParameters();
 #else
 			var MyParams = MyCallback.Method.GetParameters();
@@ -308,7 +308,7 @@ namespace Proximity.Utility
 				if (MyHandler == null)
 					continue;
 
-#if PORTABLE
+#if NETSTANDARD1_3
 				if (MyHandler.Method != target.GetMethodInfo())
 #else
 				if (MyHandler.Method != target.Method)
@@ -367,7 +367,7 @@ namespace Proximity.Utility
 			public TDelegate GetHandler()
 			{
 				// Create the delegate that is exposed to the outside world
-#if PORTABLE
+#if NETSTANDARD1_3
 				return GetType().GetRuntimeMethod("OnRaise", null).CreateDelegate(typeof(TDelegate), null) as TDelegate;
 #else
 				return Delegate.CreateDelegate(typeof(TDelegate), this, "OnRaise") as TDelegate;
@@ -417,7 +417,7 @@ namespace Proximity.Utility
 
 			protected DelegateBase(Delegate callback, Action<TDelegate> unsubscribe) : base(callback.Target, unsubscribe)
 			{
-#if PORTABLE
+#if NETSTANDARD1_3
 				_OpenDelegate = callback.GetMethodInfo().CreateDelegate(typeof(TOpenDelegate), null) as TOpenDelegate;
 #else
 				_OpenDelegate = Delegate.CreateDelegate(typeof(TOpenDelegate), callback.Method) as TOpenDelegate;
@@ -433,7 +433,7 @@ namespace Proximity.Utility
 
 			internal override MethodInfo Method
 			{
-#if PORTABLE
+#if NETSTANDARD1_3
 				[SecurityCritical]
 				get { return (_OpenDelegate as Delegate).GetMethodInfo(); }
 #else

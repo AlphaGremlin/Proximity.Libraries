@@ -87,10 +87,6 @@
       <Name>Proximity.Gui</Name>
       <Private>False</Private>
     </ProjectReference>
-    <ProjectReference Include="..\Proximity.Utility.Net45\Proximity.Utility.Net45.csproj">
-      <Project>{5e14f771-3b14-422d-8b4c-26d50a7657fc}</Project>
-      <Name>Proximity.Utility.Net45</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="gtk-gui\gui.stetic">

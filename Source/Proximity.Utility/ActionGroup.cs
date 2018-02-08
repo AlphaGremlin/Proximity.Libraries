@@ -2,7 +2,7 @@
  ActionGroup.cs
  Created: 2011-09-28
 \****************************************/
-#if !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Collections.Generic;
 using System.Reflection;

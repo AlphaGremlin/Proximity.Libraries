@@ -2,7 +2,7 @@
  NullableTimeSpanValidator.cs
  Created: 2013-05-21
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !NETSTANDARD1_3 && !NETSTANDARD2_0
 using System;
 using System.Configuration;
 using System.Globalization;

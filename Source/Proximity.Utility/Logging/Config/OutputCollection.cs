@@ -2,7 +2,7 @@
  OutputCollection.cs
  Created: 2009-06-02
 \****************************************/
-#if !MOBILE && !PORTABLE
+#if !NETSTANDARD1_3
 using System;
 using System.Collections;
 using System.Collections.Generic;

@@ -35,7 +35,7 @@ namespace Proximity.Utility.Events
 			
 			TargetType = typeof(EventDelegate<,>).MakeGenericType(eventHandler.Target.GetType(), typeof(TEventArgs));
 			
-#if PORTABLE
+#if NETSTANDARD1_3
 			MyHandler = (IEventDelegate<TEventArgs>)Activator.CreateInstance(TargetType, eventHandler.Target, eventHandler.GetMethodInfo(), null);
 #else
 			MyHandler = (IEventDelegate<TEventArgs>)Activator.CreateInstance(TargetType, eventHandler.Target, eventHandler.Method, null);
@@ -55,7 +55,7 @@ namespace Proximity.Utility.Events
 			if (eventHandler.Target == null) // Ignore weak references for static events
 				return eventHandler;
 
-#if PORTABLE
+#if NETSTANDARD1_3
 			return new EventDelegate<TTarget, TEventArgs>((TTarget)eventHandler.Target, eventHandler.GetMethodInfo(), null).Handler;
 #else
 			return new EventDelegate<TTarget, TEventArgs>((TTarget)eventHandler.Target, eventHandler.Method, null).Handler;
@@ -120,7 +120,7 @@ namespace Proximity.Utility.Events
 				if (MyTarget == null)
 					continue;
 				
-#if PORTABLE
+#if NETSTANDARD1_3
 				if (MyTarget.Method != target.GetMethodInfo())
 #else
 				if (MyTarget.Method != target.Method)
@@ -154,7 +154,7 @@ namespace Proximity.Utility.Events
 		
 		private class EventDelegate<TTarget, TEventArgs> : IEventDelegate<TEventArgs> where TTarget : class where TEventArgs : EventArgs
 		{	//****************************************
-#if PORTABLE
+#if NETSTANDARD1_3
 			private MethodInfo _Method;
 #else
 			private delegate void WeakEventHandler(TTarget target, object sender, TEventArgs e);
@@ -168,7 +168,7 @@ namespace Proximity.Utility.Events
 			public EventDelegate(TTarget target, MethodInfo method, Action<object, EventHandler<TEventArgs>> unsubscribe)
 			{
 				_Target = GCHandle.Alloc(target, GCHandleType.Weak);
-#if PORTABLE
+#if NETSTANDARD1_3
 				_Method = method;
 #else
 				_Handler = (WeakEventHandler)Delegate.CreateDelegate(typeof(WeakEventHandler), method);
@@ -205,7 +205,7 @@ namespace Proximity.Utility.Events
 
 					return;
 				}
-#if PORTABLE
+#if NETSTANDARD1_3
 				_Method.Invoke(MyTarget, new object[] { sender, e });
 #else
 				_Handler((TTarget)MyTarget, sender, e);
@@ -222,7 +222,7 @@ namespace Proximity.Utility.Events
 			
 			public MethodInfo Method
 			{
-#if PORTABLE
+#if NETSTANDARD1_3
 				[SecurityCritical]
 				get { return _Method; }
 #else
