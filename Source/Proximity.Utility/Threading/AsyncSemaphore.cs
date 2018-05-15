@@ -315,13 +315,11 @@ namespace Proximity.Utility.Threading
 		private bool TryIncrement()
 		{	//****************************************
 			var MyWait = new SpinWait();
-
-			int OldCount;
 			//****************************************
 
 			for (; ; )
 			{
-				OldCount = _CurrentCount;
+				int OldCount = _CurrentCount;
 
 				// Are there any free counters?
 				if (OldCount >= _MaxCount)
@@ -337,15 +335,14 @@ namespace Proximity.Utility.Threading
 		}
 
 		private void Decrement()
-		{	//****************************************
-			TaskCompletionSource<IDisposable> NextWaiter;
+		{ //****************************************
 			int NewCount;
 			//****************************************
 
 			do
 			{
 				// Try and retrieve a waiter while we're not disposed
-				while (_Waiters.TryDequeue(out NextWaiter))
+				while (_Waiters.TryDequeue(out var NextWaiter))
 				{
 					// Is it completed?
 					if (NextWaiter.Task.IsCompleted)
@@ -396,37 +393,25 @@ namespace Proximity.Utility.Threading
 		}
 
 		private void DisposeWaiters()
-		{	//****************************************
-			TaskCompletionSource<IDisposable> MyWaiter;
-			//****************************************
-
+		{
 			// Success, now close any pending waiters
-			while (_Waiters.TryDequeue(out MyWaiter))
+			while (_Waiters.TryDequeue(out var MyWaiter))
 				MyWaiter.TrySetException(new ObjectDisposedException("AsyncSemaphore", "Counter has been disposed of"));
 		}
 
-		private static void CleanupCancelRegistration(Task task, object state)
-		{
-			((CancellationTokenRegistration)state).Dispose();
-		}
+		private static void CleanupCancelRegistration(Task task, object state) => ((CancellationTokenRegistration)state).Dispose();
 
 		//****************************************
 
 		/// <summary>
 		/// Gets the number of counters available for taking
 		/// </summary>
-		public int CurrentCount
-		{
-			get { return _MaxCount - _CurrentCount; }
-		}
+		public int CurrentCount => _MaxCount - _CurrentCount;
 
 		/// <summary>
 		/// Gets the number of operations waiting for a counter
 		/// </summary>
-		public int WaitingCount
-		{
-			get { return _Waiters.Count(waiter => !waiter.Task.IsCompleted); }
-		}
+		public int WaitingCount => _Waiters.Count(waiter => !waiter.Task.IsCompleted);
 
 		/// <summary>
 		/// Gets/Sets the maximum number of operations

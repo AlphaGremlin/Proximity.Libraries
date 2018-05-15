@@ -615,7 +615,7 @@ namespace Proximity.Utility.Tests
 			
 			try
 			{
-				MyLock.Wait().Result.Dispose();
+				MyLock.Wait().GetAwaiter().GetResult().Dispose();
 			}
 			catch (ObjectDisposedException)
 			{
@@ -677,16 +677,14 @@ namespace Proximity.Utility.Tests
 			
 			var MyTask = MyLock.Wait();
 			
-			var MyInnerTask = MyTask.ContinueWith((task) => MyLock.Wait(), TaskContinuationOptions.ExecuteSynchronously);
+			var MyInnerTask = MyTask.ContinueWith((task) => MyLock.Wait(), TaskContinuationOptions.ExecuteSynchronously).Unwrap();
 			
 			MyLock.Dispose();
-			
+
 			//****************************************
-			
-			Assert.IsTrue(MyTask.IsFaulted, "Lock did not fault");
-			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyTask.Exception.InnerException, "Lock is not disposed");
-			Assert.IsTrue(MyInnerTask.IsFaulted, "Lock did not fault");
-			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyInnerTask.Exception.InnerException, "Lock is not disposed");
+
+			Assert.ThrowsAsync<ObjectDisposedException>(() => MyTask);
+			Assert.ThrowsAsync<ObjectDisposedException>(() => MyInnerTask);
 		}
 	}
 }

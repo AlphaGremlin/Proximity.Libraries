@@ -214,16 +214,8 @@ namespace Proximity.Utility.Tests
 			//****************************************
 			
 			MyLock.Dispose();
-			
-			try
-			{
-				var MyTask = MyLock.Decrement();
-				
-				Assert.Fail("Should never reach this point");
-			}
-			catch (ObjectDisposedException)
-			{
-			}
+
+			Assert.ThrowsAsync<ObjectDisposedException>(() => MyLock.Decrement());
 			
 			//****************************************
 			
@@ -625,7 +617,7 @@ namespace Proximity.Utility.Tests
 
 			var MyTask = MyCounter.PeekDecrement();
 
-			var MyInnerTask = MyTask.ContinueWith((task) => MyCounter.PeekDecrement(), TaskContinuationOptions.ExecuteSynchronously);
+			var MyInnerTask = MyTask.ContinueWith((task) => MyCounter.PeekDecrement(), TaskContinuationOptions.ExecuteSynchronously).Unwrap();
 
 			MyCounter.Dispose();
 

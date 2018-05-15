@@ -37,7 +37,7 @@ namespace Proximity.Utility.Tests
 
 			_OtherDomain = AppDomain.CreateDomain("Remote Task Tests", AppDomain.CurrentDomain.Evidence, MySetup);
 
-			_OtherDomain.UnhandledException += (sender, e) => { Trace.WriteLine(string.Format("Unhandled Remote Exception {0}", e.ExceptionObject.ToString())); throw new ApplicationException("Unhandled Remote Exception", (Exception)e.ExceptionObject); };
+			//_OtherDomain.UnhandledException += (sender, e) => { Trace.WriteLine(string.Format("Unhandled Remote Exception {0}", e.ExceptionObject.ToString())); throw new ApplicationException("Unhandled Remote Exception", (Exception)e.ExceptionObject); };
 			
 			_RemoteHost = (RemoteTaskHost)_OtherDomain.CreateInstanceAndUnwrap(typeof(RemoteTaskHost).Assembly.FullName, typeof(RemoteTaskHost).FullName);
 			

@@ -298,7 +298,6 @@ namespace Proximity.Utility.Tests
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<int>();
 			Task MyDisposeTask;
-			Task<IDisposable> MyInnerTask;
 			//****************************************
 
 			using (await MyLock.Lock(42))
@@ -307,7 +306,7 @@ namespace Proximity.Utility.Tests
 
 				try
 				{
-					MyInnerTask = MyLock.Lock(42);
+					await MyLock.Lock(42);
 
 					Assert.Fail("Should never reach this point");
 				}

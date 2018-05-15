@@ -18,6 +18,7 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Provides a BlockingCollection that supports async/await
 	/// </summary>
+	/// <remarks>Producers should not complete the underlying IProducerConsumerCollection, or add a limit to it</remarks>
 	public class AsyncCollection<TItem> : IEnumerable<TItem>
 #if !NET40
 		,IReadOnlyCollection<TItem>
@@ -26,9 +27,7 @@ namespace Proximity.Utility.Collections
 		private readonly IProducerConsumerCollection<TItem> _Collection;
 		
 		private readonly AsyncCounter _FreeSlots, _UsedSlots;
-
-		private readonly int _Capacity;
-		private bool _IsCompleted;
+		private bool _IsCompleted, _IsFailed;
 		//****************************************
 		
 		/// <summary>
@@ -44,8 +43,8 @@ namespace Proximity.Utility.Collections
 		/// <param name="collection">The collection to block over</param>
 		public AsyncCollection(IProducerConsumerCollection<TItem> collection)
 		{
-			_Collection = collection;
-			_Capacity = int.MaxValue;
+			_Collection = collection ?? throw new ArgumentNullException(nameof(collection));
+			Capacity = int.MaxValue;
 			
 			_UsedSlots = new AsyncCounter(collection.Count);
 		}
@@ -57,7 +56,7 @@ namespace Proximity.Utility.Collections
 		public AsyncCollection(int capacity) : this(new ConcurrentQueue<TItem>(), capacity)
 		{
 		}
-		
+
 		/// <summary>
 		/// Creates a new collection over the given producer consumer collection
 		/// </summary>
@@ -68,8 +67,8 @@ namespace Proximity.Utility.Collections
 			if (capacity <= 0)
 				throw new ArgumentException("Capacity is invalid");
 			
-			_Collection = collection;
-			_Capacity = capacity;
+			_Collection = collection ?? throw new ArgumentNullException(nameof(collection));
+			Capacity = capacity;
 			
 			_UsedSlots = new AsyncCounter(collection.Count);
 			_FreeSlots = new AsyncCounter(capacity);
@@ -143,13 +142,18 @@ namespace Proximity.Utility.Collections
 					return MyTask.ContinueWith(InternalAdd, item, CancellationToken.None, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Current);
 				}
 			}
-			
+
+			// Increment the slots counter, releasing a Taker. They'll wait until the item becomes available
+			if (!_UsedSlots.TryIncrement())
+				return new InvalidOperationException("Adding has been completed").ToTask();
+
 			// Try and add our item to the collection
 			if (!_Collection.TryAdd(item))
+			{
+				// Collection rejected our item. We now have promised to add an item that we can't add.
+				_IsFailed = true;
 				return new InvalidOperationException("Item was rejected by the underlying collection").ToTask();
-			
-			// Increment the slots counter, releasing any Takers
-			_UsedSlots.Increment();
+			}
 			
 			return VoidStruct.EmptyTask;
 		}
@@ -194,17 +198,22 @@ namespace Proximity.Utility.Collections
 				// Free slot, now cancel anyone else trying to add
 				_FreeSlots.Dispose();
 			}
-			
-			// Try and add our item to the collection
-			if (!_Collection.TryAdd(item))
-				return new InvalidOperationException("Item was rejected by the underlying collection").ToTask();
-			
+
 			// Flag as completed first, so any Takers will handle the cleanup
 			_IsCompleted = true;
-			
-			// Increment the slots counter, releasing any Takers
-			_UsedSlots.Increment();
 
+			// Increment the slots counter, releasing a Taker. They'll wait until the item becomes available
+			if (!_UsedSlots.TryIncrement())
+				return new InvalidOperationException("Adding has been completed").ToTask();
+
+			// Try and add our item to the collection
+			if (!_Collection.TryAdd(item))
+			{
+				// Collection rejected our item. We now have promised to add an item that we can't add.
+				_IsFailed = true;
+				return new InvalidOperationException("Item was rejected by the underlying collection. AsyncCollection is corrupted").ToTask();
+			}
+			
 			return VoidStruct.EmptyTask;
 		}
 		
@@ -283,13 +292,10 @@ namespace Proximity.Utility.Collections
 		/// <exception cref="OperationCanceledException">The cancellation token was raised while we were waiting for an item</exception>
 		/// <exception cref="InvalidOperationException">The collection was completed and emptied while we were waiting for an item</exception>
 		public Task<TItem> Take(CancellationToken token)
-		{	//****************************************
-			TItem MyItem;
-			//****************************************
-			
+		{
 			if (IsCompleted)
 				return new InvalidOperationException("Collection is empty and adding has been completed").ToTask<TItem>();
-			
+
 			// Is there an item to take?
 			var MyTask = _UsedSlots.Decrement(token);
 
@@ -298,12 +304,12 @@ namespace Proximity.Utility.Collections
 				// No, wait for it to arrive
 				// Do not pass the cancellation token, since if the counter is disposed when token cancels,
 				// an ObjectDisposedException could be thrown but never be observed and cause an Unobserved Task Exception
-				return MyTask.ContinueWith((Func<Task, TItem>)InternalTake, CancellationToken.None, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Current);
+				return MyTask.ContinueWith(InternalTake, CancellationToken.None, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Current);
 			}
-			
+
 			// Try and remove an item from the collection
-			if (!_Collection.TryTake(out MyItem))
-				return new InvalidOperationException("Item was not returned by the underlying collection").ToTask<TItem>();
+			if (!GetNextItem(out var MyItem))
+				return new InvalidOperationException("Collection failed to add to the underlying collection. AsyncCollection is corrupted").ToTask<TItem>();
 			
 			// Is there a maximum size?
 			if (_FreeSlots != null)
@@ -345,12 +351,14 @@ namespace Proximity.Utility.Collections
 			
 			// Try and add our item to the collection
 			if (!_Collection.TryAdd(item))
-				throw new InvalidOperationException("Item was rejected by the underlying collection");
-			
+			{
+				// Collection rejected our item. We now have promised to add an item that we can't add.
+				_IsFailed = true;
+				return false;
+			}
+
 			// Increment the slots counter, releasing any Takers
-			_UsedSlots.Increment();
-			
-			return true;
+			return _UsedSlots.TryIncrement();
 		}
 		
 		/// <summary>
@@ -377,11 +385,11 @@ namespace Proximity.Utility.Collections
 				item = default(TItem);
 				return false;
 			}
-			
+
 			// Yes, remove it from the collection
-			if (!_Collection.TryTake(out item))
-				throw new InvalidOperationException("Item was not returned by the underlying collection");
-			
+			if (!GetNextItem(out item))
+				throw new InvalidOperationException("Collection failed to add to the underlying collection. AsyncCollection is corrupted");
+
 			// Is there a maximum size?
 			if (_FreeSlots != null)
 			{
@@ -476,21 +484,19 @@ namespace Proximity.Utility.Collections
 					// No, wait for it to arrive
 					// Do not pass the cancellation token, since if the counter is disposed when token cancels,
 					// an ObjectDisposedException could be thrown but never be observed and cause an Unobserved Task Exception
-					yield return MyTask.ContinueWith((Func<Task, TItem>)InternalTake, CancellationToken.None, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Current);
+					yield return MyTask.ContinueWith(InternalTake, CancellationToken.None, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Current);
 					
 					continue;
 				}
-				
-				TItem MyItem;
-				
+
 				// Try and remove an item from the collection
-				if (!_Collection.TryTake(out MyItem))
+				if (!GetNextItem(out var MyItem))
 				{
 					yield return new InvalidOperationException("Item was not returned by the underlying collection").ToTask<TItem>();
 
 					yield break;
 				}
-				
+
 				// Is there a maximum size?
 				if (_FreeSlots != null)
 				{
@@ -564,10 +570,7 @@ namespace Proximity.Utility.Collections
 		}
 		
 		private TItem InternalTake(Task task)
-		{	//****************************************
-			TItem MyItem;
-			//****************************************
-			
+		{
 			if (task.IsFaulted)
 			{
 				if (task.Exception.InnerException is ObjectDisposedException)
@@ -577,7 +580,7 @@ namespace Proximity.Utility.Collections
 			}
 
 			// Try and remove an item from the collection
-			if (!_Collection.TryTake(out MyItem))
+			if (!GetNextItem(out var MyItem))
 				throw new InvalidOperationException("Item was not returned by the underlying collection");
 			
 			// Is there a maximum size?
@@ -594,7 +597,27 @@ namespace Proximity.Utility.Collections
 			
 			return MyItem;
 		}
-		
+
+		private bool GetNextItem(out TItem item)
+		{
+			if (!_Collection.TryTake(out item))
+			{
+				// We may need to wait a short moment for the item to become available
+				var SpinWait = new SpinWait();
+
+				do
+				{
+					if (_IsFailed)
+						return false;
+
+					SpinWait.SpinOnce();
+				}
+				while (!_Collection.TryTake(out item));
+			}
+
+			return true;
+		}
+
 		private static void CleanupCancelSource(Task task, object state)
 		{
 			((CancellationTokenSource)state).Dispose();
@@ -611,59 +634,41 @@ namespace Proximity.Utility.Collections
 		{
 			return _Collection.GetEnumerator();
 		}
-		
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Gets the maximum number of items in the collection
 		/// </summary>
-		public int Capacity
-		{
-			get { return _Capacity; }
-		}
-		
+		public int Capacity { get; }
+
 		/// <summary>
 		/// Gets the approximate number of items in the collection
 		/// </summary>
-		public int Count
-		{
-			get { return _Collection.Count; }
-		}
-		
+		public int Count => _Collection.Count;
+
 		/// <summary>
 		/// Gets the number of operations waiting to take from the collection
 		/// </summary>
-		public int WaitingToTake
-		{
-			get { return _UsedSlots.WaitingCount; }
-		}
-		
+		public int WaitingToTake => _UsedSlots.WaitingCount;
+
 		/// <summary>
 		/// Gets the number of operations waiting to add to the collection
 		/// </summary>
-		public int WaitingToAdd
-		{
-			get { return _FreeSlots != null ? _FreeSlots.WaitingCount : 0; }
-		}
-		
+		public int WaitingToAdd => _FreeSlots != null ? _FreeSlots.WaitingCount : 0;
+
 		/// <summary>
 		/// Gets whether adding has been completed
 		/// </summary>
-		public bool IsAddingCompleted
-		{
-			get { return _IsCompleted; }
-		}
-		
+		public bool IsAddingCompleted => _IsCompleted;
+
 		/// <summary>
 		/// Gets whether adding has been completed and the collection is empty
 		/// </summary>
-		public bool IsCompleted
-		{
-			get { return _IsCompleted && _UsedSlots.CurrentCount == 0; }
-		}
-		
+		public bool IsCompleted => _IsCompleted && _UsedSlots.CurrentCount == 0;
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Attempts to take an Item from a set of collections
 		/// </summary>
@@ -790,16 +795,13 @@ namespace Proximity.Utility.Collections
 		/// <param name="collections">An enumeration of collections to pull from</param>
 		/// <returns>The result of the operation</returns>
 		public static TakeResult TryTakeFromAny(IEnumerable<AsyncCollection<TItem>> collections)
-		{	//****************************************
-			TItem MyResult;
-			//****************************************
-			
+		{
 			foreach (var MyCollection in collections)
 			{
-				if (MyCollection.TryTake(out MyResult))
+				if (MyCollection.TryTake(out TItem MyResult))
 					return new TakeResult(MyCollection, MyResult);
 			}
-			
+
 			return default(TakeResult);
 		}
 		
@@ -809,43 +811,30 @@ namespace Proximity.Utility.Collections
 		/// Describes the result of a TakeFromAny operation
 		/// </summary>
 		public struct TakeResult
-		{	//****************************************
-			private readonly AsyncCollection<TItem> _Source;
-			private readonly TItem _Item;
-			//****************************************
-			
+		{
 			internal TakeResult(AsyncCollection<TItem> source, TItem item)
 			{
-				_Source = source;
-				_Item = item;
+				Source = source;
+				Item = item;
 			}
-			
+
 			//****************************************
-			
+
 			/// <summary>
 			/// Gets whether this result has an item
 			/// </summary>
-			public bool HasItem
-			{
-				get { return _Source != null; }
-			}
-			
+			public bool HasItem => Source != null;
+
 			/// <summary>
 			/// Gets the collection the item was retrieved from
 			/// </summary>
 			/// <remarks>Null if no item was retrieved due</remarks>
-			public AsyncCollection<TItem> Source
-			{
-				get { return _Source; }
-			}
-			
+			public AsyncCollection<TItem> Source { get; }
+
 			/// <summary>
 			/// Gets the item in this result
 			/// </summary>
-			public TItem Item
-			{
-				get { return _Item; }
-			}
+			public TItem Item { get; }
 		}
 	}
 }

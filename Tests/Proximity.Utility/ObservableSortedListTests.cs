@@ -14,94 +14,72 @@ using Proximity.Utility.Collections;
 
 namespace Proximity.Utility.Tests
 {
-	[TestFixture]
+	[TestFixture, Timeout(2000)]
 	public class ObservableSortedListTests
 	{
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void Add()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
 			var MyRecords = new ObservableSortedList<int, int>();
 
-			var MyDictionary = new SortedList<int, int>(1024);
+			var MyDictionary = new Dictionary<int, int>(1024);
+			var MySortedList = new SortedList<int, int>(1024);
 			//****************************************
 
-			for (int Index = 0; Index < 1024; Index++)
+			while (MyDictionary.Count < 1024)
 			{
-				int Key, Value;
+				MyDictionary[MyRandom.Next()] = MyRandom.Next();
+			}
 
-				do
-				{
-					Key = MyRandom.Next();
-				} while (MyDictionary.ContainsKey(Key));
-
-				Value = MyRandom.Next();
-
-				MyDictionary.Add(Key, Value);
-				MyRecords.Add(Key, Value);
+			foreach (var MyPair in MyDictionary)
+			{
+				MySortedList.Add(MyPair.Key, MyPair.Value);
+				MyRecords.Add(MyPair.Key, MyPair.Value);
 			}
 
 			//****************************************
 
 			Assert.AreEqual(1024, MyRecords.Count, "Count incorrect. Bad Seed was {0}", MySeed);
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
-
-			foreach (var MyPair in MyDictionary)
-			{
-				int Value;
-
-				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out Value));
-				Assert.AreEqual(MyPair.Value, Value);
-			}
+			CollectionAssert.AreEqual(MySortedList, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
 
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void AddCapacity()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
 			var MyRecords = new ObservableSortedList<int, int>(1024);
 
-			var MyDictionary = new SortedList<int, int>(1024);
+			var MyDictionary = new Dictionary<int, int>(1024);
+			var MySortedList = new SortedList<int, int>(1024);
 			//****************************************
 
-			for (int Index = 0; Index < 1024; Index++)
+			while (MyDictionary.Count < 1024)
 			{
-				int Key, Value;
+				MyDictionary[MyRandom.Next()] = MyRandom.Next();
+			}
 
-				do
-				{
-					Key = MyRandom.Next();
-				} while (MyDictionary.ContainsKey(Key));
-
-				Value = MyRandom.Next();
-
-				MyDictionary.Add(Key, Value);
-				MyRecords.Add(Key, Value);
+			foreach (var MyPair in MyDictionary)
+			{
+				MySortedList.Add(MyPair.Key, MyPair.Value);
+				MyRecords.Add(MyPair.Key, MyPair.Value);
 			}
 
 			//****************************************
 
 			Assert.AreEqual(1024, MyRecords.Count, "Count incorrect. Bad Seed was {0}", MySeed);
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
-
-			foreach (var MyPair in MyDictionary)
-			{
-				int Value;
-
-				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out Value));
-				Assert.AreEqual(MyPair.Value, Value);
-			}
+			CollectionAssert.AreEqual(MySortedList, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
 
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void AddCollide()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -133,18 +111,10 @@ namespace Proximity.Utility.Tests
 
 			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
 
-			foreach (var MyPair in MyDictionary)
-			{
-				int Value;
-
-				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out Value));
-				Assert.AreEqual(MyPair.Value, Value);
-			}
-
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void AddExists()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<int, int>();
@@ -165,50 +135,39 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void AddRange()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
 			var MyRecords = new ObservableSortedList<int, int>(1024);
 
-			var MyDictionary = new SortedList<int, int>(1024);
+			var MyDictionary = new Dictionary<int, int>(1024);
+			var MySortedList = new SortedList<int, int>(1024);
 			//****************************************
 
-			for (int Index = 0; Index < 1024; Index++)
+			while (MyDictionary.Count < 1024)
 			{
-				int Key, Value;
-
-				do
-				{
-					Key = MyRandom.Next();
-				} while (MyDictionary.ContainsKey(Key));
-
-				Value = MyRandom.Next();
-
-				MyDictionary.Add(Key, Value);
+				MyDictionary[MyRandom.Next()] = MyRandom.Next();
 			}
 
-			MyRecords.AddRange(MyDictionary);
+			foreach (var MyPair in MyDictionary)
+			{
+				MySortedList.Add(MyPair.Key, MyPair.Value);
+			}
+
+			MyRecords.AddRange(MySortedList);
 
 			//****************************************
 
 			Assert.AreEqual(1024, MyRecords.Count, "Count incorrect. Bad Seed was {0}", MySeed);
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
-
-			foreach (var MyPair in MyDictionary)
-			{
-				int Value;
-
-				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out Value));
-				Assert.AreEqual(MyPair.Value, Value);
-			}
-
+			CollectionAssert.AreEqual(MySortedList, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
+			
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void AddRangeCollide()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -240,19 +199,11 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(64, MyRecords.Count, "Count incorrect. Bad Seed was {0}", MySeed);
 
 			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
-
-			foreach (var MyPair in MyDictionary)
-			{
-				int Value;
-
-				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out Value));
-				Assert.AreEqual(MyPair.Value, Value);
-			}
-
+			
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void AddRangeDuplicateInRange()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<int, int>(64);
@@ -273,7 +224,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyRecords.Count, "Items were added");
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void AddRangeDuplicateInDictionary()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<int, int>(64);
@@ -299,46 +250,39 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(4, MyRecords.Count, "Items were added");
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void AddRangePrePopulated()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
 			var MyRecords = new ObservableSortedList<int, int>(1024);
 
-			var MyDictionary = new SortedList<int, int>(1024);
+			var MyDictionary = new Dictionary<int, int>(1024);
+			var MySortedList = new SortedList<int, int>(1024);
+
 			var MySecondSet = new List<KeyValuePair<int, int>>(512);
 			//****************************************
 
-			for (int Index = 0; Index < 512; Index++)
+			while (MyDictionary.Count < 512)
 			{
-				int Key, Value;
-
-				do
-				{
-					Key = MyRandom.Next();
-				} while (MyDictionary.ContainsKey(Key));
-
-				Value = MyRandom.Next();
-
-				MyDictionary.Add(Key, Value);
-				MyRecords.Add(Key, Value);
+				MyDictionary[MyRandom.Next()] = MyRandom.Next();
 			}
 
-			for (int Index = 0; Index < 512; Index++)
+			foreach (var MyPair in MyDictionary)
 			{
-				int Key, Value;
-
-				do
-				{
-					Key = MyRandom.Next();
-				} while (MyDictionary.ContainsKey(Key));
-
-				Value = MyRandom.Next();
-
-				MyDictionary.Add(Key, Value);
-				MySecondSet.Add(new KeyValuePair<int, int>(Key, Value));
+				MySortedList.Add(MyPair.Key, MyPair.Value);
+				MyRecords.Add(MyPair.Key, MyPair.Value);
 			}
+
+			while (MyDictionary.Count < 1024)
+			{
+				MyDictionary[MyRandom.Next()] = MyRandom.Next();
+			}
+
+			MySecondSet.AddRange(MyDictionary.Except(MySortedList));
+			
+			foreach (var MyPair in MySecondSet)
+				MySortedList.Add(MyPair.Key, MyPair.Value);
 
 			MyRecords.AddRange(MySecondSet);
 
@@ -346,20 +290,12 @@ namespace Proximity.Utility.Tests
 
 			Assert.AreEqual(1024, MyRecords.Count, "Count incorrect. Bad Seed was {0}", MySeed);
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
-
-			foreach (var MyPair in MyDictionary)
-			{
-				int Value;
-
-				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out Value));
-				Assert.AreEqual(MyPair.Value, Value);
-			}
+			CollectionAssert.AreEqual(MySortedList, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
 
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void AddRangePrePopulatedCollide()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -410,18 +346,10 @@ namespace Proximity.Utility.Tests
 
 			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
 
-			foreach (var MyPair in MyDictionary)
-			{
-				int Value;
-
-				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out Value));
-				Assert.AreEqual(MyPair.Value, Value);
-			}
-
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void GetIndex()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<int, int>();
@@ -434,7 +362,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(new KeyValuePair<int, int>(10, 42), ((IList<KeyValuePair<int, int>>)MyRecords)[0]);
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void GetIndexOutOfRange()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<int, int>();
@@ -465,7 +393,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void GetKey()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<int, int>();
@@ -478,7 +406,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(42, MyRecords[10]);
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void GetKeyMissing()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<int, int>();
@@ -499,7 +427,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void IndexOf()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<int, int>();
@@ -512,7 +440,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyRecords.IndexOf(new KeyValuePair<int,int>(10, 42)));
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void IndexOfKey()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<int, int>();
@@ -525,7 +453,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyRecords.IndexOfKey(10));
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void IndexOfKeyCollideMissing()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<CollideStruct, int>();
@@ -538,7 +466,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(-1, MyRecords.IndexOfKey(new CollideStruct(11)));
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void IndexOfKeyCollideMissing2()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<CollideStruct, int>();
@@ -552,7 +480,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(-1, MyRecords.IndexOfKey(new CollideStruct(11)));
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void IndexOfKeyMissing()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<int, int>();
@@ -565,7 +493,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(-1, MyRecords.IndexOfKey(11));
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void IndexOfMissingKey()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<int, int>();
@@ -578,7 +506,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(-1, MyRecords.IndexOf(new KeyValuePair<int, int>(11, 12)));
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void IndexOfMissingValue()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<int, int>();
@@ -591,27 +519,24 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(-1, MyRecords.IndexOf(new KeyValuePair<int, int>(10, 30)));
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void PrePopulate()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
 
-			var MyDictionary = new SortedList<int, int>(1024);
+			var MyDictionary = new Dictionary<int, int>(1024);
+			var MySortedList = new SortedList<int, int>(1024);
 			//****************************************
 
-			for (int Index = 0; Index < 1024; Index++)
+			while (MyDictionary.Count < 1024)
 			{
-				int Key, Value;
+				MyDictionary[MyRandom.Next()] = MyRandom.Next();
+			}
 
-				do
-				{
-					Key = MyRandom.Next();
-				} while (MyDictionary.ContainsKey(Key));
-
-				Value = MyRandom.Next();
-
-				MyDictionary.Add(Key, Value);
+			foreach (var MyPair in MyDictionary)
+			{
+				MySortedList.Add(MyPair.Key, MyPair.Value);
 			}
 
 			var MyRecords = new ObservableSortedList<int, int>(MyDictionary);
@@ -620,20 +545,12 @@ namespace Proximity.Utility.Tests
 
 			Assert.AreEqual(1024, MyRecords.Count, "Count incorrect. Bad Seed was {0}", MySeed);
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
-
-			foreach (var MyPair in MyDictionary)
-			{
-				int Value;
-
-				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out Value));
-				Assert.AreEqual(MyPair.Value, Value);
-			}
-
+			CollectionAssert.AreEqual(MySortedList, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
+			
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void Remove()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -687,7 +604,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void RemoveAt()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -741,7 +658,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void RemoveAll()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -785,7 +702,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void RemoveRange()
 		{ //****************************************
 			var MySeed = Environment.TickCount;
@@ -832,7 +749,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void Replace()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<int, int>();
@@ -849,7 +766,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(84, MyRecords[10]);
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void ReplaceCollide()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<CollideStruct, int>();
@@ -868,7 +785,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(84, MyRecords[MyKey]);
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void SetKey()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<int, int>();
@@ -886,7 +803,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(84, MyRecords[10]);
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void SetKeyCollide()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<CollideStruct, int>();
@@ -1011,7 +928,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(1024, EventCount, "Event Count does not match");
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void EventAddRangeEmpty()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<int, int>();
@@ -1031,7 +948,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsNull(MyValueEventArgs, "Event Raised");
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void EventClear()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<int, int>();
@@ -1060,7 +977,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(NotifyCollectionChangedAction.Reset, MyEventArgs.Action);
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void EventClearEmpty()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<int, int>();
@@ -1116,7 +1033,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(new KeyValuePair<int, int>(42, 84), MyEventArgs.NewItems[0], "New Items Value incorrect");
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void EventReplaceUnchanged()
 		{	//****************************************
 			var MyRecords = new ObservableSortedList<int, int>();
@@ -1211,28 +1128,22 @@ namespace Proximity.Utility.Tests
 		//****************************************
 
 		private struct CollideStruct : IComparable<CollideStruct>
-		{	//****************************************
-			private readonly int _Value;
-			//****************************************
-
+		{
 			public CollideStruct(int value)
 			{
-				_Value = value;
+				Value = value;
 			}
 
 			//****************************************
 			
 			public int CompareTo(CollideStruct other)
 			{
-				return _Value - other._Value;
+				return Value - other.Value;
 			}
 
 			//****************************************
 
-			public int Value
-			{
-				get { return _Value; }
-			}
+			public int Value { get; }
 		}
 	}
 }

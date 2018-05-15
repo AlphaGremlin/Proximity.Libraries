@@ -2,12 +2,12 @@
  Cloning.cs
  Created: 2013-10-01
 \****************************************/
-#if !NETSTANDARD1_3 && !NETSTANDARD2_0
+#if !NETSTANDARD1_3
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Reflection;
-using System.Reflection.Emit;
 using System.Runtime.Serialization;
 using System.Security;
 using System.Security.Permissions;
@@ -36,18 +36,6 @@ namespace Proximity.Utility.Reflection
 		}
 
 		/// <summary>
-		/// Perform a shallow clone of all fields, ignoring any serialisation attributes
-		/// </summary>
-		/// <param name="input">The object to clone</param>
-		/// <returns>A copy of the provided object</returns>
-		/// <remarks>Supports Arrays, as a type-safe Array.Clone. Input must not be a derived type of TObject. Use CloneDynamic if so.</remarks>
-		[SecuritySafeCritical]
-		public static TObject CloneWithReadOnly<TObject>(TObject input) where TObject : class
-		{
-			return Cloning<TObject>.CloneWithReadOnly(input);
-		}
-
-		/// <summary>
 		/// Perform a shallow clone of all writable fields, ignoring any serialisation attributes
 		/// </summary>
 		/// <param name="input">The object to clone</param>
@@ -59,18 +47,6 @@ namespace Proximity.Utility.Reflection
 			var CloneType = typeof(Cloning<>).MakeGenericType(input.GetType());
 
 			return (TObject)CloneType.GetMethod(nameof(Cloning<object>.Clone), BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, new object[] { input });
-		}
-
-		/// <summary>
-		/// Perform a shallow clone of all fields, ignoring any serialisation attributes
-		/// </summary>
-		/// <param name="source">The object to read from</param>
-		/// <param name="target">The object to write to</param>
-		/// <remarks>Does not support Arrays, and copies read-only (initonly) fields</remarks>
-		[SecuritySafeCritical]
-		public static void CloneToWithReadOnly<TObject>(TObject source, TObject target) where TObject : class
-		{
-			Cloning<TObject>.GetCloneToWithReadOnly()(source, target);
 		}
 
 		/// <summary>
@@ -121,41 +97,25 @@ namespace Proximity.Utility.Reflection
 	[SecurityCritical]
 	internal static class Cloning<TObject> where TObject : class
 	{	//****************************************
-		private static Func<TObject, TObject> _CloneMethod, _CloneWithReadOnlyMethod, _SmartCloneMethod;
-		private static Action<TObject, TObject> _CloneTargetWithReadOnlyMethod, _CloneTargetMethod;
-		private static Func<TObject, IDictionary<TObject, TObject>, TObject> _DeepCloneMethod;
+		private static Func<TObject, TObject> _CloneMethod, _SmartCloneMethod;
+		private static Action<TObject, TObject> _CloneTargetMethod;
+		//private static Func<TObject, IDictionary<object, object>, TObject> _DeepCloneMethod;
 		
-		private static DynamicMethod _DeepCloneSource;
+		//private static Expression<Func<TObject, IDictionary<object, object>, TObject>> _DeepCloneSource;
 		//****************************************
 		
 		internal static TObject Clone(TObject input)
 		{
 			if (_CloneMethod == null)
-				Interlocked.CompareExchange(ref _CloneMethod, BuildSimpleCloneMethod(true), null);
+				Interlocked.CompareExchange(ref _CloneMethod, BuildSimpleCloneMethod(), null);
 			
 			return _CloneMethod(input);
 		}
 
-		internal static TObject CloneWithReadOnly(TObject input)
-		{
-			if (_CloneWithReadOnlyMethod == null)
-				Interlocked.CompareExchange(ref _CloneWithReadOnlyMethod, BuildSimpleCloneMethod(false), null);
-
-			return _CloneWithReadOnlyMethod(input);
-		}
-
-		internal static Action<TObject, TObject> GetCloneToWithReadOnly()
-		{
-			if (_CloneTargetWithReadOnlyMethod == null)
-				Interlocked.CompareExchange(ref _CloneTargetWithReadOnlyMethod, BuildTargetCloneMethod(false), null);
-			
-			return _CloneTargetWithReadOnlyMethod;
-		}
-		
 		internal static void CloneTo(TObject source, TObject target)
 		{
 			if (_CloneTargetMethod == null)
-				Interlocked.CompareExchange(ref _CloneTargetMethod, BuildTargetCloneMethod(true), null);
+				Interlocked.CompareExchange(ref _CloneTargetMethod, BuildTargetCloneMethod(), null);
 			
 			_CloneTargetMethod(source, target);
 		}
@@ -169,31 +129,30 @@ namespace Proximity.Utility.Reflection
 		}
 
 		//****************************************
-
-		private static DynamicMethod GetDeepCloneMethod()
+		/*
+		private static LambdaExpression GetDeepCloneMethod()
 		{
 			if (_DeepCloneSource == null)
 				BuildDeepCloneMethod();
 			
 			return _DeepCloneSource;
 		}
-
+		*/
 		//****************************************
 
-		[PermissionSet(SecurityAction.Assert, Unrestricted = true)]
-		private static Func<TObject, TObject> BuildSimpleCloneMethod(bool skipReadOnly)
+		private static Func<TObject, TObject> BuildSimpleCloneMethod()
 		{	//****************************************
 			var MyType = typeof(TObject);
 			var CurrentType = MyType;
-			var MyEmitter = EmitHelper.FromFunction("CloneSimple", MyType, MyType, MyType);
-			//var MyEmitter = new EmitHelper(new DynamicMethod("CloneSimple", MyType, new[] { MyType }, MyType, true));
+			var Body = new List<Expression>();
+			Expression FinalBody;
 			//****************************************
-			
-			MyEmitter.DeclareLocal("Clone", MyType);
-			MyEmitter.Method.DefineParameter(0, ParameterAttributes.In, "source");
-			
+
+			var SourceParam = Expression.Parameter(MyType, "source");
+			var TargetParam = Expression.Parameter(MyType, "target");
+
 			//****************************************
-			
+
 			// If this is an Array type, clone just the array (basically, a type-safe Array.Clone)
 			if (MyType.IsArray)
 			{
@@ -201,63 +160,29 @@ namespace Proximity.Utility.Reflection
 					throw new NotSupportedException();
 				
 				var ElementType = MyType.GetElementType();
-				
-				// If the elements are by reference, we need to store the value so we can check if it's null
-				if (ElementType.IsByRef)
-					MyEmitter.DeclareLocal("Element", ElementType);
-				
-				MyEmitter
-					.DeclareLocal("Index", typeof(int))
-					.LdArg(0) // Source
-					.LdLen // Length
-					.Dup // Length, Length
-					.StLoc("Index") // Length
-					.NewArr(MyType) // Clone
-					.StLoc("Clone"); // -
-				
-				var StartLoop = MyEmitter.DeclareLabel();
-				var EndLoop = MyEmitter.DeclareLabel();
-				
-				MyEmitter
-					.MarkLabel(StartLoop)
-					.LdLoc("Index") // Index
-					.BrFalse(EndLoop) // -
-					.LdLoc("Index") // Index
-					.Ldc(1) // 1
-					.Sub // Index-1
-					.StLoc("Index"); // -
-				
-				if (ElementType.IsByRef)
+				ParameterExpression IndexVar = Expression.Variable(typeof(int));
+
+				// Index = source.Length;
+				Body.Add(Expression.Assign(IndexVar, Expression.ArrayLength(SourceParam)));
+
+				// Target = new TElement[Index];
+				Body.Add(Expression.Assign(TargetParam, Expression.NewArrayInit(ElementType, IndexVar)));
+
+				var EndLoop = Expression.Label("Loop");
+				var InnerBody = new Expression[]
 				{
-					MyEmitter
-						.LdArg(0) // Source
-						.LdLoc("Index") // Source, Index
-						.LdElem(ElementType) // Element
-						.StLoc("Element") // -
-						.LdLoc("Element") // Element
-					
-					// Skip if this element is null
-						.BrFalse(StartLoop); // -
-					
-					MyEmitter
-						.LdLoc("Clone") // Clone
-						.LdLoc("Index") // Clone, Index
-						.LdLoc("Element")
-						.StElem(ElementType);
-				}
-				else
-				{
-					// Since it's a value type we can just load and immediately store it
-					MyEmitter
-						.LdLoc("Clone") // Clone
-						.LdLoc("Index") // Clone, Index
-						.LdArg(0) // Clone, Index, Source
-						.LdLoc("Index") // Clone, Index, Source, Index
-						.LdElem(ElementType) // Clone, Index, Element
-						.StElem(ElementType) // -
-					// And back to the start we go
-						.Br(StartLoop); // -
-				}
+					// while (Index-- > 0)
+					Expression.IfThen(Expression.Equal(Expression.PostDecrementAssign(IndexVar), Expression.Constant(0)), Expression.Break(EndLoop)),
+					// Target[Index] = source[Index];
+					Expression.Assign(Expression.ArrayAccess(TargetParam, IndexVar), Expression.ArrayAccess(SourceParam, IndexVar))
+				};
+
+				Body.Add(Expression.Loop(Expression.Block(InnerBody), EndLoop));
+
+				// return Taret;
+				Body.Add(TargetParam);
+
+				FinalBody = Expression.Block(new[] { TargetParam, IndexVar }, Body);
 			}
 			else
 			{
@@ -265,25 +190,16 @@ namespace Proximity.Utility.Reflection
 
 				if (MyConstructor != null)
 				{
-					MyEmitter
-						.NewObj(MyConstructor) // Clone
-						.StLoc("Clone"); // -
-				}
-				else if (MyType.IsSecurityCritical || MyType.IsSecuritySafeCritical)
-				{
-					MyEmitter
-						.LdToken(MyType) // Token
-						.Call(typeof(Type), nameof(Type.GetTypeFromHandle), typeof(RuntimeTypeHandle)) // Type
-						.Call(typeof(FormatterServices), nameof(FormatterServices.GetUninitializedObject), typeof(Type)) // Clone (untyped)
-						.CastClass(MyType) // Clone
-						.StLoc("Clone"); // -
+					// Target = new TObject();
+					Body.Add(Expression.Assign(TargetParam, Expression.New(MyConstructor)));
 				}
 				else
 				{
-					// Can't call SecurityCritical methods from a SecurityTransparent class
-					MyEmitter
-						.Call(CreateObjectMethod()) // Clone
-						.StLoc("Clone"); // -
+					// Target = (TObject)FormatterServices.GetUninitializedObject(typeof(MyType));
+					Body.Add(Expression.Assign(
+						TargetParam,
+						Expression.Convert(Expression.Call(typeof(FormatterServices).GetMethod(nameof(FormatterServices.GetUninitializedObject)), Expression.Constant(MyType)), MyType)
+						));
 				}
 
 				do
@@ -294,40 +210,38 @@ namespace Proximity.Utility.Reflection
 						if (MyField.DeclaringType != CurrentType)
 							continue;
 
-						if (MyField.IsInitOnly && skipReadOnly)
+						if (MyField.IsInitOnly)
 							continue;
 
-						MyEmitter
-							.LdLoc("Clone") // Clone
-							.LdArg(0) // Clone, Source
-							.LdFld(MyField) // Clone, Value
-							.StFld(MyField); // -
+						// Target[Field] = Source[Field];
+						Body.Add(Expression.Assign(Expression.Field(TargetParam, MyField), Expression.Field(SourceParam, MyField)));
 					}
 					
 					CurrentType = CurrentType.BaseType;
 					
 				} while (CurrentType != typeof(object));
+
+				// return Taret;
+				Body.Add(TargetParam);
+
+				FinalBody = Expression.Block(new[] { TargetParam }, Body);
 			}
-			
+
 			//****************************************
-			
-			MyEmitter
-				.LdLoc("Clone") // Clone
-				.Ret // -
-				.End();
-			
-			return MyEmitter.ToDelegate<Func<TObject, TObject>>();
+
+			return Expression.Lambda<Func<TObject, TObject>>(FinalBody, "SimpleClone", new[] { SourceParam }).Compile();
 		}
 
-		[PermissionSet(SecurityAction.Assert, Unrestricted =true)]
-		private static Action<TObject, TObject> BuildTargetCloneMethod(bool skipReadOnly)
+		private static Action<TObject, TObject> BuildTargetCloneMethod()
 		{	//****************************************
 			var MyType = typeof(TObject);
 			var CurrentType = MyType;
-			var MyEmitter = EmitHelper.FromAction(skipReadOnly ? "CloneTarget" : "CloneTargetReadOnly", MyType, MyType, MyType);
-			//var MyEmitter = new EmitHelper(new DynamicMethod(skipReadOnly ? "CloneTarget" : "CloneTargetReadOnly", null, new[] { MyType, MyType }, MyType, true));
+			var Body = new List<Expression>();
 			//****************************************
-			
+
+			var SourceParam = Expression.Parameter(MyType, "source");
+			var TargetParam = Expression.Parameter(MyType, "target");
+
 			do
 			{
 				foreach(var MyField in CurrentType.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
@@ -336,47 +250,42 @@ namespace Proximity.Utility.Reflection
 					if (MyField.DeclaringType != CurrentType)
 						continue;
 					
-					if (MyField.IsInitOnly && skipReadOnly)
+					if (MyField.IsInitOnly)
 						continue;
-					
-					MyEmitter
-						.LdArg(1) // Clone
-						.LdArg(0) // Clone, Source
-						.LdFld(MyField) // Clone, Value
-						.StFld(MyField); // -
+
+					// Target[Field] = Source[Field];
+					Body.Add(Expression.Assign(Expression.Field(TargetParam, MyField), Expression.Field(SourceParam, MyField)));
 				}
 				
 				CurrentType = CurrentType.BaseType;
 				
 			} while (CurrentType != typeof(object));
-			
+
 			//****************************************
-			
-			MyEmitter
-				.Ret // -
-				.End();
-			
-			return MyEmitter.ToDelegate<Action<TObject, TObject>>();
+
+			return Expression.Lambda<Action<TObject, TObject>>(Expression.Block(Body), "CloneTarget", new[] { SourceParam, TargetParam }).Compile();
 		}
 
-		[PermissionSet(SecurityAction.Assert, Unrestricted = true)]
 		private static Func<TObject, TObject> BuildSmartCloneMethod(bool skipReadOnly)
 		{	//****************************************
 			var MyType = typeof(TObject);
 			var CurrentType = MyType;
-			var MyConstructor = MyType.GetConstructor(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, Type.DefaultBinder, new Type[0], null);
-			var MyEmitter = EmitHelper.FromFunction("CloneSmart", MyType, MyType, MyType);
-			//var MyEmitter = new EmitHelper(new DynamicMethod("CloneSmart", MyType, new[] { MyType }, MyType, true));
+			var Body = new List<Expression>();
+			List<MethodInfo> OnSerializing = null, OnSerialized = null, OnDeserializing = null, OnDeserialized = null;
 			//****************************************
 
-			MyEmitter
-				.DeclareLocal("Clone", MyType)
-				.NewObj(MyConstructor) // Clone
-				.StLoc("Clone"); // -
-			
+			var SourceParam = Expression.Parameter(MyType, "source");
+			var TargetParam = Expression.Parameter(MyType, "target");
+			ParameterExpression ContextVar = null;
+
+			var MyConstructor = MyType.GetConstructor(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, Type.DefaultBinder, new Type[0], null);
+
+			// Target = new TObject();
+			Body.Add(Expression.Assign(TargetParam, Expression.New(MyConstructor)));
+
 			//****************************************
-			
-			// First Pass, check for methods marked with OnSerializing or OnDeserializing
+
+			// First pass, check for methods marked with OnSerializing, OnSerialized, OnDeserializing and OnDeserialized
 			do
 			{
 				foreach(var MyMethod in CurrentType.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
@@ -384,7 +293,7 @@ namespace Proximity.Utility.Reflection
 					// Skip if it's declared in a base type. We'll check it later
 					if (MyMethod.DeclaringType != CurrentType)
 						continue;
-					
+
 					if (Attribute.GetCustomAttribute(MyMethod, typeof(OnSerializingAttribute)) != null)
 					{
 						// Ensure it's a valid method
@@ -392,17 +301,27 @@ namespace Proximity.Utility.Reflection
 						
 						if (MyParams.Length == 1 && MyParams[0].ParameterType == typeof(StreamingContext))
 						{
-							// Prepare the context if we haven't already
-							PrepareContext(MyEmitter);
-							
-							// Call the deserialising method
-							MyEmitter
-								.LdArg(0) // Source
-								.LdLoc("Context") // Source, Context
-								.Call(MyMethod); // -
+							if (OnSerializing == null)
+								OnSerializing = new List<MethodInfo>();
+
+							OnSerializing.Add(MyMethod);
 						}
 					}
-					
+
+					if (Attribute.GetCustomAttribute(MyMethod, typeof(OnSerializedAttribute)) != null)
+					{
+						// Ensure it's a valid method
+						var MyParams = MyMethod.GetParameters();
+
+						if (MyParams.Length == 1 && MyParams[0].ParameterType == typeof(StreamingContext))
+						{
+							if (OnSerialized == null)
+								OnSerialized = new List<MethodInfo>();
+
+							OnSerialized.Add(MyMethod);
+						}
+					}
+
 					if (Attribute.GetCustomAttribute(MyMethod, typeof(OnDeserializingAttribute)) != null)
 					{
 						// Ensure it's a valid method
@@ -410,26 +329,56 @@ namespace Proximity.Utility.Reflection
 						
 						if (MyParams.Length == 1 && MyParams[0].ParameterType == typeof(StreamingContext))
 						{
-							// Prepare the context if we haven't already
-							PrepareContext(MyEmitter);
-							
-							// Call the deserialising method
-							MyEmitter
-								.LdLoc("Clone") // Clone
-								.LdLoc("Context") // Clone, Context
-								.Call(MyMethod); // -
+							if (OnDeserializing == null)
+								OnDeserializing = new List<MethodInfo>();
+
+							OnDeserializing.Add(MyMethod);
+						}
+					}
+
+					if (Attribute.GetCustomAttribute(MyMethod, typeof(OnDeserializedAttribute)) != null)
+					{
+						// Ensure it's a valid method
+						var MyParams = MyMethod.GetParameters();
+
+						if (MyParams.Length == 1 && MyParams[0].ParameterType == typeof(StreamingContext))
+						{
+							if (OnDeserialized == null)
+								OnDeserialized = new List<MethodInfo>();
+
+							OnDeserialized.Add(MyMethod);
 						}
 					}
 				}
-				
+
 				CurrentType = CurrentType.BaseType;
-				
+
 			} while (CurrentType != typeof(object));
-			
+
 			CurrentType = MyType;
-			
+
+			if (OnSerializing != null || OnSerialized != null || OnDeserializing != null || OnDeserialized != null)
+			{
+				ContextVar = Expression.Parameter(typeof(StreamingContext));
+
+				// Context = new StreamingContext(StreamingContextStates.Clone);
+				Body.Add(Expression.Assign(ContextVar, Expression.New(typeof(StreamingContext).GetConstructor(new[] { typeof(StreamingContextStates) }), Expression.Constant(StreamingContextStates.Clone))));
+
+				if (OnSerializing != null)
+				{
+					foreach (var MyMethod in OnSerializing)
+						Body.Add(Expression.Call(SourceParam, MyMethod, ContextVar));
+				}
+
+				if (OnDeserializing != null)
+				{
+					foreach (var MyMethod in OnDeserializing)
+						Body.Add(Expression.Call(TargetParam, MyMethod, ContextVar));
+				}
+			}
+
 			//****************************************
-			
+
 			// Second Pass, copy fields
 			do
 			{
@@ -445,99 +394,74 @@ namespace Proximity.Utility.Reflection
 					// Skip if it's marked as non-serialised
 					if (Attribute.GetCustomAttribute(MyField, typeof(NonSerializedAttribute)) != null)
 						continue;
-					
-					MyEmitter
-						.LdLoc("Clone") // Clone
-						.LdArg(0) // Clone, Source
-						.LdFld(MyField) // Clone, Value
-						.StFld(MyField); // -
-				}
-				
-				CurrentType = CurrentType.BaseType;
-				
-			} while (CurrentType != typeof(object));
-			
-			CurrentType = MyType;
-			
-			//****************************************
-			
-			// Third Pass, check for deserialised attributes
-			do
-			{
-				foreach(var MyMethod in CurrentType.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
-				{
-					// Skip if it's declared in a base type. We'll check it later
-					if (MyMethod.DeclaringType != CurrentType)
-						continue;
-					
-					if (Attribute.GetCustomAttribute(MyMethod, typeof(OnDeserializedAttribute)) != null)
-					{
-						// Ensure it's a valid method
-						var MyParams = MyMethod.GetParameters();
-						
-						if (MyParams.Length == 1 && MyParams[0].ParameterType == typeof(StreamingContext))
-						{
-							// Prepare the context if we haven't already
-							PrepareContext(MyEmitter);
-							
-							// Call the deserialising method
-							MyEmitter
-								.LdLoc("Clone") // Clone
-								.LdLoc("Context") // Clone, Context
-								.Call(MyMethod); // -
-						}
-					}
-					
-					if (Attribute.GetCustomAttribute(MyMethod, typeof(OnSerializedAttribute)) != null)
-					{
-						// Ensure it's a valid method
-						var MyParams = MyMethod.GetParameters();
-						
-						if (MyParams.Length == 1 && MyParams[0].ParameterType == typeof(StreamingContext))
-						{
-							// Prepare the context if we haven't already
-							PrepareContext(MyEmitter);
-							
-							// Call the deserialising method
-							MyEmitter
-								.LdArg(0) // Source
-								.LdLoc("Context") // Source, Context
-								.Call(MyMethod); // -
-						}
-					}
-				}
-				
-				CurrentType = CurrentType.BaseType;
-				
-			} while (CurrentType != typeof(object));
-			
-			//****************************************
-			
-			MyEmitter
-				.LdLoc("Clone") // Clone
-				.Ret // -
-				.End();
-			
-			//****************************************
-			
-			return MyEmitter.ToDelegate<Func<TObject, TObject>>();
-		}
 
-		[PermissionSet(SecurityAction.Assert, Unrestricted = true)]
+					// Target[Field] = Source[Field];
+					Body.Add(Expression.Assign(Expression.Field(TargetParam, MyField), Expression.Field(SourceParam, MyField)));
+				}
+				
+				CurrentType = CurrentType.BaseType;
+				
+			} while (CurrentType != typeof(object));
+
+			CurrentType = MyType;
+
+			//****************************************
+
+			if (OnSerialized != null)
+			{
+				foreach (var MyMethod in OnSerialized)
+					Body.Add(Expression.Call(SourceParam, MyMethod, ContextVar));
+			}
+
+			if (OnDeserialized != null)
+			{
+				foreach (var MyMethod in OnDeserialized)
+					Body.Add(Expression.Call(TargetParam, MyMethod, ContextVar));
+			}
+
+			//****************************************
+
+			// return Taret;
+			Body.Add(TargetParam);
+
+			Expression FinalBody;
+
+			if (ContextVar != null)
+				FinalBody = Expression.Block(new[] { TargetParam, ContextVar }, Body);
+			else
+				FinalBody = Expression.Block(new[] { TargetParam }, Body);
+
+			return Expression.Lambda<Func<TObject, TObject>>(FinalBody, "SimpleClone", new[] { SourceParam }).Compile();
+		}
+		/*
 		private static void BuildDeepCloneMethod()
 		{	//****************************************
 			var MyType = typeof(TObject);
 			var MyDictionaryType = typeof(IDictionary<object,object>);
 			var CurrentType = MyType;
-			var MyConstructor = MyType.GetConstructor(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, Type.DefaultBinder, new Type[0], null);
-			var MyEmitter = EmitHelper.FromFunction("CloneDeep", MyType, MyType, new Type[] { MyType, MyDictionaryType });
+			var Body = new List<Expression>();
+			var Variables = new Dictionary<Type, ParameterExpression>();
 			//****************************************
-			
-			MyEmitter
-				.DeclareLocal("Clone", MyType)
-				.NewObj(MyConstructor) // Clone
-				.StLoc("Clone"); // -
-			
+
+			var SourceParam = Expression.Parameter(MyType, "source");
+			var ObjectsParam = Expression.Parameter(MyDictionaryType, "objects");
+			var TargetParam = Expression.Parameter(MyType, "target");
+
+			var MyConstructor = MyType.GetConstructor(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, Type.DefaultBinder, new Type[0], null);
+
+			// Target = new TObject();
+			Body.Add(Expression.Assign(TargetParam, Expression.New(MyConstructor)));
+
+			// Objects.Add(Source, Target);
+			Body.Add(Expression.Call(
+				MyDictionaryType.GetMethod(nameof(IDictionary<object, object>.Add), new[] { typeof(object), typeof(object) }),
+				ObjectsParam,
+				SourceParam,
+				TargetParam
+				));
+
+			//****************************************
+
 			do
 			{
 				foreach(var MyField in CurrentType.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
@@ -545,111 +469,63 @@ namespace Proximity.Utility.Reflection
 					// Skip if it's declared in a base type. We'll check it later
 					if (MyField.DeclaringType != CurrentType)
 						continue;
-					
+
 					var MyFieldType = MyField.FieldType;
-					
+
 					// If we're a primitive or string, direct copy
 					if (MyFieldType.IsPrimitive || MyFieldType == typeof(string))
 					{
-						MyEmitter
-							.LdLoc("Clone") // Clone
-							.LdArg(0) // Clone, Source
-							.LdFld(MyField) // Clone, Value
-							.StFld(MyField); // -
-						
+						// Target[Field] = Source[Field];
+						Body.Add(Expression.Assign(Expression.Field(TargetParam, MyField), Expression.Field(SourceParam, MyField)));
+
 						continue;
 					}
 					
-					Type FieldClone;
-					DynamicMethod FieldCloneMethod;
-					
+					Type FieldClone = typeof(DeepClone<>).MakeGenericType(MyFieldType);
+					LambdaExpression FieldCloneMethod;
+
 					// If we're a value type, deep clone the fields
 					if (MyFieldType.IsValueType)
 					{
-						FieldClone = typeof(DeepClone<>).MakeGenericType(MyFieldType);
-						FieldCloneMethod = (DynamicMethod)FieldClone.GetMethod(nameof(DeepClone<int>.GetDeepCloneMethod), BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, null);
-					
-						continue;
+						FieldCloneMethod = (LambdaExpression)FieldClone.GetMethod(nameof(DeepClone<int>.GetDeepCloneMethod), BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, null);
+
+						// Target[Field] = DeepClone(Source[Field], Objects);
+						Body.Add(Expression.Assign(Expression.Field(TargetParam, MyField), Expression.Invoke(FieldCloneMethod, Expression.Field(SourceParam, MyField), ObjectsParam)));
 					}
-					
-					// If we're a reference type, clone the reference
-					if (MyFieldType.IsByRef)
+					else
 					{
-						FieldClone = typeof(Cloning<>).MakeGenericType(MyFieldType);
-						FieldCloneMethod = (DynamicMethod)FieldClone.GetMethod(nameof(DeepClone<int>.GetDeepCloneMethod), BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, null);
-						
-						var StoreRefLabel = MyEmitter.DeclareLabel();
-						
-						MyEmitter
-							.EnsureLocal("Object", typeof(object))
-							.LdArg(0) // Source
-							.LdFld(MyField) // Value (typed)
-							.StLoc("Object") // -
-							.LdLoc("Object") // Value (untyped)
-							.BrFalse(StoreRefLabel); // -
-						
-						// Check if we have the reference cached (already cloned)
-						MyEmitter
-							.LdArg(1) // Dictionary
-							.LdLoc("Object") // Dictionary, Value (typed)
-							.LdLocA("Object") // Dictionary, Value (typed), &Target Field
-							.CallVirt(MyDictionaryType, nameof(IDictionary<object, object>.TryGetValue), typeof(object), typeof(object).MakeByRefType()) // Item Found
-						// Jump to the end if we found this object's duplicate in the cache
-							.BrTrue(StoreRefLabel); // -
-						
-						MyEmitter
-							.LdLoc("Object") // Value (untyped)
-							.CastClass(MyFieldType) // Value (typed)
-							.LdArg(1) // Value (typed), Dictionary
-							.Call(FieldCloneMethod) // Value Clone
-							.StLoc("Object") // -
-							.LdArg(1) // Dictionary
-							.LdArg(0) // Dictionary, Source
-							.LdFld(MyField) // Dictionary, Value (typed)
-							.LdLoc("Object") // Dictionary, Value, Value Clone
-							.Call(MyDictionaryType, "Add"); // -
-						
-						MyEmitter
-							.MarkLabel(StoreRefLabel) // -
-							.LdLoc("Clone") // Clone
-							.LdLoc("Object") // Clone, Value
-							.CastClass(MyFieldType) // Clone, Value (typed)
-							.StFld(MyField); // -
-						
-						continue;
+						FieldCloneMethod = (LambdaExpression)FieldClone.GetMethod(nameof(Cloning<object>.GetDeepCloneMethod), BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, null);
+
+						if (!Variables.TryGetValue(MyFieldType, out var FieldParameter))
+							Variables.Add(MyFieldType, FieldParameter = Expression.Variable(MyFieldType));
+
+						// Target[Field] = Objects.TryGetValue(Source[Field], out var FieldParameter) ? FieldParameter : DeepClone(Source[Field], Objects);
+						Body.Add(Expression.Assign(
+							Expression.Field(TargetParam, MyField),
+							Expression.Condition(
+								Expression.IsTrue(
+									Expression.Call(MyDictionaryType.GetMethod(nameof(IDictionary<object, object>.TryGetValue), new[] { typeof(object), typeof(object).MakeByRefType() }), ObjectsParam, Expression.Field(SourceParam, MyField))
+									),
+								FieldParameter,
+								Expression.Invoke(FieldCloneMethod, Expression.Field(SourceParam, MyField), ObjectsParam)
+								)
+							));
 					}
-					
 				}
-				
+
 				CurrentType = CurrentType.BaseType;
 				
 			} while (CurrentType != typeof(object));
 			
-			MyEmitter
-				.LdLoc("Clone") // Clone
-				.Ret // -
-				.End();
-			
-			
 			//****************************************
-			
-			if (Interlocked.CompareExchange(ref _DeepCloneSource, MyEmitter.Method, null) == null)
-				_DeepCloneMethod = MyEmitter.ToDelegate<Func<TObject, IDictionary<TObject, TObject>, TObject>>();
+
+			var Delegate = Expression.Lambda<Func<TObject, IDictionary<object, object>, TObject>>(Expression.Block(Variables.Values, Body), "DeepClone", new[] { SourceParam, ObjectsParam });
+
+			if (Interlocked.CompareExchange(ref _DeepCloneSource, Delegate, null) == null)
+				_DeepCloneMethod = Delegate.Compile();
 		}
 
-		private static void PrepareContext(EmitHelper emitter)
-		{
-			if (!emitter.HasLocal("Context"))
-			{
-				emitter
-					.DeclareLocal("Context", typeof(StreamingContext))
-					.Ldc((int)StreamingContextStates.Clone) // Context State
-					.NewObj(typeof(StreamingContext), typeof(StreamingContextStates)) // Context
-					.StLoc("Context");
-			}
-		}
-		
-		private static DynamicMethod CreateObjectMethod()
+		private static Expression<TObject> CreateObjectMethod()
 		{ //****************************************
 			var MyType = typeof(TObject);
 			var MyEmitter = EmitHelper.FromFunction("CreateFactory", typeof(Cloning), typeof(TObject));
@@ -666,14 +542,15 @@ namespace Proximity.Utility.Reflection
 
 			return MyEmitter.Method;
 		}
+		*/
 	}
 
 	internal static class DeepClone<TValueType> where TValueType : struct
 	{	//****************************************
-		private static DynamicMethod _DeepCloneSource = null;
+		private static Expression<Func<TValueType, IDictionary<object, object>, TValueType>> _DeepCloneSource = null;
 		//****************************************
 		
-		internal static DynamicMethod GetDeepCloneMethod()
+		internal static Expression<Func<TValueType, IDictionary<object, object>, TValueType>> GetDeepCloneMethod()
 		{
 			if (_DeepCloneSource == null)
 				BuildDeepCloneMethod();

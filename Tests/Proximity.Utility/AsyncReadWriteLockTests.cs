@@ -891,7 +891,7 @@ namespace Proximity.Utility.Tests
 			
 			try
 			{
-				MyLock.LockRead().Result.Dispose();
+				MyLock.LockRead().GetAwaiter().GetResult().Dispose();
 				
 				Assert.Fail("Should never reach this point");
 			}
@@ -919,7 +919,7 @@ namespace Proximity.Utility.Tests
 			
 			var MyReadTask = MyLock.LockRead();
 			
-			var MyInnerTask = MyReadTask.ContinueWith((task) => MyLock.LockRead(), TaskContinuationOptions.ExecuteSynchronously);
+			var MyInnerTask = MyReadTask.ContinueWith((task) => MyLock.LockRead(), TaskContinuationOptions.ExecuteSynchronously).Unwrap();
 			
 			MyLock.Dispose();
 			
@@ -1009,7 +1009,7 @@ namespace Proximity.Utility.Tests
 			
 			try
 			{
-				MyLock.LockWrite().Result.Dispose();
+				MyLock.LockWrite().GetAwaiter().GetResult().Dispose();
 				
 				Assert.Fail("Should never reach this point");
 			}
@@ -1069,7 +1069,7 @@ namespace Proximity.Utility.Tests
 			
 			var MyWriteTask = MyLock.LockWrite();
 			
-			var MyInnerTask = MyWriteTask.ContinueWith((task) => MyLock.LockWrite(), TaskContinuationOptions.ExecuteSynchronously);
+			var MyInnerTask = MyWriteTask.ContinueWith((task) => MyLock.LockWrite(), TaskContinuationOptions.ExecuteSynchronously).Unwrap();
 			
 			MyLock.Dispose();
 			
@@ -1201,7 +1201,7 @@ namespace Proximity.Utility.Tests
 			
 			try
 			{
-				MyLock.LockRead().Result.Dispose();
+				MyLock.LockRead().GetAwaiter().GetResult().Dispose();
 				
 				Assert.Fail("Should never reach this point");
 			}
@@ -1227,7 +1227,7 @@ namespace Proximity.Utility.Tests
 			
 			try
 			{
-				MyLock.LockWrite().Result.Dispose();
+				MyLock.LockWrite().GetAwaiter().GetResult().Dispose();
 				
 				Assert.Fail("Should never reach this point");
 			}

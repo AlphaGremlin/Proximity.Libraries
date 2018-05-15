@@ -61,7 +61,7 @@ namespace Proximity.Utility.Tests
 			var Left = new CustomObjectReadOnly(12345678, 12345678.90m, new object());
 			var Right = Cloning.Clone(Left);
 			
-			Assert.AreEqual(Left, Right, "Are not equal");
+			Assert.AreEqual(new CustomObjectReadOnly(0, decimal.Zero, Left.Third), Right, "Are not equal");
 		}
 
 		[Test()]
@@ -93,16 +93,6 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, Right.First, "Are not equal");
 			Assert.AreEqual(decimal.Zero, Right.Second, "Are not equal");
 			Assert.AreSame(Left.Third, Right.Third, "Are not same");
-		}
-		
-		[Test()]
-		public void ReadOnlyObjectCloneToReadOnly()
-		{
-			var Left = new CustomObjectReadOnly(12345678, 12345678.90m, new object());
-			var Right = new CustomObjectReadOnly(0, decimal.Zero, null);
-			Cloning.CloneToWithReadOnly(Left, Right);
-			
-			Assert.AreEqual(Left, Right, "Are not equal");
 		}
 		
 		[Test()]
@@ -194,7 +184,7 @@ namespace Proximity.Utility.Tests
 
 		private class CustomObjectComplex : IEquatable<CustomObjectComplex>
 		{ //****************************************
-			private readonly CustomObjectBasic _First;
+			private CustomObjectBasic _First;
 			private decimal? _Second;
 			private object _Third;
 			//****************************************
