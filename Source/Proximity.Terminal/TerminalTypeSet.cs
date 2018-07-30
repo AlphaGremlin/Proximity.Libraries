@@ -16,16 +16,13 @@ namespace Proximity.Terminal
 	/// Represents a set of types grouped by a type name
 	/// </summary>
 	public sealed class TerminalTypeSet : IComparable<TerminalTypeSet>
-	{	//****************************************
-		private readonly string _TypeName;
-		
-		private TerminalInstance _DefaultInstance;
+	{ //****************************************
 		private readonly Dictionary<string, TerminalInstance> _Instances = new Dictionary<string, TerminalInstance>(StringComparer.InvariantCultureIgnoreCase);
 		//****************************************
 		
 		internal TerminalTypeSet(string typeName)
 		{
-			_TypeName = typeName;
+			TypeName = typeName;
 		}
 			
 		//****************************************
@@ -36,37 +33,28 @@ namespace Proximity.Terminal
 		/// <param name="instanceName">The name of the Instance</param>
 		/// <returns>The Terminal Instance registered with this name, or null if it doesn't exist</returns>
 		public TerminalInstance GetNamedInstance(string instanceName)
-		{	//****************************************
-			TerminalInstance MyInstance;
-			//****************************************
-			
+		{
 			lock (_Instances)
 			{
-				if (_Instances.TryGetValue(instanceName, out MyInstance))
+				if (_Instances.TryGetValue(instanceName, out var MyInstance))
 					return MyInstance;
 			}
 			
 			return null;
 		}
-		
+
 		/// <inheritdoc />
-		public override string ToString()
-		{
-			return _TypeName;
-		}
-		
+		public override string ToString() => TypeName;
+
 		/// <summary>
 		/// Compares this type set to another for the purposes of sorting
 		/// </summary>
 		/// <param name="other">The type set to compare to</param>
 		/// <returns>The result of the comparison</returns>
-		public int CompareTo(TerminalTypeSet other)
-		{
-			return _TypeName.CompareTo(other._TypeName);
-		}
-		
+		public int CompareTo(TerminalTypeSet other) => TypeName.CompareTo(other.TypeName);
+
 		//****************************************
-		
+
 		internal void AddNamedInstance(TerminalInstance instance)
 		{
 			lock (_Instances)
@@ -106,29 +94,19 @@ namespace Proximity.Terminal
 				_Instances.Remove(MyOldInstance);
 			}
 		}
-		
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Gets the name of the type this set belongs to
 		/// </summary>
-		public string TypeName
-		{
-			get { return _TypeName; }
-		}
-		
+		public string TypeName { get; }
+
 		/// <summary>
 		/// Gets the default instance for this type set
 		/// </summary>
-		public TerminalInstance Default
-		{
-			get { return _DefaultInstance; }
-			set
-			{
-				_DefaultInstance = value;
-			}
-		}
-		
+		public TerminalInstance Default { get; set; }
+
 		/// <summary>
 		/// Gets a list of currently known instance names
 		/// </summary>
@@ -144,13 +122,10 @@ namespace Proximity.Terminal
 				}
 			}
 		}
-		
+
 		/// <summary>
 		/// Gets whether there is any Instance associated with this type set
 		/// </summary>
-		public bool HasInstance
-		{
-			get { return _Instances.Count > 0 || _DefaultInstance != null; }
-		}
+		public bool HasInstance => _Instances.Count > 0 || Default != null;
 	}
 }

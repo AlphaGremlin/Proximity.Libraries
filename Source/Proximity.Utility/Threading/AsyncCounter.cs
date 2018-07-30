@@ -325,12 +325,9 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <remarks>The counter is not guaranteed to be incremented when this method returns, as waiters are evaluated on the ThreadPool. It will be incremented 'soon'.</remarks>
 		public bool TryIncrement()
-		{	//****************************************
-			TaskCompletionSource<AsyncCounter> NextWaiter;
-			//****************************************
-
+		{
 			// Try and retrieve a waiter
-			while (_Waiters.TryDequeue(out NextWaiter))
+			while (_Waiters.TryDequeue(out var NextWaiter))
 			{
 				// Is it completed?
 				if (NextWaiter.Task.IsCompleted)
@@ -392,11 +389,8 @@ namespace Proximity.Utility.Threading
 		/// <returns>A task that completes when the counter is available for immediate decrementing</returns>
 		/// <remarks>This will only succeed when nobody is waiting on a Decrement operation, so Decrement operations won't be waiting while the counter is non-zero</remarks>
 		public Task<AsyncCounter> PeekDecrement(CancellationToken token)
-		{	//****************************************
-			TaskCompletionSource<AsyncCounter> NewWaiter;
-			//****************************************
-
-			int MyCount = _CurrentCount;
+		{
+			var MyCount = _CurrentCount;
 
 			// Are we able to decrement?
 			if (MyCount > 0 || MyCount < -1)
@@ -409,7 +403,7 @@ namespace Proximity.Utility.Threading
 			//****************************************
 
 			// Create a new waiter and add it to the queue
-			NewWaiter = new TaskCompletionSource<AsyncCounter>();
+			var NewWaiter = new TaskCompletionSource<AsyncCounter>();
 
 			_PeekWaiters.Enqueue(NewWaiter);
 
@@ -440,7 +434,6 @@ namespace Proximity.Utility.Threading
 		/// <remarks>Used for DecrementAny</remarks>
 		internal void ForceIncrement()
 		{	//****************************************
-			TaskCompletionSource<AsyncCounter> NextWaiter;
 			var MyWait = new SpinWait();
 			int OldCount, NewCount;
 			//****************************************
@@ -448,7 +441,7 @@ namespace Proximity.Utility.Threading
 			do
 			{
 				// Try and retrieve a waiter
-				while (_Waiters.TryDequeue(out NextWaiter))
+				while (_Waiters.TryDequeue(out var NextWaiter))
 				{
 					// Is it completed?
 					if (NextWaiter.Task.IsCompleted)

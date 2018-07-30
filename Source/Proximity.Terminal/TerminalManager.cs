@@ -1,8 +1,4 @@
-﻿/****************************************\
- TerminalManager.cs
- Created: 2014-02-28
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -10,6 +6,8 @@ using System.Security;
 using System.Text;
 using System.Threading;
 using Proximity.Utility;
+using Proximity.Utility.Collections;
+using Proximity.Utility.Threading;
 //****************************************
 
 namespace Proximity.Terminal
@@ -20,21 +18,20 @@ namespace Proximity.Terminal
 	/// <remarks>Static, as there is only one system console</remarks>
 	[SecurityCritical]
 	public static class TerminalManager
-	{	//****************************************
-		private static object _LockObject = new object();
-		private static int _IsDisposed = -1;
-		
+	{ //****************************************
+		private static readonly AsyncCollection<ConsoleRecord> _ConsoleOutput = new AsyncCollection<ConsoleRecord>(128);
+		private static CancellationTokenSource _ConsoleToken;
+		private static Thread _ConsoleThread;
+
 		private static StringBuilder _InputLine;
 		private static List<string> _CommandHistory;
 		private static int _CommandHistoryIndex, _InputIndex, _InputTop;
-		private static int? _BufferWidth;
 		private static string _PartialCommand;
-		
-		private static bool _HasCommandLine, _IsRedirected, _IsCursorVisible;
-		private static TerminalRegistry[] _Registry;
-		private static char[] _ClearMask = string.Empty.PadRight(16).ToCharArray();
+
+		private static bool _IsRedirected;
+		private static readonly char[] _ClearMask = string.Empty.PadRight(16).ToCharArray();
 		//****************************************
-		
+
 		/// <summary>
 		/// Initialises the Terminal Manager
 		/// </summary>
@@ -43,7 +40,7 @@ namespace Proximity.Terminal
 		{
 			Initialise(hasCommandLine, TerminalRegistry.Global);
 		}
-		
+
 		/// <summary>
 		/// Initialises the Terminal Manager
 		/// </summary>
@@ -51,190 +48,178 @@ namespace Proximity.Terminal
 		/// <param name="registry"></param>
 		public static void Initialise(bool hasCommandLine, params TerminalRegistry[] registry)
 		{
-			if (Interlocked.Exchange(ref _IsDisposed, 0) == 0)
+			if (_ConsoleToken != null && !_ConsoleToken.IsCancellationRequested)
 				throw new InvalidOperationException("Console is already initialised");
-			
-			_Registry = registry;
-			
+
+			Registry = registry;
+
 			//****************************************
-			
-			// Do we have output, or is it redirected?
-			try
-			{
-				int TotalWidth = Console.BufferWidth;
-				bool DummyBool = Console.CursorVisible;
-				
-				_IsRedirected = TotalWidth <= 0;
-			}
-			catch (IOException)
-			{
-				_IsRedirected = true;
-			}
-			
-			// Do we have input, or is that redirected/unavailable?
-			try
-			{
-				bool Dummy = Console.KeyAvailable;
-				
-				_HasCommandLine = hasCommandLine;
-			}
-			catch (IOException)
-			{
-				// Likely running as a service
-				_HasCommandLine = false;
-				_IsRedirected = true;
-			}
-			catch (InvalidOperationException)
-			{
-				// Input redirected from a file, don't bother initing the command line
-				_HasCommandLine = false;
-				_IsRedirected = true;
-			}
-			
+
+			// No console if the input/output is redirected
+			_IsRedirected = Console.IsInputRedirected || Console.IsOutputRedirected;
+
+			if (_IsRedirected)
+				HasCommandLine = false;
+			else
+				HasCommandLine = hasCommandLine;
+
 			//****************************************
-			
-			if (!_IsRedirected)
-			{
-				// If the process exits unexpectedly, we need to restore the cursor visibility and colour
-				AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
-				
-				// Don't show the cursor by default
-				IsCursorVisible = false;
-			}
-			
-			if (_HasCommandLine)
+
+			// If the process exits unexpectedly, we need to restore the cursor visibility and colour
+			AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
+
+			if (HasCommandLine)
 			{
 				_InputLine = new StringBuilder();
 				_CommandHistory = new List<string>();
 				_CommandHistoryIndex = -1;
-				
-				// It's possible to be redirected but still have a command line (ie: Visual Studio Output window)
-				if (_IsRedirected)
-					_BufferWidth = 80;
-				else
-					IsCursorVisible = true;
-
-				ShowInputArea();
 			}
+
+			_ConsoleToken = new CancellationTokenSource();
+			_ConsoleThread = new Thread(TerminalConsoleEntry)
+			{
+				Name = "Terminal I/O",
+				IsBackground = true
+			};
+			_ConsoleThread.Start();
 		}
-		
+
 		/// <summary>
 		/// Returns control of the Console to the caller
 		/// </summary>
 		public static void Terminate()
 		{
-			if (Interlocked.Exchange(ref _IsDisposed, 1) != 0)
+			if (_ConsoleToken == null || _ConsoleToken.IsCancellationRequested)
 				return;
-			
-			lock (_LockObject)
-			{
-				AppDomain.CurrentDomain.ProcessExit -= OnProcessExit;
 
-				// Clear the input area
-				if (IsCursorVisible && !_IsRedirected)
-				{
-					Console.SetCursorPosition(0, _InputTop);
-					
-					Console.Write("  ");
-					for (int Index = 0; Index > _InputLine.Length; Index++)
-					{
-						Console.Write(' ');
-					}
-					
-					Console.SetCursorPosition(0, _InputTop);
-				}
-			}
+			_ConsoleToken.Cancel();
+
+			var ConsoleThread = Interlocked.Exchange(ref _ConsoleThread, null);
+
+			if (ConsoleThread != null)
+				ConsoleThread.Join();
+
+			AppDomain.CurrentDomain.ProcessExit -= OnProcessExit;
 		}
 		
 		//****************************************
-		
-		/// <summary>
-		/// Processes command-line input, returning immediately if no key is pressed
-		/// </summary>
-		/// <remarks>Requires that <see cref="HasCommandLine" /> is True</remarks>
-		public static void ProcessInput()
-		{
-			if (!_HasCommandLine)
-				throw new InvalidOperationException("Command-line is not available");
-			
-			while (Console.KeyAvailable)
-			{
-				HandleConsoleKey(Console.ReadKey(true));
-			}
-		}
 
-		/// <summary>
-		/// Processes command-line input, waiting until a key has been read
-		/// </summary>
-		/// <remarks>Requires that <see cref="HasCommandLine" /> is True</remarks>
-		public static void WaitInput()
-		{	//****************************************
-			ConsoleKeyInfo KeyData;
-			//****************************************
-
-			if (!_HasCommandLine)
-				throw new InvalidOperationException("Command-line is not available");
-
-			// Read the first key available
-			KeyData = Console.ReadKey(true);
-
-			HandleConsoleKey(KeyData);
-
-			// Read any more keys and then return
-			while (Console.KeyAvailable)
-			{
-				HandleConsoleKey(Console.ReadKey(true));
-			}
-		}
-		
 		/// <summary>
 		/// Clears the console
 		/// </summary>
 		public static void Clear()
 		{
-			lock (_LockObject)
-			{
-				if (!_IsRedirected)
-					Console.Clear();
-				
-				ShowInputArea();
-			}
-		}
-		
-		/// <summary>
-		/// Writes a line of text to the console
-		/// </summary>
-		/// <param name="output">The text to write to the console</param>
-		/// <param name="color">The text colour to apply</param>
-		public static void WriteLine(string output, ConsoleColor color)
-		{
-			lock (_LockObject)
-			{
-				HideInputArea();
-				
-				if (_IsDisposed == 0 && !_IsRedirected)
-					Console.ForegroundColor = color;
-				
-				Console.WriteLine(output);
-				
-				ShowInputArea();
-			}
-		}
-		
-		//****************************************
-		
-		private static void OnProcessExit(object sender, EventArgs e)
-		{
-			Console.CursorVisible = true;
+			_ConsoleOutput.Add(null);
 		}
 
-		private static void HandleConsoleKey(ConsoleKeyInfo keyData)
+		//****************************************
+
+		internal static void WriteLine(ConsoleRecord record)
+		{
+			_ConsoleOutput.Add(record);
+		}
+
+		//****************************************
+
+		private static void OnProcessExit(object sender, EventArgs e)
+		{
+			try
+			{
+				Console.ResetColor();
+			}
+			catch
+			{
+			}
+		}
+
+		private static void TerminalConsoleEntry()
+		{ //****************************************
+			var InputVisible = false;
+			int CountSinceKeyPress = 0, CountSinceOutput = 0;
+			//****************************************
+
+			while (!_ConsoleToken.IsCancellationRequested || _ConsoleOutput.Count != 0)
+			{
+				while (_ConsoleOutput.TryTake(out var MyRecord))
+				{
+					if (InputVisible)
+					{
+						// Clear the input line
+						HideInputArea();
+
+						InputVisible = false;
+						CountSinceOutput = 0;
+					}
+
+					// Write the output
+					if (MyRecord == null)
+					{
+						Console.Clear();
+					}
+					else
+					{
+						if (!_IsRedirected)
+							Console.ForegroundColor = MyRecord.ConsoleColour;
+
+						Console.WriteLine(MyRecord.Text);
+					}
+
+					// Handle any input
+					if (HasCommandLine && Console.KeyAvailable)
+					{
+						CountSinceKeyPress = 0;
+						HandleConsoleKey(Console.ReadKey(true), ref InputVisible);
+					}
+				}
+
+				if (HasCommandLine)
+				{
+					while (Console.KeyAvailable)
+					{
+						CountSinceKeyPress = 0;
+						HandleConsoleKey(Console.ReadKey(true), ref InputVisible);
+					}
+
+					if (!InputVisible)
+					{
+						// Show the input line
+						ShowInputArea();
+						InputVisible = true;
+					}
+
+					if (CountSinceKeyPress < 128) // ~= 640ms
+						Thread.Sleep(5);
+					else if (CountSinceKeyPress < 256 && CountSinceOutput < 256) // ~= 1,280ms
+						Thread.Sleep(10);
+					else
+						Thread.Sleep(250);
+
+					CountSinceKeyPress++;
+					CountSinceOutput++;
+				}
+				else
+				{
+					try
+					{
+						_ConsoleOutput.Peek(_ConsoleToken.Token).Wait();
+					}
+					catch (OperationCanceledException)
+					{
+					}
+				}
+			}
+
+			if (InputVisible)
+				// Clear the input line
+				HideInputArea();
+
+			Console.ResetColor();
+		}
+
+		private static void HandleConsoleKey(ConsoleKeyInfo keyData, ref bool inputVisible)
 		{	//****************************************
 			string CurrentLine;
 			//****************************************
-
-			if (!_HasCommandLine)
-				throw new InvalidOperationException("Command-line is not available");
 
 			// If the user has pressed entry, try and execute the current command
 			if (keyData.Key == ConsoleKey.Enter)
@@ -246,222 +231,190 @@ namespace Proximity.Terminal
 
 				CurrentLine = _InputLine.ToString();
 
-				lock (_LockObject)
+				if (inputVisible)
 				{
 					HideInputArea();
-					IsCursorVisible = false;
+					inputVisible = false;
 				}
 
 				_InputLine.Length = 0;
 				_InputIndex = 0;
 
-				// Attempt to parse an execute the command
-				if (TerminalParser.Execute(CurrentLine, _Registry).Result)
-				{
-					// Store the new line into the history, as long as it's not already the most recent entry
-					if (_CommandHistory.Count == 0 || _CommandHistory[0] != CurrentLine)
-						_CommandHistory.Insert(0, CurrentLine);
-				}
-				else
-				{
-					// Execution failed
-					_InputLine.Append(CurrentLine);
-					_InputIndex = _InputLine.Length;
-				}
+				// Attempt to parse and execute the command
+				ThreadPool.QueueUserWorkItem((state) => TerminalParser.Execute((string)state, Registry), CurrentLine);
 
-				lock (_LockObject)
-				{
-					IsCursorVisible = true;
-					ShowInputArea();
-				}
+				// Store the new line into the history, as long as it's not already the most recent entry
+				if (_CommandHistory.Count == 0 || _CommandHistory[0] != CurrentLine)
+					_CommandHistory.Insert(0, CurrentLine);
 
 				return;
 			}
 
 			//****************************************
 
-			lock (_LockObject)
+			if (inputVisible)
 			{
 				HideInputArea();
+				inputVisible = false;
+			}
 
-				if (keyData.Key != ConsoleKey.Tab)
-					_PartialCommand = null;
+			if (keyData.Key != ConsoleKey.Tab)
+				_PartialCommand = null;
 
-				var Width = BufferWidth;
+			var Width = Console.BufferWidth;
 
-				switch (keyData.Key)
+			switch (keyData.Key)
+			{
+			case ConsoleKey.UpArrow:
+				if (keyData.Modifiers.HasFlag(ConsoleModifiers.Control))
 				{
-				case ConsoleKey.UpArrow:
-					if (keyData.Modifiers.HasFlag(ConsoleModifiers.Control))
-					{
-						if (_InputIndex >= Width - 2)
-							_InputIndex -= Width;
-						else
-							_InputIndex = 0;
-					}
-					else if (_CommandHistoryIndex < _CommandHistory.Count - 1)
-					{
-						_CommandHistoryIndex++;
+					if (_InputIndex >= Width - 2)
+						_InputIndex -= Width;
+					else
+						_InputIndex = 0;
+				}
+				else if (_CommandHistoryIndex < _CommandHistory.Count - 1)
+				{
+					_CommandHistoryIndex++;
 
-						_InputLine.Length = 0;
-						_InputLine.Append(_CommandHistory[_CommandHistoryIndex]);
+					_InputLine.Length = 0;
+					_InputLine.Append(_CommandHistory[_CommandHistoryIndex]);
+					_InputIndex = _InputLine.Length;
+				}
+				break;
+
+			case ConsoleKey.DownArrow:
+				if (keyData.Modifiers.HasFlag(ConsoleModifiers.Control))
+				{
+					if (_InputIndex < Width - 2)
+						_InputIndex = Math.Min(_InputIndex + Width, _InputLine.Length);
+					else
 						_InputIndex = _InputLine.Length;
-					}
-					break;
+				}
+				else if (_CommandHistoryIndex >= 0)
+				{
+					_CommandHistoryIndex--;
 
-				case ConsoleKey.DownArrow:
+					_InputLine.Length = 0;
+					if (_CommandHistoryIndex != -1)
+						_InputLine.Append(_CommandHistory[_CommandHistoryIndex]);
+
+					_InputIndex = _InputLine.Length;
+				}
+				break;
+
+			case ConsoleKey.LeftArrow:
+				if (_InputIndex > 0)
+				{
+					if (keyData.Modifiers.HasFlag(ConsoleModifiers.Control))
+						_InputIndex = Math.Max(_InputLine.ToString().LastIndexOf(' ', Math.Max(_InputIndex - 1, 0)), 0);
+					else
+						_InputIndex--;
+				}
+				break;
+
+			case ConsoleKey.RightArrow:
+				if (_InputIndex < _InputLine.Length)
+				{
 					if (keyData.Modifiers.HasFlag(ConsoleModifiers.Control))
 					{
-						if (_InputIndex < Width - 2)
-							_InputIndex = Math.Min(_InputIndex + Width, _InputLine.Length);
-						else
+						_InputIndex = _InputLine.ToString().IndexOf(' ', Math.Min(_InputIndex + 1, _InputLine.Length - 1));
+
+						if (_InputIndex == -1)
 							_InputIndex = _InputLine.Length;
 					}
-					else if (_CommandHistoryIndex >= 0)
-					{
-						_CommandHistoryIndex--;
-
-						_InputLine.Length = 0;
-						if (_CommandHistoryIndex != -1)
-							_InputLine.Append(_CommandHistory[_CommandHistoryIndex]);
-
-						_InputIndex = _InputLine.Length;
-					}
-					break;
-
-				case ConsoleKey.LeftArrow:
-					if (_InputIndex > 0)
-					{
-						if (keyData.Modifiers.HasFlag(ConsoleModifiers.Control))
-							_InputIndex = Math.Max(_InputLine.ToString().LastIndexOf(' ', Math.Max(_InputIndex - 1, 0)), 0);
-						else
-							_InputIndex--;
-					}
-					break;
-
-				case ConsoleKey.RightArrow:
-					if (_InputIndex < _InputLine.Length)
-					{
-						if (keyData.Modifiers.HasFlag(ConsoleModifiers.Control))
-						{
-							_InputIndex = _InputLine.ToString().IndexOf(' ', Math.Min(_InputIndex + 1, _InputLine.Length - 1));
-
-							if (_InputIndex == -1)
-								_InputIndex = _InputLine.Length;
-						}
-						else
-							_InputIndex++;
-					}
-					break;
-
-				case ConsoleKey.Tab:
-					if (_PartialCommand == null)
-						_PartialCommand = _InputLine.ToString();
-
-					string NewCommand = TerminalParser.FindNextCommand(_PartialCommand, _InputLine.ToString(), _Registry);
-
-					if (NewCommand == null) // No matching commands
-						break;
-
-					_InputLine.Length = 0;
-					_InputLine.Append(NewCommand);
-
-					_InputIndex = _InputLine.Length;
-					break;
-
-				case ConsoleKey.Home:
-					_InputIndex = 0;
-					break;
-
-				case ConsoleKey.End:
-					_InputIndex = _InputLine.Length;
-					break;
-
-				case ConsoleKey.Escape:
-					_InputLine.Length = 0;
-					_InputIndex = 0;
-					break;
-
-				case ConsoleKey.Backspace:
-					if (_InputIndex > 0)
-					{
-						// Remove the previous character at the input point
-						_InputLine.Remove(_InputIndex - 1, 1);
-
-						_InputIndex--;
-					}
-					break;
-
-				case ConsoleKey.Delete:
-					if (_InputIndex < _InputLine.Length)
-					{
-						_InputLine.Remove(_InputIndex, 1);
-					}
-					break;
-
-				default:
-					if (keyData.KeyChar == '\0')
-						break;
-
-					_InputLine.Insert(_InputIndex, keyData.KeyChar);
-					_InputIndex++;
-					break;
+					else
+						_InputIndex++;
 				}
+				break;
 
-				ShowInputArea();
+			case ConsoleKey.Tab:
+				if (_PartialCommand == null)
+					_PartialCommand = _InputLine.ToString();
+
+				string NewCommand = TerminalParser.FindNextCommand(_PartialCommand, _InputLine.ToString(), Registry);
+
+				if (NewCommand == null) // No matching commands
+					break;
+
+				_InputLine.Length = 0;
+				_InputLine.Append(NewCommand);
+
+				_InputIndex = _InputLine.Length;
+				break;
+
+			case ConsoleKey.Home:
+				_InputIndex = 0;
+				break;
+
+			case ConsoleKey.End:
+				_InputIndex = _InputLine.Length;
+				break;
+
+			case ConsoleKey.Escape:
+				_InputLine.Length = 0;
+				_InputIndex = 0;
+				break;
+
+			case ConsoleKey.Backspace:
+				if (_InputIndex > 0)
+				{
+					// Remove the previous character at the input point
+					_InputLine.Remove(_InputIndex - 1, 1);
+
+					_InputIndex--;
+				}
+				break;
+
+			case ConsoleKey.Delete:
+				if (_InputIndex < _InputLine.Length)
+				{
+					_InputLine.Remove(_InputIndex, 1);
+				}
+				break;
+
+			default:
+				if (keyData.KeyChar == '\0')
+					break;
+
+				_InputLine.Insert(_InputIndex, keyData.KeyChar);
+				_InputIndex++;
+				break;
 			}
 		}
-		
+
 		private static void HideInputArea()
 		{
-			int Index;
-			
-			lock (_LockObject)
-			{
-				// Is our input visible?
-				if (_IsDisposed != 0 || !IsCursorVisible || _IsRedirected)
-					return;
+			Console.SetCursorPosition(0, _InputTop);
 
-				Console.SetCursorPosition(0, _InputTop);
-				
-				Console.Write("  ");
-				for (Index = 16; Index < _InputLine.Length; Index += 16)
-				{
-					Console.Write(_ClearMask);
-				}
-				
-				if (Index - 16 != _InputLine.Length)
-					Console.Write(_ClearMask, 0, _InputLine.Length - (Index - 16));
-				
-				Console.SetCursorPosition(0, _InputTop);
+			Console.Write("  ");
+			for (var Index = 0; Index < _InputLine.Length; Index += 16)
+			{
+				Console.Write(_ClearMask, 0, Math.Min(16, _InputLine.Length - Index));
 			}
+
+			Console.SetCursorPosition(0, _InputTop);
 		}
 		
 		private static void ShowInputArea()
 		{
-			lock (_LockObject)
-			{
-				// Is our input visible?
-				if (_IsDisposed != 0 || !IsCursorVisible || _IsRedirected)
-					return;
-				
-				var Width = BufferWidth;
-				
-				Console.ForegroundColor = ConsoleColor.Green;
-				
-				Console.Write("> ");
-				Console.Write(_InputLine.ToString());
-				
-				// This may have pushed the console down a line, so we need to calculate the start index afterwards
-				_InputTop = Console.CursorTop - (_InputLine.Length + 2) / Width;
-				
-				// Now calculate where the cursor location is
-				var RealPosition = (_InputIndex + 2);
-				Console.SetCursorPosition(RealPosition - (RealPosition / Width) * Width, _InputTop + (RealPosition / Width));
-				
-				Console.ResetColor();
-			}
+			var BufferWidth = Console.BufferWidth;
+
+			Console.ForegroundColor = ConsoleColor.Green;
+
+			Console.Write("> ");
+			Console.Write(_InputLine.ToString());
+
+			// This may have pushed the console down a line, so we need to calculate the start index afterwards
+			_InputTop = Console.CursorTop - (_InputLine.Length + 2) / BufferWidth;
+
+			// Now calculate where the cursor location is
+			var RealPosition = (_InputIndex + 2);
+			Console.SetCursorPosition(RealPosition - (RealPosition / BufferWidth) * BufferWidth, _InputTop + (RealPosition / BufferWidth));
+
+			Console.ResetColor();
 		}
+
 		/*
 		private static int FindLastWord(StringBuilder source, int index)
 		{
@@ -498,34 +451,11 @@ namespace Proximity.Terminal
 		/// <summary>
 		/// Gets whether the command-line is available for input
 		/// </summary>
-		public static bool HasCommandLine
-		{
-			get { return _HasCommandLine; }
-		}
-		
+		public static bool HasCommandLine { get; private set; }
+
 		/// <summary>
 		/// Gets the command registry used by the terminal
 		/// </summary>
-		public static TerminalRegistry[] Registry
-		{
-			get { return _Registry; }
-		}
-		
-		private static bool IsCursorVisible
-		{
-			get { return _IsCursorVisible; }
-			set
-			{
-				_IsCursorVisible = value;
-				
-				if (!_IsRedirected)
-					Console.CursorVisible = value;
-			}
-		}
-		
-		private static int BufferWidth
-		{
-			get { return _BufferWidth ?? Console.BufferWidth; }
-		}
+		public static TerminalRegistry[] Registry { get; private set; }
 	}
 }

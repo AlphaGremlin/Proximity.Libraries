@@ -17,9 +17,6 @@ namespace Proximity.Terminal
 	public sealed class TerminalType
 	{//****************************************
 		private readonly Type _Type;
-		private readonly string _Name;
-		private readonly bool _IsDefault;
-		
 		private readonly Dictionary<string, TerminalCommandSet> _Commands = new Dictionary<string, TerminalCommandSet>(StringComparer.InvariantCultureIgnoreCase);
 		private readonly Dictionary<string, TerminalVariable> _Variables = new Dictionary<string, TerminalVariable>(StringComparer.InvariantCultureIgnoreCase);
 		//****************************************
@@ -28,8 +25,8 @@ namespace Proximity.Terminal
 		{
 			_Type = type;
 			
-			_Name = provider.InstanceType;
-			_IsDefault = provider.IsDefault;
+			Name = provider.InstanceType;
+			IsDefault = provider.IsDefault;
 			
 			//****************************************
 			
@@ -45,9 +42,8 @@ namespace Proximity.Terminal
 					}
 					
 					var MyName = MyBinding.Name ?? MyMethod.Name;
-					TerminalCommandSet MyCommands;
 					
-					if (!_Commands.TryGetValue(MyName, out MyCommands))
+					if (!_Commands.TryGetValue(MyName, out var MyCommands))
 						_Commands.Add(MyName, MyCommands = new TerminalCommandSet(MyName));
 					
 					MyCommands.AddOverload(MyMethod, MyBinding);
@@ -83,11 +79,8 @@ namespace Proximity.Terminal
 		/// <param name="commandName">The name to lookup</param>
 		/// <returns>The command set matching this name</returns>
 		public TerminalCommandSet FindCommand(string commandName)
-		{	//****************************************
-			TerminalCommandSet MyCommand;
-			//****************************************
-			
-			if (_Commands.TryGetValue(commandName, out MyCommand))
+		{
+			if (_Commands.TryGetValue(commandName, out var MyCommand))
 				return MyCommand;
 			
 			return null;
@@ -99,48 +92,33 @@ namespace Proximity.Terminal
 		/// <param name="variableName">The name to lookup</param>
 		/// <returns>The variable matching this name</returns>
 		public TerminalVariable FindVariable(string variableName)
-		{	//****************************************
-			TerminalVariable MyVariable;
-			//****************************************
-			
-			if (_Variables.TryGetValue(variableName, out MyVariable))
+		{
+			if (_Variables.TryGetValue(variableName, out var MyVariable))
 				return MyVariable;
 			
 			return null;
 		}
-		
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Gets the name to identify instances of this class registered with the Terminal
 		/// </summary>
-		public string Name
-		{
-			get { return _Name; }
-		}
-		
+		public string Name { get; }
+
 		/// <summary>
 		/// Gets whether this Type is the default for this Name
 		/// </summary>
-		public bool IsDefault
-		{
-			get { return _IsDefault; }
-		}
-		
+		public bool IsDefault { get; }
+
 		/// <summary>
 		/// Gets the collection of commands offered by this type
 		/// </summary>
-		public IEnumerable<TerminalCommandSet> Commands
-		{
-			get { return _Commands.Values; }
-		}
-		
+		public IEnumerable<TerminalCommandSet> Commands => _Commands.Values;
+
 		/// <summary>
 		/// Gets the collection of variables offered by this type
 		/// </summary>
-		public IEnumerable<TerminalVariable> Variables
-		{
-			get { return _Variables.Values; }
-		}
+		public IEnumerable<TerminalVariable> Variables => _Variables.Values;
 	}
 }

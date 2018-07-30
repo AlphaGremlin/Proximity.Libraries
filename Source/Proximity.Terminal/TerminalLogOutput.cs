@@ -87,7 +87,7 @@ namespace Proximity.Terminal
 			
 			ThresholdWrite(MyRecord);
 			
-			TerminalManager.WriteLine(MyRecord.Text, MyRecord.ConsoleColour);
+			TerminalManager.WriteLine(MyRecord);
 			
 			//****************************************
 				
@@ -104,7 +104,7 @@ namespace Proximity.Terminal
 					
 					ThresholdWrite(MyRecord);
 					
-					TerminalManager.WriteLine(MyRecord.Text, MyRecord.ConsoleColour);
+					TerminalManager.WriteLine(MyRecord);
 					
 					MyBuilder.Length = 0;
 				}
@@ -128,7 +128,7 @@ namespace Proximity.Terminal
 			
 			ThresholdWrite(MyRecord);
 			
-			TerminalManager.WriteLine(MyRecord.Text, MyRecord.ConsoleColour);
+			TerminalManager.WriteLine(MyRecord);
 		}
 
 		/// <inheritdoc />
