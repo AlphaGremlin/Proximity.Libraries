@@ -1,8 +1,3 @@
-/****************************************\
- OutputConfig.cs
- Created: 2-06-2009
-\****************************************/
-#if !NETSTANDARD1_3
 using System;
 using System.Xml;
 using System.Reflection;
@@ -18,7 +13,6 @@ namespace Proximity.Utility.Logging.Config
 	/// <summary>
 	/// An configuration entry defining a Logging Output
 	/// </summary>
-	[SecurityCritical]
 	public class OutputElement : TypedElement
 	{
 		/// <summary>
@@ -45,4 +39,3 @@ namespace Proximity.Utility.Logging.Config
 		}
 	}
 }
-#endif

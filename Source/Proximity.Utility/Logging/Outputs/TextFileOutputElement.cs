@@ -1,9 +1,4 @@
-﻿/****************************************\
- TextFileOutputElement.cs
- Created: 2014-07-29
-\****************************************/
-#if !NETSTANDARD1_3
-using System;
+﻿using System;
 using System.Configuration;
 using System.Security;
 using Proximity.Utility.Configuration;
@@ -14,7 +9,6 @@ namespace Proximity.Utility.Logging.Outputs
 	/// <summary>
 	/// Describes the configuration for the Text File Output Logger
 	/// </summary>
-	[SecurityCritical]
 	[TypedElement(typeof(TextFileOutput))]
 	public class TextFileOutputElement : FileOutputElement
 	{
@@ -58,4 +52,3 @@ namespace Proximity.Utility.Logging.Outputs
 		}
 	}
 }
-#endif

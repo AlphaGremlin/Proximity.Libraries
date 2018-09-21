@@ -1,8 +1,3 @@
-/****************************************\
- LogOutput.cs
- Created: 2-06-2009
-\****************************************/
-#if !NETSTANDARD1_3
 using System;
 using Proximity.Utility.Logging.Config;
 using System.Xml;
@@ -30,7 +25,6 @@ namespace Proximity.Utility.Logging
 		/// Applies the configuration for this log output
 		/// </summary>
 		/// <param name="config">The configuration to use</param>
-		[SecurityCritical]
 		protected internal virtual void Configure(OutputElement config)
 		{
 		}
@@ -71,4 +65,3 @@ namespace Proximity.Utility.Logging
 		protected internal abstract void Finish();
 	}
 }
-#endif

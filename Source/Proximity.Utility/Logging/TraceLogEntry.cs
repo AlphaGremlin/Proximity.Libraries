@@ -1,8 +1,3 @@
-/****************************************\
- TraceLogEntry.cs
- Created: 2-06-2009
-\****************************************/
-#if !NETSTANDARD1_3
 using System;
 using System.Diagnostics;
 //****************************************
@@ -21,8 +16,7 @@ namespace Proximity.Utility.Logging
 		/// <param name="source"></param>
 		/// <param name="eventType"></param>
 		/// <param name="text"></param>
-		public TraceLogEntry(TraceEventCache cache, string source, TraceEventType eventType, string text)
-			: base(null, MapFromTraceType(eventType), text)
+		public TraceLogEntry(TraceEventCache cache, string source, TraceEventType eventType, string text) : base(null, MapFromTraceType(eventType), text)
 		{
 		}
 		
@@ -60,4 +54,3 @@ namespace Proximity.Utility.Logging
 		}
 	}
 }
-#endif

@@ -1,8 +1,3 @@
-/****************************************\
- TraceOutput.cs
- Created: 2-06-2009
-\****************************************/
-#if !NETSTANDARD1_3
 using System;
 using System.Diagnostics;
 using System.Reflection;
@@ -35,7 +30,6 @@ namespace Proximity.Utility.Logging.Outputs
 		//****************************************
 		
 		/// <inheritdoc />
-		[SecurityCritical]
 		protected internal override void Configure(OutputElement config)
 		{
 			var MyConfig = (TraceOutputElement)config;
@@ -52,7 +46,6 @@ namespace Proximity.Utility.Logging.Outputs
 		}
 		
 		/// <inheritdoc />
-		[SecuritySafeCritical]
 		protected internal override void StartSection(LogSection newSection)
 		{
 			Trace.CorrelationManager.StartLogicalOperation(newSection.Text);
@@ -62,7 +55,6 @@ namespace Proximity.Utility.Logging.Outputs
 		}
 
 		/// <inheritdoc />
-		[SecuritySafeCritical]
 		protected internal override void Write(LogEntry newEntry)
 		{
 			if (newEntry is TraceLogEntry)
@@ -91,7 +83,6 @@ namespace Proximity.Utility.Logging.Outputs
 		}
 		
 		/// <inheritdoc />
-		[SecuritySafeCritical]
 		protected internal override void FinishSection(LogSection section)
 		{
 			Trace.IndentLevel = LogManager.Context.Count;
@@ -101,7 +92,6 @@ namespace Proximity.Utility.Logging.Outputs
 		}
 		
 		/// <inheritdoc />
-		[SecuritySafeCritical]
 		protected internal override void Finish()
 		{
 			_Source.Close();
@@ -144,4 +134,3 @@ namespace Proximity.Utility.Logging.Outputs
 		}
 	}
 }
-#endif

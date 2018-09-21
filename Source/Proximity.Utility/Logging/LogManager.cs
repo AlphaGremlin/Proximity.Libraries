@@ -1,17 +1,9 @@
-﻿/****************************************\
- LogManager.cs
- Created: 3-06-2009
-\****************************************/
-#if !NETSTANDARD1_3
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-#if !NETSTANDARD2_0
-using System.Runtime.Remoting.Messaging;
-#endif
 using System.Security;
 using System.Security.Permissions;
 using System.Threading;
@@ -25,267 +17,97 @@ namespace Proximity.Utility.Logging
 	/// Manages the logging framework
 	/// </summary>
 	public static class LogManager
-	{	//****************************************
-		private static LogOutput[] _Outputs = new LogOutput[0];
-		private static readonly ConcurrentDictionary<string, LogCategory> _Categories = new ConcurrentDictionary<string, LogCategory>();
-		
-		private static string _OutputPath;
-		private static PrecisionTimer _Timer = new PrecisionTimer();
-		private static bool _IsStarted;
-		private static DateTime _StartTime;
+	{ //****************************************
+		private readonly static LogTarget _Default = new LogTarget();
 
-#if NET462 || NETSTANDARD2_0
-		private static AsyncLocal<ImmutableCountedStack<LogSection>> _Context = new AsyncLocal<ImmutableCountedStack<LogSection>>();
-#endif
-		//****************************************
-
-		[SecuritySafeCritical]
-		static LogManager()
-		{
-#if NETSTANDARD2_0
-			_StartTime = DateTime.Now;
-#else
-			try
-			{
-				new SecurityPermission(PermissionState.Unrestricted).Assert();
-
-				try
-				{
-					_StartTime = Process.GetCurrentProcess().StartTime;
-				}
-				finally
-				{
-					PermissionSet.RevertAssert();
-				}
-			}
-			catch
-			{
-			}
-#endif
-		}
-
+		private readonly static PrecisionTimer _Timer = new PrecisionTimer();
 		//****************************************
 
 		/// <summary>
 		/// Starts the logging framework
 		/// </summary>
-		[SecurityCritical]
-		public static void Start()
-		{
-			Start(LoggingConfig.OpenConfig());
-		}
+		public static void Start() => _Default.Start(LoggingConfig.OpenConfig());
 
 		/// <summary>
 		/// Starts the logging framework
 		/// </summary>
-		[SecurityCritical]
-		public static void Start(LoggingConfig config)
-		{
-			if (_OutputPath == null)
-				_OutputPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).GetName().Name);
-
-			if (!Directory.Exists(_OutputPath))
-				Directory.CreateDirectory(_OutputPath);
-			
-			//****************************************
-			// Initialise Log Outputs
-			
-			_IsStarted = true;
-			
-			foreach(LogOutput MyOutput in _Outputs)
-			{
-				MyOutput.Start();
-			}
-			
-			foreach (var MyConfig in config.Outputs)
-			{
-				AddOutput(MyConfig.ToOutput());
-			}
-		}
+		public static void Start(LoggingConfig config) => _Default.Start(config);
 
 		/// <summary>
 		/// Adds a new logging output
 		/// </summary>
 		/// <param name="output">A log output to receive logging information</param>
-		[SecurityCritical]
-		public static void AddOutput(LogOutput output)
-		{	//****************************************
-			LogOutput[] OldList, NewList;
-			//****************************************
-			
-			do
-			{
-				OldList = _Outputs;
-
-				NewList = new LogOutput[OldList.Length + 1];
-				OldList.CopyTo(NewList, 0);
-				NewList[NewList.Length - 1] = output;
-			} while (Interlocked.CompareExchange(ref _Outputs, NewList, OldList) != OldList);
-			
-			//****************************************
-			
-			if (_IsStarted)
-				output.Start();
-		}
+		public static void AddOutput(LogOutput output) => _Default.AddOutput(output);
 
 		/// <summary>
 		/// Starts a new logging section
 		/// </summary>
-		/// <param name="newSection">The section to start</param>
-		[SecurityCritical]
-		public static void StartSection(LogSection newSection)
-		{	//****************************************
-			var MyOutputs = _Outputs;
-			//****************************************
-			
-			foreach(LogOutput MyOutput in _Outputs)
-				MyOutput.StartSection(newSection);
-			
-			Context = Context.Push(newSection);
-		}
+		/// <param name="entry">The logging entry to start with</param>
+		/// <returns>A new logging section</returns>
+		public static LogSection StartSection(LogEntry entry) => _Default.StartSection(entry, 0);
+
+		/// <summary>
+		/// Starts a new logging section
+		/// </summary>
+		/// <param name="entry">The logging entry to start with</param>
+		/// <param name="priority">The priority of this entry</param>
+		/// <returns>A new logging section</returns>
+		public static LogSection StartSection(LogEntry entry, int priority) => _Default.StartSection(entry, priority);
 
 		/// <summary>
 		/// Resets the section context for this logical call, so future log operations are isolated
 		/// </summary>
-		public static void ClearContext()
-		{
-			Context = ImmutableCountedStack<LogSection>.Empty;
-		}
+		public static void ClearContext() => _Default.ClearContext();
 
 		/// <summary>
 		/// Flushes all outputs, ensuring all previously written log messages have been stored
 		/// </summary>
-		[SecurityCritical]
-		public static void Flush()
-		{
-			foreach(LogOutput MyOutput in _Outputs)
-				MyOutput.Flush();
-		}
-
-		/// <summary>
-		/// Finishes a logging section
-		/// </summary>
-		/// <param name="oldSection">The section to finish</param>
-		[SecurityCritical]
-		public static void FinishSection(LogSection oldSection)
-		{	//****************************************
-			var MyContext = Context;
-			var MyOutputs = _Outputs;
-			//****************************************
-			
-			oldSection.IsDisposed = true;
-			
-			if (MyContext.IsEmpty || MyContext.Peek() != oldSection)
-				return;
-			
-			Context = MyContext.Pop();
-			
-			foreach(LogOutput MyOutput in _Outputs)
-				MyOutput.FinishSection(oldSection);
-		}
+		public static void Flush() => _Default.Flush();
 
 		/// <summary>
 		/// Ends the logging framework
 		/// </summary>
 		[SecurityCritical]
-		public static void Finish()
-		{
-			var OldOutputs = Interlocked.Exchange(ref _Outputs, new LogOutput[0]);
-			
-			foreach(LogOutput MyOutput in OldOutputs)
-				MyOutput.Finish();
-			
-			_IsStarted = false;
-		}
+		public static void Finish() => _Default.Finish();
 
 		//****************************************
-		
-		/// <summary>
-		/// Registers a new logging category
-		/// </summary>
-		/// <param name="newCategory">The new category to register</param>
-		public static void AddCategory(LogCategory newCategory)
-		{
-			_Categories.TryAdd(newCategory.Name, newCategory);
-		}
-		
-		/// <summary>
-		/// Retrieves an existing logging category
-		/// </summary>
-		/// <param name="categoryName">The name of the category to retrieve</param>
-		/// <returns>The requested category, or null if it does not exist</returns>
-		public static LogCategory GetCategory(string categoryName)
-		{	//****************************************
-			LogCategory MyCategory;
-			//****************************************
-			
-			if (_Categories.TryGetValue(categoryName, out MyCategory))
-				return MyCategory;
 
-			return null;
-		}
-		
-		//****************************************
-		
-		internal static DateTime GetTimestamp()
-		{
-			if (_Timer == null)
-				return DateTime.Now;
+		internal static DateTime GetTimestamp() => _Timer == null ? DateTime.Now : _Timer.GetTime();
 
-			return _Timer.GetTime();
-		}
-		
 		//****************************************
 
 		/// <summary>
 		/// Gets a list of all the logging outputs
 		/// </summary>
-		public static ICollection<LogOutput> Outputs
-		{
-			get { return new ReadOnlyCollection<LogOutput>(_Outputs); }
-		}
+		public static IReadOnlyCollection<LogOutput> Outputs => _Default.Outputs;
 
 		/// <summary>
 		/// Gets/Sets the path logging outputs will place their results
 		/// </summary>
 		public static string OutputPath
 		{
-			get { return _OutputPath; }
-			[SecurityCritical]
-			set { _OutputPath = value; }
+			get => _Default.OutputPath;
+			set => _Default.OutputPath = value;
 		}
-		
+
 		/// <summary>
 		/// Gets the time the logging framework was started
 		/// </summary>
-		public static DateTime StartTime
-		{
-			get { return _StartTime; }
-		}
+		public static DateTime StartTime => _Default.StartTime;
 
 		/// <summary>
 		/// Gets the current section stack for this logical context
 		/// </summary>
-		public static ImmutableCountedStack<LogSection> Context
-		{
-#if NET462 || NETSTANDARD2_0
-			get { return _Context.Value ?? ImmutableCountedStack<LogSection>.Empty; }
-			private set { _Context.Value = value; }
-#else
-			[SecuritySafeCritical]
-			get { return (CallContext.LogicalGetData("Logging.Context") as ImmutableCountedStack<LogSection>) ?? ImmutableCountedStack<LogSection>.Empty; }
-			[SecuritySafeCritical]
-			private set { CallContext.LogicalSetData("Logging.Context", value); }
-#endif
-		}
-		
+		public static ImmutableCountedStack<LogSection> Context => _Default.Context;
+
 		/// <summary>
 		/// Gets the current depth of the section stack
 		/// </summary>
-		public static int SectionDepth
-		{
-			get { return Context.Count; }
-		}
+		public static int SectionDepth => _Default.SectionDepth;
+
+		/// <summary>
+		/// Gets the default 
+		/// </summary>
+		public static LogTarget Default => _Default;
 	}
 }
-#endif

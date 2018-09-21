@@ -1,9 +1,4 @@
-﻿/****************************************\
- RolloverType.cs
- Created: 2014-07-29
-\****************************************/
-#if !NETSTANDARD1_3
-using System;
+﻿using System;
 //****************************************
 
 namespace Proximity.Utility.Logging.Outputs
@@ -45,4 +40,3 @@ namespace Proximity.Utility.Logging.Outputs
 		Fixed
 	}
 }
-#endif

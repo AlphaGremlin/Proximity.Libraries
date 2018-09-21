@@ -1,9 +1,4 @@
-﻿/****************************************\
- FileOutputElement.cs
- Created: 2014-07-29
-\****************************************/
-#if !NETSTANDARD1_3
-using System;
+﻿using System;
 using System.Configuration;
 using System.Security;
 using Proximity.Utility.Configuration;
@@ -15,7 +10,6 @@ namespace Proximity.Utility.Logging.Outputs
 	/// <summary>
 	/// Describes the configuration for the File Output Logger
 	/// </summary>
-	[SecurityCritical]
 	public class FileOutputElement : OutputElement
 	{
 		/// <summary>
@@ -69,4 +63,3 @@ namespace Proximity.Utility.Logging.Outputs
 		}
 	}
 }
-#endif
