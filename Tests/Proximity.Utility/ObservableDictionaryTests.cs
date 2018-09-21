@@ -17,7 +17,7 @@ namespace Proximity.Utility.Tests
 	[TestFixture]
 	public class ObservableDictionaryTests
 	{
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test()]//, Repeat(2)]
 		public void Add()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -59,7 +59,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void AddCapacity()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -101,7 +101,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void AddCollide()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -144,7 +144,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void AddExists()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<int, int>();
@@ -165,7 +165,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void AddRange()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -208,7 +208,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void AddRangeCollide()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -252,7 +252,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void AddRangeDuplicateInRange()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<int, int>(64);
@@ -273,7 +273,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyRecords.Count, "Items were added");
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void AddRangeDuplicateInDictionary()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<int, int>(64);
@@ -299,7 +299,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(4, MyRecords.Count, "Items were added");
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void AddRangePrePopulated()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -350,16 +350,14 @@ namespace Proximity.Utility.Tests
 
 			foreach (var MyPair in MyDictionary)
 			{
-				int Value;
-
-				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out Value));
+				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out var Value));
 				Assert.AreEqual(MyPair.Value, Value);
 			}
 
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void AddRangePrePopulatedCollide()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -412,16 +410,14 @@ namespace Proximity.Utility.Tests
 
 			foreach (var MyPair in MyDictionary)
 			{
-				int Value;
-
-				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out Value));
+				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out var Value));
 				Assert.AreEqual(MyPair.Value, Value);
 			}
 
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void GetIndex()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<int, int>();
@@ -434,7 +430,24 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(new KeyValuePair<int, int>(10, 42), ((IList<KeyValuePair<int, int>>)MyRecords)[0]);
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
+		public void GetIndexMulti()
+		{ //****************************************
+			var MyRecords = new ObservableDictionary<int, int>();
+			//****************************************
+
+			MyRecords[8] = 40;
+			MyRecords[9] = 41;
+			MyRecords[10] = 42;
+			MyRecords[11] = 43;
+			MyRecords[12] = 44;
+
+			//****************************************
+
+			Assert.AreEqual(new KeyValuePair<int, int>(10, 42), ((IList<KeyValuePair<int, int>>)MyRecords)[2]);
+		}
+
+		[Test()]
 		public void GetIndexOutOfRange()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<int, int>();
@@ -465,7 +478,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void GetKey()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<int, int>();
@@ -478,7 +491,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(42, MyRecords[10]);
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void GetKeyMissing()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<int, int>();
@@ -499,7 +512,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void IndexOf()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<int, int>();
@@ -512,7 +525,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyRecords.IndexOf(new KeyValuePair<int,int>(10, 42)));
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void IndexOfKey()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<int, int>();
@@ -525,7 +538,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyRecords.IndexOfKey(10));
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void IndexOfKeyCollideMissing()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<CollideStruct, int>();
@@ -538,7 +551,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(-1, MyRecords.IndexOfKey(new CollideStruct(11)));
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void IndexOfKeyCollideMissing2()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<CollideStruct, int>();
@@ -552,7 +565,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(-1, MyRecords.IndexOfKey(new CollideStruct(11)));
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void IndexOfKeyMissing()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<int, int>();
@@ -565,7 +578,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(-1, MyRecords.IndexOfKey(11));
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void IndexOfMissingKey()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<int, int>();
@@ -578,7 +591,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(-1, MyRecords.IndexOf(new KeyValuePair<int, int>(11, 12)));
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void IndexOfMissingValue()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<int, int>();
@@ -591,7 +604,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(-1, MyRecords.IndexOf(new KeyValuePair<int, int>(10, 30)));
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void PrePopulate()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -624,16 +637,14 @@ namespace Proximity.Utility.Tests
 
 			foreach (var MyPair in MyDictionary)
 			{
-				int Value;
-
-				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out Value));
+				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out var Value));
 				Assert.AreEqual(MyPair.Value, Value);
 			}
 
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void Remove()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -687,7 +698,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void RemoveAt()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -741,7 +752,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void RemoveAll()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -785,7 +796,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(2)]
+		[Test(), Repeat(2)]
 		public void RemoveRange()
 		{ //****************************************
 			var MySeed = Environment.TickCount;
@@ -832,7 +843,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void Replace()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<int, int>();
@@ -849,7 +860,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(84, MyRecords[10]);
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void ReplaceCollide()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<CollideStruct, int>();
@@ -868,7 +879,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(84, MyRecords[MyKey]);
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void SetKey()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<int, int>();
@@ -886,7 +897,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(84, MyRecords[10]);
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void SetKeyCollide()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<CollideStruct, int>();
@@ -907,7 +918,7 @@ namespace Proximity.Utility.Tests
 
 		//****************************************
 
-		[Test(), Timeout(1000)]
+		[Test()]
 		public void EventAdd()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -950,7 +961,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(Pair.Value, MyValueEventArgs.NewItems[0], "New Value Items Value incorrect");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test()]
 		public void EventAddUpdate()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -991,7 +1002,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(NotifyCollectionChangedAction.Reset, MyEventArgs.Action);
 		}
 
-		[Test(), Timeout(1000)]
+		[Test()]
 		public void EventAddMany()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -1011,7 +1022,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(1024, EventCount, "Event Count does not match");
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void EventAddRangeEmpty()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<int, int>();
@@ -1031,7 +1042,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsNull(MyValueEventArgs, "Event Raised");
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void EventClear()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<int, int>();
@@ -1060,7 +1071,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(NotifyCollectionChangedAction.Reset, MyEventArgs.Action);
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void EventClearEmpty()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<int, int>();
@@ -1082,7 +1093,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsNull(MyValueEventArgs, "Event Raised");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test()]
 		public void EventReplace()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -1116,7 +1127,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(new KeyValuePair<int, int>(42, 84), MyEventArgs.NewItems[0], "New Items Value incorrect");
 		}
 
-		[Test(), Timeout(2000)]
+		[Test()]
 		public void EventReplaceUnchanged()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<int, int>();
@@ -1143,7 +1154,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsNull(MyValueEventArgs, "Event Raised");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test()]
 		public void EventRemove()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -1185,7 +1196,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(84, MyValueEventArgs.OldItems[0], "Old Value Items Value incorrect");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test()]
 		public void EventRemoveMany()
 		{	//****************************************
 			var MySeed = Environment.TickCount;

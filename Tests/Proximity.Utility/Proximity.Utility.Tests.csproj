@@ -1,9 +1,19 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net462</TargetFrameworks>
+    <TargetFrameworks>net471</TargetFrameworks>
 		<OutputPath>..\..\Build\Tests\</OutputPath>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="EmitterTests.cs" />
+    <Compile Remove="EqualityTests.cs" />
+    <Compile Remove="RemoteTaskTests.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="EmitterTests.cs" />
+    <None Include="EqualityTests.cs" />
+    <None Include="RemoteTaskTests.cs" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="NUnit" Version="3.10.1" />
     <PackageReference Include="NUnit3TestAdapter" Version="3.10.0" />

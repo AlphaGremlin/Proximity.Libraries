@@ -2,7 +2,6 @@
  ImmutablePagedSetPage.cs
  Created: 2015-06-24
 \****************************************/
-#if !NET40
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -305,4 +304,3 @@ namespace Proximity.Utility.Collections
 		}
 	}
 }
-#endif

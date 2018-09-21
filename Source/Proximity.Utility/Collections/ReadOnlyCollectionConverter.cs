@@ -13,16 +13,8 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Represents a read-only wrapper around a Collection that converts to another type
 	/// </summary>
-	public abstract class ReadOnlyCollectionConverter<TSource, TTarget> : ICollection<TTarget>
-#if !NET40
-		, IReadOnlyCollection<TTarget>
-#endif
-	{	//****************************************
-#if NET40
-		private readonly ICollection<TSource> _Collection;
-#else
-		private readonly IReadOnlyCollection<TSource> _Collection;
-#endif
+	public abstract class ReadOnlyCollectionConverter<TSource, TTarget> : ICollection<TTarget>, IReadOnlyCollection<TTarget>
+	{ //****************************************
 		//****************************************
 
 		/// <summary>
@@ -31,23 +23,17 @@ namespace Proximity.Utility.Collections
 		/// <param name="collection">The collection to wrap as read-only</param>
 		public ReadOnlyCollectionConverter(ICollection<TSource> collection)
 		{
-#if NET40
-			_Collection = collection;
-#else
-			_Collection = collection as IReadOnlyCollection<TSource> ?? new ReadOnlyCollection<TSource>(collection);
-#endif
+			Parent = collection as IReadOnlyCollection<TSource> ?? new ReadOnlyCollection<TSource>(collection);
 		}
 
-#if !NET40
 		/// <summary>
 		/// Creates a new read-only wrapper around a read-only collection that converts to another type
 		/// </summary>
 		/// <param name="collection">The collection to wrap as read-only</param>
 		public ReadOnlyCollectionConverter(IReadOnlyCollection<TSource> collection)
 		{
-			_Collection = collection;
+			Parent = collection;
 		}
-#endif
 
 		//****************************************
 
@@ -61,16 +47,12 @@ namespace Proximity.Utility.Collections
 			var SourceValue = ConvertFrom(item);
 			//****************************************
 
-#if NET40
-			return _Collection.Contains(SourceValue);
-#else
 			// If our source implements ICollection, use it and convert back
-			if (_Collection is ICollection<TSource>)
-				return ((ICollection<TSource>)_Collection).Contains(SourceValue);
+			if (Parent is ICollection<TSource>)
+				return ((ICollection<TSource>)Parent).Contains(SourceValue);
 
 			// No ICollection, so convert back and search for it the hard way
-			return System.Linq.Enumerable.Contains(_Collection, SourceValue);
-#endif
+			return System.Linq.Enumerable.Contains(Parent, SourceValue);
 		}
 
 		/// <summary>
@@ -80,7 +62,7 @@ namespace Proximity.Utility.Collections
 		/// <param name="arrayIndex">The index into the array to start writing</param>
 		public void CopyTo(TTarget[] array, int arrayIndex)
 		{
-			foreach (var MyItem in _Collection)
+			foreach (var MyItem in Parent)
 			{
 				array[arrayIndex++] = ConvertTo(MyItem);
 			}
@@ -90,10 +72,7 @@ namespace Proximity.Utility.Collections
 		/// Returns an enumerator that iterates through the collection
 		/// </summary>
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
-		public IEnumerator<TTarget> GetEnumerator()
-		{
-			return new Enumerator(this);
-		}
+		public IEnumerator<TTarget> GetEnumerator() => new Enumerator(this);
 
 		//****************************************
 
@@ -109,64 +88,33 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="value">The converted value</param>
 		/// <returns>The original value</returns>
-		protected virtual TSource ConvertFrom(TTarget value)
-		{
-			throw new NotSupportedException("Conversion is one-way");
-		}
-		
+		protected virtual TSource ConvertFrom(TTarget value) => throw new NotSupportedException("Conversion is one-way");
+
 		//****************************************
 
-		void ICollection<TTarget>.Add(TTarget item)
-		{
-			throw new NotSupportedException("Collection is read-only");
-		}
+		void ICollection<TTarget>.Add(TTarget item) => throw new NotSupportedException("Collection is read-only");
 
-		void ICollection<TTarget>.Clear()
-		{
-			throw new NotSupportedException("Collection is read-only");
-		}
+		void ICollection<TTarget>.Clear() => throw new NotSupportedException("Collection is read-only");
 
-		IEnumerator IEnumerable.GetEnumerator()
-		{
-			return new Enumerator(this);
-		}
+		IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this);
 
-		IEnumerator<TTarget> IEnumerable<TTarget>.GetEnumerator()
-		{
-			return new Enumerator(this);
-		}
+		IEnumerator<TTarget> IEnumerable<TTarget>.GetEnumerator() => new Enumerator(this);
 
-		bool ICollection<TTarget>.Remove(TTarget item)
-		{
-			throw new NotSupportedException("Collection is read-only");
-		}
+		bool ICollection<TTarget>.Remove(TTarget item) => throw new NotSupportedException("Collection is read-only");
 
 		//****************************************
 
 		/// <summary>
 		/// Gets the number of items in the collection
 		/// </summary>
-		public int Count
-		{
-			get { return _Collection.Count; }
-		}
+		public int Count => Parent.Count;
 
 		/// <summary>
 		/// Gets the source collection
 		/// </summary>
-#if NET40
-		public ICollection<TSource> Parent
-#else
-		public IReadOnlyCollection<TSource> Parent
-#endif
-		{
-			get { return _Collection; }
-		}
+		public IReadOnlyCollection<TSource> Parent { get; }
 
-		bool ICollection<TTarget>.IsReadOnly
-		{
-			get { return true; }
-		}
+		bool ICollection<TTarget>.IsReadOnly => true;
 
 		//****************************************
 
@@ -177,15 +125,13 @@ namespace Proximity.Utility.Collections
 		{	//****************************************
 			private readonly ReadOnlyCollectionConverter<TSource, TTarget> _Parent;
 			private readonly IEnumerator<TSource> _Source;
-
-			private TTarget _Current;
 			//****************************************
 
 			internal Enumerator(ReadOnlyCollectionConverter<TSource, TTarget> parent)
 			{
 				_Parent = parent;
-				_Source = parent._Collection.GetEnumerator();
-				_Current = default(TTarget);
+				_Source = parent.Parent.GetEnumerator();
+				Current = default(TTarget);
 			}
 
 			//****************************************
@@ -196,7 +142,7 @@ namespace Proximity.Utility.Collections
 			public void Dispose()
 			{
 				_Source.Dispose();
-				_Current = default(TTarget);
+				Current = default(TTarget);
 			}
 
 			/// <summary>
@@ -208,7 +154,7 @@ namespace Proximity.Utility.Collections
 				if (!_Source.MoveNext())
 					return false;
 
-				_Current = _Parent.ConvertTo(_Source.Current);
+				Current = _Parent.ConvertTo(_Source.Current);
 
 				return true;
 			}
@@ -216,7 +162,7 @@ namespace Proximity.Utility.Collections
 			void IEnumerator.Reset()
 			{
 				_Source.Dispose();
-				_Current = default(TTarget);
+				Current = default(TTarget);
 			}
 
 			//****************************************
@@ -224,15 +170,9 @@ namespace Proximity.Utility.Collections
 			/// <summary>
 			/// Gets the current item being enumerated
 			/// </summary>
-			public TTarget Current
-			{
-				get { return _Current; }
-			}
+			public TTarget Current { get; private set; }
 
-			object IEnumerator.Current
-			{
-				get { return _Current; }
-			}
+			object IEnumerator.Current => Current;
 		}
 	}
 }

@@ -44,7 +44,6 @@ namespace Proximity.Terminal
 		/// <summary>
 		/// Scans all assemblies loaded in this App Domain for Terminal Providers
 		/// </summary>
-		[SecurityCritical]
 		public void ScanLoaded()
 		{
 			foreach(Assembly MyAssembly in AppDomain.CurrentDomain.GetAssemblies())
@@ -71,7 +70,6 @@ namespace Proximity.Terminal
 		/// <summary>
 		/// Attaches this Registry to the <see cref="AppDomain.AssemblyLoad" /> event, scanning new assemblies for Terminal Providers
 		/// </summary>
-		[SecurityCritical]
 		public void ScanOnLoad()
 		{
 			AppDomain.CurrentDomain.AssemblyLoad += OnAssemblyLoad;
@@ -82,7 +80,6 @@ namespace Proximity.Terminal
 		/// </summary>
 		/// <param name="assembly">The Assembly to scan</param>
 		/// <returns>A list of Terminal Types within this Assembly</returns>
-		[SecurityCritical]
 		public IEnumerable<TerminalType> Scan(Assembly assembly)
 		{
 			var MyMatches = new List<TerminalType>();
@@ -103,7 +100,6 @@ namespace Proximity.Terminal
 		/// </summary>
 		/// <param name="type">The type to scan</param>
 		/// <returns>A Terminal Type definition, or null if this type is not a Terminal Provider</returns>
-		[SecurityCritical]
 		public TerminalType Scan(Type type)
 		{	//****************************************
 			var MyProvider = type.GetCustomAttribute<TerminalProviderAttribute>();
@@ -288,7 +284,6 @@ namespace Proximity.Terminal
 
 		//****************************************
 
-		[SecuritySafeCritical]
 		private void OnAssemblyLoad(object sender, AssemblyLoadEventArgs args)
 		{
 			if (args.LoadedAssembly.ManifestModule.Assembly.IsDynamic)

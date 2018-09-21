@@ -15,10 +15,7 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Provides an observable view of the dictionary's keys and values
 	/// </summary>
-	public abstract class ObservableDictionaryCollection<TSource> : IList<TSource>, ICollection<TSource>, IList, INotifyCollectionChanged, INotifyPropertyChanged
-#if !NET40
-, IReadOnlyCollection<TSource>
-#endif
+	public abstract class ObservableDictionaryCollection<TSource> : IList<TSource>, ICollection<TSource>, IList, INotifyCollectionChanged, INotifyPropertyChanged, IReadOnlyCollection<TSource>
 	{	//****************************************
 		private const string CountString = "Count";
 		//****************************************
@@ -65,40 +62,42 @@ namespace Proximity.Utility.Collections
 		{
 			OnPropertyChanged(CountString);
 
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
 		}
 
 		internal void OnCollectionChanged(NotifyCollectionChangedAction action, TSource changedItem)
 		{
 			OnPropertyChanged(CountString);
 
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, changedItem));
+			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, changedItem));
 		}
 
 		internal void OnCollectionChanged(NotifyCollectionChangedAction action, TSource changedItem, int index)
 		{
 			OnPropertyChanged(CountString);
 
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, changedItem, index));
+			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, changedItem, index));
+		}
+
+		internal void OnCollectionChanged(NotifyCollectionChangedAction action, TSource changedItem, int oldIndex, int newIndex)
+		{
+			OnPropertyChanged(CountString);
+
+			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, changedItem, oldIndex, newIndex));
 		}
 
 		internal void OnCollectionChanged(NotifyCollectionChangedAction action, TSource newItem, TSource oldItem, int index)
 		{
 			OnPropertyChanged(CountString);
 
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItem, oldItem, index));
+			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, newItem, oldItem, index));
 		}
 
 		internal void OnCollectionChanged(NotifyCollectionChangedAction action, IEnumerable<TSource> newItems)
 		{
 			OnPropertyChanged(CountString);
 
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItems.ToArray()));
+			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, newItems.ToArray()));
 		}
 
 		//****************************************
@@ -109,35 +108,17 @@ namespace Proximity.Utility.Collections
 
 		//****************************************
 
-		void ICollection<TSource>.Add(TSource item)
-		{
-			throw new NotSupportedException("Collection is read-only");
-		}
+		void ICollection<TSource>.Add(TSource item) => throw new NotSupportedException("Collection is read-only");
 
-		int IList.Add(object value)
-		{
-			throw new NotSupportedException("Collection is read-only");
-		}
+		int IList.Add(object value) => throw new NotSupportedException("Collection is read-only");
 
-		void ICollection<TSource>.Clear()
-		{
-			throw new NotSupportedException("Collection is read-only");
-		}
+		void ICollection<TSource>.Clear() => throw new NotSupportedException("Collection is read-only");
 
-		void IList.Clear()
-		{
-			throw new NotSupportedException("Collection is read-only");
-		}
+		void IList.Clear() => throw new NotSupportedException("Collection is read-only");
 
-		bool IList.Contains(object value)
-		{
-			return value is TSource && Contains((TSource)value);
-		}
+		bool IList.Contains(object value) => value is TSource && Contains((TSource)value);
 
-		void ICollection.CopyTo(Array array, int arrayIndex)
-		{
-			InternalCopyTo(array, arrayIndex);
-		}
+		void ICollection.CopyTo(Array array, int arrayIndex) => InternalCopyTo(array, arrayIndex);
 
 		int IList.IndexOf(object value)
 		{
@@ -147,53 +128,25 @@ namespace Proximity.Utility.Collections
 			return -1;
 		}
 
-		void IList.Insert(int index, object value)
-		{
-			throw new NotSupportedException("Collection is read-only");
-		}
+		void IList.Insert(int index, object value) => throw new NotSupportedException("Collection is read-only");
 
-		void IList<TSource>.Insert(int index, TSource item)
-		{
-			throw new NotSupportedException("Collection is read-only");
-		}
+		void IList<TSource>.Insert(int index, TSource item) => throw new NotSupportedException("Collection is read-only");
 
-		bool ICollection<TSource>.Remove(TSource item)
-		{
-			throw new NotSupportedException("Collection is read-only");
-		}
+		bool ICollection<TSource>.Remove(TSource item) => throw new NotSupportedException("Collection is read-only");
 
-		void IList.Remove(object value)
-		{
-			throw new NotSupportedException("Collection is read-only");
-		}
+		void IList.Remove(object value) => throw new NotSupportedException("Collection is read-only");
 
-		void IList.RemoveAt(int index)
-		{
-			throw new NotSupportedException("Collection is read-only");
-		}
+		void IList.RemoveAt(int index) => throw new NotSupportedException("Collection is read-only");
 
-		void IList<TSource>.RemoveAt(int index)
-		{
-			throw new NotSupportedException("Collection is read-only");
-		}
+		void IList<TSource>.RemoveAt(int index) => throw new NotSupportedException("Collection is read-only");
 
-		IEnumerator IEnumerable.GetEnumerator()
-		{
-			return InternalGetEnumerator();
-		}
+		IEnumerator IEnumerable.GetEnumerator() => InternalGetEnumerator();
 
-		IEnumerator<TSource> IEnumerable<TSource>.GetEnumerator()
-		{
-			return InternalGetEnumerator();
-		}
+		IEnumerator<TSource> IEnumerable<TSource>.GetEnumerator() => InternalGetEnumerator();
 
 		//****************************************
 
-		private void OnPropertyChanged(string propertyName)
-		{
-			if (PropertyChanged != null)
-				PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
-		}
+		private void OnPropertyChanged(string propertyName) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
 		//****************************************
 
@@ -215,10 +168,7 @@ namespace Proximity.Utility.Collections
 		/// <summary>
 		/// Gets whether this collection is read-only. Always true
 		/// </summary>
-		public bool IsReadOnly
-		{
-			get { return true; }
-		}
+		public bool IsReadOnly => true;
 
 		/// <summary>
 		/// Gets the item at the requested index
@@ -228,29 +178,20 @@ namespace Proximity.Utility.Collections
 
 		TSource IList<TSource>.this[int index]
 		{
-			get { return this[index]; }
-			set { throw new NotSupportedException("List is read-only"); }
+			get => this[index];
+			set => throw new NotSupportedException("List is read-only");
 		}
 
 		object IList.this[int index]
 		{
-			get { return this[index]; }
-			set { throw new NotSupportedException("List is read-only"); }
+			get => this[index];
+			set => throw new NotSupportedException("List is read-only");
 		}
 
-		bool IList.IsFixedSize
-		{
-			get { return false; }
-		}
+		bool IList.IsFixedSize => false;
 
-		bool ICollection.IsSynchronized
-		{
-			get { return false; }
-		}
+		bool ICollection.IsSynchronized => false;
 
-		object ICollection.SyncRoot
-		{
-			get { return this; }
-		}
+		object ICollection.SyncRoot => this;
 	}
 }

@@ -16,7 +16,6 @@ namespace Proximity.Terminal
 	/// <summary>
 	/// Captures logging output and sends it to the Terminal
 	/// </summary>
-	[SecurityCritical]
 	public sealed class TerminalLogOutput : LogOutput
 	{	//****************************************
 		private readonly List<ConsoleRecord> _History;
@@ -47,20 +46,17 @@ namespace Proximity.Terminal
 		//****************************************
 
 		/// <inheritdoc />
-		[SecuritySafeCritical]
 		protected override void Start()
 		{
 		}
 
 		/// <inheritdoc />
-		[SecuritySafeCritical]
 		protected override void StartSection(LogSection newSection)
 		{
 			Write(newSection.Entry);
 		}
 
 		/// <inheritdoc />
-		[SecuritySafeCritical]
 		protected override void Write(LogEntry newEntry)
 		{	//****************************************
 			ConsoleRecord MyRecord;
@@ -112,7 +108,6 @@ namespace Proximity.Terminal
 		}
 
 		/// <inheritdoc />
-		[SecuritySafeCritical]
 		protected override void Flush()
 		{
 		}
@@ -132,13 +127,11 @@ namespace Proximity.Terminal
 		}
 
 		/// <inheritdoc />
-		[SecuritySafeCritical]
 		protected override void FinishSection(LogSection oldSection)
 		{
 		}
 
 		/// <inheritdoc />
-		[SecuritySafeCritical]
 		protected override void Finish()
 		{
 			_History.Clear();

@@ -38,12 +38,8 @@ namespace Proximity.Utility
 				return callback;
 			
 			//****************************************
-			
-#if NETSTANDARD1_3
-			var MyParams = MyCallback.GetMethodInfo().GetParameters();
-#else
+
 			var MyParams = MyCallback.Method.GetParameters();
-#endif
 
 			switch (MyParams.Length)
 			{

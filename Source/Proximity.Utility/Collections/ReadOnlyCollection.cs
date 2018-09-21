@@ -14,10 +14,7 @@ namespace Proximity.Utility.Collections
 	/// Represents a read-only wrapper around a Collection
 	/// </summary>
 	/// <remarks>Unlike System.Collections.ObjectModel.ReadOnlyCollection, this requires just a Collection, and not a List</remarks>
-	public class ReadOnlyCollection<TItem> : ICollection<TItem>
-#if !NET40
-		, IReadOnlyCollection<TItem>
-#endif
+	public class ReadOnlyCollection<TItem> : ICollection<TItem>, IReadOnlyCollection<TItem>
 	{	//****************************************
 		private readonly ICollection<TItem> _Collection;
 		//****************************************
@@ -30,76 +27,49 @@ namespace Proximity.Utility.Collections
 		{
 			_Collection = collection;
 		}
-		
+
 		//****************************************
-		
-		void ICollection<TItem>.Add(TItem item)
-		{
-			throw new NotSupportedException("Collection is read-only");
-		}
-		
-		void ICollection<TItem>.Clear()
-		{
-			throw new NotSupportedException("Collection is read-only");
-		}
-		
+
+		void ICollection<TItem>.Add(TItem item) => throw new NotSupportedException("Collection is read-only");
+
+		void ICollection<TItem>.Clear() => throw new NotSupportedException("Collection is read-only");
+
 		/// <summary>
 		/// Determines whether the collection contains a specific item
 		/// </summary>
 		/// <param name="item">The item to locate</param>
 		/// <returns>True if the item is in the list, otherwise false</returns>
-		public bool Contains(TItem item)
-		{
-			return _Collection.Contains(item);
-		}
-		
+		public bool Contains(TItem item) => _Collection.Contains(item);
+
 		/// <summary>
 		/// Copies the elements of the collection to a given array, starting at a specified index
 		/// </summary>
 		/// <param name="array">The destination array</param>
 		/// <param name="arrayIndex">The index into the array to start writing</param>
-		public void CopyTo(TItem[] array, int arrayIndex)
-		{
-			_Collection.CopyTo(array, arrayIndex);
-		}
-		
-		bool ICollection<TItem>.Remove(TItem item)
-		{
-			throw new NotSupportedException("Collection is read-only");
-		}
-		
+		public void CopyTo(TItem[] array, int arrayIndex) => _Collection.CopyTo(array, arrayIndex);
+
+		bool ICollection<TItem>.Remove(TItem item) => throw new NotSupportedException("Collection is read-only");
+
 		/// <summary>
 		/// Returns an enumerator that iterates through the collection
 		/// </summary>
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
-		public IEnumerator<TItem> GetEnumerator()
-		{
-			return _Collection.GetEnumerator();
-		}
-		
+		public IEnumerator<TItem> GetEnumerator() => _Collection.GetEnumerator();
+
 		//****************************************
-		
-		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
-		{
-			return ((System.Collections.IEnumerable)_Collection).GetEnumerator();
-		}
-		
+
+		IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable)_Collection).GetEnumerator();
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Gets the number of items in the collection
 		/// </summary>
-		public int Count
-		{
-			get { return _Collection.Count; }
-		}
-		
+		public int Count => _Collection.Count;
+
 		/// <summary>
 		/// Gets whether this collection is read-only. Always true
 		/// </summary>
-		public bool IsReadOnly
-		{
-			get { return true; }
-		}
+		public bool IsReadOnly => true;
 	}
 }

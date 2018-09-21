@@ -1,8 +1,4 @@
-﻿/****************************************\
- WeakDictionary.cs
- Created: 2013-08-20
-\****************************************/
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -69,7 +65,7 @@ namespace Proximity.Utility
 		public object Target
 		{
 			[SecuritySafeCritical]
-			get { return _Handle.Target; }
+			get => _Handle.Target;
 		}
 
 		/// <summary>
@@ -78,7 +74,7 @@ namespace Proximity.Utility
 		public bool IsAlive
 		{
 			[SecuritySafeCritical]
-			get { return _Handle.IsAllocated && _Handle.Target != null; }
+			get => _Handle.IsAllocated && _Handle.Target != null;
 		}
 	}
 }

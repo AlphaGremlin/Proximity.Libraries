@@ -19,9 +19,7 @@ namespace Proximity.Utility.Collections
 	/// </summary>
 	/// <typeparam name="TValue">The type of value within the set</typeparam>
 	public class ObservableSortedSet<TValue> : ObservableBaseSet<TValue>, ISet<TValue>, IList<TValue>
-	{	//****************************************
-		private readonly IComparer<TValue> _Comparer;
-
+	{ //****************************************
 		private TValue[] _Items;
 
 		private int _Size;
@@ -65,7 +63,7 @@ namespace Proximity.Utility.Collections
 		/// <param name="comparer">The comparer to use with this set</param>
 		public ObservableSortedSet(IEnumerable<TValue> collection, IComparer<TValue> comparer)
 		{
-			_Comparer = comparer;
+			Comparer = comparer;
 
 			_Items = collection.ToArray();
 
@@ -79,7 +77,7 @@ namespace Proximity.Utility.Collections
 		/// <param name="comparer">The comparer to use for this set</param>
 		public ObservableSortedSet(int capacity, IComparer<TValue> comparer)
 		{
-			_Comparer = comparer;
+			Comparer = comparer;
 			_Size = 0;
 
 			_Items = new TValue[capacity];
@@ -94,11 +92,8 @@ namespace Proximity.Utility.Collections
 		/// <returns>True if the element was added, False if it was already in the set</returns>
 		/// <exception cref="ArgumentNullException">Item was null</exception>
 		public new bool Add(TValue item)
-		{	//****************************************
-			int Index;
-			//****************************************
-
-			if (TryAdd(item, out Index))
+		{
+			if (TryAdd(item, out var Index))
 			{
 				OnCollectionChanged(NotifyCollectionChangedAction.Add, item, Index);
 
@@ -132,13 +127,13 @@ namespace Proximity.Utility.Collections
 			if (_Size == 0)
 			{
 				// Since we're empty, it's faster to load the contents by sorting and then copying
-				Array.Sort<TValue>(NewItems, _Comparer);
+				Array.Sort<TValue>(NewItems, Comparer);
 
 				// Remove duplicates
 				for (Index = 1; Index < NewItems.Length; Index++)
 				{
 					// Is the leading item equal to the trailing item?
-					if (_Comparer.Compare(NewItems[Count], NewItem = NewItems[Index]) != 0)
+					if (Comparer.Compare(NewItems[Count], NewItem = NewItems[Index]) != 0)
 					{
 						// Shift the final item up one
 						NewItems[++Count] = NewItem;
@@ -181,10 +176,7 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="item">The item to search for</param>
 		/// <returns>The index of the item, or the one's complement of the index where it should be inserted</returns>
-		public int BinarySearch(TValue item)
-		{
-			return Array.BinarySearch<TValue>(_Items, 0, _Size, item, _Comparer);
-		}
+		public int BinarySearch(TValue item) => Array.BinarySearch<TValue>(_Items, 0, _Size, item, Comparer);
 
 		/// <summary>
 		/// Removes all elements from the collection
@@ -206,29 +198,20 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="item">The item to locate</param>
 		/// <returns>True if the item is in the list, otherwise false</returns>
-		public override bool Contains(TValue item)
-		{
-			return IndexOf(item) >= 0;
-		}
+		public override bool Contains(TValue item) => IndexOf(item) >= 0;
 
 		/// <summary>
 		/// Copies the elements of the collection to a given array, starting at a specified index
 		/// </summary>
 		/// <param name="array">The destination array</param>
 		/// <param name="arrayIndex">The index into the array to start writing</param>
-		public override void CopyTo(TValue[] array, int arrayIndex)
-		{
-			Array.Copy(_Items, 0, array, arrayIndex, _Size);
-		}
+		public override void CopyTo(TValue[] array, int arrayIndex) => Array.Copy(_Items, 0, array, arrayIndex, _Size);
 
 		/// <summary>
 		/// Returns an enumerator that iterates through the collection
 		/// </summary>
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
-		public ValueEnumerator GetEnumerator()
-		{
-			return new ValueEnumerator(this);
-		}
+		public ValueEnumerator GetEnumerator() => new ValueEnumerator(this);
 
 		/// <summary>
 		/// Determines the index of a specific item in the set
@@ -237,7 +220,7 @@ namespace Proximity.Utility.Collections
 		/// <returns>The index of the item if found, otherwise -1</returns>
 		public override int IndexOf(TValue item)
 		{	//****************************************
-			int Index = Array.BinarySearch<TValue>(_Items, 0, _Size, item, _Comparer);
+			int Index = Array.BinarySearch<TValue>(_Items, 0, _Size, item, Comparer);
 			//****************************************
 
 			// Is there a matching hash code?
@@ -314,22 +297,20 @@ namespace Proximity.Utility.Collections
 		/// <inheritdoc />
 		public override TValue[] ToArray()
 		{
-			return (TValue[])_Items.Clone();
+			var Copy = new TValue[_Size];
+
+			Array.Copy(_Items, 0, Copy, 0, _Size);
+
+			return Copy;
 		}
 
 		//****************************************
 
 		/// <inheritdoc />
-		protected override void InternalAdd(TValue item)
-		{
-			Add(item);
-		}
+		protected override void InternalAdd(TValue item) => Add(item);
 
 		/// <inheritdoc />
-		protected override IEnumerator<TValue> InternalGetEnumerator()
-		{
-			return new ValueEnumerator(this);
-		}
+		protected override IEnumerator<TValue> InternalGetEnumerator() => new ValueEnumerator(this);
 
 		/// <inheritdoc />
 		protected override TValue InternalGet(int index)
@@ -341,10 +322,7 @@ namespace Proximity.Utility.Collections
 		}
 
 		/// <inheritdoc />
-		protected override void InternalInsert(int index, TValue item)
-		{
-			throw new NotSupportedException("Cannot insert into a set");
-		}
+		protected override void InternalInsert(int index, TValue item) => throw new NotSupportedException("Cannot insert into a set");
 
 		/// <inheritdoc />
 		protected override int InternalRemoveAll(Func<int, bool> predicate)
@@ -395,12 +373,9 @@ namespace Proximity.Utility.Collections
 
 			return InnerIndex - Index;
 		}
-		
+
 		/// <inheritdoc />
-		protected override void InternalSet(int index, TValue value)
-		{
-			throw new NotSupportedException("Cannot set by index");
-		}
+		protected override void InternalSet(int index, TValue value) => throw new NotSupportedException("Cannot set by index");
 
 		//****************************************
 
@@ -419,7 +394,7 @@ namespace Proximity.Utility.Collections
 
 		private bool TryAdd(TValue item, out int insertIndex)
 		{	//****************************************
-			int Index = Array.BinarySearch<TValue>(_Items, 0, _Size, item, _Comparer);
+			int Index = Array.BinarySearch<TValue>(_Items, 0, _Size, item, Comparer);
 			//****************************************
 
 			// Is there a matching item?
@@ -460,46 +435,22 @@ namespace Proximity.Utility.Collections
 		/// <summary>
 		/// Gets the IComparer{TValue} that is used to compare items in the set
 		/// </summary>
-		public IComparer<TValue> Comparer
-		{
-			get { return _Comparer; }
-		}
+		public IComparer<TValue> Comparer { get; }
 
 		/// <summary>
 		/// Gets the number of items in the collection
 		/// </summary>
-		public override int Count
-		{
-			get { return _Size; }
-		}
+		public override int Count => _Size;
 
 		/// <summary>
 		/// Gets the minimum value in the sorted set
 		/// </summary>
-		public TValue Min
-		{
-			get
-			{
-				if (_Size == 0)
-					return default(TValue);
-
-				return _Items[0];
-			}
-		}
+		public TValue Min => (_Size == 0) ? default(TValue) : _Items[0];
 
 		/// <summary>
 		/// Gets the maximum value in the sorted set
 		/// </summary>
-		public TValue Max
-		{
-			get
-			{
-				if (_Size == 0)
-					return default(TValue);
-
-				return _Items[_Size - 1];
-			}
-		}
+		public TValue Max => (_Size == 0) ? default(TValue) : _Items[_Size - 1];
 
 		/// <summary>
 		/// Gets/Sets the number of elements that the Observable Sorted Set can contain.
@@ -536,10 +487,7 @@ namespace Proximity.Utility.Collections
 		/// Gets the value corresponding to the provided index
 		/// </summary>
 		[System.Runtime.CompilerServices.IndexerName("Item")]
-		public TValue this[int index]
-		{
-			get { return _Items[index]; }
-		}
+		public TValue this[int index] => _Items[index];
 
 		TValue IList<TValue>.this[int index]
 		{
@@ -557,14 +505,14 @@ namespace Proximity.Utility.Collections
 			private readonly ObservableSortedSet<TValue> _Parent;
 
 			private int _Index;
-			private TValue _Current;
+
 			//****************************************
 
 			internal ValueEnumerator(ObservableSortedSet<TValue> parent)
 			{
 				_Parent = parent;
 				_Index = 0;
-				_Current = default(TValue);
+				Current = default(TValue);
 			}
 
 			//****************************************
@@ -574,7 +522,7 @@ namespace Proximity.Utility.Collections
 			/// </summary>
 			public void Dispose()
 			{
-				_Current = default(TValue);
+				Current = default(TValue);
 			}
 
 			/// <summary>
@@ -586,12 +534,12 @@ namespace Proximity.Utility.Collections
 				if (_Index >= _Parent._Size)
 				{
 					_Index = _Parent._Size + 1;
-					_Current = default(TValue);
+					Current = default(TValue);
 
 					return false;
 				}
 
-				_Current = _Parent._Items[_Index++];
+				Current = _Parent._Items[_Index++];
 
 				return true;
 			}
@@ -599,7 +547,7 @@ namespace Proximity.Utility.Collections
 			void IEnumerator.Reset()
 			{
 				_Index = 0;
-				_Current = default(TValue);
+				Current = default(TValue);
 			}
 
 			//****************************************
@@ -607,28 +555,16 @@ namespace Proximity.Utility.Collections
 			/// <summary>
 			/// Gets the current item being enumerated
 			/// </summary>
-			public TValue Current
-			{
-				get { return _Current; }
-			}
+			public TValue Current { get; private set; }
 
-			object IEnumerator.Current
-			{
-				get { return _Current; }
-			}
+			object IEnumerator.Current => Current;
 		}
 
 		//****************************************
 
 		private static IComparer<TValue> GetDefaultComparer()
 		{
-#if NETSTANDARD1_3
-			var MyInfo = typeof(TValue).GetTypeInfo();
-
-			if (!typeof(IComparable<TValue>).GetTypeInfo().IsAssignableFrom(MyInfo) && !typeof(IComparable).GetTypeInfo().IsAssignableFrom(MyInfo))
-#else
 			if (!typeof(IComparable<TValue>).IsAssignableFrom(typeof(TValue)) && !typeof(IComparable).IsAssignableFrom(typeof(TValue)))
-#endif
 				throw new ArgumentException(string.Format("{0} does not implement IComparable or IComparable<>", typeof(TValue).FullName));
 
 			return Comparer<TValue>.Default;

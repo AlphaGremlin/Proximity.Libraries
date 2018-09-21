@@ -18,8 +18,3 @@ using System.Security;
 
 [assembly: ComVisible(false)]
 [assembly: CLSCompliant(true)]
-
-#if !NETSTANDARD1_3
-[assembly: SecurityRules(SecurityRuleSet.Level2)]
-#endif
-[assembly: AllowPartiallyTrustedCallers()]

@@ -16,8 +16,3 @@ using System.Security;
 
 [assembly: ComVisible(false)]
 [assembly: CLSCompliant(true)]
-
-//****************************************
-
-[assembly: SecurityRules(SecurityRuleSet.Level2)]
-[assembly: AllowPartiallyTrustedCallers()]

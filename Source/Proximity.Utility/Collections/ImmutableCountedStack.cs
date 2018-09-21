@@ -1,13 +1,8 @@
-﻿/****************************************\
- ImmutableCountedStack.cs
- Created: 2014-04-30
-\****************************************/
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-#if !NETSTANDARD1_3
+using System.Collections.Immutable;
 using System.Runtime.Serialization;
-#endif
 using System.Security;
 using System.Threading;
 //****************************************
@@ -23,21 +18,15 @@ namespace Proximity.Utility.Collections
 		/// Creates a new Immutable Counted Stack
 		/// </summary>
 		/// <returns>An empty Immutable Counted Stack</returns>
-		public static ImmutableCountedStack<TItem> Create<TItem>()
-		{
-			return ImmutableCountedStack<TItem>.Empty;
-		}
-		
+		public static ImmutableCountedStack<TItem> Create<TItem>() => ImmutableCountedStack<TItem>.Empty;
+
 		/// <summary>
 		/// Creates a new Immutable Counted Stack populated with one item
 		/// </summary>
 		/// <param name="item">The item to add to the stack</param>
 		/// <returns>An Immutable Counted Stack populated with the given item</returns>
-		public static ImmutableCountedStack<TItem> Create<TItem>(TItem item)
-		{
-			return new ImmutableCountedStack<TItem>(item, ImmutableCountedStack<TItem>.Empty, 1);
-		}
-		
+		public static ImmutableCountedStack<TItem> Create<TItem>(TItem item) => new ImmutableCountedStack<TItem>(item, ImmutableCountedStack<TItem>.Empty, 1);
+
 		/// <summary>
 		/// Creates a new Immutable Counted Stack populated with an array of items
 		/// </summary>
@@ -120,16 +109,8 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Provides an Immutable Stack that also maintains a counter
 	/// </summary>
-#if !NETSTANDARD1_3
 	[Serializable]
-#endif
-	public sealed class ImmutableCountedStack<TItem> : /*ISerializable,*/ IEnumerable<TItem>
-#if NET45
-		, System.Collections.Immutable.IImmutableStack<TItem>
-#endif
-#if !NET40
-		, IReadOnlyCollection<TItem>
-#endif
+	public sealed class ImmutableCountedStack<TItem> : /*ISerializable,*/ IEnumerable<TItem>, IImmutableStack<TItem>, IReadOnlyCollection<TItem>
 	{
 		/// <summary>
 		/// An empty immutable counted stack
@@ -139,15 +120,13 @@ namespace Proximity.Utility.Collections
 		//****************************************
 		private readonly TItem _Head;
 		private readonly ImmutableCountedStack<TItem> _Tail;
-		
-		private readonly int _Count;
 		//****************************************
-		
+
 		internal ImmutableCountedStack(TItem head, ImmutableCountedStack<TItem> tail, int count)
 		{
 			_Head = head;
 			_Tail = tail;
-			_Count = count;
+			Count = count;
 		}
 		/*
 		[SecurityCritical]
@@ -177,10 +156,7 @@ namespace Proximity.Utility.Collections
 		/// Clears the immutable stack
 		/// </summary>
 		/// <returns>An empty stack</returns>
-		public ImmutableCountedStack<TItem> Clear()
-		{
-			return Empty;
-		}
+		public ImmutableCountedStack<TItem> Clear() => Empty;
 
 		/// <summary>
 		/// Copies the contents of the stack in oldest-to-newest order to an array
@@ -192,25 +168,22 @@ namespace Proximity.Utility.Collections
 			var Node = this;
 			//****************************************
 
-			index += _Count;
+			index += Count;
 
-			while (Node._Count > 0)
+			while (Node.Count > 0)
 			{
 				array[--index] = Node._Head;
 
 				Node = Node._Tail;
 			}
 		}
-		
+
 		/// <summary>
 		/// Retrieves an enumerator for this stack
 		/// </summary>
 		/// <returns>The requested enumerator</returns>
-		public Enumerator GetEnumerator()
-		{
-			return new Enumerator(this);
-		}
-		
+		public Enumerator GetEnumerator() => new Enumerator(this);
+
 		/// <summary>
 		/// Peeks at the top item on the stack
 		/// </summary>
@@ -252,28 +225,19 @@ namespace Proximity.Utility.Collections
 			
 			return _Tail;
 		}
-		
+
 		/// <summary>
 		/// Pushes an item onto the top of the stack
 		/// </summary>
 		/// <param name="item">The item to push</param>
 		/// <returns>The stack with the new top item</returns>
-		public ImmutableCountedStack<TItem> Push(TItem item)
-		{
-			return new ImmutableCountedStack<TItem>(item, this, _Count + 1);
-		}
-		
+		public ImmutableCountedStack<TItem> Push(TItem item) => new ImmutableCountedStack<TItem>(item, this, Count + 1);
+
 		//****************************************
 
-		IEnumerator IEnumerable.GetEnumerator()
-		{
-			return new Enumerator(this);
-		}
+		IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this);
 
-		IEnumerator<TItem> IEnumerable<TItem>.GetEnumerator()
-		{
-			return new Enumerator(this);
-		}
+		IEnumerator<TItem> IEnumerable<TItem>.GetEnumerator() => new Enumerator(this);
 		/*
 		[SecurityCritical]
 		void ISerializable.GetObjectData(SerializationInfo info, StreamingContext context)
@@ -285,13 +249,9 @@ namespace Proximity.Utility.Collections
 			info.AddValue("Values", Values, typeof(TItem[]));
 		}
 		*/
-#if NET45
-		System.Collections.Immutable.IImmutableStack<TItem> System.Collections.Immutable.IImmutableStack<TItem>.Clear()
-		{
-			return Empty;
-		}
+		IImmutableStack<TItem> IImmutableStack<TItem>.Clear() => Empty;
 
-		System.Collections.Immutable.IImmutableStack<TItem> System.Collections.Immutable.IImmutableStack<TItem>.Pop()
+		IImmutableStack<TItem> IImmutableStack<TItem>.Pop()
 		{
 			if (IsEmpty)
 				throw new InvalidOperationException("Stack is empty");
@@ -299,29 +259,20 @@ namespace Proximity.Utility.Collections
 			return _Tail;
 		}
 
-		System.Collections.Immutable.IImmutableStack<TItem> System.Collections.Immutable.IImmutableStack<TItem>.Push(TItem item)
-		{
-			return new ImmutableCountedStack<TItem>(item, this, _Count + 1);
-		}
-#endif
+		IImmutableStack<TItem> IImmutableStack<TItem>.Push(TItem item) => new ImmutableCountedStack<TItem>(item, this, Count + 1);
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Gets whether this stack is empty
 		/// </summary>
-		public bool IsEmpty
-		{
-			get { return _Tail == null; }
-		}
-		
+		public bool IsEmpty => _Tail == null;
+
 		/// <summary>
 		/// Gets the number of items on the stack
 		/// </summary>
-		public int Count
-		{
-			get { return _Count; }
-		}
-		
+		public int Count { get; }
+
 		//****************************************
 
 		/// <summary>

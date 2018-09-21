@@ -21,9 +21,6 @@ namespace Proximity.Utility.Collections
 	{	//****************************************
 		private int[] _Keys;
 		private TValue[] _Values;
-
-		private readonly IEqualityComparer<TValue> _Comparer;
-
 		private int _Size;
 		//****************************************
 
@@ -69,7 +66,7 @@ namespace Proximity.Utility.Collections
 			_Size = 0;
 			_Keys = new int[capacity];
 			_Values = new TValue[capacity];
-			_Comparer = comparer;
+			Comparer = comparer;
 		}
 
 		/// <summary>
@@ -79,25 +76,9 @@ namespace Proximity.Utility.Collections
 		/// <param name="comparer">The equality comparer to use for the obserable set</param>
 		public ObservableSet(IEnumerable<TValue> collection, IEqualityComparer<TValue> comparer)
 		{
-			_Comparer = comparer;
+			Comparer = comparer;
 
 			// Ensure we add all the values in the order sorted by hash code
-#if NETSTANDARD1_3
-			_Keys = new int[0];
-			_Values = new TValue[0];
-
-			// Can't use Array.Sort(key, value, comparer) since it doesn't exist on portable
-			foreach (var MyPair in collection.Select(value => new KeyValuePair<int, TValue>(_Comparer.GetHashCode(value), value)).OrderBy(pair => pair.Key))
-			{
-				if (_Size == _Keys.Length)
-					EnsureCapacity(_Size + 1);
-
-				_Keys[_Size] = MyPair.Key;
-				_Values[_Size] = MyPair.Value;
-
-				_Size++;
-			}
-#else
 			_Values = collection.ToArray();
 			_Size = _Values.Length;
 			_Keys = new int[_Size];
@@ -107,8 +88,7 @@ namespace Proximity.Utility.Collections
 				_Keys[Index] = comparer.GetHashCode(_Values[Index]);
 			}
 
-			Array.Sort<int, TValue>(_Keys, _Values, Comparer<int>.Default);
-#endif
+			Array.Sort(_Keys, _Values, Comparer<int>.Default);
 		}
 
 		//****************************************
@@ -120,11 +100,8 @@ namespace Proximity.Utility.Collections
 		/// <returns>True if the element was added, False if it was already in the set</returns>
 		/// <exception cref="ArgumentNullException">Item was null</exception>
 		public new bool Add(TValue item)
-		{	//****************************************
-			int Index;
-			//****************************************
-
-			if (TryAdd(item, out Index))
+		{
+			if (TryAdd(item, out var Index))
 			{
 				OnCollectionChanged(NotifyCollectionChangedAction.Add, item, Index);
 
@@ -183,30 +160,21 @@ namespace Proximity.Utility.Collections
 		}
 
 		/// <inheritdoc />
-		public override bool Contains(TValue item)
-		{
-			return IndexOf(item) >= 0;
-		}
+		public override bool Contains(TValue item) => IndexOf(item) >= 0;
 
 		/// <inheritdoc />
-		public override void CopyTo(TValue[] array, int arrayIndex)
-		{
-			Array.Copy(_Values, 0, array, arrayIndex, _Size);
-		}
+		public override void CopyTo(TValue[] array, int arrayIndex) => Array.Copy(_Values, 0, array, arrayIndex, _Size);
 
 		/// <summary>
 		/// Returns an enumerator that iterates through the collection
 		/// </summary>
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
-		public ValueEnumerator GetEnumerator()
-		{
-			return new ValueEnumerator(this);
-		}
+		public ValueEnumerator GetEnumerator() => new ValueEnumerator(this);
 
 		/// <inheritdoc />
 		public override int IndexOf(TValue item)
 		{	//****************************************
-			int Key = _Comparer.GetHashCode(item);
+			int Key = Comparer.GetHashCode(item);
 			int Index = Array.BinarySearch<int>(_Keys, 0, _Size, Key);
 			//****************************************
 
@@ -221,7 +189,7 @@ namespace Proximity.Utility.Collections
 			for (; ; )
 			{
 				// Do we match this item?
-				if (_Comparer.Equals(_Values[Index], item))
+				if (Comparer.Equals(_Values[Index], item))
 					return Index; // Yes, so return the Index
 
 				Index++;
@@ -270,7 +238,7 @@ namespace Proximity.Utility.Collections
 			}
 
 			// Ensure we don't hold a reference to the value
-			_Values[_Size] = default(TValue);
+			_Values[_Size] = default;
 
 			OnCollectionChanged(NotifyCollectionChangedAction.Remove, Item, index);
 		}
@@ -303,22 +271,20 @@ namespace Proximity.Utility.Collections
 		/// <inheritdoc />
 		public override TValue[] ToArray()
 		{
-			return (TValue[])_Values.Clone();
+			var Copy = new TValue[_Size];
+
+			Array.Copy(_Values, 0, Copy, 0, _Size);
+
+			return Copy;
 		}
 
 		//****************************************
 
 		/// <inheritdoc />
-		protected override void InternalAdd(TValue item)
-		{
-			Add(item);
-		}
+		protected override void InternalAdd(TValue item) => Add(item);
 
 		/// <inheritdoc />
-		protected override IEnumerator<TValue> InternalGetEnumerator()
-		{
-			return new ValueEnumerator(this);
-		}
+		protected override IEnumerator<TValue> InternalGetEnumerator() => new ValueEnumerator(this);
 
 		/// <inheritdoc />
 		protected override TValue InternalGet(int index)
@@ -330,10 +296,7 @@ namespace Proximity.Utility.Collections
 		}
 
 		/// <inheritdoc />
-		protected override void InternalInsert(int index, TValue item)
-		{
-			throw new NotSupportedException("Cannot insert into a set");
-		}
+		protected override void InternalInsert(int index, TValue item) => throw new NotSupportedException("Cannot insert into a set");
 
 		/// <inheritdoc />
 		protected override int InternalRemoveAll(Func<int, bool> predicate)
@@ -386,12 +349,9 @@ namespace Proximity.Utility.Collections
 
 			return InnerIndex - Index;
 		}
-		
+
 		/// <inheritdoc />
-		protected override void InternalSet(int index, TValue value)
-		{
-			throw new NotSupportedException("Cannot set by index");
-		}
+		protected override void InternalSet(int index, TValue value) => throw new NotSupportedException("Cannot set by index");
 
 		//****************************************
 
@@ -410,7 +370,7 @@ namespace Proximity.Utility.Collections
 
 		private bool TryAdd(TValue item, out int insertIndex)
 		{	//****************************************
-			int Key = _Comparer.GetHashCode(item);
+			int Key = Comparer.GetHashCode(item);
 			int Index = Array.BinarySearch<int>(_Keys, 0, _Size, Key);
 			//****************************************
 
@@ -424,7 +384,7 @@ namespace Proximity.Utility.Collections
 				for (; ; )
 				{
 					// Do we match this item?
-					if (_Comparer.Equals(_Values[Index], item))
+					if (Comparer.Equals(_Values[Index], item))
 					{
 						insertIndex = -1;
 
@@ -482,16 +442,10 @@ namespace Proximity.Utility.Collections
 		/// <summary>
 		/// Gets the IEqualityComparer{TValue} that is used to compare items in the set
 		/// </summary>
-		public IEqualityComparer<TValue> Comparer
-		{
-			get { return _Comparer; }
-		}
+		public IEqualityComparer<TValue> Comparer { get; }
 
 		/// <inheritdoc />
-		public override int Count
-		{
-			get { return _Size; }
-		}
+		public override int Count => _Size;
 
 		/// <summary>
 		/// Gets or Sets the number of elements that the Observable Set can contain.
@@ -532,10 +486,7 @@ namespace Proximity.Utility.Collections
 		/// Gets the value corresponding to the provided index
 		/// </summary>
 		[System.Runtime.CompilerServices.IndexerName("Item")]
-		public TValue this[int index]
-		{
-			get { return _Values[index]; }
-		}
+		public TValue this[int index] => _Values[index];
 
 		TValue IList<TValue>.this[int index]
 		{
@@ -553,14 +504,14 @@ namespace Proximity.Utility.Collections
 			private readonly ObservableSet<TValue> _Parent;
 
 			private int _Index;
-			private TValue _Current;
+
 			//****************************************
 
 			internal ValueEnumerator(ObservableSet<TValue> parent)
 			{
 				_Parent = parent;
 				_Index = 0;
-				_Current = default(TValue);
+				Current = default(TValue);
 			}
 
 			//****************************************
@@ -570,7 +521,7 @@ namespace Proximity.Utility.Collections
 			/// </summary>
 			public void Dispose()
 			{
-				_Current = default(TValue);
+				Current = default(TValue);
 			}
 
 			/// <summary>
@@ -582,12 +533,12 @@ namespace Proximity.Utility.Collections
 				if (_Index >= _Parent._Size)
 				{
 					_Index = _Parent._Size + 1;
-					_Current = default(TValue);
+					Current = default(TValue);
 
 					return false;
 				}
 
-				_Current = _Parent._Values[_Index++];
+				Current = _Parent._Values[_Index++];
 
 				return true;
 			}
@@ -595,7 +546,7 @@ namespace Proximity.Utility.Collections
 			void IEnumerator.Reset()
 			{
 				_Index = 0;
-				_Current = default(TValue);
+				Current = default(TValue);
 			}
 
 			//****************************************
@@ -603,15 +554,9 @@ namespace Proximity.Utility.Collections
 			/// <summary>
 			/// Gets the current item being enumerated
 			/// </summary>
-			public TValue Current
-			{
-				get { return _Current; }
-			}
+			public TValue Current { get; private set; }
 
-			object IEnumerator.Current
-			{
-				get { return _Current; }
-			}
+			object IEnumerator.Current => Current;
 		}
 	}
 }

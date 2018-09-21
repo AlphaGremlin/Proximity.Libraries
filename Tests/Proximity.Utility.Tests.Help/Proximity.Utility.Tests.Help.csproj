@@ -1,9 +1,15 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net462</TargetFrameworks>
+    <TargetFrameworks>net471</TargetFrameworks>
 		<OutputPath>..\..\Build\Tests\</OutputPath>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="ExceptionThrower.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ExceptionThrower.cs" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="System.Collections.Immutable" Version="1.4.0" />
   </ItemGroup>

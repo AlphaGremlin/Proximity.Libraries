@@ -214,7 +214,6 @@ namespace Proximity.Utility.Collections
 		private void OnChildPropertyChanged(object sender, PropertyChangedEventArgs e)
 		{	//****************************************
 			var CurrentItem = (TValue)sender;
-			TValue PreviousItem;
 			//****************************************
 			
 			// No need to do anything if there's only one item
@@ -222,7 +221,7 @@ namespace Proximity.Utility.Collections
 				return;
 
 			// What did we look like before?
-			if (!_PreviousValues.TryGetValue(CurrentItem, out PreviousItem))
+			if (!_PreviousValues.TryGetValue(CurrentItem, out var PreviousItem))
 				throw new InvalidOperationException("Unknown Child Item");
 
 			// Has our sort changed relative to our previous state?
@@ -348,12 +347,6 @@ namespace Proximity.Utility.Collections
 
 		//****************************************
 
-#if NETSTANDARD1_3
-		private static Func<TValue, TValue> CreateCloneMethod()
-		{
-			throw new ArgumentNullException("cloneMethod", "Clone Method must be provided");
-		}
-#else
 		private static Func<TValue, TValue> CreateCloneMethod()
 		{
 			if (typeof(ICloneable).IsAssignableFrom(typeof(TValue)))
@@ -366,6 +359,5 @@ namespace Proximity.Utility.Collections
 		{
 			return (TValue)(source as ICloneable).Clone();
 		}
-#endif
 	}
 }

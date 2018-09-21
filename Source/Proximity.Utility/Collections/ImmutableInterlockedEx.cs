@@ -1,9 +1,4 @@
-﻿/****************************************\
- ImmutableInterlockedEx.cs
- Created: 2014-05-01
-\****************************************/
-#if !NET40
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -67,4 +62,3 @@ namespace Proximity.Utility.Collections
 		}
 	}
 }
-#endif

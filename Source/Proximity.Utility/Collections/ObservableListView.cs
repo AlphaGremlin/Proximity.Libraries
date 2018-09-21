@@ -21,21 +21,12 @@ namespace Proximity.Utility.Collections
 	/// <remarks>
 	/// <para>This does not support dynamic sorting, so if values are modified outside of this collection and it changes their positioning, data corruption will result</para>
 	/// </remarks>
-	public class ObservableListView<TValue> : IList<TValue>, IList, INotifyCollectionChanged, INotifyPropertyChanged, IDisposable
-#if !NET40
-, IReadOnlyList<TValue>
-#endif
+	public class ObservableListView<TValue> : IList<TValue>, IList, INotifyCollectionChanged, INotifyPropertyChanged, IDisposable, IReadOnlyList<TValue>
 	{	//****************************************
 		private const string CountString = "Count";
 		private const string IndexerName = "Item[]";
 		//****************************************
 		private readonly IList<TValue> _Source;
-		private readonly List<TValue> _Items;
-
-		private readonly IComparer<TValue> _Comparer;
-		private readonly Predicate<TValue> _Filter;
-		private readonly int? _Maximum;
-
 		private int _VisibleSize;
 		//****************************************
 		
@@ -144,20 +135,20 @@ namespace Proximity.Utility.Collections
 		public ObservableListView(IList<TValue> source, IComparer<TValue> comparer, Predicate<TValue> filter, int? maximum)
 		{
 			_Source = source;
-			_Filter = filter;
-			_Maximum = maximum;
-			_Items = new List<TValue>(source.Count);
-			_Comparer = comparer ?? GetDefaultComparer();
+			Filter = filter;
+			Maximum = maximum;
+			Items = new List<TValue>(source.Count);
+			Comparer = comparer ?? GetDefaultComparer();
 
 			// If we're filtering, use the filter comparer
 			if (filter != null)
-				_Comparer = new FilterComparer(_Comparer, filter);
+				Comparer = new FilterComparer(Comparer, filter);
 
 			// Bring the collection up to date
 			if (source.Count > 0)
 			{
-				_Items.AddRange(source);
-				_Items.Sort(_Comparer);
+				Items.AddRange(source);
+				Items.Sort(Comparer);
 
 				_VisibleSize = GetVisibleCount();
 			}
@@ -174,10 +165,7 @@ namespace Proximity.Utility.Collections
 		/// <param name="item">The item to search for</param>
 		/// <returns>The index of the item, or the one's complement of the index where it should be inserted</returns>
 		/// <remarks>Only searches the visible items</remarks>
-		public int BinarySearch(TValue item)
-		{
-			return _Items.BinarySearch(0, Count, item, _Comparer);
-		}
+		public int BinarySearch(TValue item) => Items.BinarySearch(0, Count, item, Comparer);
 
 		/// <summary>
 		/// Determines whether the collection contains a specific item
@@ -185,10 +173,7 @@ namespace Proximity.Utility.Collections
 		/// <param name="item">The item to locate</param>
 		/// <returns>True if the item is in the list, otherwise false</returns>
 		/// <remarks>Only searches the visible items</remarks>
-		public bool Contains(TValue item)
-		{
-			return _Items.BinarySearch(0, Count, item, _Comparer) >= 0;
-		}
+		public bool Contains(TValue item) => Items.BinarySearch(0, Count, item, Comparer) >= 0;
 
 		/// <summary>
 		/// Copies the elements of the collection to a given array, starting at a specified index
@@ -196,10 +181,7 @@ namespace Proximity.Utility.Collections
 		/// <param name="array">The destination array</param>
 		/// <param name="arrayIndex">The index into the array to start writing</param>
 		/// <remarks>Only copies the visible items</remarks>
-		public void CopyTo(TValue[] array, int arrayIndex)
-		{
-			_Items.CopyTo(0, array, arrayIndex, Count);
-		}
+		public void CopyTo(TValue[] array, int arrayIndex) => Items.CopyTo(0, array, arrayIndex, Count);
 
 		/// <summary>
 		/// Releases this Observable List View
@@ -215,10 +197,7 @@ namespace Proximity.Utility.Collections
 		/// Returns an enumerator that iterates through the collection
 		/// </summary>
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
-		public ValueEnumerator GetEnumerator()
-		{
-			return new ValueEnumerator(this);
-		}
+		public ValueEnumerator GetEnumerator() => new ValueEnumerator(this);
 
 		/// <summary>
 		/// Determines the index of a specific item in the list
@@ -227,7 +206,7 @@ namespace Proximity.Utility.Collections
 		/// <returns>The index of the item if found, otherwise -1</returns>
 		public int IndexOf(TValue item)
 		{
-			var MyIndex = _Items.BinarySearch(0, Count, item, _Comparer);
+			var MyIndex = Items.BinarySearch(0, Count, item, Comparer);
 
 			if (MyIndex < 0)
 				MyIndex = -1;
@@ -237,93 +216,47 @@ namespace Proximity.Utility.Collections
 
 		//****************************************
 
-		void IList<TValue>.Insert(int index, TValue item)
-		{
-			throw new NotSupportedException("List is read-only");
-		}
+		void IList<TValue>.Insert(int index, TValue item) => throw new NotSupportedException("List is read-only");
 
-		void IList<TValue>.RemoveAt(int index)
-		{
-			throw new NotSupportedException("List is read-only");
-		}
+		void IList<TValue>.RemoveAt(int index) => throw new NotSupportedException("List is read-only");
 
-		int IList.Add(object item)
-		{
-			throw new NotSupportedException("List is read-only");
-		}
+		int IList.Add(object item) => throw new NotSupportedException("List is read-only");
 
-		void IList.Clear()
-		{
-			throw new NotSupportedException("List is read-only");
-		}
+		void IList.Clear() => throw new NotSupportedException("List is read-only");
 
-		bool IList.Contains(object value)
-		{
-			return value is TValue && Contains((TValue)value);
-		}
+		bool IList.Contains(object value) => value is TValue MyValue && Contains(MyValue);
 
 		int IList.IndexOf(object value)
 		{
-			if (value is TValue)
-				return IndexOf((TValue)value);
+			if (value is TValue MyValue)
+				return IndexOf(MyValue);
 
 			return -1;
 		}
 
-		void IList.Insert(int index, object item)
-		{
-			throw new NotSupportedException("List is read-only");
-		}
+		void IList.Insert(int index, object item) => throw new NotSupportedException("List is read-only");
 
-		void IList.Remove(object item)
-		{
-			throw new NotSupportedException("List is read-only");
-		}
+		void IList.Remove(object item) => throw new NotSupportedException("List is read-only");
 
-		void IList.RemoveAt(int index)
-		{
-			throw new NotSupportedException("List is read-only");
-		}
+		void IList.RemoveAt(int index) => throw new NotSupportedException("List is read-only");
 
-		void ICollection<TValue>.Add(TValue item)
-		{
-			throw new NotSupportedException("List is read-only");
-		}
+		void ICollection<TValue>.Add(TValue item) => throw new NotSupportedException("List is read-only");
 
-		void ICollection<TValue>.Clear()
-		{
-			throw new NotSupportedException("List is read-only");
-		}
+		void ICollection<TValue>.Clear() => throw new NotSupportedException("List is read-only");
 
-		void ICollection.CopyTo(Array array, int index)
-		{
-			((IList)_Items).CopyTo(array, index);
-		}
+		void ICollection.CopyTo(Array array, int index) => ((IList)Items).CopyTo(array, index);
 
-		bool ICollection<TValue>.Remove(TValue item)
-		{
-			throw new NotSupportedException("List is read-only");
-		}
+		bool ICollection<TValue>.Remove(TValue item) => throw new NotSupportedException("List is read-only");
 
-		IEnumerator IEnumerable.GetEnumerator()
-		{
-			return new ValueEnumerator(this);
-		}
+		IEnumerator IEnumerable.GetEnumerator() => new ValueEnumerator(this);
 
-		IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator()
-		{
-			return new ValueEnumerator(this);
-		}
+		IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator() => new ValueEnumerator(this);
 
 		/// <summary>
 		/// Raises the PropertyChanged event
 		/// </summary>
 		/// <param name="propertyName">The name of the property that has changed</param>
-		protected virtual void OnPropertyChanged(string propertyName)
-		{
-			if (PropertyChanged != null)
-				PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
-		}
+		protected virtual void OnPropertyChanged(string propertyName) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
 		/// <summary>
 		/// Occurs when the collection has been reset
@@ -371,21 +304,21 @@ namespace Proximity.Utility.Collections
 		protected virtual void ResortItem(TValue newItem, int oldIndex, int newIndex, bool hasChanged)
 		{
 			// Where should the item be now?
-			var OldItem = _Items[oldIndex];
+			var OldItem = Items[oldIndex];
 
 			if (oldIndex >= _VisibleSize)
 			{
 				// Old location is hidden. Is the new item visible?
-				if ((newIndex < _VisibleSize && (_Filter == null || _Filter(newItem)))
-					|| (newIndex == _VisibleSize && (!_Maximum.HasValue || _Maximum.Value != _VisibleSize) && (_Filter == null || _Filter(newItem)))
+				if ((newIndex < _VisibleSize && (Filter == null || Filter(newItem)))
+					|| (newIndex == _VisibleSize && (!Maximum.HasValue || Maximum.Value != _VisibleSize) && (Filter == null || Filter(newItem)))
 					)
 				{
 					// Old Index is hidden, New Index is visible
 					// Does this push an item off the list?
-					if (_Maximum.HasValue && _Maximum.Value == _VisibleSize)
+					if (Maximum.HasValue && Maximum.Value == _VisibleSize)
 					{
 						// Yes, so first we need to 'remove' the item at the very top of the list
-						OldItem = _Items[--_VisibleSize];
+						OldItem = Items[--_VisibleSize];
 
 						OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItem, _VisibleSize);
 					}
@@ -393,8 +326,8 @@ namespace Proximity.Utility.Collections
 					_VisibleSize++; // Restore visible size
 
 					// Update the internal list and notify observers
-					_Items.RemoveAt(oldIndex);
-					_Items.Insert(newIndex, newItem); // New Index must be less than Old Index, so we don't need to adjust
+					Items.RemoveAt(oldIndex);
+					Items.Insert(newIndex, newItem); // New Index must be less than Old Index, so we don't need to adjust
 
 					OnCollectionChanged(NotifyCollectionChangedAction.Add, newItem, newIndex);
 
@@ -406,18 +339,18 @@ namespace Proximity.Utility.Collections
 				if (oldIndex == newIndex || oldIndex + 1 == newIndex)
 				{
 					// Index hasn't changed at all
-					_Items[oldIndex] = newItem;
+					Items[oldIndex] = newItem;
 
 					return;
 				}
 
-				_Items.RemoveAt(oldIndex);
+				Items.RemoveAt(oldIndex);
 
 				// If the target index is after where removed the old item, we need to correct the index
 				if (newIndex > oldIndex)
 					newIndex--;
 
-				_Items.Insert(newIndex, newItem);
+				Items.Insert(newIndex, newItem);
 
 				return;
 			}
@@ -426,14 +359,14 @@ namespace Proximity.Utility.Collections
 			// Make sure we account for the fact that we'll be removing one item from 'below'
 			if (newIndex <= _VisibleSize)
 			{
-				if (_Filter == null || _Filter(newItem))
+				if (Filter == null || Filter(newItem))
 				{
 					// Our new location is also visible, so we can process a move
 					// Is the item moving at all?
 					if (oldIndex == newIndex || oldIndex + 1 == newIndex)
 					{
 						// Nope, so just swap in-place
-						_Items[oldIndex] = newItem;
+						Items[oldIndex] = newItem;
 
 						if (hasChanged)
 							OnCollectionChanged(NotifyCollectionChangedAction.Replace, newItem, OldItem, oldIndex);
@@ -441,7 +374,7 @@ namespace Proximity.Utility.Collections
 						return;
 					}
 
-					_Items.RemoveAt(oldIndex);
+					Items.RemoveAt(oldIndex);
 
 					// Yes, so move it and notify observers
 					if (hasChanged)
@@ -454,7 +387,7 @@ namespace Proximity.Utility.Collections
 						if (newIndex > oldIndex)
 							newIndex--; // Adjust the index if it's moving up in the list
 
-						_Items.Insert(newIndex, newItem);
+						Items.Insert(newIndex, newItem);
 						_VisibleSize++;
 
 						OnCollectionChanged(NotifyCollectionChangedAction.Add, newItem, newIndex);
@@ -464,7 +397,7 @@ namespace Proximity.Utility.Collections
 						if (newIndex > oldIndex)
 							newIndex--; // Adjust the index if it's moving up in the list
 
-						_Items.Insert(newIndex, newItem);
+						Items.Insert(newIndex, newItem);
 
 						OnCollectionChanged(NotifyCollectionChangedAction.Move, newItem, oldIndex, newIndex);
 					}
@@ -477,18 +410,18 @@ namespace Proximity.Utility.Collections
 
 			// This item is disappearing
 			// Get the next item that might potentially appear
-			var VisibleItem = _Items[_VisibleSize];
+			var VisibleItem = Items[_VisibleSize];
 			
 			// Adjust our display items
-			_Items.RemoveAt(oldIndex);
-			_Items.Insert(newIndex - 1, newItem); // Adjust since old index must be less
+			Items.RemoveAt(oldIndex);
+			Items.Insert(newIndex - 1, newItem); // Adjust since old index must be less
 
 			// Looks like a remove and size decrease
 			_VisibleSize--;
 			OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItem, oldIndex);
 
 			// Is there an item for us to show to replace it?
-			if (_Filter == null || _Filter(VisibleItem))
+			if (Filter == null || Filter(VisibleItem))
 			{
 				// New item is visible
 				_VisibleSize++;
@@ -502,7 +435,7 @@ namespace Proximity.Utility.Collections
 		private void OnAddCollectionItem(TValue newItem)
 		{
 			// Where should this item go based on the comparer?
-			var InsertIndex = _Items.BinarySearch(newItem, _Comparer);
+			var InsertIndex = Items.BinarySearch(newItem, Comparer);
 			
 			// If this is a new item, get the final index to insert at
 			if (InsertIndex < 0)
@@ -512,10 +445,10 @@ namespace Proximity.Utility.Collections
 			if (InsertIndex == _VisibleSize)
 			{
 				// We've been inserted at the very top of the visible set. Is the item filtered?
-				if (_Filter == null || _Filter(newItem))
+				if (Filter == null || Filter(newItem))
 				{
 					// Item should be visible. Are we below the maximum (if any)?
-					if (!_Maximum.HasValue || _Maximum.Value > InsertIndex)
+					if (!Maximum.HasValue || Maximum.Value > InsertIndex)
 						_VisibleSize++; // We can be shown. Go for it
 				}
 			}
@@ -523,12 +456,12 @@ namespace Proximity.Utility.Collections
 			{
 				// We're inserting below the visible size, which means we have to be unfiltered
 				// Does this push an item off the list?
-				if (_Maximum.HasValue)
+				if (Maximum.HasValue)
 				{
-					if (_Maximum.Value == _VisibleSize)
+					if (Maximum.Value == _VisibleSize)
 					{
 						// Yes, so first we need to 'remove' the item at the very top of the list
-						var OldItem = _Items[--_VisibleSize];
+						var OldItem = Items[--_VisibleSize];
 
 						// This affects observers, but not subclasses
 						OnCollectionChanged(NotifyCollectionChangedAction.Remove, OldItem, _VisibleSize);
@@ -539,7 +472,7 @@ namespace Proximity.Utility.Collections
 			}
 			// Otherwise, we've inserted above the visible size, so we must be either filtered or above the maximum
 
-			_Items.Insert(InsertIndex, newItem);
+			Items.Insert(InsertIndex, newItem);
 
 			// Notify subclasses
 			OnItemAdded(newItem, InsertIndex);
@@ -552,12 +485,12 @@ namespace Proximity.Utility.Collections
 		private void OnRemoveCollectionItem(TValue oldItem)
 		{
 			// Where is this item currently?
-			var OldIndex = _Items.BinarySearch(oldItem, _Comparer);
+			var OldIndex = Items.BinarySearch(oldItem, Comparer);
 
 			if (OldIndex < 0)
 				throw new InvalidOperationException("Unknown Item being removed"); // Remove for an item we don't know?
 
-			_Items.RemoveAt(OldIndex);
+			Items.RemoveAt(OldIndex);
 
 			// Notify subclasses
 			OnItemRemoved(oldItem, OldIndex);
@@ -567,7 +500,7 @@ namespace Proximity.Utility.Collections
 
 			// We're removing a visible item.
 			// Are there hidden items that might get shown?
-			if (_Items.Count < _VisibleSize)
+			if (Items.Count < _VisibleSize)
 			{
 				// No, so just fix the Visible Size
 				_VisibleSize--;
@@ -577,10 +510,10 @@ namespace Proximity.Utility.Collections
 			}
 
 			// We have hidden items that might potentially appear
-			var NewItem = _Items[_VisibleSize - 1];
+			var NewItem = Items[_VisibleSize - 1];
 
 			// Is the new item filtered?
-			if (_Filter != null && !_Filter(NewItem))
+			if (Filter != null && !Filter(NewItem))
 			{
 				// Can't show this item, so the Visible Size decreases
 				_VisibleSize--;
@@ -610,12 +543,12 @@ namespace Proximity.Utility.Collections
 		private void OnReplaceCollectionItem(TValue oldItem, TValue newItem)
 		{
 			// Where is the old item currently?
-			var OldIndex = _Items.BinarySearch(oldItem, _Comparer);
+			var OldIndex = Items.BinarySearch(oldItem, Comparer);
 
 			if (OldIndex < 0)
 				throw new InvalidOperationException("Unknown Item being replaced"); // Replace for an item we don't know?
 
-			var NewIndex = _Items.BinarySearch(newItem, _Comparer);
+			var NewIndex = Items.BinarySearch(newItem, Comparer);
 
 			// If this is a new item, get the final index to insert at
 			if (NewIndex < 0)
@@ -632,12 +565,12 @@ namespace Proximity.Utility.Collections
 			switch (e.Action)
 			{
 			case NotifyCollectionChangedAction.Reset:
-				var OldItems = _Items.ToArray();
+				var OldItems = Items.ToArray();
 
-				_Items.Clear();
+				Items.Clear();
 
-				_Items.AddRange(_Source);
-				_Items.Sort(_Comparer);
+				Items.AddRange(_Source);
+				Items.Sort(Comparer);
 				
 				_VisibleSize = GetVisibleCount();
 
@@ -667,7 +600,7 @@ namespace Proximity.Utility.Collections
 					TValue OldItem = (TValue)e.OldItems[Index], NewItem = (TValue)e.NewItems[Index];
 
 					// Has the item changed?
-					if (_Comparer.Compare(OldItem, NewItem) == 0)
+					if (Comparer.Compare(OldItem, NewItem) == 0)
 						return; // Item hasn't changed, so its sorting position won't either
 
 					OnReplaceCollectionItem(OldItem, NewItem);
@@ -702,39 +635,32 @@ namespace Proximity.Utility.Collections
 		{
 			OnPropertyChanged();
 
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
 		}
 
 		private void OnCollectionChanged(NotifyCollectionChangedAction action, TValue changedItem, int index)
 		{
 			OnPropertyChanged();
 
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, changedItem, index));
+			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, changedItem, index));
 		}
 
 		private void OnCollectionChanged(NotifyCollectionChangedAction action, TValue changedItem, int oldIndex, int newIndex)
 		{
 			OnPropertyChanged(IndexerName); // Only the indexer has changed, the count is the same
 
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, changedItem, newIndex, oldIndex));
+			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, changedItem, newIndex, oldIndex));
 		}
 
 		private void OnCollectionChanged(NotifyCollectionChangedAction action, TValue newItem, TValue oldItem, int index)
 		{
 			OnPropertyChanged(IndexerName); // Only the indexer has changed, the count is the same
 
-			if (CollectionChanged != null)
-				CollectionChanged(this, new NotifyCollectionChangedEventArgs(action, newItem, oldItem, index));
+			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, newItem, oldItem, index));
 		}
 
-		private bool FilterItem(TValue item)
-		{
-			return _Filter(item); // Enumerable.Where requires an Action, but this is a Predicate, so we wrap it
-		}
-		
+		private bool FilterItem(TValue item) => Filter(item); // Enumerable.Where requires an Action, but this is a Predicate, so we wrap it
+
 		private void CheckIndex(int index)
 		{
 			if (index >= _VisibleSize)
@@ -746,10 +672,10 @@ namespace Proximity.Utility.Collections
 			if (Items.Count == 0)
 				return 0;
 
-			if (_Filter == null)
+			if (Filter == null)
 			{
-				if (_Maximum.HasValue)
-					return Math.Min(_Maximum.Value, Items.Count); // Trim if we're above the max
+				if (Maximum.HasValue)
+					return Math.Min(Maximum.Value, Items.Count); // Trim if we're above the max
 
 				return Items.Count; // All visible
 			}
@@ -757,20 +683,20 @@ namespace Proximity.Utility.Collections
 			// Find the lowest item that's visible
 			int LowIndex = 0, HighIndex = Items.Count - 1;
 
-			if (_Maximum.HasValue) // If there's a maximum, our high cannot be above that.
-				HighIndex = _Maximum.Value;
+			if (Maximum.HasValue) // If there's a maximum, our high cannot be above that.
+				HighIndex = Maximum.Value;
 
 			while (LowIndex <= HighIndex)
 			{
 				int MiddleIndex = LowIndex + ((HighIndex - LowIndex) >> 1);
 
-				if (_Filter(Items[MiddleIndex]))
+				if (Filter(Items[MiddleIndex]))
 					LowIndex = MiddleIndex + 1; // Visible, high must be above this
 				else
 					HighIndex = MiddleIndex - 1; // Hidden, high must be below
 			}
 
-			if (LowIndex < Items.Count && _Filter(Items[LowIndex]))
+			if (LowIndex < Items.Count && Filter(Items[LowIndex]))
 				return LowIndex + 1;
 
 			return LowIndex;
@@ -778,13 +704,13 @@ namespace Proximity.Utility.Collections
 #if DEBUG
 		protected void VerifyList()
 		{
-			var LastItem = _Items[0];
+			var LastItem = Items[0];
 
-			for (int SubIndex = 1; SubIndex < _Items.Count; SubIndex++)
+			for (int SubIndex = 1; SubIndex < Items.Count; SubIndex++)
 			{
-				var NextItem = _Items[SubIndex];
+				var NextItem = Items[SubIndex];
 
-				if (_Comparer.Compare(LastItem, NextItem) > 0)
+				if (Comparer.Compare(LastItem, NextItem) > 0)
 					throw new InvalidOperationException("Out of order");
 
 				LastItem = NextItem;
@@ -809,105 +735,69 @@ namespace Proximity.Utility.Collections
 		[System.Runtime.CompilerServices.IndexerName("Item")]
 		public TValue this[int index]
 		{
-			get { CheckIndex(index); return _Items[index]; }
+			get { CheckIndex(index); return Items[index]; }
 		}
 
 		/// <summary>
 		/// Gets the number of items in this list
 		/// </summary>
-		public int Count
-		{
-			get { return _VisibleSize; }
-		}
+		public int Count => _VisibleSize;
 
 		/// <summary>
 		/// Gets whether this collection is read-only
 		/// </summary>
-		public bool IsReadOnly
-		{
-			get { return true; }
-		}
+		public bool IsReadOnly => true;
 
 		/// <summary>
 		/// Gets the comparer being used by this Observable View
 		/// </summary>
-		public IComparer<TValue> Comparer
-		{
-			get { return _Comparer; }
-		}
+		public IComparer<TValue> Comparer { get; }
 
 		/// <summary>
 		/// Gets the maximum number of items that will be displayed in this List View
 		/// </summary>
 		/// <remarks>Will be null if there is no limit</remarks>
-		public int? Maximum
-		{
-			get { return _Maximum; }
-		}
+		public int? Maximum { get; }
 
 		/// <summary>
 		/// Gets the predicate that is filtering this List View
 		/// </summary>
-		public Predicate<TValue> Filter
-		{
-			get { return _Filter; }
-		}
+		public Predicate<TValue> Filter { get; }
 
 		TValue IList<TValue>.this[int index]
 		{
-			get { CheckIndex(index); return _Items[index]; }
+			get { CheckIndex(index); return Items[index]; }
 			set { throw new NotSupportedException("List is read-only"); }
 		}
 
 		object IList.this[int index]
 		{
-			get { CheckIndex(index); return _Items[index]; }
+			get { CheckIndex(index); return Items[index]; }
 			set { throw new NotSupportedException("List is read-only"); }
 		}
 
-		bool IList.IsFixedSize
-		{
-			get { return false; }
-		}
+		bool IList.IsFixedSize => false;
 
-		bool ICollection.IsSynchronized
-		{
-			get { return false; }
-		}
+		bool ICollection.IsSynchronized => false;
 
-		object ICollection.SyncRoot
-		{
-			get { return _Source; }
-		}
+		object ICollection.SyncRoot => _Source;
 
 		/// <summary>
 		/// Gets the internal list of items, including filtered and trimmed ones
 		/// </summary>
-		protected List<TValue> Items
-		{
-			get { return _Items; }
-		}
+		protected List<TValue> Items { get; }
 
 		/// <summary>
 		/// Gets the internal list of items, including filtered and trimmed ones
 		/// </summary>
-		public List<TValue> AllItems
-		{
-			get { return _Items; }
-		}
+		public List<TValue> AllItems => Items;
 
 		//****************************************
 
 		private static IComparer<TValue> GetDefaultComparer()
 		{
-#if NETSTANDARD1_3
-			var MyInfo = typeof(TValue).GetTypeInfo();
-
-			if (!typeof(IComparable<TValue>).GetTypeInfo().IsAssignableFrom(MyInfo) && !typeof(IComparable).GetTypeInfo().IsAssignableFrom(MyInfo))
-#else
 			if (!typeof(IComparable<TValue>).IsAssignableFrom(typeof(TValue)) && !typeof(IComparable).IsAssignableFrom(typeof(TValue)))
-#endif
-				throw new ArgumentException(string.Format("{0} does not implement IComparable or IComparable<>", typeof(TValue).FullName));
+				throw new ArgumentException($"{typeof(TValue).FullName} does not implement IComparable or IComparable<>");
 
 			return Comparer<TValue>.Default;
 		}
@@ -922,14 +812,14 @@ namespace Proximity.Utility.Collections
 			private readonly ObservableListView<TValue> _Parent;
 
 			private int _Index;
-			private TValue _Current;
+
 			//****************************************
 
 			internal ValueEnumerator(ObservableListView<TValue> parent)
 			{
 				_Parent = parent;
 				_Index = 0;
-				_Current = default(TValue);
+				Current = default(TValue);
 			}
 
 			//****************************************
@@ -939,7 +829,7 @@ namespace Proximity.Utility.Collections
 			/// </summary>
 			public void Dispose()
 			{
-				_Current = default(TValue);
+				Current = default(TValue);
 			}
 
 			/// <summary>
@@ -951,12 +841,12 @@ namespace Proximity.Utility.Collections
 				if (_Index >= _Parent._VisibleSize)
 				{
 					_Index = _Parent._VisibleSize + 1;
-					_Current = default(TValue);
+					Current = default(TValue);
 
 					return false;
 				}
 
-				_Current = _Parent._Items[_Index++];
+				Current = _Parent.Items[_Index++];
 
 				return true;
 			}
@@ -964,7 +854,7 @@ namespace Proximity.Utility.Collections
 			void IEnumerator.Reset()
 			{
 				_Index = 0;
-				_Current = default(TValue);
+				Current = default(TValue);
 			}
 
 			//****************************************
@@ -972,15 +862,9 @@ namespace Proximity.Utility.Collections
 			/// <summary>
 			/// Gets the current item being enumerated
 			/// </summary>
-			public TValue Current
-			{
-				get { return _Current; }
-			}
+			public TValue Current { get; private set; }
 
-			object IEnumerator.Current
-			{
-				get { return _Current; }
-			}
+			object IEnumerator.Current => Current;
 		}
 
 		private sealed class FilterComparer : IComparer<TValue>

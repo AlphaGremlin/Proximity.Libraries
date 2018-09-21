@@ -19,10 +19,7 @@ namespace Proximity.Utility.Collections
 	/// Provides a BlockingCollection that supports async/await
 	/// </summary>
 	/// <remarks>Producers should not complete the underlying IProducerConsumerCollection, or add a limit to it</remarks>
-	public class AsyncCollection<TItem> : IEnumerable<TItem>
-#if !NET40
-		,IReadOnlyCollection<TItem>
-#endif
+	public class AsyncCollection<TItem> : IEnumerable<TItem>, IReadOnlyCollection<TItem>
 	{	//****************************************
 		private readonly IProducerConsumerCollection<TItem> _Collection;
 		
@@ -323,11 +320,7 @@ namespace Proximity.Utility.Collections
 			if (IsCompleted)
 				_UsedSlots.Dispose();
 			
-#if NET40
-			return TaskEx.FromResult(MyItem);
-#else
 			return Task.FromResult(MyItem);
-#endif
 		}
 		
 		/// <summary>
@@ -504,16 +497,13 @@ namespace Proximity.Utility.Collections
 					// Use TryIncrement, so we ignore if we're disposed and there are no more adders
 					_FreeSlots.TryIncrement();
 				}
-				
+
 				// If the collection is empty, cancel anyone waiting for items
 				if (IsCompleted)
 					_UsedSlots.Dispose();
-				
-#if NET40
-				yield return TaskEx.FromResult(MyItem);
-#else
+
 				yield return Task.FromResult(MyItem);
-#endif
+
 				// Remember to clear the reference once we're back, so we don't hold onto it
 				MyItem = default(TItem);
 			}
@@ -730,13 +720,7 @@ namespace Proximity.Utility.Collections
 			var MyResult = TryTakeFromAny(collections);
 			
 			if (MyResult.HasItem)
-			{
-#if NET40
-				return TaskEx.FromResult(MyResult);
-#else
 				return Task.FromResult(MyResult);
-#endif
-			}
 			
 			var MyOperation = new AsyncCollectionTakeFromAny<TItem>(token);
 			
