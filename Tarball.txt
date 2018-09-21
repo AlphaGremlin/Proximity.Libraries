@@ -1,0 +1,8 @@
+*/obj
+*.tar.bz2
+*.pdb
+*.lnk
+*.suo
+Build
+.svn
+*/NDepend

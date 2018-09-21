@@ -1,0 +1,67 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net40;net45;net462;netstandard2.0;netstandard1.3</TargetFrameworks>
+	<Authors>Daniel Chandler</Authors>
+    <Company>Proximity Interactive</Company>
+    <Copyright>Copyright © Daniel Chandler 2018</Copyright>
+    <Product>Proximity Utility Library</Product>
+    <AssemblyVersion>18.0.0.0</AssemblyVersion>
+    <FileVersion>18.0.2.0</FileVersion>
+    <Version>18.0.2</Version>
+    <Description>Proximity Utility Library</Description>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\Proximity.snk</AssemblyOriginatorKeyFile>
+    <OutputPath>..\..\Build\Proximity.Utility</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Collections\ObservableSortedSubset.cs" />
+    <Compile Remove="Diagnostics\ExceptionExtensions.cs" />
+    <Compile Remove="Logging\Outputs\XmlFileOutput.cs" />
+    <Compile Remove="Logging\Outputs\XmlFileOutputElement.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Collections\ObservableSortedSubset.cs" />
+    <None Include="Diagnostics\ExceptionExtensions.cs" />
+    <None Include="Logging\Outputs\XmlFileOutput.cs" />
+    <None Include="Logging\Outputs\XmlFileOutputElement.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net462'">
+    <PackageReference Include="System.Configuration.ConfigurationManager">
+      <Version>4.4.1</Version>
+    </PackageReference>
+    <PackageReference Include="System.Reflection.Emit.Lightweight">
+      <Version>4.3.0</Version>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="System.Configuration.ConfigurationManager">
+      <Version>4.4.1</Version>
+    </PackageReference>
+    <PackageReference Include="System.Reflection.Emit.Lightweight">
+      <Version>4.3.0</Version>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net45'">
+    <PackageReference Include="System.Reflection.Emit.Lightweight">
+      <Version>4.3.0</Version>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net40' or '$(TargetFramework)' == 'net45'">
+    <Reference Include="System.Configuration" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net40'">
+    <PackageReference Include="AsyncBridge">
+      <Version>0.3.1.1</Version>
+    </PackageReference>
+  </ItemGroup>
+  <Choose>
+    <When Condition=" '$(TargetFramework)' != 'net40' ">
+      <ItemGroup>
+        <PackageReference Include="System.Collections.Immutable" Version="1.4.0" />
+      </ItemGroup>
+    </When>
+  </Choose>
+</Project>
