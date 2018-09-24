@@ -1,8 +1,3 @@
-/****************************************\
- OutputConfig.cs
- Created: 2-06-2009
-\****************************************/
-#if !NETSTANDARD1_3 && !NETSTANDARD2_0
 using System;
 using System.Xml;
 using System.Reflection;
@@ -18,12 +13,7 @@ namespace Proximity.Utility.Logging.Config
 	/// An configuration entry defining a Logging Output
 	/// </summary>
 	public sealed class OutputConfig : ConfigurationElement
-	{	//****************************************
-		private string _OutputType;
-		
-		private LogOutput _Output;
-		//****************************************
-		
+	{
 		/// <summary>
 		/// Creates a new Output Configuration element
 		/// </summary>
@@ -53,19 +43,19 @@ namespace Proximity.Utility.Logging.Config
 				return;
 			}
 			
-			_OutputType = reader.Value;
+			OutputType = reader.Value;
 			
 			//****************************************
 			
-			if (_OutputType.IndexOf(',') == -1)
+			if (OutputType.IndexOf(',') == -1)
 			{ // No Assembly definition, just a Type
-				TypeName = _OutputType;
+				TypeName = OutputType;
 				OutputAssembly = typeof(OutputConfig).Assembly;
 				MyOutputType = OutputAssembly.GetType(typeof(FileOutput).Namespace + System.Type.Delimiter + TypeName);
 			}
 			else
 			{ // Assembly definition, split
-				string[] SplitType = _OutputType.Split(',');
+				string[] SplitType = OutputType.Split(',');
 				
 				OutputAssembly = Assembly.Load(string.Join(",", SplitType, 1, SplitType.Length - 1));
 				
@@ -88,9 +78,9 @@ namespace Proximity.Utility.Logging.Config
 				return;
 			}
 			
-			_Output = Activator.CreateInstance(MyOutputType, reader) as LogOutput;
+			Output = Activator.CreateInstance(MyOutputType, reader) as LogOutput;
 			
-			if (_Output == null)
+			if (Output == null)
 			{
 				Debug.Print("Output could not be created");
 				
@@ -100,36 +90,25 @@ namespace Proximity.Utility.Logging.Config
 			
 			reader.Read();
 		}
-		
+
 		/// <summary>
 		/// 
 		/// </summary>
 		/// <param name="writer"></param>
 		/// <param name="serializeCollectionKey"></param>
 		/// <returns></returns>
-		protected sealed override bool SerializeElement(XmlWriter writer, bool serializeCollectionKey)
-		{
-			return base.SerializeElement(writer, serializeCollectionKey);
-		}
-		
+		protected sealed override bool SerializeElement(XmlWriter writer, bool serializeCollectionKey) => base.SerializeElement(writer, serializeCollectionKey);
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Gets/Sets the type of output to log
 		/// </summary>
-		public string OutputType
-		{
-			get { return _OutputType; }
-			set { _OutputType = value; }
-		}
-		
+		public string OutputType { get; set; }
+
 		/// <summary>
 		/// Gets/Sets the output object
 		/// </summary>
-		public LogOutput Output
-		{
-			get { return _Output; }
-		}
+		public LogOutput Output { get; private set; }
 	}
 }
-#endif

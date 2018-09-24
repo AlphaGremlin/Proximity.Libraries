@@ -1,8 +1,3 @@
-/****************************************\
- OutputCollection.cs
- Created: 2009-06-02
-\****************************************/
-#if !NETSTANDARD1_3
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -49,4 +44,3 @@ namespace Proximity.Utility.Logging.Config
 		}
 	}
 }
-#endif

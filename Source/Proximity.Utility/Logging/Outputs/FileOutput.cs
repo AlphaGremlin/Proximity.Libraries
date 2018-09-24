@@ -1,8 +1,3 @@
-/****************************************\
- FileOutput.cs
- Created: 2-06-2009
-\****************************************/
-#if !NETSTANDARD1_3
 using System;
 using System.Diagnostics;
 using System.Globalization;
@@ -29,17 +24,14 @@ namespace Proximity.Utility.Logging.Outputs
 		private FileStream _Stream;
 		
 		private string _FileName;
-		private RolloverType _RolloverOn;
-		private long _MaxSize;
-		private int? _KeepHistory;
-		
 		private DateTime _LastLogEntry;
 		//****************************************
-		
+
 		/// <summary>
-		/// Creates a new File Outout
+		/// Creates a new File Output
 		/// </summary>
-		protected FileOutput() : base()
+		/// <param name="target">The log target we're receiving from</param>
+		protected FileOutput(LogTarget target) : base(target)
 		{
 		}
 		
@@ -53,25 +45,19 @@ namespace Proximity.Utility.Logging.Outputs
 			//****************************************
 			
 			_FileName = MyConfig.Prefix;
-			_RolloverOn = MyConfig.RolloverOn;
+			RolloverOn = MyConfig.RolloverOn;
 			
-			_MaxSize = MyConfig.MaximumSize;
-			_KeepHistory = MyConfig.KeepHistory != -1 ? (int?)MyConfig.KeepHistory : null;
+			MaxSize = MyConfig.MaximumSize;
+			KeepHistory = MyConfig.KeepHistory != -1 ? (int?)MyConfig.KeepHistory : null;
 		}
-		
+
 		/// <inheritdoc />
 		[SecuritySafeCritical]
-		protected internal sealed override void Start()
-		{
-			_LogTask = UnsafeTask.Run((Func<Task>)PerformLogging);
-		}
-		
+		protected internal sealed override void Start() => _LogTask = UnsafeTask.Run(PerformLogging);
+
 		/// <inheritdoc />
-		protected internal override void StartSection(LogSection newSection)
-		{
-			Write(newSection.Entry);
-		}
-		
+		protected internal override void StartSection(LogSection newSection) => Write(newSection.Entry);
+
 		/// <inheritdoc />
 		[SecuritySafeCritical]
 		protected internal sealed override void Write(LogEntry newEntry)
@@ -119,18 +105,15 @@ namespace Proximity.Utility.Logging.Outputs
 			
 			_LogTask.Wait();
 		}
-		
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Retrieves the extension of the file to create
 		/// </summary>
 		/// <returns>The extension  of the file</returns>
-		protected virtual string GetExtension()
-		{
-			return "txt";
-		}
-		
+		protected virtual string GetExtension() => "txt";
+
 		/// <summary>
 		/// Notifies implementers that the underlying stream has switched
 		/// </summary>
@@ -144,14 +127,11 @@ namespace Proximity.Utility.Logging.Outputs
 		/// <param name="context">The context when the entry was recorded</param>
 		[SecuritySafeCritical]
 		protected abstract void OnWrite(LogEntry entry, ImmutableCountedStack<LogSection> context);
-		
+
 		//****************************************
 
 		[SecuritySafeCritical]
-		private void OnWrite(FullLogEntry entry)
-		{
-			OnWrite(entry.Entry, entry.Context);
-		}
+		private void OnWrite(FullLogEntry entry) => OnWrite(entry.Entry, entry.Context);
 
 		private async Task PerformLogging()
 		{	//****************************************
@@ -180,9 +160,8 @@ namespace Proximity.Utility.Logging.Outputs
 						OnWrite(MyEntry);
 					
 					_Stream.Flush();
-					
-					if (MyEntry.Callback != null)
-						MyEntry.Callback();
+
+					MyEntry.Callback?.Invoke();
 				}
 			}
 			catch (OperationCanceledException)
@@ -210,7 +189,7 @@ namespace Proximity.Utility.Logging.Outputs
 				}
 			}
 		}
-
+		
 		[SecuritySafeCritical]
 		private void CheckOutput()
 		{	//****************************************
@@ -223,7 +202,7 @@ namespace Proximity.Utility.Logging.Outputs
 			if (_Stream != null)
 			{
 				// Yes, check if the close conditions have been met
-				switch (_RolloverOn)
+				switch (RolloverOn)
 				{
 				case RolloverType.Daily:
 					if (_LastLogEntry.Date != CurrentTime.Date)
@@ -242,7 +221,7 @@ namespace Proximity.Utility.Logging.Outputs
 					break;
 				
 				case RolloverType.Size:
-					if (_Stream.Length >= _MaxSize)
+					if (_Stream.Length >= MaxSize)
 						CloseOld = true;
 					break;
 					
@@ -264,12 +243,12 @@ namespace Proximity.Utility.Logging.Outputs
 			bool CanAppend = false;
 			
 			// Figure out the appropriate file name
-			switch (_RolloverOn)
+			switch (RolloverOn)
 			{
 			case RolloverType.Daily:
 			case RolloverType.Weekly:
 			case RolloverType.Monthly:
-				FullPath = string.Format("{0} {1:yyyyMMdd}.{2}", _FileName, CurrentTime, GetExtension());
+				FullPath = $"{_FileName} {CurrentTime:yyyyMMdd}.{GetExtension()}";
 				CanAppend = true;
 				break;
 				
@@ -281,11 +260,11 @@ namespace Proximity.Utility.Logging.Outputs
 			case RolloverType.Startup:
 			case RolloverType.Size:
 			default:
-				FullPath = string.Format("{0} {1:yyyyMMdd'T'HHmmss}.{2}", _FileName, CurrentTime, GetExtension());
+				FullPath = $"{_FileName} {CurrentTime:yyyyMMdd'T'HHmmss}.{GetExtension()}";
 				break;
 			}
 			
-			FullPath = Path.Combine(LogManager.OutputPath, FullPath);
+			FullPath = Path.Combine(Target.OutputPath, FullPath);
 			
 			//****************************************
 			
@@ -297,7 +276,7 @@ namespace Proximity.Utility.Logging.Outputs
 			catch(Exception)
 			{
 				// Failed to create the file. Add our PID to the end and try again
-				FullPath = string.Format("{0} ({1}).{2}", Path.Combine(LogManager.OutputPath, Path.GetFileNameWithoutExtension(FullPath)), Process.GetCurrentProcess().Id, GetExtension());
+				FullPath = $"{Path.Combine(Target.OutputPath, Path.GetFileNameWithoutExtension(FullPath))} ({Process.GetCurrentProcess().Id}).{GetExtension()}";
 				
 				try
 				{
@@ -334,17 +313,17 @@ namespace Proximity.Utility.Logging.Outputs
 			
 			//****************************************
 			
-			Debug.Print(string.Format("Logging to {0}", FullPath));
+			Debug.Print($"Logging to {FullPath}");
 			
 			// If there's a history limit, perform some cleanup
-			if (_KeepHistory.HasValue)
+			if (KeepHistory.HasValue)
 			{
 				try
 				{
-					var DeleteFiles = Directory.EnumerateFiles(LogManager.OutputPath, string.Format("{0} *.{1}", _FileName, GetExtension()))
+					var DeleteFiles = Directory.EnumerateFiles(Target.OutputPath, $"{_FileName} *.{GetExtension()}")
 						.Where(name => name != FullPath) // Ignore the file we've currently got open
 						.OrderByDescending(name => File.GetCreationTime(name)) // Order by most recently created
-						.Skip(_KeepHistory.Value); // Skip the allowed history limit
+						.Skip(KeepHistory.Value); // Skip the allowed history limit
 						
 					// Enumerate the directory, finding all the files to delete
 					foreach (var FileName in DeleteFiles)
@@ -353,7 +332,7 @@ namespace Proximity.Utility.Logging.Outputs
 						{
 							File.Delete(FileName);
 							
-							Debug.Print(string.Format("Removed old log file {0}", FileName));
+							Debug.Print($"Removed old log file {FileName}");
 						}
 						catch (Exception) // Ignore any errors that happen (file in use, no delete permissions, etc)
 						{
@@ -386,11 +365,23 @@ namespace Proximity.Utility.Logging.Outputs
 		/// <summary>
 		/// Gets the stream to be written to
 		/// </summary>
-		protected Stream Stream
-		{
-			get { return _Stream; }
-		}
-		
+		protected Stream Stream => _Stream;
+
+		/// <summary>
+		/// Gets/Sets when to roll over the file
+		/// </summary>
+		public RolloverType RolloverOn { get; set; }
+
+		/// <summary>
+		/// Gets/Sets the maximum file size before rolling over, when using <see cref="RolloverType.Size"/>
+		/// </summary>
+		public long MaxSize { get; set; }
+
+		/// <summary>
+		/// Gets/Sets how many files matching our input pattern to use
+		/// </summary>
+		public int? KeepHistory { get; set; }
+
 		//****************************************
 
 		[SecuritySafeCritical]
@@ -402,18 +393,17 @@ namespace Proximity.Utility.Logging.Outputs
 			
 			public FullLogEntry(LogEntry entry, ImmutableCountedStack<LogSection> context)
 			{
-				this.Entry = entry;
-				this.Context = context;
-				this.Callback = null;
+				Entry = entry;
+				Context = context;
+				Callback = null;
 			}
 			
 			public FullLogEntry(LogEntry entry, ImmutableCountedStack<LogSection> context, Action callback)
 			{
-				this.Entry = entry;
-				this.Context = context;
-				this.Callback = callback;
+				Entry = entry;
+				Context = context;
+				Callback = callback;
 			}
 		}
 	}
 }
-#endif

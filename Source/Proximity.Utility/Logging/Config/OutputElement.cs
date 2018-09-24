@@ -1,8 +1,3 @@
-/****************************************\
- OutputConfig.cs
- Created: 2-06-2009
-\****************************************/
-#if !NETSTANDARD1_3
 using System;
 using System.Xml;
 using System.Reflection;
@@ -33,10 +28,11 @@ namespace Proximity.Utility.Logging.Config
 		/// <summary>
 		/// Transforms this output configuration into the appropriate configured logging output
 		/// </summary>
+		/// <param name="target">The target to receive from</param>
 		/// <returns>A configured log output</returns>
-		public LogOutput ToOutput()
+		public LogOutput ToOutput(LogTarget target)
 		{	//****************************************
-			var NewOutput = (LogOutput)Activator.CreateInstance(InstanceType);
+			var NewOutput = (LogOutput)Activator.CreateInstance(InstanceType, new object[] { target });
 			//****************************************
 
 			NewOutput.Configure(this);
@@ -45,4 +41,3 @@ namespace Proximity.Utility.Logging.Config
 		}
 	}
 }
-#endif

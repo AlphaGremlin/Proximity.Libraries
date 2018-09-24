@@ -1,9 +1,4 @@
-﻿/****************************************\
- Severity.cs
- Created: 4-06-2009
-\****************************************/
-#if !NETSTANDARD1_3
-using System;
+﻿using System;
 //****************************************
 
 namespace Proximity.Utility.Logging
@@ -47,4 +42,3 @@ namespace Proximity.Utility.Logging
 		Critical
 	}
 }
-#endif

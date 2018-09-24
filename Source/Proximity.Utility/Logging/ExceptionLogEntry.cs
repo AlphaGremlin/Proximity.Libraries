@@ -1,8 +1,3 @@
-/****************************************\
- ExceptionLogEntry.cs
- Created: 2-06-2009
-\****************************************/
-#if !NETSTANDARD1_3
 using System;
 using System.Diagnostics;
 //****************************************
@@ -14,10 +9,7 @@ namespace Proximity.Utility.Logging
 	/// </summary>
 	[Serializable]
 	public class ExceptionLogEntry : LogEntry
-	{	//****************************************
-		private Exception _Exception;
-		//****************************************
-		
+	{
 		/// <summary>
 		/// Creates a new Exception log entry
 		/// </summary>
@@ -26,26 +18,19 @@ namespace Proximity.Utility.Logging
 		/// <param name="exception">The exception that occurred</param>
 		public ExceptionLogEntry(StackFrame source, string text, Exception exception) : base(source, Severity.Error, text)
 		{
-			_Exception = exception;
+			Exception = exception;
 		}
 
 		//****************************************
 
 		/// <inheritdoc />
-		public override string ToString()
-		{
-			return Text + "\n" + _Exception.ToString();
-		}
+		public override string ToString() => Text + "\n" + Exception.ToString();
 
 		//****************************************
 
 		/// <summary>
 		/// Gets the Exception represented
 		/// </summary>
-		public Exception Exception
-		{
-			get { return _Exception; }
-		}
+		public Exception Exception { get; }
 	}
 }
-#endif

@@ -27,13 +27,24 @@ namespace Proximity.Utility.Logging.Outputs
 	public sealed class RemoteOutput : MarshalByRefObject, IDisposable
 	{ //****************************************
 		private readonly ConcurrentDictionary<long, LogSection> _OpenSections = new ConcurrentDictionary<long, LogSection>();
+
+		private readonly LogTarget _Target;
 		//****************************************
 
-			/// <summary>
-			/// Creates a new Remote Output receiver
-			/// </summary>
+		/// <summary>
+		/// Creates a new Remote Output receiver
+		/// </summary>
 		public RemoteOutput()
 		{
+			_Target = LogManager.Default;
+		}
+
+		/// <summary>
+		/// Creates a new Remote Output receiver
+		/// </summary>
+		public RemoteOutput(LogTarget target)
+		{
+			_Target = target;
 		}
 
 		//****************************************
@@ -68,19 +79,19 @@ namespace Proximity.Utility.Logging.Outputs
 		[SecuritySafeCritical]
 		internal void Flush()
 		{
-			LogManager.Flush();
+			_Target.Flush();
 		}
 
 		internal void StartSection(LogEntry newEntry, int priority)
 		{
-			var NewSection = new LogSection(newEntry, priority);
+			var NewSection = _Target.StartSection(newEntry, priority);
 
 			_OpenSections.TryAdd(newEntry.Index, NewSection);
 		}
 
 		internal void Write(LogEntry entry)
 		{
-			Log.Write(entry);
+			_Target.Write(entry);
 		}
 
 		//****************************************

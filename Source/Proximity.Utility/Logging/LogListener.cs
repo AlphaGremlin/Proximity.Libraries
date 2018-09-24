@@ -1,8 +1,3 @@
-/****************************************\
- LogListener.cs
- Created: 5-06-2009
-\****************************************/
-#if !NETSTANDARD1_3
 using System;
 using System.Diagnostics;
 using System.Globalization;
@@ -135,4 +130,3 @@ namespace Proximity.Utility.Logging
 		}
 	}
 }
-#endif

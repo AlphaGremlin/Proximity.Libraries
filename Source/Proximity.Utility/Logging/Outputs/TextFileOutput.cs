@@ -1,8 +1,3 @@
-/****************************************\
- TextFileOutput.cs
- Created: 2-06-2009
-\****************************************/
-#if !NETSTANDARD1_3
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -27,22 +22,18 @@ namespace Proximity.Utility.Logging.Outputs
 	{	//****************************************
 		private readonly StringBuilder _OutputBuilder;
 		private TextWriter _Writer;
-		
-		private int _IndentSize = 2;
-		private bool _IndentTabs = true;
 
-		private Encoding _Encoding;
-		
 		private string OutputFormatPre;
 		private string OutputFormatPost;
 		//****************************************
-		
+
 		/// <summary>
 		/// Creates a new Text File Output
 		/// </summary>
-		public TextFileOutput() : base()
+		/// <param name="target">The log target we're receiving from</param>
+		public TextFileOutput(LogTarget target) : base(target)
 		{
-			_Encoding = Encoding.Default;
+			Encoding = Encoding.Default;
 			
 			_OutputBuilder = new StringBuilder();
 			
@@ -63,10 +54,10 @@ namespace Proximity.Utility.Logging.Outputs
 			
 			//****************************************
 			
-			_IndentTabs = MyConfig.IndentTabs;
-			_IndentSize = MyConfig.IndentSize;
+			IndentTabs = MyConfig.IndentTabs;
+			IndentSize = MyConfig.IndentSize;
 			
-			_Encoding = Encoding.GetEncoding(MyConfig.Encoding);
+			Encoding = Encoding.GetEncoding(MyConfig.Encoding);
 		}
 		
 		/// <inheritdoc />
@@ -83,7 +74,7 @@ namespace Proximity.Utility.Logging.Outputs
 			
 			if (newStream != null)
 			{
-				_Writer = new StreamWriter(Stream, _Encoding, 1024);
+				_Writer = new StreamWriter(Stream, Encoding, 1024);
 				_Writer.WriteLine("Log Started {0} (Process {1})", LogManager.GetTimestamp(), LogManager.StartTime);
 			}
 		}
@@ -114,8 +105,10 @@ namespace Proximity.Utility.Logging.Outputs
 				SourceShortType = DeclaringType.Name;
 				SourceMethod = entry.Source.Name;
 			}
-			
-			Arguments = new object[] {entry.Timestamp, DateTime.MinValue.Add(entry.RelativeTime > TimeSpan.Zero ? entry.RelativeTime : TimeSpan.Zero), SourceAssembly, SourceFullType, SourceShortType, SourceMethod, entry.Severity, entry.Text};
+
+			var RelativeTime = entry.Timestamp - LogManager.StartTime;
+
+			Arguments = new object[] {entry.Timestamp, DateTime.MinValue.Add(RelativeTime > TimeSpan.Zero ? RelativeTime : TimeSpan.Zero), SourceAssembly, SourceFullType, SourceShortType, SourceMethod, entry.Severity, entry.Text};
 			
 			OutputBuilder.AppendFormat(OutputFormatPre, Arguments);
 			
@@ -156,40 +149,27 @@ namespace Proximity.Utility.Logging.Outputs
 		
 		private void IndentTo(int indentLevel)
 		{
-			if (_IndentTabs)
+			if (IndentTabs)
 				_OutputBuilder.Append('\t', indentLevel);
-			else if (_IndentSize != 0)
-				_OutputBuilder.Append(' ', indentLevel * _IndentSize);
+			else if (IndentSize != 0)
+				_OutputBuilder.Append(' ', indentLevel * IndentSize);
 		}
-		
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Gets/Sets whether to use tabs or spaces for indenting
 		/// </summary>
-		public bool IndentTabs
-		{
-			get { return _IndentTabs; }
-			set { _IndentTabs = value; }
-		}
-		
+		public bool IndentTabs { get; set; } = true;
+
 		/// <summary>
 		/// Gets/Sets the size of each indentation level
 		/// </summary>
-		public int IndentSize
-		{
-			get { return _IndentSize; }
-			set { _IndentSize = value; }
-		}
-		
+		public int IndentSize { get; set; } = 2;
+
 		/// <summary>
 		/// Gets/Sets the text encoding to use
 		/// </summary>
-		public Encoding Encoding
-		{
-			get { return _Encoding; }
-			set { _Encoding = value; }
-		}
+		public Encoding Encoding { get; set; }
 	}
 }
-#endif

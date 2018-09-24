@@ -1,8 +1,3 @@
-/****************************************\
- TraceOutput.cs
- Created: 2-06-2009
-\****************************************/
-#if !NETSTANDARD1_3
 using System;
 using System.Diagnostics;
 using System.Reflection;
@@ -24,11 +19,12 @@ namespace Proximity.Utility.Logging.Outputs
 		
 		private TraceSource _Source;
 		//****************************************
-		
+
 		/// <summary>
 		/// Creates a new Trace Log Output
 		/// </summary>
-		public TraceOutput()
+		/// <param name="target">The log target we're receiving from</param>
+		public TraceOutput(LogTarget target) : base(target)
 		{
 		}
 		
@@ -144,4 +140,3 @@ namespace Proximity.Utility.Logging.Outputs
 		}
 	}
 }
-#endif
