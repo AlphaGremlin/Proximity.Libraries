@@ -64,7 +64,7 @@ namespace Proximity.Utility.Logging.Outputs
 		{
 			try
 			{
-				_Entries.Add(new FullLogEntry(newEntry, LogManager.Context)).Wait();
+				_Entries.Add(new FullLogEntry(newEntry, Target.Context)).Wait();
 			}
 			catch (OperationCanceledException)
 			{

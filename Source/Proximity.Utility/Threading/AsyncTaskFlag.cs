@@ -152,7 +152,7 @@ namespace Proximity.Utility.Threading
 			// Ensure we're not disposing
 			if (MyTimer != null)
 				// Wait a bit before acknowledging the flag
-				_DelayTimer.Change(_Delay, new TimeSpan(0, 0, 0, 0, -1));
+				MyTimer.Change(_Delay, new TimeSpan(0, 0, 0, 0, -1));
 		}
 		
 		private void ProcessTaskFlag(object state)

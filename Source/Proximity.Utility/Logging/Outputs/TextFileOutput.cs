@@ -22,9 +22,6 @@ namespace Proximity.Utility.Logging.Outputs
 	{	//****************************************
 		private readonly StringBuilder _OutputBuilder;
 		private TextWriter _Writer;
-
-		private string OutputFormatPre;
-		private string OutputFormatPost;
 		//****************************************
 
 		/// <summary>
@@ -37,8 +34,8 @@ namespace Proximity.Utility.Logging.Outputs
 			
 			_OutputBuilder = new StringBuilder();
 			
-			OutputFormatPre = "{0:yyyy-MM-dd HH:mm:ss.fff}:\t";
-			OutputFormatPost = "{4:16}: {7}";
+			OutputFormatPre = "{0:yyyy-MM-dd HH:mm:ss.fff}:";
+			OutputFormatPost = "{4,16}: {7}";
 		}
 		
 		//****************************************
@@ -110,7 +107,7 @@ namespace Proximity.Utility.Logging.Outputs
 
 			Arguments = new object[] {entry.Timestamp, DateTime.MinValue.Add(RelativeTime > TimeSpan.Zero ? RelativeTime : TimeSpan.Zero), SourceAssembly, SourceFullType, SourceShortType, SourceMethod, entry.Severity, entry.Text};
 			
-			OutputBuilder.AppendFormat(OutputFormatPre, Arguments);
+			OutputBuilder.AppendFormat(CultureInfo.InvariantCulture, OutputFormatPre, Arguments);
 			
 			IndentTo(IndentLevel);
 			
@@ -122,7 +119,7 @@ namespace Proximity.Utility.Logging.Outputs
 				{
 					OutputBuilder.AppendLine();
 					
-					OutputBuilder.AppendFormat(OutputFormatPre, Arguments);
+					OutputBuilder.AppendFormat(CultureInfo.InvariantCulture, OutputFormatPre, Arguments);
 					
 					IndentTo(IndentLevel);
 					
@@ -171,5 +168,16 @@ namespace Proximity.Utility.Logging.Outputs
 		/// Gets/Sets the text encoding to use
 		/// </summary>
 		public Encoding Encoding { get; set; }
+
+		/// <summary>
+		/// Gets/Sets the output line to display before any indentation
+		/// </summary>
+		public string OutputFormatPre { get; set; }
+
+		/// <summary>
+		/// Gets/Sets the output line format to display after the indentation
+		/// </summary>
+		/// <remarks>Should not include a terminating newline</remarks>
+		public string OutputFormatPost { get; set; }
 	}
 }
