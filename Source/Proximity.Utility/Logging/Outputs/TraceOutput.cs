@@ -50,7 +50,7 @@ namespace Proximity.Utility.Logging.Outputs
 		{
 			Trace.CorrelationManager.StartLogicalOperation(newSection.Text);
 			
-			Trace.IndentLevel = LogManager.Context.Count;
+			Trace.IndentLevel = Target.Context.Count;
 			Trace.WriteLine(newSection.Text);
 		}
 
@@ -60,7 +60,7 @@ namespace Proximity.Utility.Logging.Outputs
 			if (newEntry is TraceLogEntry)
 				return;
 			
-			Trace.IndentLevel = LogManager.Context.Count;
+			Trace.IndentLevel = Target.Context.Count;
 			Trace.WriteLine(newEntry.Text);
 			
 			if (newEntry is ExceptionLogEntry)
@@ -85,7 +85,7 @@ namespace Proximity.Utility.Logging.Outputs
 		/// <inheritdoc />
 		protected internal override void FinishSection(LogSection section)
 		{
-			Trace.IndentLevel = LogManager.Context.Count;
+			Trace.IndentLevel = Target.Context.Count;
 
 			if (Trace.CorrelationManager.LogicalOperationStack.Count != 0)
 				Trace.CorrelationManager.StopLogicalOperation();

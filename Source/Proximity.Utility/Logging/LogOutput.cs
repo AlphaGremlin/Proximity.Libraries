@@ -10,13 +10,22 @@ namespace Proximity.Utility.Logging
 	/// Defines an Output for logging information
 	/// </summary>
 	public abstract class LogOutput
-	{	//****************************************
-		
+	{
 		/// <summary>
 		/// Creates a new Log Output
 		/// </summary>
-		protected LogOutput()
+		protected LogOutput() : this(LogManager.Default)
 		{
+		}
+
+
+		/// <summary>
+		/// Creates a new Log Output
+		/// </summary>
+		/// <param name="target">The log target we're receiving from</param>
+		protected LogOutput(LogTarget target)
+		{
+			Target = target;
 		}
 		
 		//****************************************
@@ -63,5 +72,12 @@ namespace Proximity.Utility.Logging
 		/// Ends the logging output process
 		/// </summary>
 		protected internal abstract void Finish();
+
+		//****************************************
+
+		/// <summary>
+		/// Gets the log target we're receiving from
+		/// </summary>
+		public LogTarget Target { get; }
 	}
 }

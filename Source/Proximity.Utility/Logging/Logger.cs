@@ -69,7 +69,7 @@ namespace Proximity.Utility.Logging
 		public LogSection VerboseSection(string text)
 		{
 			if (Target.IsStarted)
-				return LogManager.StartSection(new LogEntry(new StackFrame(1), Severity.Verbose, text));
+				return Target.StartSection(new LogEntry(new StackFrame(1), Severity.Verbose, text));
 
 			return LogSection.Null;
 		}
@@ -82,7 +82,7 @@ namespace Proximity.Utility.Logging
 		public LogSection VerboseSection(string text, params object[] args)
 		{
 			if (Target.IsStarted)
-				return LogManager.StartSection(new LogEntry(new StackFrame(1), Severity.Verbose, string.Format(CultureInfo.InvariantCulture, text, args)));
+				return Target.StartSection(new LogEntry(new StackFrame(1), Severity.Verbose, string.Format(CultureInfo.InvariantCulture, text, args)));
 
 			return LogSection.Null;
 		}
@@ -286,7 +286,7 @@ namespace Proximity.Utility.Logging
 		/// </summary>
 		/// <param name="newException">The exception to write</param>
 		/// <param name="text">The text to write explaining the exception</param>
-		/// <remarks>Automatically calls <see cref="LogManager.Flush" /></remarks>
+		/// <remarks>Automatically calls <see cref="LogTarget.Flush" /></remarks>
 		public void Exception(Exception newException, string text)
 		{
 			if (Target.IsStarted)
@@ -299,7 +299,7 @@ namespace Proximity.Utility.Logging
 		/// <param name="newException">The exception to write</param>
 		/// <param name="text">The text to write explaining the exception</param>
 		/// <param name="args">The arguments to format the text with</param>
-		/// <remarks>Automatically calls <see cref="LogManager.Flush" /></remarks>
+		/// <remarks>Automatically calls <see cref="LogTarget.Flush" /></remarks>
 		public void Exception(Exception newException, string text, params object[] args)
 		{
 			if (Target.IsStarted)

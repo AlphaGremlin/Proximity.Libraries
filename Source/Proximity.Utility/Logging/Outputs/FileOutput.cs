@@ -60,7 +60,7 @@ namespace Proximity.Utility.Logging.Outputs
 		{
 			try
 			{
-				_Entries.Add(new FullLogEntry(newEntry, LogManager.Context)).Wait();
+				_Entries.Add(new FullLogEntry(newEntry, Target.Context)).Wait();
 			}
 			catch (OperationCanceledException)
 			{
@@ -257,7 +257,7 @@ namespace Proximity.Utility.Logging.Outputs
 				break;
 			}
 			
-			FullPath = Path.Combine(LogManager.OutputPath, FullPath);
+			FullPath = Path.Combine(Target.OutputPath, FullPath);
 			
 			//****************************************
 			
@@ -269,7 +269,7 @@ namespace Proximity.Utility.Logging.Outputs
 			catch(Exception)
 			{
 				// Failed to create the file. Add our PID to the end and try again
-				FullPath = $"{Path.Combine(LogManager.OutputPath, Path.GetFileNameWithoutExtension(FullPath))} ({Process.GetCurrentProcess().Id}).{GetExtension()}";
+				FullPath = $"{Path.Combine(Target.OutputPath, Path.GetFileNameWithoutExtension(FullPath))} ({Process.GetCurrentProcess().Id}).{GetExtension()}";
 				
 				try
 				{
@@ -313,7 +313,7 @@ namespace Proximity.Utility.Logging.Outputs
 			{
 				try
 				{
-					var DeleteFiles = Directory.EnumerateFiles(LogManager.OutputPath, $"{_FileName} *.{GetExtension()}")
+					var DeleteFiles = Directory.EnumerateFiles(Target.OutputPath, $"{_FileName} *.{GetExtension()}")
 						.Where(name => name != FullPath) // Ignore the file we've currently got open
 						.OrderByDescending(name => File.GetCreationTime(name)) // Order by most recently created
 						.Skip(KeepHistory.Value); // Skip the allowed history limit

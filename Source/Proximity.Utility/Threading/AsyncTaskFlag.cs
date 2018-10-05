@@ -1,9 +1,4 @@
-﻿/****************************************\
- AsyncTaskFlag.cs
- Created: 2012-09-13
-\****************************************/
-#if !NETSTANDARD1_3
-using System;
+﻿using System;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,8 +17,6 @@ namespace Proximity.Utility.Threading
 		private readonly Action _CompleteProcessTask;
 		private readonly Action _CompleteSecondTask;
 		private readonly TaskScheduler _Scheduler;
-		
-		private TimeSpan _Delay = TimeSpan.Zero;
 		private int _State; // 0 if not running, 1 if flagged to run, 2 if running
 		private Timer _DelayTimer;
 
@@ -75,7 +68,7 @@ namespace Proximity.Utility.Threading
 			}
 			else
 			{
-				_Delay = delay;
+				Delay = delay;
 				_ProcessTaskFlag = ProcessDelayTaskFlag;
 				_DelayTimer = new Timer(ProcessTaskFlag);
 			}
@@ -91,10 +84,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		public void Dispose()
 		{
-			var MyTimer = Interlocked.Exchange(ref _DelayTimer, null);
-			
-			if (MyTimer != null)
-				MyTimer.Dispose();
+			Interlocked.Exchange(ref _DelayTimer, null)?.Dispose();
 		}
 		
 		//****************************************
@@ -102,7 +92,6 @@ namespace Proximity.Utility.Threading
 		/// <summary>
 		/// Sets the flag, causing the task to run/re-run depending on the status
 		/// </summary>
-		[SecuritySafeCritical]
 		public void Set()
 		{
 			// Set the state to 1 (flagged)
@@ -147,12 +136,9 @@ namespace Proximity.Utility.Threading
 		
 		private void ProcessDelayTaskFlag(object state)
 		{
-			var MyTimer = _DelayTimer;
-
-			// Ensure we're not disposing
-			if (MyTimer != null)
-				// Wait a bit before acknowledging the flag
-				_DelayTimer.Change(_Delay, new TimeSpan(0, 0, 0, 0, -1));
+			// Wait a bit before acknowledging the flag
+			// May be null if we're disposing
+			_DelayTimer?.Change(Delay, new TimeSpan(0, 0, 0, 0, -1));
 		}
 		
 		private void ProcessTaskFlag(object state)
@@ -174,12 +160,9 @@ namespace Proximity.Utility.Threading
 			else
 				MyResult.ConfigureAwait(false).GetAwaiter().OnCompleted(_CompleteProcessTask);
 		}
-		
-		private void CompleteProcessTask()
-		{
-			CompleteProcessTask(false);
-		}
-		
+
+		private void CompleteProcessTask() => CompleteProcessTask(false);
+
 		private void CompleteProcessTask(bool isNested)
 		{	//****************************************
 			var FirstTask = (Task<Task>)_CurrentTask;
@@ -205,21 +188,13 @@ namespace Proximity.Utility.Threading
 					_CurrentTask.ConfigureAwait(false).GetAwaiter().OnCompleted(_CompleteSecondTask); // 2 (TaskCompletion and Action)
 			}
 		}
-		
-		private void CompleteSecondTask()
-		{
-			CompleteSecondTask(false);
-		}
 
-		[SecuritySafeCritical]
+		private void CompleteSecondTask() => CompleteSecondTask(false);
+
 		private void CompleteSecondTask(bool isNested)
-		{	//****************************************
-			var MyWaitTask = Interlocked.Exchange(ref _PendingWaitTask, null);
-			//****************************************
-			
+		{
 			// If we captured a wait task, set it
-			if (MyWaitTask != null)
-				MyWaitTask.SetResult(true);
+			Interlocked.Exchange(ref _PendingWaitTask, null)?.SetResult(true);
 			
 			// Set the state to 0 (not flagged) if it's 2 (executing)
 			if (Interlocked.CompareExchange(ref _State, 0, 2) == 1)
@@ -238,17 +213,13 @@ namespace Proximity.Utility.Threading
 				}
 			}
 		}
-		
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Gets/Sets a delay to apply before executing the callback
 		/// </summary>
 		/// <remarks>Acts as a cheap batching mechanism, so rapid calls to Set do not execute the callback twice</remarks>
-		public TimeSpan Delay
-		{
-			get { return _Delay; }
-		}
+		public TimeSpan Delay { get; } = TimeSpan.Zero;
 	}
 }
-#endif
