@@ -1,0 +1,38 @@
+
+# /
+/*.suo
+/.vs
+/Build
+
+# /Source/Proximity.Gui/
+/Source/Proximity.Gui/obj
+/Source/Proximity.Gui/*.pidb
+
+# /Source/Proximity.Gui.GtkSharp/
+/Source/Proximity.Gui.GtkSharp/obj
+/Source/Proximity.Gui.GtkSharp/*.pidb
+
+# /Source/Proximity.Gui.WinForms/
+/Source/Proximity.Gui.WinForms/obj
+/Source/Proximity.Gui.WinForms/*.pidb
+
+# /Source/Proximity.Gui.Wpf/
+/Source/Proximity.Gui.Wpf/obj
+/Source/Proximity.Gui.Wpf/*.pidb
+
+# /Source/Proximity.Terminal/
+/Source/Proximity.Terminal/obj
+
+# /Source/Proximity.Utility/
+/Source/Proximity.Utility/obj
+/Source/Proximity.Utility/*.user
+
+# /Tests/Proximity.Utility/
+/Tests/Proximity.Utility/obj
+
+# /Tests/Proximity.Utility.Tests.Help/
+/Tests/Proximity.Utility.Tests.Help/bin
+/Tests/Proximity.Utility.Tests.Help/obj
+
+# /packages/
+/packages/*[!c][!o][!n][!f][!i][!g]
