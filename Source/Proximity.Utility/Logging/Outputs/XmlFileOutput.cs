@@ -1,7 +1,3 @@
-/****************************************\
- XmlFileOutput.cs
- Created: 2-06-2009
-\****************************************/
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -28,15 +24,13 @@ namespace Proximity.Utility.Logging.Outputs
 		private XmlWriter _Writer;
 		private readonly XmlWriterSettings WriterSettings;
 
-#if NET462
 		private static AsyncLocal<ImmutableCountedStack<ContextData>> _Context;
-#endif
 		//****************************************
 
 		/// <summary>
 		/// Creates a new Xml Output writer
 		/// </summary>
-		public XmlFileOutput() : base()
+		public XmlFileOutput(LogTarget target) : base(target)
 		{
 			_UniqueID = string.Format("Logging.XmlOutput#{0}", Interlocked.Increment(ref _NextID));
 			

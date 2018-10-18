@@ -14,7 +14,7 @@
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<SignAssembly>true</SignAssembly>
 		<AssemblyOriginatorKeyFile>..\Proximity.snk</AssemblyOriginatorKeyFile>
-		<OutputPath>..\..\Build\Proximity.Utility</OutputPath>
+		<OutputPath>..\..\Build</OutputPath>
 		<LangVersion>Latest</LangVersion>
 	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)'=='Debug'">

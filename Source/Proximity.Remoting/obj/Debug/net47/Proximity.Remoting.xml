@@ -1,0 +1,275 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Proximity.Remoting</name>
+    </assembly>
+    <members>
+        <member name="T:Proximity.Remoting.ImmutableInterlockedEx">
+            <summary>
+            Provides extra methods for manipulating immutable collections in a thread-safe manner
+            </summary>
+        </member>
+        <member name="M:Proximity.Remoting.ImmutableInterlockedEx.Add``1(System.Collections.Immutable.ImmutableHashSet{``0}@,``0)">
+            <summary>
+            Performs an atomic add into an Immutable Hash Set
+            </summary>
+            <param name="hashSet">The location of the hash set to add to</param>
+            <param name="item">The item to add</param>
+            <returns>True if the item was added, or False if it was already in the set</returns>
+        </member>
+        <member name="M:Proximity.Remoting.ImmutableInterlockedEx.Remove``1(System.Collections.Immutable.ImmutableHashSet{``0}@,``0)">
+            <summary>
+            Performs an atomic pop from an Immutable Hash Set
+            </summary>
+            <param name="hashSet">The location of the hash set to remove from</param>
+            <param name="item">The item to remove</param>
+            <returns>True if an item was removed, or False if the item was not found</returns>
+        </member>
+        <member name="T:Proximity.Remoting.RemoteCancellationToken">
+            <summary>
+            Provides access to a cancellation token in another AppDomain
+            </summary>
+            <remarks>Exists in the calling AppDomain, and must be wrapped in a Using statement around any Awaits in order to preserve the lifetime of the remote object</remarks>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteCancellationToken.#ctor(System.Threading.CancellationToken)">
+            <summary>
+            Creates a new Remote Cancellation Token suitable for passing between AppDomains
+            </summary>
+            <param name="token">The Cancellation Token this Remote token will listen to cancellation requests for</param>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteCancellationToken.#ctor(System.Threading.CancellationTokenSource)">
+            <summary>
+            Creates a new Remote Cancellation Token suitable for passing between AppDomains
+            </summary>
+            <param name="tokenSource">The Cancellation Token Source this Remote token will listen to cancellation requests for</param>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteCancellationToken.InitializeLifetimeService">
+            <inheritdoc />
+        </member>
+        <member name="M:Proximity.Remoting.RemoteCancellationToken.Dispose">
+            <summary>
+            Disposes of this Remote Cancellation Token
+            </summary>
+        </member>
+        <member name="P:Proximity.Remoting.RemoteCancellationToken.IsCancellationRequested">
+            <summary>
+            Gets whether cancellation has been requested on the remote token
+            </summary>
+        </member>
+        <member name="P:Proximity.Remoting.RemoteCancellationToken.CanBeCanceled">
+            <summary>
+            Gets whether the remote token can be cancelled
+            </summary>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteCancellationToken.FromLocal(System.Threading.CancellationToken)">
+            <summary>
+            Transforms a Cancellation Token into a RemoteCancellationToken suitable for passing between AppDomains
+            </summary>
+            <param name="token">The Cancellation Token to transfork</param>
+            <returns>A RemoteCancellationToken that can pass cancellation requests to another AppDomain</returns>
+            <remarks>When calling remote objects supporting cancellation, the RemoteCancellationToken must persist for the lifetime of the call. Wrap the call with a Using statement and await the RemoteTask inside.</remarks>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteCancellationToken.FromLocal(System.Threading.CancellationTokenSource)">
+            <summary>
+            Transforms a Cancellation Token Source into a RemoteCancellationToken suitable for passing between AppDomains
+            </summary>
+            <param name="tokenSource">The Cancellation Token Source to transfork</param>
+            <returns>A RemoteCancellationToken that can pass cancellation requests to another AppDomain</returns>
+            <remarks>When calling remote objects supporting cancellation, the RemoteCancellationToken must persist for the lifetime of the call. Wrap the call with a Using statement and await the RemoteTask inside.</remarks>
+        </member>
+        <member name="T:Proximity.Remoting.RemoteCancellationTokenSource">
+            <summary>
+            Receives notifications from a cancellation token in another AppDomain
+            </summary>
+        </member>
+        <member name="T:Proximity.Remoting.RemoteTask">
+            <summary>
+            Provides access to a Task running in another AppDomain
+            </summary>
+            <remarks>This object lives in the AppDomain where the Task is running</remarks>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTask.InitializeLifetimeService">
+            <inheritdoc />
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTask.Start(System.Func{System.Threading.Tasks.Task})">
+            <summary>
+            Wraps an async callback in a RemoteTask
+            </summary>
+            <param name="callback">The callback returning a task to wrap</param>
+            <returns>A remote task to pass across AppDomain boundaries</returns>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTask.Start(System.Func{System.Threading.CancellationToken,System.Threading.Tasks.Task},Proximity.Remoting.RemoteCancellationToken)">
+            <summary>
+            Wraps an async callback in a RemoteTask
+            </summary>
+            <param name="callback">The callback returning a task to wrap</param>
+            <param name="remoteToken">A remote cancellation token to convert into a local cancellation token</param>
+            <returns>A remote task to pass across AppDomain boundaries</returns>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTask.Start``1(System.Func{System.Threading.Tasks.Task{``0}})">
+            <summary>
+            Wraps an async callback in a RemoteTask
+            </summary>
+            <param name="callback">The callback returning a task to wrap</param>
+            <returns>A remote task to pass across AppDomain boundaries</returns>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTask.Start``1(System.Func{System.Threading.CancellationToken,System.Threading.Tasks.Task{``0}},Proximity.Remoting.RemoteCancellationToken)">
+            <summary>
+            Wraps an async callback in a RemoteTask
+            </summary>
+            <param name="callback">The callback returning a task to wrap</param>
+            <param name="remoteToken">A remote cancellation token to convert into a local cancellation token</param>
+            <returns>A remote task to pass across AppDomain boundaries</returns>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTask.op_Implicit(Proximity.Remoting.RemoteTask)~System.Threading.Tasks.Task">
+            <summary>
+            Wraps an RemoteTask with an awaitable Task that exists within this AppDomain
+            </summary>
+            <param name="remoteTask">The remote task to wrap</param>
+            <returns>A task that will reflect the status of the RemoteTask</returns>
+            <remarks>Beware of unloading the target AppDomain in a continuation of this Task, as it's likely running with the AppDomain in the stack, causing a strange ThreadAbortException</remarks>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTask.op_Implicit(System.Threading.Tasks.Task)~Proximity.Remoting.RemoteTask">
+            <summary>
+            Transforms a Task into a RemoteTask suitable for passing between AppDomains
+            </summary>
+            <param name="task">The task to transform</param>
+            <returns>A RemoteTask that can be awaited from another AppDomain</returns>
+            <remarks>To create a RemoteTask that listens to a RemoteCancellationToken, use one of the <see cref="O:RemoteTask.Start" /> overrides</remarks>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTask.FromResult">
+            <summary>
+            Creates a Remote Task that has already completed with no result
+            </summary>
+            <returns>A completed Remote Task</returns>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTask.FromResult``1(``0)">
+            <summary>
+            Creates a Remote Task that has already completed with a result
+            </summary>
+            <param name="result">The result to assign to the task</param>
+            <returns>A completed Remote Task with the given result</returns>
+        </member>
+        <member name="T:Proximity.Remoting.RemoteTask`1">
+            <summary>
+            Provides access to a Task running in another AppDomain
+            </summary>
+            <remarks>This object lives in the AppDomain where the Task is running</remarks>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTask`1.InitializeLifetimeService">
+            <inheritdoc />
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTask`1.Start(System.Func{System.Threading.Tasks.Task{`0}})">
+            <summary>
+            Wraps an async callback in a RemoteTask
+            </summary>
+            <param name="callback">The callback returning a task to wrap</param>
+            <returns>A remote task to pass across AppDomain boundaries</returns>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTask`1.Start(System.Func{System.Threading.CancellationToken,System.Threading.Tasks.Task{`0}},Proximity.Remoting.RemoteCancellationToken)">
+            <summary>
+            Wraps an async callback in a RemoteTask
+            </summary>
+            <param name="callback">The callback returning a task to wrap</param>
+            <param name="remoteToken">A remote cancellation token to convert into a local cancellation token</param>
+            <returns>A remote task to pass across AppDomain boundaries</returns>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTask`1.op_Implicit(Proximity.Remoting.RemoteTask{`0})~System.Threading.Tasks.Task{`0}">
+            <summary>
+            Wraps a RemoteTask with an awaitable Task that exists within this AppDomain
+            </summary>
+            <param name="remoteTask">The remote task to wrap</param>
+            <returns>A task that will reflect the status of the RemoteTask</returns>
+            <remarks>Beware of unloading the target AppDomain in a continuation of this Task, as it's likely running with the AppDomain in the stack, causing a strange ThreadAbortException</remarks>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTask`1.op_Implicit(System.Threading.Tasks.Task{`0})~Proximity.Remoting.RemoteTask{`0}">
+            <summary>
+            Transforms a Task into a RemoteTask suitable for passing between AppDomains
+            </summary>
+            <param name="task">The task to transform</param>
+            <returns>A RemoteTask that can be awaited from another AppDomain</returns>
+            <remarks>To create a RemoteTask that listens to a RemoteCancellationToken, use one of the <see cref="O:RemoteTask&lt;TResult&gt;.Start" /> overrides</remarks>
+        </member>
+        <member name="T:Proximity.Remoting.RemoteTaskCompletionSource">
+            <summary>
+            Provides a Task Completion Source within the calling AppDomain that receives the result of the Task in the target AppDomain
+            </summary>
+            <remarks>This object lives in the AppDomain making the call</remarks>
+        </member>
+        <member name="T:Proximity.Remoting.RemoteTaskCompletionSource`1">
+            <summary>
+            Provides a Task Completion Source within the calling AppDomain that receives the result of the Task in the target AppDomain
+            </summary>
+            <remarks>This object lives in the AppDomain making the call</remarks>
+        </member>
+        <member name="T:Proximity.Remoting.RemoteTaskExtensions">
+            <summary>
+            Provides utility methods for Remote Tasks
+            </summary>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTaskExtensions.GetAwaiter(Proximity.Remoting.RemoteTask)">
+            <summary>
+            Allows awaiting of a RemoteTask from another AppDomain
+            </summary>
+            <param name="remoteTask">The remote task to await</param>
+            <returns>A task awaiter that can be used to await the remote task</returns>
+            <remarks>Beware of unloading the target AppDomain in a continuation of this Task, as it's likely running with the AppDomain in the stack, causing a strange ThreadAbortException</remarks>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTaskExtensions.GetAwaiter``1(Proximity.Remoting.RemoteTask{``0})">
+            <summary>
+            Allows awaiting of a RemoteTask from another AppDomain
+            </summary>
+            <param name="remoteTask">The remote task to await</param>
+            <returns>A task awaiter that can be used to await the remote task</returns>
+            <remarks>Beware of unloading the target AppDomain in a continuation of this Task, as it's likely running with the AppDomain in the stack, causing a strange ThreadAbortException</remarks>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTaskExtensions.ToTask(Proximity.Remoting.RemoteTask)">
+            <summary>
+            Wraps a RemoteTask with an awaitable Task that exists within this AppDomain
+            </summary>
+            <param name="remoteTask">The remote task to wrap</param>
+            <returns>A task that will reflect the status of the RemoteTask</returns>
+            <remarks>Beware of unloading the target AppDomain in a continuation of this Task, as it's likely running with the AppDomain in the stack, causing a strange ThreadAbortException</remarks>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTaskExtensions.ToTask``1(Proximity.Remoting.RemoteTask{``0})">
+            <summary>
+            Wraps a RemoteTask with an awaitable Task that exists within this AppDomain
+            </summary>
+            <param name="remoteTask">The remote task to wrap</param>
+            <returns>A task that will reflect the status of the RemoteTask</returns>
+            <remarks>Beware of unloading the target AppDomain in a continuation of this Task, as it's likely running with the AppDomain in the stack, causing a strange ThreadAbortException</remarks>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTaskExtensions.ToRemote(System.Threading.Tasks.Task)">
+            <summary>
+            Transforms a Task into a RemoteTask suitable for passing between AppDomains
+            </summary>
+            <param name="task">The task to transform</param>
+            <returns>A RemoteTask that can be awaited from another AppDomain</returns>
+            <remarks>To create a RemoteTask that listens to a RemoteCancellationToken, use one of the <see cref="O:RemoteTask.Start" /> overrides</remarks>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTaskExtensions.ToRemote``1(System.Threading.Tasks.Task{``0})">
+            <summary>
+            Transforms a Task into a RemoteTask suitable for passing between AppDomains
+            </summary>
+            <param name="task">The task to transform</param>
+            <returns>A RemoteTask that can be awaited from another AppDomain</returns>
+            <remarks>To create a RemoteTask that listens to a RemoteCancellationToken, use one of the <see cref="O:RemoteTask&lt;TResult&gt;.Start" /> overrides</remarks>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTaskExtensions.ToRemote(System.Threading.CancellationToken)">
+            <summary>
+            Transforms a Cancellation Token into a RemoteCancellationToken suitable for passing between AppDomains
+            </summary>
+            <param name="token">The Cancellation Token to transfork</param>
+            <returns>A RemoteCancellationToken that can pass cancellation requests to another AppDomain</returns>
+            <remarks>When calling remote objects supporting cancellation, the RemoteCancellationToken must persist for the lifetime of the call. Wrap the call with a Using statement and await the RemoteTask inside.</remarks>
+        </member>
+        <member name="M:Proximity.Remoting.RemoteTaskExtensions.ToRemote(System.Threading.CancellationTokenSource)">
+            <summary>
+            Transforms a Cancellation Token Source into a RemoteCancellationToken suitable for passing between AppDomains
+            </summary>
+            <param name="tokenSource">The Cancellation Token Source to transfork</param>
+            <returns>A RemoteCancellationToken that can pass cancellation requests to another AppDomain</returns>
+            <remarks>When calling remote objects supporting cancellation, the RemoteCancellationToken must persist for the lifetime of the call. Wrap the call with a Using statement and await the RemoteTask inside.</remarks>
+        </member>
+    </members>
+</doc>

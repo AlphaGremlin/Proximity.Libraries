@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net47</TargetFramework>
+		<Authors>Daniel Chandler</Authors>
+		<Company>Proximity Interactive</Company>
+		<Copyright>Copyright © Daniel Chandler 2018</Copyright>
+		<Product>Proximity Remoting Library</Product>
+		<AssemblyVersion>1.0.0.0</AssemblyVersion>
+		<FileVersion>1.0.0.0</FileVersion>
+		<Version>1.0.0</Version>
+		<Description>Proximity Remoting Library</Description>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<SignAssembly>true</SignAssembly>
+		<AssemblyOriginatorKeyFile>..\Proximity.snk</AssemblyOriginatorKeyFile>
+		<OutputPath>..\..\Build</OutputPath>
+		<LangVersion>Latest</LangVersion>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)'=='Debug'">
+		<DebugSymbols>true</DebugSymbols>
+		<DebugType>full</DebugType>
+	</PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="System.Collections.Immutable" Version="1.4.0" />
+	</ItemGroup>
+</Project>

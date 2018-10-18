@@ -26,11 +26,12 @@ namespace Proximity.Utility.Logging.Outputs
 		private string _FileName;
 		private DateTime _LastLogEntry;
 		//****************************************
-		
+
 		/// <summary>
 		/// Creates a new File Outout
 		/// </summary>
-		protected FileOutput() : base()
+		/// <param name="target">The Logging Target to use</param>
+		protected FileOutput(LogTarget target) : base(target)
 		{
 		}
 		

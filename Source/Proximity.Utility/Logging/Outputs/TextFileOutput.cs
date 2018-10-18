@@ -23,11 +23,19 @@ namespace Proximity.Utility.Logging.Outputs
 		private readonly StringBuilder _OutputBuilder;
 		private TextWriter _Writer;
 		//****************************************
-		
+
+		/// <summary>
+		/// Creates a new Text File Output for the default Target
+		/// </summary>
+		public TextFileOutput() : this(LogManager.Default)
+		{
+		}
+
 		/// <summary>
 		/// Creates a new Text File Output
 		/// </summary>
-		public TextFileOutput() : base()
+		/// <param name="target">The Logging Target to use</param>
+		public TextFileOutput(LogTarget target) : base(target)
 		{
 			Encoding = Encoding.Default;
 			
