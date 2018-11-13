@@ -20,6 +20,9 @@
 /Source/Proximity.Gui.Wpf/obj
 /Source/Proximity.Gui.Wpf/*.pidb
 
+# /Source/Proximity.Remoting/
+/Source/Proximity.Remoting/obj
+
 # /Source/Proximity.Terminal/
 /Source/Proximity.Terminal/obj
 

@@ -26,14 +26,13 @@ namespace Proximity.Utility
 		/// <param name="unsubscribe">An optional callback to unsubscribe from the event handler</param>
 		/// <returns>A weak delegate that will call the target method as long as the reference still exists, or <paramref name="callback" /> if the target is a static object</returns>
 		public static TDelegate CreateDynamic<TDelegate>(TDelegate callback, Action<TDelegate> unsubscribe = null) where TDelegate : class
-		{		//****************************************
-			Delegate MyCallback = callback as Delegate;
+		{   //****************************************
 			Type TargetType;
 			//****************************************
-			
-			if (MyCallback == null)
+
+			if (!(callback is Delegate MyCallback))
 				throw new ArgumentException("Callback must be a delegate type");
-			
+
 			if (MyCallback.Target == null) // Ignore weak references for static events
 				return callback;
 			

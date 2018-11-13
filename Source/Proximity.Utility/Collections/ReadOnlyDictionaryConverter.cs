@@ -1,8 +1,4 @@
-﻿/****************************************\
- ReadOnlyDictionary.cs
- Created: 2011-04-03
-\****************************************/
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 //****************************************
@@ -12,18 +8,9 @@ namespace Proximity.Utility.Collections
 	/// <summary>
 	/// Represents a read-only wrapper around a Dictionary
 	/// </summary>
-	public abstract class ReadOnlyDictionaryConverter<TKey, TSource, TTarget> : IDictionary<TKey, TTarget>, ICollection<TTarget>
-#if !NET40
-		, IReadOnlyCollection<TTarget>, IReadOnlyDictionary<TKey, TTarget>
-#endif
-	{	//****************************************
-#if NET40
-		private readonly IDictionary<TKey, TSource> _Dictionary;
-#else
-		private readonly IReadOnlyDictionary<TKey, TSource> _Dictionary;
-		private readonly IReadOnlyCollection<TKey> _KeysReadOnly;
+	public abstract class ReadOnlyDictionaryConverter<TKey, TSource, TTarget> : IDictionary<TKey, TTarget>, ICollection<TTarget>, IReadOnlyCollection<TTarget>, IReadOnlyDictionary<TKey, TTarget>
+	{ //****************************************
 		private readonly ICollection<TKey> _Keys;
-#endif
 		//****************************************
 		
 		/// <summary>
@@ -32,62 +19,52 @@ namespace Proximity.Utility.Collections
 		/// <param name="dictionary">The dictionary to wrap as read-only</param>
 		public ReadOnlyDictionaryConverter(IDictionary<TKey, TSource> dictionary)
 		{
-#if NET40
-			_Dictionary = dictionary;
-#else
-			_Dictionary = dictionary as IReadOnlyDictionary<TKey, TSource>;
+			Parent = dictionary as IReadOnlyDictionary<TKey, TSource>;
 
-			if (_Dictionary == null)
+			if (Parent == null)
 			{
 				// If the dictionary doesn't implement IReadOnlyDictionary, wrap it so it does
 				var NewDictionary = new ReadOnlyDictionary<TKey, TSource>(dictionary);
 
-				_Dictionary = NewDictionary;
+				Parent = NewDictionary;
 				_Keys = ((IDictionary<TKey, TSource>)NewDictionary).Keys;
-				_KeysReadOnly = NewDictionary.Keys;
+				Keys = NewDictionary.Keys;
 			}
 			else
 			{
 				// Check the dictionary keys implement IReadOnlyCollection
 				// We want to ensure all the Keys properties return the same reference
-				var KeysReadOnly = dictionary.Keys as IReadOnlyCollection<TKey>;
-				
-				if (KeysReadOnly == null)
+				if (dictionary.Keys is IReadOnlyCollection<TKey> KeysReadOnly)
+				{
+					_Keys = dictionary.Keys;
+					Keys = KeysReadOnly;
+				}
+				else
 				{
 					// Wrap it so it does
 					var NewKeys = new ReadOnlyCollection<TKey>(dictionary.Keys);
 
 					_Keys = NewKeys;
-					_KeysReadOnly = NewKeys;
-				}
-				else
-				{
-					_Keys = dictionary.Keys;
-					_KeysReadOnly = KeysReadOnly;
+					Keys = NewKeys;
 				}
 			}
-#endif
 		}
 
-#if !NET40
 		/// <summary>
 		/// Creates a new read-only wrapper around a dictionary
 		/// </summary>
 		/// <param name="dictionary">The dictionary to wrap as read-only</param>
 		public ReadOnlyDictionaryConverter(IReadOnlyDictionary<TKey, TSource> dictionary)
 		{
-			_Dictionary = dictionary;
-
-			var KeysCollection = dictionary.Keys as ICollection<TKey>;
-			var KeysReadOnly = dictionary.Keys as IReadOnlyCollection<TKey>;
+			Parent = dictionary;
 
 			// We want to ensure all the Keys properties return the same values
-			if (KeysCollection != null)
+			if (dictionary.Keys is ICollection<TKey> KeysCollection)
 			{
-				if (KeysReadOnly != null)
+				if (dictionary.Keys is IReadOnlyCollection<TKey> KeysReadOnly)
 				{
 					// The source Keys implement both interfaces we need
-					_KeysReadOnly = KeysReadOnly;
+					Keys = KeysReadOnly;
 					_Keys = KeysCollection;
 				}
 				else
@@ -95,7 +72,7 @@ namespace Proximity.Utility.Collections
 					// The source Keys implement ICollection but not IReadOnlyCollection
 					var NewKeyCollection = new ReadOnlyCollection<TKey>(KeysCollection);
 
-					_KeysReadOnly = NewKeyCollection;
+					Keys = NewKeyCollection;
 					_Keys = NewKeyCollection;
 				}
 			}
@@ -104,11 +81,10 @@ namespace Proximity.Utility.Collections
 				// The source Keys doesn't implement ICollection
 				var NewKeyCollection = new KeyCollection(this);
 
-				_KeysReadOnly = NewKeyCollection;
+				Keys = NewKeyCollection;
 				_Keys = NewKeyCollection;
 			}
 		}
-#endif
 		
 		//****************************************
 		
@@ -121,28 +97,21 @@ namespace Proximity.Utility.Collections
 		{
 			var SourcePair = new KeyValuePair<TKey, TSource>(item.Key, ConvertFrom(item.Value));
 
-#if NET40
-			return _Dictionary.Contains(SourcePair);
-#else
 			// If our source implements ICollection, use it and convert back
-			if (_Dictionary is ICollection<KeyValuePair<TKey, TSource>>)
-				return ((ICollection<KeyValuePair<TKey, TSource>>)_Dictionary).Contains(SourcePair);
+			if (Parent is ICollection<KeyValuePair<TKey, TSource>> Collection)
+				return Collection.Contains(SourcePair);
 
 			// No ICollection, so convert back and search for it the hard way
-			return System.Linq.Enumerable.Contains(_Dictionary, SourcePair);
-#endif
+			return System.Linq.Enumerable.Contains(Parent, SourcePair);
 		}
-		
+
 		/// <summary>
 		/// Determines whether the dictionary contains an element with the specified key
 		/// </summary>
 		/// <param name="key">The key to search for</param>
 		/// <returns>True if there is an element with this key, otherwise false</returns>
-		public bool ContainsKey(TKey key)
-		{
-			return _Dictionary.ContainsKey(key);
-		}
-		
+		public bool ContainsKey(TKey key) => Parent.ContainsKey(key);
+
 		/// <summary>
 		/// Copies the elements of the collection to a given array, starting at a specified index
 		/// </summary>
@@ -150,21 +119,18 @@ namespace Proximity.Utility.Collections
 		/// <param name="arrayIndex">The index into the array to start writing</param>
 		public void CopyTo(KeyValuePair<TKey, TTarget>[] array, int arrayIndex)
 		{
-			foreach(var MyPair in _Dictionary)
+			foreach(var MyPair in Parent)
 			{
 				array[arrayIndex++] = new KeyValuePair<TKey, TTarget>(MyPair.Key, ConvertTo(MyPair.Value));
 			}
 		}
-		
+
 		/// <summary>
 		/// Returns an enumerator that iterates through the collection
 		/// </summary>
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
-		public ChildPairEnumerator GetEnumerator()
-		{
-			return new ChildPairEnumerator(this);
-		}
-		
+		public ChildPairEnumerator GetEnumerator() => new ChildPairEnumerator(this);
+
 		/// <summary>
 		/// Gets the value associated with the specified key
 		/// </summary>
@@ -173,16 +139,14 @@ namespace Proximity.Utility.Collections
 		/// <returns>True if the key was found, otherwise false</returns>
 		public bool TryGetValue(TKey key, out TTarget value)
 		{
-			TSource MyValue;
-			
-			if (_Dictionary.TryGetValue(key, out MyValue))
+			if (Parent.TryGetValue(key, out var MyValue))
 			{
 				value = ConvertTo(MyValue);
 				
 				return true;
 			}
 			
-			value = default(TTarget);
+			value = default;
 			
 			return false;
 		}
@@ -201,135 +165,68 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="value">The converted value</param>
 		/// <returns>The original value</returns>
-		protected virtual TSource ConvertFrom(TTarget value)
-		{
-			throw new NotSupportedException("Conversion is one-way");
-		}
-		
-		//****************************************
-		
-		void ICollection<KeyValuePair<TKey, TTarget>>.Add(KeyValuePair<TKey, TTarget> item)
-		{
-			throw new NotSupportedException("Dictionary is read-only");
-		}
-		
-		void IDictionary<TKey, TTarget>.Add(TKey key, TTarget value)
-		{
-			throw new NotSupportedException("Dictionary is read-only");
-		}
-		
-		void ICollection<KeyValuePair<TKey, TTarget>>.Clear()
-		{
-			throw new NotSupportedException("Dictionary is read-only");
-		}
-		
-		bool ICollection<KeyValuePair<TKey, TTarget>>.Remove(KeyValuePair<TKey, TTarget> item)
-		{
-			throw new NotSupportedException("Dictionary is read-only");
-		}
-		
-		bool IDictionary<TKey, TTarget>.Remove(TKey key)
-		{
-			throw new NotSupportedException("Dictionary is read-only");
-		}
-		
-		IEnumerator IEnumerable.GetEnumerator()
-		{
-			return new ChildPairEnumerator(this);
-		}
+		protected virtual TSource ConvertFrom(TTarget value) => throw new NotSupportedException("Conversion is one-way");
 
-		IEnumerator<KeyValuePair<TKey, TTarget>> IEnumerable<KeyValuePair<TKey, TTarget>>.GetEnumerator()
-		{
-			return new ChildPairEnumerator(this);
-		}
-		
-		void ICollection<TTarget>.Add(TTarget item)
-		{
-			throw new NotSupportedException("Dictionary is read-only");
-		}
-		
-		void ICollection<TTarget>.Clear()
-		{
-			throw new NotSupportedException("Dictionary is read-only");
-		}
-		
+		//****************************************
+
+		void ICollection<KeyValuePair<TKey, TTarget>>.Add(KeyValuePair<TKey, TTarget> item) => throw new NotSupportedException("Dictionary is read-only");
+
+		void IDictionary<TKey, TTarget>.Add(TKey key, TTarget value) => throw new NotSupportedException("Dictionary is read-only");
+
+		void ICollection<KeyValuePair<TKey, TTarget>>.Clear() => throw new NotSupportedException("Dictionary is read-only");
+
+		bool ICollection<KeyValuePair<TKey, TTarget>>.Remove(KeyValuePair<TKey, TTarget> item) => throw new NotSupportedException("Dictionary is read-only");
+
+		bool IDictionary<TKey, TTarget>.Remove(TKey key) => throw new NotSupportedException("Dictionary is read-only");
+
+		IEnumerator IEnumerable.GetEnumerator() => new ChildPairEnumerator(this);
+
+		IEnumerator<KeyValuePair<TKey, TTarget>> IEnumerable<KeyValuePair<TKey, TTarget>>.GetEnumerator() => new ChildPairEnumerator(this);
+
+		void ICollection<TTarget>.Add(TTarget item) => throw new NotSupportedException("Dictionary is read-only");
+
+		void ICollection<TTarget>.Clear() => throw new NotSupportedException("Dictionary is read-only");
+
 		bool ICollection<TTarget>.Contains(TTarget item)
 		{
 			var SourceValue = ConvertFrom(item);
 
-#if NET40
-			return _Dictionary.Values.Contains(SourceValue);
-#else
 			// If our source implements IDictionary, use it and convert back
-			if (_Dictionary is IDictionary<TKey, TSource>)
-				return ((IDictionary<TKey, TSource>)_Dictionary).Values.Contains(SourceValue);
+			if (Parent is IDictionary<TKey, TSource> Dictionary)
+				return Dictionary.Values.Contains(SourceValue);
 
 			// No ICollection, so convert back and search for it the hard way
-			return System.Linq.Enumerable.Contains(_Dictionary.Values, SourceValue);
-#endif
+			return System.Linq.Enumerable.Contains(Parent.Values, SourceValue);
 		}
 		
 		void ICollection<TTarget>.CopyTo(TTarget[] array, int arrayIndex)
 		{
-			foreach(var MyValue in _Dictionary.Values)
+			foreach(var MyValue in Parent.Values)
 			{
 				array[arrayIndex++] = ConvertTo(MyValue);
 			}
 		}
-		
-		bool ICollection<TTarget>.Remove(TTarget item)
-		{
-			throw new NotSupportedException("Dictionary is read-only");
-		}
-		
-		IEnumerator<TTarget> IEnumerable<TTarget>.GetEnumerator()
-		{
-			return new ChildEnumerator(this);
-		}
-		
+
+		bool ICollection<TTarget>.Remove(TTarget item) => throw new NotSupportedException("Dictionary is read-only");
+
+		IEnumerator<TTarget> IEnumerable<TTarget>.GetEnumerator() => new ChildEnumerator(this);
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Gets the number of items in the collection
 		/// </summary>
-		public int Count
-		{
-			get { return _Dictionary.Count; }
-		}
-		
-#if NET40
+		public int Count => Parent.Count;
+
 		/// <summary>
 		/// Gets a read-only collection of the dictionary keys
 		/// </summary>
-		public ICollection<TKey> Keys
-		{
-			get { return _Dictionary.Keys; }
-		}
+		public IReadOnlyCollection<TKey> Keys { get; }
 
 		/// <summary>
 		/// Gets a read-only collection of the dictionary values
 		/// </summary>
-		public ICollection<TTarget> Values
-		{
-			get { return this; }
-		}
-#else
-		/// <summary>
-		/// Gets a read-only collection of the dictionary keys
-		/// </summary>
-		public IReadOnlyCollection<TKey> Keys
-		{
-			get { return _KeysReadOnly; }
-		}
-		
-		/// <summary>
-		/// Gets a read-only collection of the dictionary values
-		/// </summary>
-		public IReadOnlyCollection<TTarget> Values
-		{
-			get { return this; }
-		}
-#endif
+		public IReadOnlyCollection<TTarget> Values => this;
 
 		/// <summary>
 		/// Gets the value corresponding to the provided key
@@ -338,93 +235,57 @@ namespace Proximity.Utility.Collections
 		{
 			get
 			{
-				TSource MyValue;
-				
-				if (_Dictionary.TryGetValue(key, out MyValue))
+				if (Parent.TryGetValue(key, out var MyValue))
 					return ConvertTo(MyValue);
 				
-				return default(TTarget);
+				return default;
 			}
 		}
-		
+
 		/// <summary>
 		/// Gets the parent dictionary
 		/// </summary>
-#if NET40
-		public IDictionary<TKey, TSource> Parent
-#else
-		public IReadOnlyDictionary<TKey, TSource> Parent
-#endif
-		{
-			get { return _Dictionary; }
-		}
-		
+		public IReadOnlyDictionary<TKey, TSource> Parent { get; }
+
 		//****************************************
-		
-		bool ICollection<KeyValuePair<TKey, TTarget>>.IsReadOnly
-		{
-			get { return true; }
-		}
-		
-		bool ICollection<TTarget>.IsReadOnly
-		{
-			get { return true; }
-		}
-		
+
+		bool ICollection<KeyValuePair<TKey, TTarget>>.IsReadOnly => true;
+
+		bool ICollection<TTarget>.IsReadOnly => true;
+
 		TTarget IDictionary<TKey, TTarget>.this[TKey key]
 		{
 			get
 			{
-				TSource MyValue;
-				
-				if (_Dictionary.TryGetValue(key, out MyValue))
+				if (Parent.TryGetValue(key, out var MyValue))
 					return ConvertTo(MyValue);
 				
-				return default(TTarget);
+				return default;
 			}
 			set { throw new NotSupportedException("Dictionary is read-only"); }
 		}
-		
-		ICollection<TKey> IDictionary<TKey, TTarget>.Keys
-		{
-#if NET40
-			get { return _Dictionary.Keys; } // Already Read-Only
-#else
-			get { return _Keys; } // Already Read-Only
-#endif
-		}
-		
-		ICollection<TTarget> IDictionary<TKey, TTarget>.Values
-		{
-			get { return this; }
-		}
-		
-#if !NET40
-		IEnumerable<TKey> IReadOnlyDictionary<TKey, TTarget>.Keys
-		{
-			get { return _Dictionary.Keys; }
-		}
-		
-		IEnumerable<TTarget> IReadOnlyDictionary<TKey, TTarget>.Values
-		{
-			get { return this; }
-		}
-#endif
+
+		ICollection<TKey> IDictionary<TKey, TTarget>.Keys => _Keys;
+
+		ICollection<TTarget> IDictionary<TKey, TTarget>.Values => this;
+
+		IEnumerable<TKey> IReadOnlyDictionary<TKey, TTarget>.Keys => Parent.Keys;
+
+		IEnumerable<TTarget> IReadOnlyDictionary<TKey, TTarget>.Values => this;
 
 		//****************************************
-		
+
 		private class ChildEnumerator : IEnumerator<TTarget>
 		{	//****************************************
 			private readonly ReadOnlyDictionaryConverter<TKey, TSource, TTarget> _Parent;
 			private readonly IEnumerator<KeyValuePair<TKey, TSource>> _Enumerator;
-			
-			private TTarget _Current;
+
 			//****************************************
-			
+
 			public ChildEnumerator(ReadOnlyDictionaryConverter<TKey, TSource, TTarget> parent)
 			{
 				_Parent = parent;
-				_Enumerator = _Parent._Dictionary.GetEnumerator();
+				_Enumerator = _Parent.Parent.GetEnumerator();
 			}
 			
 			//****************************************
@@ -433,7 +294,7 @@ namespace Proximity.Utility.Collections
 			{
 				_Enumerator.Dispose();
 				
-				_Current = default(TTarget);
+				Current = default;
 			}
 			
 			public bool MoveNext()
@@ -441,9 +302,9 @@ namespace Proximity.Utility.Collections
 				var Result = _Enumerator.MoveNext();
 				
 				if (Result)
-					_Current = _Parent.ConvertTo(_Enumerator.Current.Value);
+					Current = _Parent.ConvertTo(_Enumerator.Current.Value);
 				else
-					_Current = default(TTarget);
+					Current = default;
 				
 				return Result;
 			}
@@ -452,20 +313,14 @@ namespace Proximity.Utility.Collections
 			{
 				_Enumerator.Reset();
 				
-				_Current = default(TTarget);
+				Current = default;
 			}
-			
+
 			//****************************************
-			
-			public TTarget Current
-			{
-				get { return _Current; }
-			}
-			
-			object IEnumerator.Current
-			{
-				get { return _Current; }
-			}
+
+			public TTarget Current { get; private set; }
+
+			object IEnumerator.Current => Current;
 		}
 		
 		/// <summary>
@@ -475,15 +330,14 @@ namespace Proximity.Utility.Collections
 		{	//****************************************
 			private readonly ReadOnlyDictionaryConverter<TKey, TSource, TTarget> _Parent;
 			private readonly IEnumerator<KeyValuePair<TKey, TSource>> _Enumerator;
-			
-			private KeyValuePair<TKey, TTarget> _Current;
+
 			//****************************************
-			
+
 			internal ChildPairEnumerator(ReadOnlyDictionaryConverter<TKey, TSource, TTarget> parent)
 			{
 				_Parent = parent;
-				_Enumerator = _Parent._Dictionary.GetEnumerator();
-				_Current = default(KeyValuePair<TKey, TTarget>);
+				_Enumerator = _Parent.Parent.GetEnumerator();
+				Current = default;
 			}
 			
 			//****************************************
@@ -495,7 +349,7 @@ namespace Proximity.Utility.Collections
 			{
 				_Enumerator.Dispose();
 				
-				_Current = new KeyValuePair<TKey, TTarget>();
+				Current = new KeyValuePair<TKey, TTarget>();
 			}
 
 			/// <summary>
@@ -509,7 +363,7 @@ namespace Proximity.Utility.Collections
 				if (Result)
 					SetCurrent(_Enumerator.Current);
 				else
-					_Current = new KeyValuePair<TKey, TTarget>();
+					Current = new KeyValuePair<TKey, TTarget>();
 				
 				return Result;
 			}
@@ -518,50 +372,38 @@ namespace Proximity.Utility.Collections
 			{
 				_Enumerator.Reset();
 				
-				_Current = new KeyValuePair<TKey, TTarget>();
+				Current = new KeyValuePair<TKey, TTarget>();
 			}
 			
 			//****************************************
 			
 			private void SetCurrent(KeyValuePair<TKey, TSource> current)
 			{
-				_Current = new KeyValuePair<TKey, TTarget>(current.Key, _Parent.ConvertTo(current.Value));
+				Current = new KeyValuePair<TKey, TTarget>(current.Key, _Parent.ConvertTo(current.Value));
 			}
-			
+
 			//****************************************
 
 			/// <summary>
 			/// Gets the current item being enumerated
 			/// </summary>
-			public KeyValuePair<TKey, TTarget> Current
-			{
-				get { return _Current; }
-			}
-			
-			object IEnumerator.Current
-			{
-				get { return _Current; }
-			}
+			public KeyValuePair<TKey, TTarget> Current { get; private set; }
+
+			object IEnumerator.Current => Current;
 		}
 
-		private class KeyCollection : ICollection<TKey>
-#if !NET40
-			, IReadOnlyCollection<TKey>
-#endif
+		private class KeyCollection : ICollection<TKey>, IReadOnlyCollection<TKey>
 		{	//****************************************
 			private readonly ReadOnlyDictionaryConverter<TKey, TSource, TTarget> _Source;
 			//****************************************
 
-			public KeyCollection(ReadOnlyDictionaryConverter<TKey, TSource, TTarget> source)
-			{
-				_Source = source;
-			}
+			public KeyCollection(ReadOnlyDictionaryConverter<TKey, TSource, TTarget> source) => _Source = source;
 
 			//****************************************
 
 			public void CopyTo(TKey[] array, int arrayIndex)
 			{
-				foreach (var MyKey in _Source._Dictionary.Keys)
+				foreach (var MyKey in _Source.Parent.Keys)
 				{
 					array[arrayIndex++] = MyKey;
 				}
@@ -569,47 +411,23 @@ namespace Proximity.Utility.Collections
 
 			//****************************************
 
-			void ICollection<TKey>.Add(TKey item)
-			{
-				throw new NotSupportedException("Dictionary is read-only");
-			}
+			void ICollection<TKey>.Add(TKey item) => throw new NotSupportedException("Dictionary is read-only");
 
-			void ICollection<TKey>.Clear()
-			{
-				throw new NotSupportedException("Dictionary is read-only");
-			}
+			void ICollection<TKey>.Clear() => throw new NotSupportedException("Dictionary is read-only");
 
-			bool ICollection<TKey>.Contains(TKey item)
-			{
-				return _Source._Dictionary.ContainsKey(item);
-			}
+			bool ICollection<TKey>.Contains(TKey item) => _Source.Parent.ContainsKey(item);
 
-			bool ICollection<TKey>.Remove(TKey item)
-			{
-				throw new NotSupportedException("Dictionary is read-only");
-			}
+			bool ICollection<TKey>.Remove(TKey item) => throw new NotSupportedException("Dictionary is read-only");
 
-			IEnumerator<TKey> IEnumerable<TKey>.GetEnumerator()
-			{
-				return _Source._Dictionary.Keys.GetEnumerator();
-			}
+			IEnumerator<TKey> IEnumerable<TKey>.GetEnumerator() => _Source.Parent.Keys.GetEnumerator();
 
-			IEnumerator IEnumerable.GetEnumerator()
-			{
-				return _Source._Dictionary.Keys.GetEnumerator();
-			}
+			IEnumerator IEnumerable.GetEnumerator() => _Source.Parent.Keys.GetEnumerator();
 
 			//****************************************
 
-			public int Count
-			{
-				get { return _Source._Dictionary.Count; }
-			}
+			public int Count => _Source.Parent.Count;
 
-			bool ICollection<TKey>.IsReadOnly
-			{
-				get { return true; }
-			}
+			bool ICollection<TKey>.IsReadOnly => true;
 		}
 	}
 }

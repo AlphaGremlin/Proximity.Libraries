@@ -201,7 +201,7 @@ namespace Proximity.Terminal
 				{
 					try
 					{
-						_ConsoleOutput.Peek(_ConsoleToken.Token).Wait();
+						_ConsoleOutput.Peek(_ConsoleToken.Token).GetAwaiter().GetResult();
 					}
 					catch (OperationCanceledException)
 					{

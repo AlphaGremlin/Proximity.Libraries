@@ -142,7 +142,7 @@ namespace Proximity.Utility.Collections
 			if (!TryAdd(item, true, out index, out var PreviousItem))
 				return;
 
-			if (OldSize > _Size)
+			if (_Size > OldSize)
 				OnCollectionChanged(NotifyCollectionChangedAction.Add, item, index);
 			else if (!EqualityComparer<TValue>.Default.Equals(item.Value, PreviousItem.Value)) // Only raise replace if we actually changed the value
 				OnCollectionChanged(NotifyCollectionChangedAction.Replace, item, PreviousItem, index);
@@ -979,7 +979,7 @@ namespace Proximity.Utility.Collections
 
 				TryAdd(Item, true, out var Index, out var PreviousItem);
 
-				if (OldSize > _Size)
+				if (_Size > OldSize)
 					OnCollectionChanged(NotifyCollectionChangedAction.Add, Item, Index);
 				else if (!EqualityComparer<TValue>.Default.Equals(value, PreviousItem.Value)) // Only raise replace if we actually changed the value
 					OnCollectionChanged(NotifyCollectionChangedAction.Replace, Item, PreviousItem, Index);

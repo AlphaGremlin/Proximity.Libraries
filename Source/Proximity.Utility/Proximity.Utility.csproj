@@ -34,9 +34,9 @@
 		<None Include="Logging\Outputs\XmlFileOutputElement.cs" />
 	</ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="System.Configuration.ConfigurationManager" Version="4.4.1" />
+		<PackageReference Include="System.Configuration.ConfigurationManager" Version="4.5.0" />
 		<PackageReference Include="System.Memory" Version="4.5.1" />
 		<PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.3.0" />
-		<PackageReference Include="System.Collections.Immutable" Version="1.4.0" />
+		<PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
 	</ItemGroup>
 </Project>
