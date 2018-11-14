@@ -79,11 +79,11 @@ namespace Proximity.Utility.Collections
 			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, changedItem, index));
 		}
 
-		internal void OnCollectionChanged(NotifyCollectionChangedAction action, TSource changedItem, int oldIndex, int newIndex)
+		internal void OnCollectionChanged(NotifyCollectionChangedAction action, TSource changedItem, int newIndex, int oldIndex)
 		{
 			OnPropertyChanged(CountString);
 
-			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, changedItem, oldIndex, newIndex));
+			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, changedItem, newIndex, oldIndex));
 		}
 
 		internal void OnCollectionChanged(NotifyCollectionChangedAction action, TSource newItem, TSource oldItem, int index)

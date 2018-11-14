@@ -1197,6 +1197,93 @@ namespace Proximity.Utility.Tests
 		}
 
 		[Test()]
+		public void EventRemoveLast()
+		{ //****************************************
+			var MyRecords = new ObservableDictionary<int, int>(10);
+			var MyEventArgs = new List<NotifyCollectionChangedEventArgs>();
+			//****************************************
+
+			for (int Index = 0; Index < 10; Index++)
+				MyRecords.Add(42 + Index, 84 + Index);
+
+			MyRecords.CollectionChanged += (sender, e) => MyEventArgs.Add(e);
+
+			MyRecords.RemoveAt(9);
+
+			//****************************************
+
+			Assert.AreEqual(9, MyRecords.Count, "Item count does not match");
+			Assert.AreEqual(1, MyEventArgs.Count, "Incorrect number of events raised");
+
+			var FirstEvent = MyEventArgs[0];
+
+			Assert.AreEqual(42 + 9, ((KeyValuePair<int, int>)FirstEvent.OldItems[0]).Key);
+
+			Assert.AreEqual(42 + 8, MyRecords.Get(8).Key);
+		}
+
+		[Test()]
+		public void EventRemoveSecondLast()
+		{ //****************************************
+			var MyRecords = new ObservableDictionary<int, int>(10);
+			var MyEventArgs = new List<NotifyCollectionChangedEventArgs>();
+			//****************************************
+
+			for (int Index = 0; Index < 10; Index++)
+				MyRecords.Add(42 + Index, 84 + Index);
+
+			MyRecords.CollectionChanged += (sender, e) => MyEventArgs.Add(e);
+
+			MyRecords.RemoveAt(8);
+
+			//****************************************
+
+			Assert.AreEqual(9, MyRecords.Count, "Item count does not match");
+			Assert.AreEqual(1, MyEventArgs.Count, "Incorrect number of events raised");
+
+			var FirstEvent = MyEventArgs[0];
+
+			Assert.AreEqual(42 + 8, ((KeyValuePair<int, int>)FirstEvent.OldItems[0]).Key);
+
+			Assert.AreEqual(42 + 9, MyRecords.Get(8).Key);
+		}
+
+		[Test()]
+		public void EventRemoveThirdLast()
+		{ //****************************************
+			var MyRecords = new ObservableDictionary<int, int>(10);
+			var MyEventArgs = new List<(NotifyCollectionChangedEventArgs args, KeyValuePair<int, int>[] copy)>();
+			//****************************************
+
+			for (int Index = 0; Index < 10; Index++)
+				MyRecords.Add(42 + Index, 84 + Index);
+
+			MyRecords.CollectionChanged += (sender, e) => MyEventArgs.Add((e, MyRecords.ToArray()));
+
+			MyRecords.RemoveAt(7);
+
+			//****************************************
+
+			Assert.AreEqual(9, MyRecords.Count, "Item count does not match");
+			Assert.AreEqual(2, MyEventArgs.Count, "Incorrect number of events raised");
+
+			var (FirstEvent, FirstVersion) = MyEventArgs[0];
+
+			Assert.AreEqual(NotifyCollectionChangedAction.Remove, FirstEvent.Action, "Incorrect Collection Action");
+			Assert.AreEqual(42 + 7, ((KeyValuePair<int, int>)FirstEvent.OldItems[0]).Key);
+			Assert.AreEqual(42 + 9, FirstVersion[8].Key);
+
+			var (SecondEvent, SecondVersion) = MyEventArgs[1];
+
+			Assert.AreEqual(NotifyCollectionChangedAction.Move, SecondEvent.Action, "Incorrect Collection Action");
+			Assert.AreEqual(8, SecondEvent.OldStartingIndex);
+			Assert.AreEqual(7, SecondEvent.NewStartingIndex);
+
+			Assert.AreEqual(42 + 9, SecondVersion[7].Key);
+			Assert.AreEqual(42 + 8, SecondVersion[8].Key);
+		}
+
+		[Test()]
 		public void EventRemoveMany()
 		{	//****************************************
 			var MySeed = Environment.TickCount;

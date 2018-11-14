@@ -286,7 +286,7 @@ namespace Proximity.Utility.Collections
 		/// <inheritdoc />
 		public override void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
 		{
-			if (arrayIndex + _Size >= array.Length)
+			if (arrayIndex + _Size > array.Length)
 				throw new ArgumentOutOfRangeException(nameof(arrayIndex));
 
 			for (int Index = 0; Index < _Size; Index++)
@@ -294,6 +294,13 @@ namespace Proximity.Utility.Collections
 				array[arrayIndex + Index] = GetByIndex(Index);
 			}
 		}
+
+		/// <summary>
+		/// Gets the key/value pair at the given index
+		/// </summary>
+		/// <param name="index">The index to retrieve</param>
+		/// <returns>They key/value pair at the requested index</returns>
+		public KeyValuePair<TKey, TValue> Get(int index) => GetByIndex(index);
 
 		/// <summary>
 		/// Returns an enumerator that iterates through the collection
@@ -342,6 +349,9 @@ namespace Proximity.Utility.Collections
 				if (TotalCollisions++ >= _Size)
 					throw new InvalidOperationException("State invalid");
 			}
+
+			if (_ShiftIndex.HasValue && Index > _ShiftIndex.Value)
+				Index--;
 
 			return Index;
 		}
@@ -517,7 +527,7 @@ namespace Proximity.Utility.Collections
 				_Buckets[Entry.HashCode % _Buckets.Length] = NextIndex + 1;
 			}
 
-			if (index == _Size - 1)
+			if (index == _Size -1)
 			{
 				// We're removing the last entry
 				// Clear it, then raise the event, and we're done
@@ -566,7 +576,7 @@ namespace Proximity.Utility.Collections
 
 			// We only need to notify of the move if we didn't just move the last item down one
 			if (index != _Size - 1)
-				OnCollectionChanged(NotifyCollectionChangedAction.Move, Item, _Size, index);
+				OnCollectionChanged(NotifyCollectionChangedAction.Move, Item, index, _Size - 1);
 		}
 
 		/// <inheritdoc />
@@ -854,15 +864,15 @@ namespace Proximity.Utility.Collections
 		}
 
 		/// <inheritdoc />
-		protected override void OnCollectionChanged(NotifyCollectionChangedAction action, KeyValuePair<TKey, TValue> changedItem, int oldIndex, int newIndex)
+		protected override void OnCollectionChanged(NotifyCollectionChangedAction action, KeyValuePair<TKey, TValue> changedItem, int newIndex, int oldIndex)
 		{
-			base.OnCollectionChanged(action, changedItem, oldIndex, newIndex);
+			base.OnCollectionChanged(action, changedItem, newIndex, oldIndex);
 
 			if (IsUpdating)
 				return;
 
-			Keys.OnCollectionChanged(action, changedItem.Key, oldIndex, newIndex);
-			Values.OnCollectionChanged(action, changedItem.Value, oldIndex, newIndex);
+			Keys.OnCollectionChanged(action, changedItem.Key, newIndex, oldIndex);
+			Values.OnCollectionChanged(action, changedItem.Value, newIndex, oldIndex);
 		}
 
 		/// <inheritdoc />
@@ -916,10 +926,6 @@ namespace Proximity.Utility.Collections
 		}
 
 		//****************************************
-
-		private KeyValuePair<int, KeyValuePair<TKey, TValue>> CreatePair(KeyValuePair<TKey, TValue> input) => new KeyValuePair<int, KeyValuePair<TKey, TValue>>(Comparer.GetHashCode(input.Key), input);
-
-		private static int SelectKey(KeyValuePair<int, KeyValuePair<TKey, TValue>> input) => input.Key;
 
 		private static void Reindex(int[] buckets, Entry[] entries, int startIndex, int size)
 		{
@@ -1057,13 +1063,12 @@ namespace Proximity.Utility.Collections
 			/// <inheritdoc />
 			public override void CopyTo(TKey[] array, int arrayIndex)
 			{	//****************************************
-				var MyValues = _Parent._Entries;
 				var MySize = _Parent._Size;
 				//****************************************
 
 				for (int Index = 0; Index < MySize; Index++)
 				{
-					array[arrayIndex++] = MyValues[Index].Key;
+					array[arrayIndex++] = _Parent.GetByIndex(Index).Key;
 				}
 			}
 
@@ -1125,7 +1130,7 @@ namespace Proximity.Utility.Collections
 
 				for (int Index = 0; Index < MySize; Index++)
 				{
-					array[arrayIndex++] = MyValues[Index].Value;
+					array[arrayIndex++] = _Parent.GetByIndex(Index).Value;
 				}
 			}
 

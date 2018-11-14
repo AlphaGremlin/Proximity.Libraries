@@ -287,9 +287,9 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="action">The Move action</param>
 		/// <param name="changedItem">The item that has been added or removed</param>
-		/// <param name="oldIndex">The index of the item that is being moved from</param>
 		/// <param name="newIndex">The index of the item that is being moved to</param>
-		protected virtual void OnCollectionChanged(NotifyCollectionChangedAction action, TValue changedItem, int oldIndex, int newIndex)
+		/// <param name="oldIndex">The index of the item that is being moved from</param>
+		protected virtual void OnCollectionChanged(NotifyCollectionChangedAction action, TValue changedItem, int newIndex, int oldIndex)
 		{
 			HasChanged = true;
 
@@ -298,7 +298,7 @@ namespace Proximity.Utility.Collections
 
 			OnPropertyChanged();
 
-			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, changedItem, oldIndex, newIndex));
+			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, changedItem, newIndex, oldIndex));
 		}
 
 		/// <summary>
