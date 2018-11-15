@@ -1292,8 +1292,8 @@ namespace Proximity.Utility.Tests
 			int EventCount = 0;
 			//****************************************
 
-			for (int Index = 0; Index < 1024; Index++)
-				MyRecords.Add(MyRandom.Next(), MyRandom.Next());
+			while (MyRecords.Count < 1024)
+				MyRecords[MyRandom.Next()] = MyRandom.Next();
 
 			MyRecords.CollectionChanged += (sender, e) => { if (e.Action == NotifyCollectionChangedAction.Remove) EventCount++; };
 
@@ -1304,6 +1304,31 @@ namespace Proximity.Utility.Tests
 
 			Assert.AreEqual(0, MyRecords.Count, "Item count does not match");
 			Assert.AreEqual(1024, EventCount, "Event Count does not match");
+		}
+
+		[Test(), Repeat(2)]
+		public void EventExercise()
+		{ //****************************************
+			var MySeed = Environment.TickCount;
+			var MyRandom = new Random(MySeed);
+			var MyRecords = new ObservableDictionary<int, int>(1024);
+			var Monitor = new ObservableMonitor<KeyValuePair<int, int>>(MyRecords);
+			//****************************************
+
+			while (MyRecords.Count < 1024)
+				MyRecords[MyRandom.Next()] = MyRandom.Next();
+
+			for (int Index = 0; Index < 1024; Index++)
+			{
+				if (Index % 2 == 0)
+					MyRecords.RemoveAt(MyRandom.Next(MyRecords.Count));
+				else
+					MyRecords[MyRandom.Next()] = MyRandom.Next();
+			}
+
+			//****************************************
+
+			CollectionAssert.AreEqual(MyRecords, Monitor.ToArray());
 		}
 
 		//****************************************

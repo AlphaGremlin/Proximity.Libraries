@@ -576,7 +576,7 @@ namespace Proximity.Utility.Collections
 
 			// We only need to notify of the move if we didn't just move the last item down one
 			if (index != _Size - 1)
-				OnCollectionChanged(NotifyCollectionChangedAction.Move, Item, index, _Size - 1);
+				OnCollectionChanged(NotifyCollectionChangedAction.Move, Entry.Item, index, _Size - 1);
 		}
 
 		/// <inheritdoc />
