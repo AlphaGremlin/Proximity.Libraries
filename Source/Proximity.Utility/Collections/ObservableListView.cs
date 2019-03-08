@@ -152,9 +152,9 @@ namespace Proximity.Utility.Collections
 
 				_VisibleSize = GetVisibleCount();
 			}
-			
-			if (source is INotifyCollectionChanged)
-				((INotifyCollectionChanged)source).CollectionChanged += OnSourceChanged;
+
+			if (source is INotifyCollectionChanged CollectionChanged)
+				CollectionChanged.CollectionChanged += OnSourceChanged;
 		}
 
 		//****************************************
@@ -189,8 +189,8 @@ namespace Proximity.Utility.Collections
 		/// <remarks>Detaches event handlers</remarks>
 		public virtual void Dispose()
 		{
-			if (_Source is INotifyCollectionChanged)
-				((INotifyCollectionChanged)_Source).CollectionChanged -= OnSourceChanged;
+			if (_Source is INotifyCollectionChanged CollectionChanged)
+				CollectionChanged.CollectionChanged -= OnSourceChanged;
 		}
 
 		/// <summary>
@@ -224,12 +224,12 @@ namespace Proximity.Utility.Collections
 
 		void IList.Clear() => throw new NotSupportedException("List is read-only");
 
-		bool IList.Contains(object value) => value is TValue MyValue && Contains(MyValue);
+		bool IList.Contains(object value) => value is TValue Value && Contains(Value);
 
 		int IList.IndexOf(object value)
 		{
-			if (value is TValue MyValue)
-				return IndexOf(MyValue);
+			if (value is TValue Value)
+				return IndexOf(Value);
 
 			return -1;
 		}
@@ -819,7 +819,7 @@ namespace Proximity.Utility.Collections
 			{
 				_Parent = parent;
 				_Index = 0;
-				Current = default(TValue);
+				Current = default;
 			}
 
 			//****************************************
@@ -829,7 +829,7 @@ namespace Proximity.Utility.Collections
 			/// </summary>
 			public void Dispose()
 			{
-				Current = default(TValue);
+				Current = default;
 			}
 
 			/// <summary>
@@ -841,7 +841,7 @@ namespace Proximity.Utility.Collections
 				if (_Index >= _Parent._VisibleSize)
 				{
 					_Index = _Parent._VisibleSize + 1;
-					Current = default(TValue);
+					Current = default;
 
 					return false;
 				}
@@ -854,7 +854,7 @@ namespace Proximity.Utility.Collections
 			void IEnumerator.Reset()
 			{
 				_Index = 0;
-				Current = default(TValue);
+				Current = default;
 			}
 
 			//****************************************

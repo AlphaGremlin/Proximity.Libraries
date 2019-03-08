@@ -65,9 +65,9 @@ namespace Proximity.Terminal
 			var IndentLevel = LogManager.SectionDepth;
 			//****************************************
 
-			if (newEntry is ConsoleLogEntry)
+			if (newEntry is ConsoleLogEntry ConsoleEntry)
 			{
-				MyRecord = new ConsoleRecord((ConsoleLogEntry)newEntry);
+				MyRecord = new ConsoleRecord(ConsoleEntry);
 			}
 			else
 			{
@@ -87,9 +87,9 @@ namespace Proximity.Terminal
 			
 			//****************************************
 				
-			if (newEntry is ExceptionLogEntry)
+			if (newEntry is ExceptionLogEntry ExceptionEntry)
 			{
-				foreach(string EntryLine in ((ExceptionLogEntry)newEntry).Exception.ToString().Split(new string[] {Environment.NewLine}, StringSplitOptions.None))
+				foreach(string EntryLine in ExceptionEntry.Exception.ToString().Split(new string[] {Environment.NewLine}, StringSplitOptions.None))
 				{
 					MyBuilder.Append(' ', IndentLevel * 2);
 					MyBuilder.Append(EntryLine);

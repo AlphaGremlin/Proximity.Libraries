@@ -7,8 +7,8 @@
 		<Copyright>Copyright © Daniel Chandler 2018</Copyright>
 		<Product>Proximity Utility Library</Product>
 		<AssemblyVersion>19.0.0.0</AssemblyVersion>
-		<FileVersion>19.1.0.0</FileVersion>
-		<Version>19.1.0</Version>
+		<FileVersion>19.2.0.0</FileVersion>
+		<Version>19.2.0</Version>
 		<Description>Proximity Utility Library</Description>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -16,6 +16,9 @@
 		<AssemblyOriginatorKeyFile>..\Proximity.snk</AssemblyOriginatorKeyFile>
 		<OutputPath>..\..\Build</OutputPath>
 		<LangVersion>Latest</LangVersion>
+		<PackageProjectUrl>https://github.com/AlphaGremlin/Proximity.Libraries</PackageProjectUrl>
+		<RepositoryUrl></RepositoryUrl>
+		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
 	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)'=='Debug'">
 		<DebugSymbols>true</DebugSymbols>

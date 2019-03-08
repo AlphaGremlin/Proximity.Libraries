@@ -36,6 +36,7 @@ namespace Proximity.Utility.Collections
 		/// Creates a new pre-filled observable dictionary
 		/// </summary>
 		/// <param name="dictionary">The dictionary to retrieve the contents from</param>
+		/// <remarks>The items are not guaranteed to be stored in the provided index order</remarks>
 		public ObservableDictionary(IEnumerable<KeyValuePair<TKey, TValue>> dictionary) : this(dictionary, EqualityComparer<TKey>.Default)
 		{
 		}
@@ -61,6 +62,7 @@ namespace Proximity.Utility.Collections
 		/// </summary>
 		/// <param name="dictionary">The dictionary to retrieve the contents from</param>
 		/// <param name="comparer">The equality comparer to use</param>
+		/// <remarks>The items are not guaranteed to be stored in the provided index order</remarks>
 		public ObservableDictionary(IEnumerable<KeyValuePair<TKey, TValue>> dictionary, IEqualityComparer<TKey> comparer)
 		{
 			Comparer = comparer;
@@ -71,15 +73,23 @@ namespace Proximity.Utility.Collections
 			_Buckets = new int[Capacity];
 			_Entries = new Entry[Capacity];
 
-			int Index = 0;
-
-			foreach (var MyPair in dictionary)
 			{
-				ref var Entry = ref _Entries[Index++];
-				
-				Entry.Item = MyPair;
-				Entry.HashCode = comparer.GetHashCode(MyPair.Key) & HashCodeMask;
+				int Index = 0;
+
+				foreach (var MyPair in dictionary)
+				{
+					ref var Entry = ref _Entries[Index++];
+
+					Entry.Item = MyPair;
+					Entry.HashCode = comparer.GetHashCode(MyPair.Key) & HashCodeMask;
+				}
 			}
+
+			// Get everything into HashCode order
+			Array.Sort(_Entries);
+
+			// Check the new items don't have any duplicates
+			VerifyDistinct(_Entries, _Size, comparer);
 
 			Reindex(_Buckets, _Entries, 0, _Size);
 
@@ -173,57 +183,31 @@ namespace Proximity.Utility.Collections
 			var Entries = _Entries;
 
 			// Check the new items don't have any duplicates
-			{
-				int Index = 0;
-
-				while (Index < NewItems.Length)
-				{
-					int StartIndex = Index;
-					var CurrentItem = NewItems[Index];
-
-					// Find all the items that have the same Hash
-					do
-					{
-						Index++;
-					}
-					while (Index < NewItems.Length && NewItems[Index].HashCode == CurrentItem.HashCode);
-
-					// Is there more than one item with the same Hash?
-					while (Index - StartIndex > 1)
-					{
-						// Compare the first item to the others
-						for (int SubIndex = StartIndex + 1; SubIndex < Index; SubIndex++)
-						{
-							if (Comparer.Equals(CurrentItem.Key, NewItems[SubIndex].Key))
-								throw new ArgumentException("Input collection has duplicates");
-						}
-
-						// Move up the first item
-						StartIndex++;
-					}
-				}
-			}
+			VerifyDistinct(NewItems, NewItems.Length, Comparer);
 
 			// No duplicates in the new items. Check the keys aren't already in the Dictionary
-			for (int Index = 0; Index < NewItems.Length; Index++)
+			if (_Size > 0)
 			{
-				var TotalCollisions = 0;
-				var Item = NewItems[Index];
-
-				// Find the bucket we belong to
-				ref var Bucket = ref _Buckets[Item.HashCode % _Buckets.Length];
-				var EntryIndex = Bucket - 1;
-
-				// Check for collisions
-				while (EntryIndex >= 0)
+				for (int Index = 0; Index < NewItems.Length; Index++)
 				{
-					if (Entries[EntryIndex].HashCode == Item.HashCode && Comparer.Equals(Entries[EntryIndex].Key, Item.Key))
-						throw new ArgumentException("An item with the same key has already been added.");
+					var TotalCollisions = 0;
+					var Item = NewItems[Index];
 
-					EntryIndex = Entries[EntryIndex].NextIndex;
+					// Find the bucket we belong to
+					ref var Bucket = ref _Buckets[Item.HashCode % _Buckets.Length];
+					var EntryIndex = Bucket - 1;
 
-					if (TotalCollisions++ >= InsertIndex)
-						throw new InvalidOperationException("State invalid");
+					// Check for collisions
+					while (EntryIndex >= 0)
+					{
+						if (Entries[EntryIndex].HashCode == Item.HashCode && Comparer.Equals(Entries[EntryIndex].Key, Item.Key))
+							throw new ArgumentException("An item with the same key has already been added.");
+
+						EntryIndex = Entries[EntryIndex].NextIndex;
+
+						if (TotalCollisions++ >= InsertIndex)
+							throw new InvalidOperationException("State invalid");
+					}
 				}
 			}
 
@@ -329,6 +313,9 @@ namespace Proximity.Utility.Collections
 		{
 			if (key == null)
 				throw new ArgumentNullException(nameof(key));
+
+			if (_Size == 0)
+				return -1;
 
 			var HashCode = Comparer.GetHashCode(key) & HashCodeMask;
 			var Entries = _Entries;
@@ -944,6 +931,38 @@ namespace Proximity.Utility.Collections
 					entries[NextIndex].PreviousIndex = Index;
 
 				buckets[Bucket] = Index + 1;
+			}
+		}
+
+		private static void VerifyDistinct(Entry[] entries, int size, IEqualityComparer<TKey> comparer)
+		{
+			int Index = 0;
+
+			while (Index < size)
+			{
+				int StartIndex = Index;
+				var CurrentItem = entries[Index];
+
+				// Find all the items that have the same Hash
+				do
+				{
+					Index++;
+				}
+				while (Index < size && entries[Index].HashCode == CurrentItem.HashCode);
+
+				// Is there more than one item with the same Hash?
+				while (Index - StartIndex > 1)
+				{
+					// Compare the first item to the others
+					for (int SubIndex = StartIndex + 1; SubIndex < Index; SubIndex++)
+					{
+						if (comparer.Equals(CurrentItem.Key, entries[SubIndex].Key))
+							throw new ArgumentException("Input collection has duplicates");
+					}
+
+					// Move up the first item
+					StartIndex++;
+				}
 			}
 		}
 

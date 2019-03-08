@@ -29,15 +29,11 @@ namespace Proximity.Terminal
 		/// <param name="typeData">A <see cref="TerminalTypeSet"/>, <see cref="TerminalInstance" />, <see cref="TerminalCommandSet" /> or <see cref="TerminalVariable" /></param>
 		public static void HelpOn(object typeData)
 		{
-			if (typeData is TerminalTypeSet)
+			if (typeData is TerminalTypeSet MyTypeSet)
 			{
-				var MyTypeSet = (TerminalTypeSet)typeData;
-				
 				using (Log.VerboseSection("Usage information for '{0}':", MyTypeSet.TypeName))
 				{
-					var MyDefault = MyTypeSet.Default != null ? MyTypeSet.Default.Target : null;
-					
-					if (MyDefault != null)
+					if (MyTypeSet.Default?.Target != null)
 					{
 						if (MyTypeSet.Default.Type.Commands.Count() != 0)
 						{
@@ -65,12 +61,10 @@ namespace Proximity.Terminal
 					}
 				}
 			}
-			else if (typeData is TerminalInstance)
+			else if (typeData is TerminalInstance MyInstance)
 			{
-				var MyInstance = (TerminalInstance)typeData;
-				
 				Log.Info("Instance: {0}", MyInstance.Target);
-				
+
 				if (MyInstance.Type.Commands.Count() != 0)
 				{
 					using (Log.VerboseSection("Available Commands:"))
@@ -78,7 +72,7 @@ namespace Proximity.Terminal
 						Log.Info(string.Join(", ", MyInstance.Type.Commands.OrderBy(set => set)));
 					}
 				}
-				
+
 				if (MyInstance.Type.Variables.Count() != 0)
 				{
 					using (Log.VerboseSection("Available Variables:"))
@@ -87,20 +81,18 @@ namespace Proximity.Terminal
 					}
 				}
 			}
-			else if (typeData is TerminalCommandSet)
+			else if (typeData is TerminalCommandSet MyCommandSet)
 			{
 				using (Log.VerboseSection("Available Overloads:"))
 				{
-					foreach (var MyCommand in ((TerminalCommandSet)typeData).Commands)
+					foreach (var MyCommand in MyCommandSet.Commands)
 					{
 						Log.Info("{0}({1})\t{2}", MyCommand.Name, string.Join(", ", MyCommand.Method.GetParameters().Select(param => string.Format("{0}: {1}", param.Name, param.ParameterType.Name))), MyCommand.Description);
 					}
 				}
 			}
-			else if (typeData is TerminalVariable)
+			else if (typeData is TerminalVariable MyVariable)
 			{
-				var MyVariable = (TerminalVariable)typeData;
-				
 				Log.Info("{0}: {1}\t{2}", MyVariable.Name, MyVariable.Type.Name, MyVariable.Description);
 			}
 		}

@@ -179,12 +179,12 @@ namespace Proximity.Utility.Collections
 			return MyCount;
 		}
 
-		bool IList.Contains(object value) => value is TValue && Contains((TValue)value);
+		bool IList.Contains(object value) => value is TValue Value && Contains(Value);
 
 		int IList.IndexOf(object value)
 		{
-			if (value is TValue)
-				return IndexOf((TValue)value);
+			if (value is TValue Value)
+				return IndexOf(Value);
 
 			return -1;
 		}
@@ -195,8 +195,8 @@ namespace Proximity.Utility.Collections
 
 		void IList.Remove(object value)
 		{
-			if (value is TValue)
-				Remove((TValue)value);
+			if (value is TValue Value)
+				Remove(Value);
 		}
 
 		void ICollection.CopyTo(Array array, int index) => CopyTo((TValue[])array, index);

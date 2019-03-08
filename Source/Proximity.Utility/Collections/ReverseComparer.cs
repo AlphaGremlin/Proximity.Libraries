@@ -1,8 +1,4 @@
-﻿/****************************************\
- ReverseComparer.cs
- Created: 2012-05-22
-\****************************************/
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using Proximity.Utility.Collections.Reverse;
@@ -40,15 +36,15 @@ namespace Proximity.Utility.Collections
 		
 		int IComparer.Compare(object x, object y)
 		{
-			if (x == null)
-				return (y == null) ? 0 : 1;
-			else if (y == null)
+			if (x is null)
+				return (y is null) ? 0 : 1;
+			else if (y is null)
 				return -1;
-			
-			if (!(x is TValue) || !(y is TValue))
-				throw new ArgumentException("Argument is not valid for this comparer");
-			
-			return Compare((TValue)x, (TValue)y);
+
+			if (x is TValue X && y is TValue Y)
+				return Compare(X, Y);
+
+			throw new ArgumentException("Argument is not valid for this comparer");
 		}
 		
 		//****************************************
@@ -66,25 +62,16 @@ namespace Proximity.Utility.Collections
 				return _DefaultComparer;
 			}
 		}
-		
+
 		/// <summary>
 		/// Creates a comparer wrapping an existing comparer, reversing its sorting order
 		/// </summary>
 		/// <param name="comparer">The IComparer implementation to reverse</param>
 		/// <returns>A reversed comparer wrapping the given comparer</returns>
-		public static ReverseComparer<TValue> Wrapped(IComparer<TValue> comparer)
-		{
-			return new WrappedComparer<TValue>(comparer);
-		}
-		
+		public static ReverseComparer<TValue> Wrapped(IComparer<TValue> comparer) => new WrappedComparer<TValue>(comparer);
+
 		//****************************************
-		
-#if NETSTANDARD1_3
-		private static ReverseComparer<TValue> CreateComparer()
-		{
-			return new WrappedComparer<TValue>(Comparer<TValue>.Default);
-		}
-#else
+
 		private static ReverseComparer<TValue> CreateComparer()
 		{	//****************************************
 			var MyType = typeof(TValue);
@@ -107,6 +94,5 @@ namespace Proximity.Utility.Collections
 			// Nope, just use the default object comparer then
 			return new ObjectComparer<TValue>();
 		}
-#endif
 	}
 }

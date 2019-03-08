@@ -128,17 +128,17 @@ namespace Proximity.Utility.Collections
 			if (Count == 0)
 				return false;
 
-			if (other is ICollection<TValue>)
+			// If the other collection is empty, we're not, so we're automatically a superset
+			if (other is ICollection<TValue> OtherCollection)
 			{
-				int OtherCount = ((ICollection<TValue>)other).Count;
-
-				// If the other collection is empty, we're not, so we're automatically a superset
-				if (OtherCount == 0)
+				if (OtherCollection.Count == 0)
 					return true;
 
-				// If there are more items in the other collection than in us, we cannot be a superset
-				if (OtherCount > Count)
-					return false;
+				// There could be more items in the enumeration, but they might also be duplicates, so we can't rely on comparing sizes
+			}
+			else if (!other.Any())
+			{
+				return true;
 			}
 
 			var BitMask = new BitArray(Count, false);
@@ -177,7 +177,7 @@ namespace Proximity.Utility.Collections
 				return true;
 
 			// If there are less items in the other collection than in us, we cannot be a subset
-			if (other is ICollection<TValue> && ((ICollection<TValue>)other).Count < Count)
+			if (other is ICollection<TValue> OtherCollection && OtherCollection.Count < Count)
 				return false;
 
 			var BitMask = new BitArray(Count, false);
@@ -217,14 +217,7 @@ namespace Proximity.Utility.Collections
 			if (Count == 0)
 				return false;
 
-			if (other is ICollection<TValue>)
-			{
-				int OtherCount = ((ICollection<TValue>)other).Count;
-
-				// If there are more items in the other collection than in us, we cannot be a superset
-				if (OtherCount > Count)
-					return false;
-			}
+			// There could be more items in the enumeration, but they might also be duplicates, so we can't rely on comparing sizes
 
 			// Check that we have every item in the enumeration
 			foreach (var MyItem in other)

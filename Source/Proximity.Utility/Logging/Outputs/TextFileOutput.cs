@@ -42,7 +42,7 @@ namespace Proximity.Utility.Logging.Outputs
 			_OutputBuilder = new StringBuilder();
 			
 			OutputFormatPre = "{0:yyyy-MM-dd HH:mm:ss.fff}:\t";
-			OutputFormatPost = "{4,16}: {7}";
+			OutputFormatPost = "{4}: {7}";
 		}
 		
 		//****************************************
@@ -120,9 +120,9 @@ namespace Proximity.Utility.Logging.Outputs
 			
 			OutputBuilder.AppendFormat(CultureInfo.InvariantCulture, OutputFormatPost, Arguments);
 			
-			if (entry is ExceptionLogEntry)
+			if (entry is ExceptionLogEntry ExceptionEntry)
 			{
-				foreach(string EntryLine in ((ExceptionLogEntry)entry).Exception.ToString().Split(new string[] {Environment.NewLine}, StringSplitOptions.None))
+				foreach(string EntryLine in ExceptionEntry.Exception.ToString().Split(new string[] {Environment.NewLine}, StringSplitOptions.None))
 				{
 					OutputBuilder.AppendLine();
 					

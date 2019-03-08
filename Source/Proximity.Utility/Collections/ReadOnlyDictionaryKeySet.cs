@@ -64,7 +64,7 @@ namespace Proximity.Utility.Collections
 				return true;
 
 			// If there are less items in the other collection than in us, we cannot be a subset
-			if (other is ICollection<TKey> && ((ICollection<TKey>)other).Count < _Set.Count)
+			if (other is ICollection<TKey> OtherCollection && OtherCollection.Count < _Set.Count)
 				return false;
 
 			var UniqueItems = new HashSet<TKey>(_Comparer);
@@ -95,14 +95,7 @@ namespace Proximity.Utility.Collections
 			if (_Set.Count == 0)
 				return false;
 
-			if (other is ICollection<TKey>)
-			{
-				int OtherCount = ((ICollection<TKey>)other).Count;
-
-				// If there are more items in the other collection than in us, we cannot be a superset
-				if (OtherCount > _Set.Count)
-					return false;
-			}
+			// There could be more items in the enumeration, but they might also be duplicates, so we can't rely on comparing sizes
 
 			// Check that we have every item in the enumeration
 			foreach (var MyItem in other)
@@ -121,21 +114,22 @@ namespace Proximity.Utility.Collections
 		/// <returns>True if this set is a strict superset of the collection, otherwise False</returns>
 		public bool IsProperSupersetOf(IEnumerable<TKey> other)
 		{
-			// If we're empty, we cannot be a proper superset
+			// If we're empty, we cannot be a proper superset even if the collection is also empty
 			if (_Set.Count == 0)
 				return false;
 
-			if (other is ICollection<TKey>)
+			// If the other collection is empty, we're not, so we're automatically a superset
+			if (other is ICollection<TKey> OtherCollection)
 			{
-				int OtherCount = ((ICollection<TKey>)other).Count;
-
 				// If the other collection is empty, we're not, so we're automatically a superset
-				if (OtherCount == 0)
+				if (OtherCollection.Count == 0)
 					return true;
 
-				// If there are more items in the other collection than in us, we cannot be a superset
-				if (OtherCount > _Set.Count)
-					return false;
+				// There could be more items in the enumeration, but they might also be duplicates, so we can't rely on comparing sizes
+			}
+			else if (!other.Any())
+			{
+				return true;
 			}
 
 			var UniqueItems = new HashSet<TKey>(_Comparer);
@@ -164,7 +158,7 @@ namespace Proximity.Utility.Collections
 				return other.Any(); // For a proper subset, there has to be at least one item in Other that isn't in us
 
 			// If there are less items in the other collection than in us, we cannot be a subset
-			if (other is ICollection<TKey> && ((ICollection<TKey>)other).Count < _Set.Count)
+			if (other is ICollection<TKey> OtherCollection && OtherCollection.Count < _Set.Count)
 				return false;
 
 			var UniqueItems = new HashSet<TKey>(_Comparer);

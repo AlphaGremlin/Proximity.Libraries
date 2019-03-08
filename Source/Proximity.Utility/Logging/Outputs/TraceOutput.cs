@@ -63,8 +63,8 @@ namespace Proximity.Utility.Logging.Outputs
 			Trace.IndentLevel = Target.Context.Count;
 			Trace.WriteLine(newEntry.Text);
 			
-			if (newEntry is ExceptionLogEntry)
-				foreach(string EntryLine in ((ExceptionLogEntry)newEntry).Exception.ToString().Split(new string[] {Environment.NewLine}, StringSplitOptions.None))
+			if (newEntry is ExceptionLogEntry ExceptionEntry)
+				foreach(string EntryLine in ExceptionEntry.Exception.ToString().Split(new string[] {Environment.NewLine}, StringSplitOptions.None))
 					Trace.WriteLine(EntryLine);
 
 			/*			

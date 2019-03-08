@@ -34,7 +34,7 @@ namespace Proximity.Utility.Configuration
 		/// <inheritdoc />
 		public override bool Equals(object compareTo)
 		{
-			return base.Equals(compareTo) && (compareTo is TypedElementCollection<TValue>) && CompareItemsWith((TypedElementCollection<TValue>)compareTo);
+			return base.Equals(compareTo) && (compareTo is TypedElementCollection<TValue> ElementCollection) && CompareItemsWith(ElementCollection);
 		}
 		
 		/// <inheritdoc />

@@ -1,8 +1,4 @@
-﻿/****************************************\
- ObservableDictionaryCollection.cs
- Created: 2015-02-26
-\****************************************/
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -116,14 +112,14 @@ namespace Proximity.Utility.Collections
 
 		void IList.Clear() => throw new NotSupportedException("Collection is read-only");
 
-		bool IList.Contains(object value) => value is TSource && Contains((TSource)value);
+		bool IList.Contains(object value) => value is TSource Value && Contains(Value);
 
 		void ICollection.CopyTo(Array array, int arrayIndex) => InternalCopyTo(array, arrayIndex);
 
 		int IList.IndexOf(object value)
 		{
-			if (value is TSource)
-				return IndexOf((TSource)value);
+			if (value is TSource Value)
+				return IndexOf(Value);
 
 			return -1;
 		}
