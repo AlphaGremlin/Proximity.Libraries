@@ -518,7 +518,7 @@ namespace Proximity.Utility.Tests
 			bool TaskRan = false;
 			//****************************************
 
-			var MyTask = MyQueue.QueueTask(() => { TaskRan = true; return VoidStruct.EmptyTask; });
+			var MyTask = MyQueue.QueueTask(() => { TaskRan = true; return Task.CompletedTask; });
 
 			await MyTask;
 
@@ -595,7 +595,7 @@ namespace Proximity.Utility.Tests
 			var MyQueue = new TaskStream();
 			//****************************************
 
-			var MyTask = MyQueue.QueueTask(() => { Assert.Pass("Completed"); return VoidStruct.EmptyTask; });
+			var MyTask = MyQueue.QueueTask(() => { Assert.Pass("Completed"); return Task.CompletedTask; });
 
 			await MyTask;
 
@@ -873,7 +873,7 @@ namespace Proximity.Utility.Tests
 			using (var MySource = new CancellationTokenSource())
 			{
 				FirstTask = MyQueue.QueueTask(() => FirstSource.Task);
-				SecondTask = MyQueue.QueueTask(() => { SecondRan = true; return VoidStruct.EmptyTask; }, MySource.Token);
+				SecondTask = MyQueue.QueueTask(() => { SecondRan = true; return Task.CompletedTask; }, MySource.Token);
 
 				await Task.Yield();
 
@@ -914,7 +914,7 @@ namespace Proximity.Utility.Tests
 			using (var MySource = new CancellationTokenSource())
 			{
 				FirstTask = MyQueue.QueueTask(() => FirstSource.Task);
-				SecondTask = MyQueue.QueueTask((value) => { SecondRan = true; return VoidStruct.EmptyTask; }, 42, MySource.Token);
+				SecondTask = MyQueue.QueueTask((value) => { SecondRan = true; return Task.CompletedTask; }, 42, MySource.Token);
 
 				await Task.Yield();
 
@@ -1106,7 +1106,7 @@ namespace Proximity.Utility.Tests
 			using (var MySource = new CancellationTokenSource())
 			{
 				FirstTask = MyQueue.QueueTask(() => FirstSource.Task);
-				SecondTask = MyQueue.QueueTask(() => { SecondRan = true; return VoidStruct.EmptyTask; }, MySource.Token);
+				SecondTask = MyQueue.QueueTask(() => { SecondRan = true; return Task.CompletedTask; }, MySource.Token);
 				ThirdTask = MyQueue.QueueTask(() => { ThirdRan = true; return ThirdSource.Task; });
 
 				await Task.Yield();

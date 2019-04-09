@@ -4,11 +4,11 @@
 		<TargetFrameworks>netstandard2.0</TargetFrameworks>
 		<Authors>Daniel Chandler</Authors>
 		<Company>Proximity Interactive</Company>
-		<Copyright>Copyright © Daniel Chandler 2018</Copyright>
+		<Copyright>Copyright © Daniel Chandler 2019</Copyright>
 		<Product>Proximity Utility Library</Product>
-		<AssemblyVersion>19.0.0.0</AssemblyVersion>
-		<FileVersion>19.2.0.0</FileVersion>
-		<Version>19.2.0</Version>
+		<AssemblyVersion>20.0.0.0</AssemblyVersion>
+		<FileVersion>20.0.0.0</FileVersion>
+		<Version>20.0.0</Version>
 		<Description>Proximity Utility Library</Description>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -27,19 +27,16 @@
 	<ItemGroup>
 		<Compile Remove="Collections\ObservableSortedSubset.cs" />
 		<Compile Remove="Diagnostics\ExceptionExtensions.cs" />
-		<Compile Remove="Logging\Outputs\XmlFileOutput.cs" />
-		<Compile Remove="Logging\Outputs\XmlFileOutputElement.cs" />
 	</ItemGroup>
 	<ItemGroup>
 		<None Include="Collections\ObservableSortedSubset.cs" />
 		<None Include="Diagnostics\ExceptionExtensions.cs" />
-		<None Include="Logging\Outputs\XmlFileOutput.cs" />
-		<None Include="Logging\Outputs\XmlFileOutputElement.cs" />
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="System.Configuration.ConfigurationManager" Version="4.5.0" />
-		<PackageReference Include="System.Memory" Version="4.5.1" />
+		<PackageReference Include="System.Memory" Version="4.5.2" />
 		<PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.3.0" />
 		<PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
+		<PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.2" />
 	</ItemGroup>
 </Project>

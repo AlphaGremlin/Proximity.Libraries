@@ -122,7 +122,7 @@ namespace Proximity.Utility.Threading
 
 			// Is this keyed lock disposing?
 			if (_Dispose != null)
-				return new ObjectDisposedException("AsyncKeyedLock", "Keyed Lock has been disposed of").ToTask<IDisposable>();
+				return Task.FromException<IDisposable>(new ObjectDisposedException("AsyncKeyedLock", "Keyed Lock has been disposed of"));
 
 			// Try and add ourselves to the lock queue
 			for (; ;)
@@ -131,7 +131,7 @@ namespace Proximity.Utility.Threading
 				{
 					// Has the lock been disposed? We may have been disposed while adding
 					if (!OldValue.IsEmpty && OldValue.Peek().Task.AsyncState == null)
-						return new ObjectDisposedException("AsyncKeyedLock", "Keyed Lock has been disposed of").ToTask<IDisposable>();
+						return Task.FromException<IDisposable>(new ObjectDisposedException("AsyncKeyedLock", "Keyed Lock has been disposed of"));
 
 					// No, so add ourselves to the queue
 					NewValue = OldValue.Enqueue(NewWaiter);
@@ -147,7 +147,7 @@ namespace Proximity.Utility.Threading
 					// If we disposed during this, abort
 					((IDictionary<TKey, ImmutableQueue<TaskCompletionSource<IDisposable>>>)_Locks).Remove(key);
 
-					return new ObjectDisposedException("AsyncKeyedLock", "Keyed Lock has been disposed of").ToTask<IDisposable>();
+					return Task.FromException<IDisposable>(new ObjectDisposedException("AsyncKeyedLock", "Keyed Lock has been disposed of"));
 				}
 			}
 

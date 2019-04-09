@@ -61,11 +61,11 @@ namespace Proximity.Utility.Threading
 
 			// If the task completes, we need to pass the result (if any) to the task source
 			// If the token cancels first, DoCancelTaskSource will take care of observing any potential exceptions
-			task.ContinueWith((Action<Task<TResult>, object>)DoCompleteTaskSource, MySource, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
+			task.ContinueWith(DoCompleteTaskSource, MySource, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
 
 			return MySource.Task;
 		}
-		
+
 		/// <summary>
 		/// Wraps the given task, waiting for it to complete or the given timeout to occur
 		/// </summary>
@@ -73,11 +73,8 @@ namespace Proximity.Utility.Threading
 		/// <param name="milliseconds">The number of millisecond before we abort waiting for the original task</param>
 		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
 		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" />, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
-		public static Task When(this Task task, int milliseconds)
-		{
-			return task.When(TimeSpan.FromMilliseconds(milliseconds), CancellationToken.None);
-		}
-		
+		public static Task When(this Task task, int milliseconds) => task.When(TimeSpan.FromMilliseconds(milliseconds), CancellationToken.None);
+
 		/// <summary>
 		/// Wraps the given task, waiting for it to complete or the given timeout to occur
 		/// </summary>
@@ -85,11 +82,8 @@ namespace Proximity.Utility.Threading
 		/// <param name="timeout">The time before we abort waiting for the original task</param>
 		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
 		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" />, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
-		public static Task When(this Task task, TimeSpan timeout)
-		{
-			return task.When(timeout, CancellationToken.None);
-		}
-		
+		public static Task When(this Task task, TimeSpan timeout) => task.When(timeout, CancellationToken.None);
+
 		/// <summary>
 		/// Wraps the given task, waiting for it to complete, the given timeout to occur, or the given token to cancel
 		/// </summary>
@@ -126,7 +120,7 @@ namespace Proximity.Utility.Threading
 			
 			return task;
 		}
-		
+
 		/// <summary>
 		/// Wraps the given task, waiting for it to complete or the given timeout to occur
 		/// </summary>
@@ -134,11 +128,8 @@ namespace Proximity.Utility.Threading
 		/// <param name="milliseconds">The number of millisecond before we abort waiting for the original task</param>
 		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
 		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" />, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
-		public static Task<TResult> When<TResult>(this Task<TResult> task, int milliseconds)
-		{
-			return task.When(TimeSpan.FromMilliseconds(milliseconds), CancellationToken.None);
-		}
-		
+		public static Task<TResult> When<TResult>(this Task<TResult> task, int milliseconds) => task.When(TimeSpan.FromMilliseconds(milliseconds), CancellationToken.None);
+
 		/// <summary>
 		/// Wraps the given task, waiting for it to complete or the given timeout to occur
 		/// </summary>
@@ -146,11 +137,8 @@ namespace Proximity.Utility.Threading
 		/// <param name="timeout">The time before we abort waiting for the original task</param>
 		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
 		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" />, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
-		public static Task<TResult> When<TResult>(this Task<TResult> task, TimeSpan timeout)
-		{
-			return task.When(timeout, CancellationToken.None);
-		}
-		
+		public static Task<TResult> When<TResult>(this Task<TResult> task, TimeSpan timeout) => task.When(timeout, CancellationToken.None);
+
 		/// <summary>
 		/// Wraps the given task, waiting for it to complete, the given timeout to occur, or the given token to cancel
 		/// </summary>
@@ -182,7 +170,7 @@ namespace Proximity.Utility.Threading
 			task = task.When(MyCancelSource.Token);
 			
 			// Ensure we cleanup the token source
-			task.ContinueWith((Action<Task<TResult>, object>)DoDisposeCancelSource, MyCancelSource, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
+			task.ContinueWith(DoDisposeCancelSource, MyCancelSource, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
 			
 			return task;
 		}
@@ -192,10 +180,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="source">The enumeration of tasks to interleave</param>
 		/// <returns>An enumeration that returns the tasks in order of completion</returns>
-		public static IEnumerable<Task> Interleave(this IEnumerable<Task> source)
-		{
-			return new Interleave(source);
-		}
+		public static IEnumerable<Task> Interleave(this IEnumerable<Task> source) => new Interleave(source);
 
 		/// <summary>
 		/// Interleaves an enumeration of tasks, returning them in the order they complete
@@ -203,20 +188,14 @@ namespace Proximity.Utility.Threading
 		/// <param name="source">The enumeration of tasks to interleave</param>
 		/// <param name="token">A cancellation token to cancel the interleaving tasks</param>
 		/// <returns>An enumeration that returns the tasks in order of completion</returns>
-		public static IEnumerable<Task> Interleave(this IEnumerable<Task> source, CancellationToken token)
-		{
-			return new Interleave(source, token);
-		}
+		public static IEnumerable<Task> Interleave(this IEnumerable<Task> source, CancellationToken token) => new Interleave(source, token);
 
 		/// <summary>
 		/// Interleaves an enumeration of tasks, returning them in the order they complete
 		/// </summary>
 		/// <param name="source">The enumeration of tasks to interleave</param>
 		/// <returns>An enumeration that returns the tasks in order of completion</returns>
-		public static IEnumerable<Task<TResult>> Interleave<TResult>(this IEnumerable<Task<TResult>> source)
-		{
-			return new Interleave<TResult>(source);
-		}
+		public static IEnumerable<Task<TResult>> Interleave<TResult>(this IEnumerable<Task<TResult>> source) => new Interleave<TResult>(source);
 
 		/// <summary>
 		/// Interleaves an enumeration of tasks, returning them in the order they complete
@@ -224,39 +203,16 @@ namespace Proximity.Utility.Threading
 		/// <param name="source">The enumeration of tasks to interleave</param>
 		/// <param name="token">A cancellation token to cancel the interleaving tasks</param>
 		/// <returns>An enumeration that returns the tasks in order of completion</returns>
-		public static IEnumerable<Task<TResult>> Interleave<TResult>(this IEnumerable<Task<TResult>> source, CancellationToken token)
-		{
-			return new Interleave<TResult>(source, token);
-		}
-
-		internal static Task ToTask(this Exception e)
-		{
-#if NET46
-			return Task.FromException(e);
-#else
-			var MyCompletionSource = new TaskCompletionSource<VoidStruct>();
-
-			MyCompletionSource.SetException(e);
-
-			return MyCompletionSource.Task;
-#endif
-		}
-
-		internal static Task<TResult> ToTask<TResult>(this Exception e)
-		{
-#if NET46
-			return Task.FromException<TResult>(e);
-#else
-			var MyCompletionSource = new TaskCompletionSource<TResult>();
-
-			MyCompletionSource.SetException(e);
-
-			return MyCompletionSource.Task;
-#endif
-		}
+		public static IEnumerable<Task<TResult>> Interleave<TResult>(this IEnumerable<Task<TResult>> source, CancellationToken token) => new Interleave<TResult>(source, token);
 
 		//****************************************
-		
+
+		internal static ValueTask AsValueTask(this Task task) => new ValueTask(task);
+
+		internal static ValueTask<TResult> AsValueTask<TResult>(this Task<TResult> task) => new ValueTask<TResult>(task);
+
+		//****************************************
+
 		private static void DoCompleteTaskSource(Task innerTask, object state)
 		{
 			var MySource = (TargetTask<VoidStruct>)state;
@@ -312,29 +268,14 @@ namespace Proximity.Utility.Threading
 		//****************************************
 
 		private sealed class TargetTask<TResult> : TaskCompletionSource<TResult>
-		{	//****************************************
-			private readonly Task _Target;
-
-			private CancellationTokenRegistration _Registration;
-			//****************************************
-
-			public TargetTask(Task task)
-			{
-				_Target = task;
-			}
+		{
+			public TargetTask(Task task) => Target = task;
 
 			//****************************************
 
-			public Task Target
-			{
-				get { return _Target; }
-			}
+			public Task Target { get; }
 
-			public CancellationTokenRegistration Registration
-			{
-				get { return _Registration; }
-				set { _Registration = value; }
-			}
+			public CancellationTokenRegistration Registration { get; set; }
 		}
 	}
 }

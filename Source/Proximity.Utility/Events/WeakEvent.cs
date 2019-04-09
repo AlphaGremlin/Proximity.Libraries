@@ -1,9 +1,4 @@
-﻿/****************************************\
- WeakEvent.cs
- Created: 2010-07-28
-\****************************************/
-#if !NETSTANDARD1_3
-using System;
+﻿using System;
 using System.Security;
 //****************************************
 
@@ -17,7 +12,7 @@ namespace Proximity.Utility.Events
 	public sealed class WeakEvent<TEventArgs> where TEventArgs : EventArgs
 	{	//****************************************
 		private event EventHandler<TEventArgs> _WeakEventHandler;
-		private Action<EventHandler<TEventArgs>> _UnregisterCallback;
+		private readonly Action<EventHandler<TEventArgs>> _UnregisterCallback;
 		//****************************************
 		
 		/// <summary>
@@ -53,6 +48,7 @@ namespace Proximity.Utility.Events
 
 			_WeakEventHandler += WeakEventDelegate.Create<TTarget, TEventArgs>(eventHandler);
 		}
+
 		/// <summary>
 		/// Removes a Weak Event binding
 		/// </summary>
@@ -61,27 +57,16 @@ namespace Proximity.Utility.Events
 		{
 			_WeakEventHandler -= WeakEventDelegate.FindHandler(_WeakEventHandler, eventHandler);
 		}
-		
+
 		/// <summary>
 		/// Invokes the Weak Event Handler
 		/// </summary>
 		/// <param name="sender">The sending object</param>
 		/// <param name="e">The event arguments</param>
-		public void Invoke(object sender, TEventArgs e)
-		{	//****************************************
-			var MyHandler = _WeakEventHandler;
-			//****************************************
-			
-			if (MyHandler != null)
-				MyHandler(sender, e);
-		}
-		
+		public void Invoke(object sender, TEventArgs e) => _WeakEventHandler?.Invoke(sender, e);
+
 		//****************************************
-		
-		private void OnUnregister(EventHandler<TEventArgs> eventHandler)
-		{
-			_WeakEventHandler -= eventHandler;
-		}
+
+		private void OnUnregister(EventHandler<TEventArgs> eventHandler) => _WeakEventHandler -= eventHandler;
 	}
 }
-#endif

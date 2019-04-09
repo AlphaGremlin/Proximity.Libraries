@@ -787,9 +787,7 @@ namespace Proximity.Utility.Tests
 
 			foreach (var MyPair in MyDictionary)
 			{
-				int Value;
-
-				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out Value));
+				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out var Value));
 				Assert.AreEqual(MyPair.Value, Value);
 			}
 

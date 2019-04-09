@@ -81,7 +81,7 @@ namespace Proximity.Utility.IO
 		public Task WaitForComplete(CancellationToken token)
 		{
 			if (_DataCollection.IsAddingCompleted)
-				return VoidStruct.EmptyTask;
+				return Task.CompletedTask;
 
 			var Result = Interlocked.CompareExchange(ref _CompleteTask, new TaskCompletionSource<VoidStruct>(), null);
 			
@@ -96,54 +96,38 @@ namespace Proximity.Utility.IO
 		/// <summary>
 		/// Gets the stream that can write to the Pipe Stream
 		/// </summary>
-		public Stream WriteStream
-		{
-			get { return _WriteStream; }
-		}
+		public Stream WriteStream => _WriteStream;
 
 		/// <summary>
 		/// Gets the stream that can read from the Pipe Stream
 		/// </summary>
-		public Stream ReadStream
-		{
-			get { return _ReadStream; }
-		}
+		public Stream ReadStream => _ReadStream;
 
 		/// <summary>
 		/// Gets whether the stream takes ownership of buffers given to WriteStream.Write
 		/// </summary>
 		/// <remarks>If false, PipeStream will always copy written data first</remarks>
-		public bool OwnsWrittenBuffers
-		{
-			get { return _OwnsWrittenBuffers; }
-		}
+		public bool OwnsWrittenBuffers => _OwnsWrittenBuffers;
 
 		/// <summary>
 		/// Gets whether the stream has been completed for writing
 		/// </summary>
-		public bool IsComplete
-		{
-			get { return _DataCollection.IsAddingCompleted; }
-		}
+		public bool IsComplete => _DataCollection.IsAddingCompleted;
 
 		/// <summary>
 		/// Gets whether the stream has been completed and all data is read
 		/// </summary>
-		public bool IsEOF
-		{
-			get { return _DataCollection.IsCompleted && _ReadStream.IsComplete; }
-		}
+		public bool IsEOF => _DataCollection.IsCompleted && _ReadStream.IsComplete;
 
 		//****************************************
 
 		private abstract class BaseStream : Stream
-		{	//****************************************
-			private readonly PipeStream _PipeStream;
+		{ //****************************************
 			//****************************************
 
 			protected BaseStream(PipeStream pipeStream)
 			{
-				_PipeStream = pipeStream;
+				PipeStream = pipeStream;
 			}
 
 			//****************************************
@@ -152,34 +136,17 @@ namespace Proximity.Utility.IO
 			{
 			}
 
-#if !NET40
-			public override Task FlushAsync(CancellationToken cancellationToken)
-			{
-				return VoidStruct.EmptyTask;
-			}
-#endif
+			public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-			public override long Seek(long offset, SeekOrigin origin)
-			{
-				throw new NotSupportedException();
-			}
+			public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
 
-			public override void SetLength(long value)
-			{
-				throw new NotSupportedException();
-			}
+			public override void SetLength(long value) => throw new NotSupportedException();
 
 			//****************************************
 
-			public override bool CanSeek
-			{
-				get { return false; }
-			}
+			public override bool CanSeek => false;
 
-			protected PipeStream PipeStream
-			{
-				get { return _PipeStream; }
-			}
+			protected PipeStream PipeStream { get; }
 		}
 
 		private sealed class InputStream : BaseStream
@@ -190,10 +157,7 @@ namespace Proximity.Utility.IO
 
 			//****************************************
 
-			public override int Read(byte[] buffer, int offset, int count)
-			{
-				throw new NotSupportedException();
-			}
+			public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 
 			public override void Write(byte[] buffer, int offset, int count)
 			{
@@ -215,14 +179,12 @@ namespace Proximity.Utility.IO
 				Interlocked.Add(ref PipeStream._BytesWritten, count);
 			}
 
-#if !NET40
 			public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
 			{
 				Write(buffer, offset, count);
 
-				return VoidStruct.EmptyTask;
+				return Task.CompletedTask;
 			}
-#endif
 
 			public override void WriteByte(byte value)
 			{
@@ -232,25 +194,16 @@ namespace Proximity.Utility.IO
 
 			//****************************************
 
-			public override bool CanRead
-			{
-				get { return false; }
-			}
+			public override bool CanRead => false;
 
-			public override bool CanWrite
-			{
-				get { return true; }
-			}
+			public override bool CanWrite => true;
 
-			public override long Length
-			{
-				get { return PipeStream._BytesWritten; }
-			}
+			public override long Length => PipeStream._BytesWritten;
 
 			public override long Position
 			{
-				get { return PipeStream._BytesWritten; }
-				set { throw new NotSupportedException(); }
+				get => PipeStream._BytesWritten;
+				set => throw new NotSupportedException();
 			}
 		}
 
@@ -335,7 +288,6 @@ namespace Proximity.Utility.IO
 				return OutBytes;
 			}
 
-#if !NET40
 			public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
 			{	//****************************************
 				var DataSource = PipeStream._DataCollection;
@@ -410,12 +362,10 @@ namespace Proximity.Utility.IO
 
 				return OutBytes;
 			}
-#endif
 
 			public override int ReadByte()
 			{	//****************************************
 				byte Result;
-				byte[] OutData;
 				//****************************************
 
 				// If there's a remainer, snip off one byte
@@ -424,7 +374,7 @@ namespace Proximity.Utility.IO
 					Result = _Remainder.Array[_Remainder.Offset];
 
 					if (_Remainder.Count == 1)
-						_Remainder = default(ArraySegment<byte>);
+						_Remainder = default;
 					else
 						_Remainder = new ArraySegment<byte>(_Remainder.Array, _Remainder.Offset + 1, _Remainder.Count - 1);
 
@@ -432,7 +382,7 @@ namespace Proximity.Utility.IO
 				}
 
 				// Since we've not read anything, we block until there's data available or the collection is completed
-				if (!PipeStream._DataCollection.TryTake(out OutData, new TimeSpan(_ReadTimeout)))
+				if (!PipeStream._DataCollection.TryTake(out var OutData, new TimeSpan(_ReadTimeout)))
 					return -1; // Collection completed and empty, return a zero read to signal the end of the stream
 
 				Result = OutData[0];
@@ -446,31 +396,19 @@ namespace Proximity.Utility.IO
 				return Result;
 			}
 
-			public override void Write(byte[] buffer, int offset, int count)
-			{
-				throw new NotSupportedException();
-			}
+			public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 
 			//****************************************
 
-			public override bool CanRead
-			{
-				get { return true; }
-			}
+			public override bool CanRead => true;
 
-			public override bool CanWrite
-			{
-				get { return false; }
-			}
+			public override bool CanWrite => false;
 
-			public override bool CanTimeout
-			{
-				get { return _ReadTimeout != 0; }
-			}
+			public override bool CanTimeout => _ReadTimeout != 0;
 
 			public override int ReadTimeout
 			{
-				get { return _ReadTimeout; }
+				get => _ReadTimeout;
 				set
 				{
 					if (value != Timeout.Infinite && value < 0)
@@ -480,21 +418,15 @@ namespace Proximity.Utility.IO
 				}
 			}
 
-			public override long Length
-			{
-				get { return PipeStream._BytesWritten; }
-			}
+			public override long Length => PipeStream._BytesWritten;
 
 			public override long Position
 			{
-				get { return PipeStream._BytesRead; }
-				set { throw new NotSupportedException(); }
+				get => PipeStream._BytesRead;
+				set => throw new NotSupportedException();
 			}
 
-			public bool IsComplete
-			{
-				get { return _Remainder.Array == null; }
-			}
+			public bool IsComplete => _Remainder.Array == null;
 		}
 	}
 }

@@ -298,25 +298,19 @@ namespace Proximity.Utility
 			foreach (var MyDelegate in source.GetInvocationList())
 			{
 				// Find a weak delegate that invokes the target delegate
-				var MyHandler = MyDelegate.Target as DelegateBase<TDelegate>;
+				if (MyDelegate.Target is DelegateBase<TDelegate> MyHandler)
+				{
+					if (MyHandler.Method != target.Method)
+						continue;
 
-				if (MyHandler == null)
-					continue;
+					var MyTargetObject = MyHandler.Target;
 
-#if NETSTANDARD1_3
-				if (MyHandler.Method != target.GetMethodInfo())
-#else
-				if (MyHandler.Method != target.Method)
-#endif
-					continue;
+					if (MyTargetObject == null)
+						continue;
 
-				var MyTargetObject = MyHandler.Target;
-
-				if (MyTargetObject == null)
-					continue;
-
-				if (MyTargetObject == target.Target)
-					return MyDelegate as TDelegate;
+					if (MyTargetObject == target.Target)
+						return MyDelegate as TDelegate;
+				}
 			}
 
 			return null;
@@ -334,7 +328,7 @@ namespace Proximity.Utility
 		{	//****************************************
 			private GCHandle _Target;
 
-			private Action<TDelegate> _Unsubscribe;
+			private readonly Action<TDelegate> _Unsubscribe;
 			//****************************************
 
 			protected DelegateBase(object target, Action<TDelegate> unsubscribe)
@@ -353,37 +347,26 @@ namespace Proximity.Utility
 			//****************************************
 
 			[SecurityCritical]
-			object IDelegateBase.GetHandler()
-			{
-				return GetHandler();
-			}
+			object IDelegateBase.GetHandler() => GetHandler();
 
 			[SecurityCritical]
 			public TDelegate GetHandler()
 			{
 				// Create the delegate that is exposed to the outside world
-#if NETSTANDARD1_3
-				return GetType().GetRuntimeMethod("OnRaise", null).CreateDelegate(typeof(TDelegate), null) as TDelegate;
-#else
 				return Delegate.CreateDelegate(typeof(TDelegate), this, "OnRaise") as TDelegate;
-#endif
 			}
 
 			internal void Release()
 			{
-				if (_Unsubscribe != null)
-					_Unsubscribe(GetHandler());
+				_Unsubscribe?.Invoke(GetHandler());
 
 				_Target.Free();
 				GC.SuppressFinalize(this);
 			}
 
 			//****************************************
-			
-			internal object Target
-			{
-				get { return _Target.Target; }
-			}
+
+			internal object Target => _Target.Target;
 
 			internal abstract MethodInfo Method { get; }
 
@@ -396,46 +379,24 @@ namespace Proximity.Utility
 				MyTypes[0] = typeof(TDelegate);
 				MyTypes[1] = callback.Target.GetType();
 
-				for (int Index = 0; Index < args.Length; Index++)
-				{
-					MyTypes[Index + 2] = args[0];
-				}
+				Array.Copy(args, 0, MyTypes, 2, args.Length);
 
 				return (DelegateBase<TDelegate>)Activator.CreateInstance(source.MakeGenericType(MyTypes), callback, unsubscribe);
 			}
 		}
 
 		private abstract class DelegateBase<TDelegate, TOpenDelegate> : DelegateBase<TDelegate> where TDelegate : class where TOpenDelegate : class
-		{	//****************************************
-			private TOpenDelegate _OpenDelegate;
-			//****************************************
-
+		{
 			protected DelegateBase(Delegate callback, Action<TDelegate> unsubscribe) : base(callback.Target, unsubscribe)
 			{
-#if NETSTANDARD1_3
-				_OpenDelegate = callback.GetMethodInfo().CreateDelegate(typeof(TOpenDelegate), null) as TOpenDelegate;
-#else
-				_OpenDelegate = Delegate.CreateDelegate(typeof(TOpenDelegate), callback.Method) as TOpenDelegate;
-#endif
+				OpenDelegate = Delegate.CreateDelegate(typeof(TOpenDelegate), callback.Method) as TOpenDelegate;
 			}
 
 			//****************************************
 
-			internal TOpenDelegate OpenDelegate
-			{
-				get { return _OpenDelegate; }
-			}
+			internal TOpenDelegate OpenDelegate { get; }
 
-			internal override MethodInfo Method
-			{
-#if NETSTANDARD1_3
-				[SecurityCritical]
-				get { return (_OpenDelegate as Delegate).GetMethodInfo(); }
-#else
-				[SecurityCritical]
-				get { return (_OpenDelegate as Delegate).Method; }
-#endif
-			}
+			internal override MethodInfo Method => (OpenDelegate as Delegate).Method;
 		}
 
 		private sealed class DelegateHandler<TDelegate, TTarget> : DelegateBase<TDelegate, Action<TTarget>> where TDelegate : class where TTarget : class
@@ -447,14 +408,11 @@ namespace Proximity.Utility
 			//****************************************
 			
 			public void OnRaise()
-			{	//****************************************
-				var MyTarget = (TTarget)Target;
-				//****************************************
-
-				if (MyTarget == null)
-					Release();
-				else
+			{
+				if (Target is TTarget MyTarget)
 					OpenDelegate(MyTarget);
+				else
+					Release();
 			}
 		}
 
@@ -467,14 +425,11 @@ namespace Proximity.Utility
 			//****************************************
 			
 			public void OnRaise(T1 arg1)
-			{	//****************************************
-				var MyTarget = (TTarget)Target;
-				//****************************************
-
-				if (MyTarget == null)
-					Release();
-				else
+			{
+				if (Target is TTarget MyTarget)
 					OpenDelegate(MyTarget, arg1);
+				else
+					Release();
 			}
 		}
 		
@@ -487,14 +442,11 @@ namespace Proximity.Utility
 			//****************************************
 			
 			public void OnRaise(T1 arg1, T2 arg2)
-			{	//****************************************
-				var MyTarget = (TTarget)Target;
-				//****************************************
-
-				if (MyTarget == null)
-					Release();
-				else
+			{
+				if (Target is TTarget MyTarget)
 					OpenDelegate(MyTarget, arg1, arg2);
+				else
+					Release();
 			}
 		}
 		
@@ -507,14 +459,11 @@ namespace Proximity.Utility
 			//****************************************
 			
 			public void OnRaise(T1 arg1, T2 arg2, T3 arg3)
-			{	//****************************************
-				var MyTarget = (TTarget)Target;
-				//****************************************
-
-				if (MyTarget == null)
-					Release();
-				else
+			{
+				if (Target is TTarget MyTarget)
 					OpenDelegate(MyTarget, arg1, arg2, arg3);
+				else
+					Release();
 			}
 		}
 		
@@ -527,14 +476,11 @@ namespace Proximity.Utility
 			//****************************************
 			
 			public void OnRaise(T1 arg1, T2 arg2, T3 arg3, T4 arg4)
-			{	//****************************************
-				var MyTarget = (TTarget)Target;
-				//****************************************
-
-				if (MyTarget == null)
-					Release();
-				else
+			{
+				if (Target is TTarget MyTarget)
 					OpenDelegate(MyTarget, arg1, arg2, arg3, arg4);
+				else
+					Release();
 			}
 		}
 		
@@ -547,14 +493,11 @@ namespace Proximity.Utility
 			//****************************************
 			
 			public void OnRaise(T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5)
-			{	//****************************************
-				var MyTarget = (TTarget)Target;
-				//****************************************
-
-				if (MyTarget == null)
-					Release();
-				else
+			{
+				if (Target is TTarget MyTarget)
 					OpenDelegate(MyTarget, arg1, arg2, arg3, arg4, arg5);
+				else
+					Release();
 			}
 		}
 	}

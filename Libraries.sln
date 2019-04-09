@@ -13,7 +13,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Utility", "Source
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Terminal", "Source\Proximity.Terminal\Proximity.Terminal.csproj", "{0DFECB3F-A769-4A8F-8DC0-AF967C7D0CF8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Remoting", "Source\Proximity.Remoting\Proximity.Remoting.csproj", "{9AB08436-562C-4E29-9219-B54CF696EEE9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Remoting", "Source\Proximity.Remoting\Proximity.Remoting.csproj", "{9AB08436-562C-4E29-9219-B54CF696EEE9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Logging", "Source\Proximity.Logging\Proximity.Logging.csproj", "{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -103,6 +105,22 @@ Global
 		{9AB08436-562C-4E29-9219-B54CF696EEE9}.Release|Net40.Build.0 = Release|Any CPU
 		{9AB08436-562C-4E29-9219-B54CF696EEE9}.Release|Net45.ActiveCfg = Release|Any CPU
 		{9AB08436-562C-4E29-9219-B54CF696EEE9}.Release|Net45.Build.0 = Release|Any CPU
+		{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}.Debug|Net40.ActiveCfg = Debug|Any CPU
+		{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}.Debug|Net40.Build.0 = Debug|Any CPU
+		{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}.Debug|Net45.ActiveCfg = Debug|Any CPU
+		{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}.Debug|Net45.Build.0 = Debug|Any CPU
+		{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}.Release|Net40.ActiveCfg = Release|Any CPU
+		{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}.Release|Net40.Build.0 = Release|Any CPU
+		{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}.Release|Net45.ActiveCfg = Release|Any CPU
+		{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}.Release|Net45.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

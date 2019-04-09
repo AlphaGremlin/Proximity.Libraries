@@ -1,8 +1,4 @@
-﻿/****************************************\
- WeakEventDelegate.cs
- Created: 2012-10-30
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -14,7 +10,6 @@ namespace Proximity.Utility.Events
 	/// <summary>
 	/// Provides Weak Delegate services optimised for the EventHandler model
 	/// </summary>
-	[SecurityCritical]
 	public static class WeakEventDelegate
 	{
 		// IOS is statically compiled and doesn't do JIT, so we can't make generic types from reflection
@@ -35,11 +30,7 @@ namespace Proximity.Utility.Events
 			
 			TargetType = typeof(EventDelegate<,>).MakeGenericType(eventHandler.Target.GetType(), typeof(TEventArgs));
 			
-#if NETSTANDARD1_3
-			MyHandler = (IEventDelegate<TEventArgs>)Activator.CreateInstance(TargetType, eventHandler.Target, eventHandler.GetMethodInfo(), null);
-#else
 			MyHandler = (IEventDelegate<TEventArgs>)Activator.CreateInstance(TargetType, eventHandler.Target, eventHandler.Method, null);
-#endif
 			
 			return MyHandler.Handler;
 		}
@@ -55,11 +46,7 @@ namespace Proximity.Utility.Events
 			if (eventHandler.Target == null) // Ignore weak references for static events
 				return eventHandler;
 
-#if NETSTANDARD1_3
-			return new EventDelegate<TTarget, TEventArgs>((TTarget)eventHandler.Target, eventHandler.GetMethodInfo(), null).Handler;
-#else
 			return new EventDelegate<TTarget, TEventArgs>((TTarget)eventHandler.Target, eventHandler.Method, null).Handler;
-#endif
 		}
 		
 		/// <summary>
@@ -69,28 +56,17 @@ namespace Proximity.Utility.Events
 		/// <param name="unregister">An action to call to remove handlers from the delegate</param>
 		/// <remarks>To ensure thread safety, the unregister delegate should take the form of <code>(action) =&gt; MyEvent -= action;</code></remarks>
 		public static void Cleanup<TEventArgs>(EventHandler<TEventArgs> source, Action<EventHandler<TEventArgs>> unregister) where TEventArgs : EventArgs
-		{	//****************************************
-			IEventDelegate<TEventArgs> MyTarget;
-			object MyTargetObject;
-			//****************************************
-			
+		{
 			if (source == null)
 				return;
 			
 			foreach(Delegate MyDelegate in source.GetInvocationList())
 			{
-				MyTarget = MyDelegate.Target as IEventDelegate<TEventArgs>;
-				
-				if (MyTarget == null) // Not a Weak Delegate (ie: static)
-					continue;
-				
-				MyTargetObject = MyTarget.Target;
-				
-				if (MyTargetObject != null) // Target object still exists
-					continue;
-				
-				// No target object, unregister the delegate
-				unregister((EventHandler<TEventArgs>)MyDelegate);
+				if (MyDelegate.Target is IEventDelegate<TEventArgs> MyTarget && MyTarget.Target == null)
+				{
+					// No target object, unregister the delegate
+					unregister((EventHandler<TEventArgs>)MyDelegate);
+				}
 			}
 		}
 		
@@ -116,18 +92,13 @@ namespace Proximity.Utility.Events
 			{
 				// Find a weak delegate that invokes the target delegate
 				MyTarget = MyDelegate.Target as IEventDelegate<TEventArgs>;
-				
+
 				if (MyTarget == null)
 					continue;
-				
-#if NETSTANDARD1_3
-				if (MyTarget.Method != target.GetMethodInfo())
-#else
+
 				if (MyTarget.Method != target.Method)
-#endif
 					continue;
 
-				
 				MyTargetObject = MyTarget.Target;
 				
 				if (MyTargetObject == null)
@@ -154,29 +125,21 @@ namespace Proximity.Utility.Events
 		
 		private class EventDelegate<TTarget, TEventArgs> : IEventDelegate<TEventArgs> where TTarget : class where TEventArgs : EventArgs
 		{	//****************************************
-#if NETSTANDARD1_3
-			private MethodInfo _Method;
-#else
 			private delegate void WeakEventHandler(TTarget target, object sender, TEventArgs e);
 			private WeakEventHandler _Handler;
-#endif
+
 			private GCHandle _Target;
 
-			private Action<object, EventHandler<TEventArgs>> _Unsubscribe;
+			private readonly Action<object, EventHandler<TEventArgs>> _Unsubscribe;
 			//****************************************
 
 			public EventDelegate(TTarget target, MethodInfo method, Action<object, EventHandler<TEventArgs>> unsubscribe)
 			{
 				_Target = GCHandle.Alloc(target, GCHandleType.Weak);
-#if NETSTANDARD1_3
-				_Method = method;
-#else
 				_Handler = (WeakEventHandler)Delegate.CreateDelegate(typeof(WeakEventHandler), method);
-#endif
 				_Unsubscribe = unsubscribe;
 			}
 
-			[SecuritySafeCritical]
 			~EventDelegate()
 			{
 				if (_Target.IsAllocated)
@@ -184,8 +147,7 @@ namespace Proximity.Utility.Events
 			}
 			
 			//****************************************
-
-			[SecurityCritical]
+			
 			public void Handler(object sender, TEventArgs e)
 			{	//****************************************
 				var MyTarget = _Target.Target;
@@ -205,31 +167,15 @@ namespace Proximity.Utility.Events
 
 					return;
 				}
-#if NETSTANDARD1_3
-				_Method.Invoke(MyTarget, new object[] { sender, e });
-#else
+
 				_Handler((TTarget)MyTarget, sender, e);
-#endif
 			}
-			
+
 			//****************************************
-			
-			public object Target
-			{
-				[SecurityCritical]
-				get { return _Target.Target; }
-			}
-			
-			public MethodInfo Method
-			{
-#if NETSTANDARD1_3
-				[SecurityCritical]
-				get { return _Method; }
-#else
-				[SecurityCritical]
-				get { return _Handler.Method; }
-#endif
-			}
+
+			public object Target => _Target.Target;
+
+			public MethodInfo Method => _Handler.Method;
 		}
 	}
 }

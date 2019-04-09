@@ -1,9 +1,4 @@
-﻿/****************************************\
- SteppedTimer.cs
- Created: 2010-09-18
-\****************************************/
-#if !NETSTANDARD1_3
-using System;
+﻿using System;
 using System.Diagnostics;
 //****************************************
 
@@ -64,24 +59,18 @@ namespace Proximity.Utility
 			_Timer.Stop();
 			_Timer = null;
 		}
-		
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Gets the last time <see cref="Step"/> was called
 		/// </summary>
-		public DateTime Now
-		{
-			get { return _Now; }
-		}
-		
+		public DateTime Now => _Now;
+
 		/// <summary>
 		/// Gets the time between the two previous calls to <see cref="Step"/>
 		/// </summary>
-		public TimeSpan Elapsed
-		{
-			get { return _Elapsed; }
-		}
+		public TimeSpan Elapsed => _Elapsed;
 
 		/*
 		/// <summary>
@@ -92,16 +81,12 @@ namespace Proximity.Utility
 			get { return _Now.AddTicks(((_Timer.ElapsedTicks - _LastTicks) * TimeSpan.TicksPerSecond + _Remainder) / _Frequency); }
 		}
 		*/
-		
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Gets whether the High Precision hardware timer is being used
 		/// </summary>
-		public static bool IsHighPrecision
-		{
-			get { return Stopwatch.IsHighResolution; }
-		}
+		public static bool IsHighPrecision => Stopwatch.IsHighResolution;
 	}
 }
-#endif

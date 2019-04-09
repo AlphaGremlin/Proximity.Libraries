@@ -143,7 +143,7 @@ namespace Proximity.Utility.Threading
 			lock (_Writers)
 			{
 				if (_Disposed != null)
-					return new ObjectDisposedException("AsyncReadWriteLock", "Lock has been disposed of").ToTask<IDisposable>();
+					return Task.FromException<IDisposable>(new ObjectDisposedException("AsyncReadWriteLock", "Lock has been disposed of"));
 				
 				// If there are zero or more readers and no waiting writers (or we're in unfair mode)...
 				if (_Counter >=0 && (_IsUnfair || _Writers.Count == 0))
@@ -151,11 +151,7 @@ namespace Proximity.Utility.Threading
 					// Add another reader and return a completed task the caller can use to release the lock
 					Interlocked.Increment(ref _Counter);
 					
-#if NET40
-					return TaskEx.FromResult<IDisposable>(new AsyncReadLockInstance(this));
-#else
 					return Task.FromResult<IDisposable>(new AsyncReadLockInstance(this));
-#endif
 				}
 				
 				// There's a writer in progress, or one waiting
@@ -164,7 +160,7 @@ namespace Proximity.Utility.Threading
 				_ReadersWaiting.Add(NewInstance);
 				
 				// Return a reader task the caller can wait on. This is a continuation, so readers don't run serialised
-				NewTask = _Reader.Task.ContinueWith((Func<Task<IDisposable>, IDisposable>)NewInstance.LockRead, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
+				NewTask = _Reader.Task.ContinueWith(NewInstance.LockRead, token, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
 			}
 			
 			// If we can be cancelled, queue a task that runs if we get cancelled to release the waiter
@@ -173,16 +169,13 @@ namespace Proximity.Utility.Threading
 			
 			return NewTask;
 		}
-		
+
 		/// <summary>
 		/// Take a write lock, running exclusively
 		/// </summary>
 		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
-		public Task<IDisposable> LockWrite()
-		{
-			return LockWrite(CancellationToken.None);
-		}
-		
+		public Task<IDisposable> LockWrite() => LockWrite(CancellationToken.None);
+
 		/// <summary>
 		/// Take a write lock, running exclusively, cancelling after a given timeout
 		/// </summary>
@@ -205,7 +198,7 @@ namespace Proximity.Utility.Threading
 			MySource.CancelAfter(timeout);
 			
 			// Ensure we cleanup the cancellation source once we're done
-			MyTask.ContinueWith((Action<Task<IDisposable>, object>)CleanupCancelSource, MySource);
+			MyTask.ContinueWith(CleanupCancelSource, MySource);
 			
 			return MyTask;
 		}
@@ -223,7 +216,7 @@ namespace Proximity.Utility.Threading
 			lock (_Writers)
 			{
 				if (_Disposed != null)
-					return new ObjectDisposedException("AsyncReadWriteLock", "Lock has been disposed of").ToTask<IDisposable>();
+					return Task.FromException<IDisposable>(new ObjectDisposedException("AsyncReadWriteLock", "Lock has been disposed of"));
 				
 				// If there are no readers or writers...
 				if (_Counter == 0)
@@ -231,11 +224,7 @@ namespace Proximity.Utility.Threading
 					// Take the writer spot and return a completed task the caller can use to release the lock
 					_Counter = -1;
 					
-#if NET40
-					return TaskEx.FromResult<IDisposable>(new AsyncWriteLockInstance(this));
-#else
 					return Task.FromResult<IDisposable>(new AsyncWriteLockInstance(this));
-#endif
 				}
 				
 				// There's a reader or another writer working, add ourselves to the writer queue
@@ -268,7 +257,7 @@ namespace Proximity.Utility.Threading
 			lock (_Writers)
 			{
 				if (_Counter <= 0)
-					throw new InvalidOperationException(string.Format("No reader lock is currently held: {0} writers, {1} waiting, writing={2}", _Writers.Count, _ReadersWaiting.Count, _Counter == -1));
+					throw new InvalidOperationException($"No reader lock is currently held: {_Writers.Count} writers, {_ReadersWaiting.Count} waiting, writing={_Counter == -1}");
 				
 				Interlocked.Decrement(ref _Counter);
 

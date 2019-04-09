@@ -4,23 +4,21 @@
     <TargetFrameworks>net462;netstandard2.0</TargetFrameworks>
     <Authors>Daniel Chandler</Authors>
     <Company>Proximity Interactive</Company>
-    <Copyright>Copyright © Daniel Chandler 2018</Copyright>
+    <Copyright>Copyright © Daniel Chandler 2019</Copyright>
     <Product>Proximity Terminal Library</Product>
-    <AssemblyVersion>19.0.0.0</AssemblyVersion>
-    <FileVersion>19.1.0.0</FileVersion>
-    <Version>19.1.0</Version>
+    <AssemblyVersion>20.0.0.0</AssemblyVersion>
+    <FileVersion>20.0.0.0</FileVersion>
+    <Version>20.0.0</Version>
     <Description>Proximity Terminal Library</Description>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\Proximity.snk</AssemblyOriginatorKeyFile>
     <OutputPath>..\..\Build</OutputPath>
+		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.5.0" />
-  </ItemGroup>
-  <ItemGroup>
+    <ProjectReference Include="..\Proximity.Logging\Proximity.Logging.csproj" />
     <ProjectReference Include="..\Proximity.Utility\Proximity.Utility.csproj" />
   </ItemGroup>
 </Project>

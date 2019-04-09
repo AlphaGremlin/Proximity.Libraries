@@ -45,32 +45,21 @@ namespace Proximity.Utility.IO
 		{
 		}
 
-#if !NET40
 		/// <inheritdoc />
-		public override Task FlushAsync()
-		{
-			return VoidStruct.EmptyTask;
-		}
-#endif
+		public override Task FlushAsync() => Task.CompletedTask;
 
 		/// <summary>
 		/// Gets the underlying array for this TextWriter
 		/// </summary>
 		/// <returns>The underlying array</returns>
 		/// <remarks>This buffer may contain bytes that are unused. Use the <see cref="Length"/> property to tell the true length of data in the buffer, or utilise <see cref="GetBufferSegment"/></remarks>
-		public char[] GetBuffer()
-		{
-			return _CharBuffer;
-		}
+		public char[] GetBuffer() => _CharBuffer;
 
 		/// <summary>
 		/// Gets the underlying array for this TextWriter in the form of an Array Segment
 		/// </summary>
 		/// <returns>An array segment describing the underlying buffer for this TextWriter</returns>
-		public ArraySegment<char> GetBufferSegment()
-		{
-			return new ArraySegment<char>(_CharBuffer, 0, _CharLength);
-		}
+		public ArraySegment<char> GetBufferSegment() => new ArraySegment<char>(_CharBuffer, 0, _CharLength);
 
 		/// <summary>
 		/// Retrieves the bytes written so far to the Binary Text Writer
@@ -99,10 +88,7 @@ namespace Proximity.Utility.IO
 		}
 
 		/// <inheritdoc />
-		public override void Write(char[] buffer)
-		{
-			Write(buffer, 0, buffer.Length);
-		}
+		public override void Write(char[] buffer) => Write(buffer, 0, buffer.Length);
 
 		/// <inheritdoc />
 		public override void Write(char[] buffer, int index, int count)
@@ -124,13 +110,12 @@ namespace Proximity.Utility.IO
 			_CharLength += value.Length;
 		}
 
-#if !NET40
 		/// <inheritdoc />
 		public override Task WriteAsync(char value)
 		{
 			Write(value);
 
-			return VoidStruct.EmptyTask;
+			return Task.CompletedTask;
 		}
 
 		/// <inheritdoc />
@@ -138,7 +123,7 @@ namespace Proximity.Utility.IO
 		{
 			Write(buffer, index, count);
 
-			return VoidStruct.EmptyTask;
+			return Task.CompletedTask;
 		}
 
 		/// <inheritdoc />
@@ -146,9 +131,8 @@ namespace Proximity.Utility.IO
 		{
 			Write(value);
 
-			return VoidStruct.EmptyTask;
+			return Task.CompletedTask;
 		}
-#endif
 
 		/// <inheritdoc />
 		public override void WriteLine(string value)
@@ -157,13 +141,12 @@ namespace Proximity.Utility.IO
 			WriteLine(base.CoreNewLine);
 		}
 
-#if !NET40
 		/// <inheritdoc />
 		public override Task WriteLineAsync()
 		{
 			Write(CoreNewLine);
 
-			return VoidStruct.EmptyTask;
+			return Task.CompletedTask;
 		}
 
 		/// <inheritdoc />
@@ -172,7 +155,7 @@ namespace Proximity.Utility.IO
 			Write(value);
 			Write(CoreNewLine);
 
-			return VoidStruct.EmptyTask;
+			return Task.CompletedTask;
 		}
 
 		/// <inheritdoc />
@@ -181,7 +164,7 @@ namespace Proximity.Utility.IO
 			Write(buffer, index, count);
 			Write(CoreNewLine);
 
-			return VoidStruct.EmptyTask;
+			return Task.CompletedTask;
 		}
 
 		/// <inheritdoc />
@@ -190,9 +173,8 @@ namespace Proximity.Utility.IO
 			Write(value);
 			Write(CoreNewLine);
 
-			return VoidStruct.EmptyTask;
+			return Task.CompletedTask;
 		}
-#endif
 
 		//****************************************
 
@@ -240,10 +222,7 @@ namespace Proximity.Utility.IO
 		/// <summary>
 		/// Gets the number of bcharsytes currently written
 		/// </summary>
-		public int Length
-		{
-			get { return _CharLength; }
-		}
+		public int Length => _CharLength;
 
 		/// <summary>
 		/// Gets the encoding used by this Char Text Writer

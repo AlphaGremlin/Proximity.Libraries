@@ -1,8 +1,4 @@
-﻿/****************************************\
- AsyncSemaphoreSlim.cs
- Created: 2014-02-18
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -116,17 +112,11 @@ namespace Proximity.Utility.Threading
 		{
 			// Are we disposed?
 			if (_Dispose != null)
-				return new ObjectDisposedException("AsyncSemaphore", "Semaphore has been disposed of").ToTask<IDisposable>();
+				return Task.FromException<IDisposable>(new ObjectDisposedException("AsyncSemaphore", "Semaphore has been disposed of"));
 
 			// Try and add a counter as long as nobody is waiting on it
 			if (_Waiters.IsEmpty && TryIncrement())
-			{
-#if NET40
-				return TaskEx.FromResult<IDisposable>(new AsyncLockInstance(this));
-#else
 				return Task.FromResult<IDisposable>(new AsyncLockInstance(this));
-#endif
-			}
 			
 			// No free counters, add ourselves to the queue waiting on a counter
 			var NewWaiter = new TaskCompletionSource<IDisposable>();

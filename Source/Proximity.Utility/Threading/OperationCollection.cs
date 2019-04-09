@@ -64,11 +64,8 @@ namespace Proximity.Utility.Threading
 		/// <param name="result">The result to assign to the operation</param>
 		/// <returns>True if the operation was completed, or False if it was not found/has been cancelled</returns>
 		public bool CompleteOperation(TKey reference, TResult result)
-		{	//****************************************
-			Operation MyOperation;
-			//****************************************
-			
-			if (!_Operations.TryRemove(reference, out MyOperation))
+		{
+			if (!_Operations.TryRemove(reference, out var MyOperation))
 				return false;
 			
 			MyOperation.Complete(result);
@@ -110,24 +107,18 @@ namespace Proximity.Utility.Threading
 			}
 			
 			internal void Cancel()
-			{	//****************************************
-				Operation MyRequest;
-				//****************************************
-			
-				if (_Owner._Operations.TryRemove(_Reference, out MyRequest))
+			{
+				if (_Owner._Operations.TryRemove(_Reference, out var MyRequest))
 				{
 					_OperationTask.SetCanceled();
 					
 					_Registration.Dispose();
 				}
 			}
-			
+
 			//****************************************
-			
-			internal Task<TResult> Task
-			{
-				get { return _OperationTask.Task; }
-			}
+
+			internal Task<TResult> Task => _OperationTask.Task;
 		}
 	}
 }

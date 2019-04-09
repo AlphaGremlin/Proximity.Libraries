@@ -27,11 +27,10 @@ namespace Proximity.Utility
 		public static double SimilarTo(this string left, string right, StringComparison comparison)
 		{	//****************************************
 			var Intersection = 0;
-			int LeftCount, RightCount;
 			//****************************************
 
-			var Left = GetWordFragments(left, out LeftCount);
-			var Right = GetWordFragments(right, out RightCount);
+			var Left = GetWordFragments(left, out var LeftCount);
+			var Right = GetWordFragments(right, out var RightCount);
 
 			// If there are no fragments in either word, return a 100% match
 			if (LeftCount == 0 && RightCount == 0)
@@ -73,13 +72,12 @@ namespace Proximity.Utility
 		private static List<CharIndexCount> GetWordFragments(string source, out int count)
 		{	//****************************************
 			var Pairs = new List<CharIndexCount>(source.Length);
-			bool PreviousWhitespace = true;
-			int Index = 0;
+			var PreviousWhitespace = true;
 			//****************************************
 
 			count = 0;
 
-			for (; Index < source.Length; Index++)
+			for (var Index = 0; Index < source.Length; Index++)
 			{
 				var MyChar = source[Index];
 
@@ -133,29 +131,19 @@ namespace Proximity.Utility
 
 		//****************************************
 
-		private struct CharIndexCount
-		{	//****************************************
-			private readonly int _Index;
-			private readonly int _Count;
-			//****************************************
-
+		private readonly struct CharIndexCount
+		{
 			public CharIndexCount(int index, int count)
 			{
-				_Index = index;
-				_Count = count;
+				Index = index;
+				Count = count;
 			}
 
 			//****************************************
 
-			public int Index
-			{
-				get { return _Index; }
-			}
+			public int Index { get; }
 
-			public int Count
-			{
-				get { return _Count; }
-			}
+			public int Count { get; }
 		}
 	}
 }

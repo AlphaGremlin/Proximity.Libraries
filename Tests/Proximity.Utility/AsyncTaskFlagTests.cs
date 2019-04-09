@@ -31,7 +31,7 @@ namespace Proximity.Utility.Tests
 		[Test(), Timeout(1500)]
 		public async Task SetNoWait()
 		{
-			var MyFlag = new AsyncTaskFlag(() => VoidStruct.EmptyTask);
+			var MyFlag = new AsyncTaskFlag(() => Task.CompletedTask);
 			
 			await MyFlag.SetAndWait();
 		}

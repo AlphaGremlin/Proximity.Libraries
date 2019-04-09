@@ -1,9 +1,4 @@
-﻿/****************************************\
- AsyncNetworkStream.cs
- Created: 2014-10-02
-\****************************************/
-#if !NETSTANDARD1_3
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -48,16 +43,10 @@ namespace Proximity.Utility.Net
 		//****************************************
 
 		/// <inheritdoc />
-		public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
-		{
-			return ReadData(buffer, offset, count, callback, state);
-		}
+		public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state) => ReadData(buffer, offset, count, callback, state);
 
 		/// <inheritdoc />
-		public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
-		{
-			return WriteData(buffer, offset, count, callback, state);
-		}
+		public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state) => WriteData(buffer, offset, count, callback, state);
 
 		/// <summary>
 		/// Asynchronously writes a set of buffers to the Socket
@@ -66,10 +55,7 @@ namespace Proximity.Utility.Net
 		/// <param name="callback">A callback to raise when writing has completed</param>
 		/// <param name="state">A state object to identify this callback</param>
 		/// <returns>An async result representing the write operation</returns>
-		public IAsyncResult BeginWrite(IList<ArraySegment<byte>> buffers, AsyncCallback callback, object state)
-		{
-			return WriteData(buffers, callback, state);
-		}
+		public IAsyncResult BeginWrite(IList<ArraySegment<byte>> buffers, AsyncCallback callback, object state) => WriteData(buffers, callback, state);
 
 		/// <inheritdoc />
 		public override int EndRead(IAsyncResult asyncResult)
@@ -90,16 +76,8 @@ namespace Proximity.Utility.Net
 		{
 		}
 
-#if NET40
 		/// <inheritdoc />
-		public Task FlushAsync(CancellationToken cancellationToken)
-#else
-		/// <inheritdoc />
-		public override Task FlushAsync(CancellationToken cancellationToken)
-#endif
-		{
-			return VoidStruct.EmptyTask;
-		}
+		public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
 		/// <inheritdoc />
 		public override int Read(byte[] buffer, int offset, int count)
@@ -125,22 +103,11 @@ namespace Proximity.Utility.Net
 			}
 		}
 
-#if NET40
-		/// <inheritdoc />
-		public Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-#else
 		/// <inheritdoc />
 		public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-#endif
 		{
 			if (cancellationToken.IsCancellationRequested)
-			{
-#if NET40
-				return TaskEx.Run(() => 0, cancellationToken);
-#else
-				return Task.Run(() => 0, cancellationToken);
-#endif
-			}
+				return Task.FromCanceled<int>(cancellationToken);
 
 			return ReadData(buffer, offset, count);
 		}
@@ -195,16 +162,10 @@ namespace Proximity.Utility.Net
 		}
 
 		/// <inheritdoc />
-		public override long Seek(long offset, SeekOrigin origin)
-		{
-			throw new NotSupportedException();
-		}
+		public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
 
 		/// <inheritdoc />
-		public override void SetLength(long value)
-		{
-			throw new NotSupportedException();
-		}
+		public override void SetLength(long value) => throw new NotSupportedException();
 
 		/// <inheritdoc />
 		public override void Write(byte[] buffer, int offset, int count)
@@ -253,22 +214,11 @@ namespace Proximity.Utility.Net
 			}
 		}
 
-#if NET40
-		/// <inheritdoc />
-		public Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-#else
 		/// <inheritdoc />
 		public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-#endif
 		{
 			if (cancellationToken.IsCancellationRequested)
-			{
-#if NET40
-				return TaskEx.Run(() => { }, cancellationToken);
-#else
-				return Task.Run(() => { }, cancellationToken);
-#endif
-			}
+				return Task.FromCanceled(cancellationToken);
 
 			return WriteData(buffer, offset, count);
 		}
@@ -285,13 +235,7 @@ namespace Proximity.Utility.Net
 				throw new ArgumentNullException("buffers");
 
 			if (cancellationToken.IsCancellationRequested)
-			{
-#if NET40
-				return TaskEx.Run(() => { }, cancellationToken);
-#else
-				return Task.Run(() => { }, cancellationToken);
-#endif
-			}
+				return Task.FromCanceled(cancellationToken);
 
 			return WriteData(buffers);
 		}
@@ -342,12 +286,9 @@ namespace Proximity.Utility.Net
 		//****************************************
 
 		private void BeginOperation(ref SmartEventArgs targetArgs)
-		{	//****************************************
-			SmartEventArgs MyArgs;
-			//****************************************
-
+		{
 			// Retrieve an existing args from the pool
-			if (!_ArgsPool.TryPop(out MyArgs))
+			if (!_ArgsPool.TryPop(out var MyArgs))
 				// None found, so create a new one
 				MyArgs = new SmartEventArgs();
 
@@ -497,11 +438,7 @@ namespace Proximity.Utility.Net
 				}
 				else
 				{
-#if NET40
-					MyResult = TaskEx.FromResult(result);
-#else
 					MyResult = Task.FromResult(result);
-#endif
 				}
 			}
 			else
@@ -518,8 +455,7 @@ namespace Proximity.Utility.Net
 			try
 			{
 				// Raise the async callback (if any)
-				if (callback != null)
-					callback(MyResult);
+				callback?.Invoke(MyResult);
 			}
 			catch (Exception e)
 			{
@@ -671,7 +607,7 @@ namespace Proximity.Utility.Net
 				}
 				else
 				{
-					MyResult = VoidStruct.EmptyTask;
+					MyResult = Task.CompletedTask;
 				}
 			}
 			else
@@ -688,8 +624,7 @@ namespace Proximity.Utility.Net
 			try
 			{
 				// Raise the async callback (if any)
-				if (callback != null)
-					callback(MyResult);
+				callback?.Invoke(MyResult);
 			}
 			catch (Exception e)
 			{
@@ -704,59 +639,38 @@ namespace Proximity.Utility.Net
 		//****************************************
 
 		/// <inheritdoc />
-		public override bool CanRead
-		{
-			get { return true; }
-		}
+		public override bool CanRead => true;
 
 		/// <inheritdoc />
-		public override bool CanSeek
-		{
-			get { return false; }
-		}
+		public override bool CanSeek => false;
 
 		/// <inheritdoc />
-		public override bool CanWrite
-		{
-			get { return true; }
-		}
+		public override bool CanWrite => true;
 
 		/// <inheritdoc />
-		public override long Length
-		{
-			get { throw new NotSupportedException(); }
-		}
+		public override long Length => throw new NotSupportedException();
 
 		/// <inheritdoc />
 		public override long Position
 		{
-			get { throw new NotSupportedException(); }
-			set { throw new NotSupportedException(); }
+			get => throw new NotSupportedException();
+			set => throw new NotSupportedException();
 		}
 
 		/// <summary>
 		/// Gets the socket this AsyncNetworkStream is wrapping
 		/// </summary>
-		public Socket Socket
-		{
-			get { return _Socket; }
-		}
+		public Socket Socket => _Socket;
 
 		/// <summary>
 		/// Gets the total number of bytes read from the underlying socket
 		/// </summary>
-		public long ReadBytes
-		{
-			get { return _InBytes; }
-		}
+		public long ReadBytes => _InBytes;
 
 		/// <summary>
 		/// Gets the total number of bytes written to the underlying socket
 		/// </summary>
-		public long WrittenBytes
-		{
-			get { return _OutBytes; }
-		}
+		public long WrittenBytes => _OutBytes;
 
 		//****************************************
 
@@ -765,14 +679,9 @@ namespace Proximity.Utility.Net
 		/// </summary>
 		/// <remarks>SocketEventArgs being used by currently executing operations will not be affected</remarks>
 		public static void EmptyPool()
-		{	//****************************************
-			SmartEventArgs MyEventArgs;
-			//****************************************
-
-			while (_ArgsPool.TryPop(out MyEventArgs))
-			{
+		{
+			while (_ArgsPool.TryPop(out var MyEventArgs))
 				MyEventArgs.Dispose();
-			}
 		}
 
 		//****************************************
@@ -796,10 +705,7 @@ namespace Proximity.Utility.Net
 			/// Gets the awaiter for this awaitable
 			/// </summary>
 			/// <returns>This awaitable</returns>
-			public ReadAwaitable GetAwaiter()
-			{
-				return this;
-			}
+			public ReadAwaitable GetAwaiter() => this;
 
 			/// <summary>
 			/// Gets the result of the read operation
@@ -828,10 +734,7 @@ namespace Proximity.Utility.Net
 			/// <summary>
 			/// Gets whether the operation has completed
 			/// </summary>
-			public bool IsCompleted
-			{
-				get { return _EventArgs == null || _EventArgs.IsCompleted; }
-			}
+			public bool IsCompleted => _EventArgs == null || _EventArgs.IsCompleted;
 		}
 
 		/// <summary>
@@ -853,10 +756,7 @@ namespace Proximity.Utility.Net
 			/// Gets the awaiter for this awaitable
 			/// </summary>
 			/// <returns>This awaitable</returns>
-			public WriteAwaitable GetAwaiter()
-			{
-				return this;
-			}
+			public WriteAwaitable GetAwaiter() => this;
 
 			/// <summary>
 			/// Gets the result of the write operation
@@ -882,28 +782,16 @@ namespace Proximity.Utility.Net
 			/// <summary>
 			/// Gets whether the operation has completed
 			/// </summary>
-			public bool IsCompleted
-			{
-				get { return _EventArgs == null || _EventArgs.IsCompleted; }
-			}
+			public bool IsCompleted => _EventArgs == null || _EventArgs.IsCompleted;
 		}
 
 		private sealed class AsyncOperation : TaskCompletionSource<int>
-		{	//****************************************
-			private readonly AsyncCallback _Callback;
-			//****************************************
-
-			internal AsyncOperation(AsyncCallback callback, object state) : base(state)
-			{
-				_Callback = callback;
-			}
+		{
+			internal AsyncOperation(AsyncCallback callback, object state) : base(state) => Callback = callback;
 
 			//****************************************
 
-			internal AsyncCallback Callback
-			{
-				get { return _Callback; }
-			}
+			internal AsyncCallback Callback { get; }
 		}
 
 		[SecuritySafeCritical]
@@ -960,23 +848,15 @@ namespace Proximity.Utility.Net
 			[SecuritySafeCritical]
 			protected override void OnCompleted(SocketAsyncEventArgs e)
 			{
-				// Set our continuation to HasCompleted, and return what was previously there
-				var MyContinuation = Interlocked.Exchange(ref _Continuation, HasCompleted);
-
-				// If a continuation was previously set, call it
-				if (MyContinuation != null)
-					MyContinuation();
+				// Set our continuation to HasCompleted, and invoke what was previously there
+				Interlocked.Exchange(ref _Continuation, HasCompleted)?.Invoke();
 
 				base.OnCompleted(e);
 			}
 
 			//****************************************
 
-			public bool IsCompleted
-			{
-				get { return object.ReferenceEquals(_Continuation, HasCompleted); }
-			}
+			public bool IsCompleted => object.ReferenceEquals(_Continuation, HasCompleted);
 		}
 	}
 }
-#endif

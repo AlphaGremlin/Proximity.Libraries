@@ -1,8 +1,4 @@
-﻿/****************************************\
- TypeExtensions.cs
- Created: 2013-10-01
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 //****************************************
@@ -14,18 +10,6 @@ namespace Proximity.Utility.Reflection
 	/// </summary>
 	public static class TypeExtensions
 	{
-#if NET40
-		/// <summary>
-		/// Returns all fields on a type
-		/// </summary>
-		/// <param name="type">The type to examine</param>
-		/// <returns>An enumeration of all fields, public, private, static and instance</returns>
-		public static IEnumerable<FieldInfo> GetRuntimeFields(this Type type)
-		{
-			return type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance);
-		}
-#endif
-#if !NETSTANDARD1_3
 		/// <summary>
 		/// Checks for the existence of an interface on this Type, and returns the matching method info
 		/// </summary>
@@ -74,6 +58,5 @@ namespace Proximity.Utility.Reflection
 			
 			return null;
 		}
-#endif
 	}
 }

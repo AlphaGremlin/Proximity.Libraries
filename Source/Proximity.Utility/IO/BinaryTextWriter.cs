@@ -78,20 +78,15 @@ namespace Proximity.Utility.IO
 		//****************************************
 
 		/// <inheritdoc />
-		public override void Flush()
-		{
-			Flush(true);
-		}
+		public override void Flush() => Flush(true);
 
-#if !NET40
 		/// <inheritdoc />
 		public override Task FlushAsync()
 		{
 			Flush(true);
 
-			return VoidStruct.EmptyTask;
+			return Task.CompletedTask;
 		}
-#endif
 
 		/// <summary>
 		/// Gets the underlying array for this TextWriter
@@ -192,13 +187,12 @@ namespace Proximity.Utility.IO
 			}
 		}
 
-#if !NET40
 		/// <inheritdoc />
 		public override Task WriteAsync(char value)
 		{
 			Write(value);
 
-			return VoidStruct.EmptyTask;
+			return Task.CompletedTask;
 		}
 
 		/// <inheritdoc />
@@ -206,7 +200,7 @@ namespace Proximity.Utility.IO
 		{
 			Write(buffer, index, count);
 
-			return VoidStruct.EmptyTask;
+			return Task.CompletedTask;
 		}
 
 		/// <inheritdoc />
@@ -214,9 +208,8 @@ namespace Proximity.Utility.IO
 		{
 			Write(value);
 
-			return VoidStruct.EmptyTask;
+			return Task.CompletedTask;
 		}
-#endif
 
 		/// <inheritdoc />
 		public override void WriteLine(string value)
@@ -225,13 +218,12 @@ namespace Proximity.Utility.IO
 			WriteLine(base.CoreNewLine);
 		}
 
-#if !NET40
 		/// <inheritdoc />
 		public override Task WriteLineAsync()
 		{
 			Write(CoreNewLine);
 
-			return VoidStruct.EmptyTask;
+			return Task.CompletedTask;
 		}
 
 		/// <inheritdoc />
@@ -240,7 +232,7 @@ namespace Proximity.Utility.IO
 			Write(value);
 			Write(CoreNewLine);
 
-			return VoidStruct.EmptyTask;
+			return Task.CompletedTask;
 		}
 
 		/// <inheritdoc />
@@ -249,7 +241,7 @@ namespace Proximity.Utility.IO
 			Write(buffer, index, count);
 			Write(CoreNewLine);
 
-			return VoidStruct.EmptyTask;
+			return Task.CompletedTask;
 		}
 
 		/// <inheritdoc />
@@ -258,9 +250,8 @@ namespace Proximity.Utility.IO
 			Write(value);
 			Write(CoreNewLine);
 
-			return VoidStruct.EmptyTask;
+			return Task.CompletedTask;
 		}
-#endif
 
 		//****************************************
 
@@ -320,10 +311,7 @@ namespace Proximity.Utility.IO
 		//****************************************
 
 		/// <inheritdoc />
-		public override Encoding Encoding
-		{
-			get { return _Encoding; }
-		}
+		public override Encoding Encoding => _Encoding;
 
 		/// <summary>
 		/// Gets/Sets the number of bytes that the Binary Text Writer can currently receive before resizing
@@ -354,9 +342,6 @@ namespace Proximity.Utility.IO
 		/// <summary>
 		/// Gets the number of bytes currently written
 		/// </summary>
-		public int Length
-		{
-			get { return _ByteLength; }
-		}
+		public int Length => _ByteLength;
 	}
 }

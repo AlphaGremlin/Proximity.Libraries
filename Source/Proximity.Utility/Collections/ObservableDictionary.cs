@@ -86,7 +86,7 @@ namespace Proximity.Utility.Collections
 			}
 
 			// Get everything into HashCode order
-			Array.Sort(_Entries);
+			Array.Sort(_Entries, 0, _Size);
 
 			// Check the new items don't have any duplicates
 			VerifyDistinct(_Entries, _Size, comparer);
@@ -413,7 +413,7 @@ namespace Proximity.Utility.Collections
 			var RemovedItems = new List<KeyValuePair<TKey, TValue>>();
 
 			// We'll reindex the dictionary at the same time
-			Array.Clear(Buckets, 0, Buckets.Length);
+			//Array.Clear(Buckets, 0, Buckets.Length);
 
 			RemovedItems.Add(Entries[Index].Item);
 
