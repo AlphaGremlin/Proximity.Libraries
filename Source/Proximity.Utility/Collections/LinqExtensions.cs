@@ -1,8 +1,4 @@
-﻿/****************************************\
- LinqExtensions.cs
- Created: 2014-11-25
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Generic;
 //****************************************
 
@@ -33,12 +29,29 @@ namespace Proximity.Utility.Collections
 		/// <returns>An enumeration of outputs where the SelectWhere predicate returned True</returns>
 		public static IEnumerable<TOutput> SelectWhere<TInput, TOutput>(this IEnumerable<TInput> input, SelectWherePredicate<TInput, TOutput> predicate)
 		{
-			foreach (var MyRecord in input)
+			foreach (var InRecord in input)
 			{
-				TOutput OutRecord;
-
-				if (predicate(MyRecord, out OutRecord))
+				if (predicate(InRecord, out var OutRecord))
 					yield return OutRecord;
+			}
+		}
+
+		/// <summary>
+		/// Performs a Select-Where operation
+		/// </summary>
+		/// <typeparam name="TInput">The type of input to the select</typeparam>
+		/// <typeparam name="TOutput">The type of output from the select</typeparam>
+		/// <typeparam name="TResult">The type of output from the result selector</typeparam>
+		/// <param name="input">The input enumeration</param>
+		/// <param name="predicate">A predicate that performs the select-where</param>
+		/// <param name="resultSelector">A selector that generates the result of the operation</param>
+		/// <returns>An enumeration of outputs where the SelectWhere predicate returned True</returns>
+		public static IEnumerable<TResult> SelectWhere<TInput, TOutput, TResult>(this IEnumerable<TInput> input, SelectWherePredicate<TInput, TOutput> predicate, Func<TInput, TOutput, TResult> resultSelector)
+		{
+			foreach (var InRecord in input)
+			{
+				if (predicate(InRecord, out var OutRecord))
+					yield return resultSelector(InRecord, OutRecord);
 			}
 		}
 
