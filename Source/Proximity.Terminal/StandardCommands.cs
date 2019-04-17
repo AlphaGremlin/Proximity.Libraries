@@ -1,8 +1,4 @@
-﻿/****************************************\
- StandardCommands.cs
- Created: 2014-03-03
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -12,7 +8,7 @@ using System.Security;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Proximity.Utility;
+using Proximity.Logging;
 //****************************************
 
 namespace Proximity.Terminal

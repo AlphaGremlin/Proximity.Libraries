@@ -237,7 +237,7 @@ namespace Proximity.Utility.IO
 
 					// If we read all the remainder, clear it
 					if (ReadBytes == _Remainder.Count)
-						_Remainder = default(ArraySegment<byte>);
+						_Remainder = default;
 					else
 						_Remainder = new ArraySegment<byte>(_Remainder.Array, _Remainder.Offset + ReadBytes, _Remainder.Count - ReadBytes);
 
@@ -306,7 +306,7 @@ namespace Proximity.Utility.IO
 
 					// If we read all the remainder, clear it
 					if (ReadBytes == _Remainder.Count)
-						_Remainder = default(ArraySegment<byte>);
+						_Remainder = default;
 					else
 						_Remainder = new ArraySegment<byte>(_Remainder.Array, _Remainder.Offset + ReadBytes, _Remainder.Count - ReadBytes);
 

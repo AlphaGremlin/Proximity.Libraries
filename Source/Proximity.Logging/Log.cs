@@ -3,10 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Security;
-using Proximity.Utility.Logging;
 //****************************************
 
-namespace Proximity.Utility
+namespace Proximity.Logging
 {
 	/// <summary>
 	/// Writes entries to the Default Logging Infrastructure

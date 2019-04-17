@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Configuration;
 using System.Security;
-using Proximity.Utility.Configuration;
-using Proximity.Utility.Logging.Config;
+using Proximity.Logging.Config;
 //****************************************
 
-namespace Proximity.Utility.Logging.Outputs
+namespace Proximity.Logging.Outputs
 {
 	/// <summary>
 	/// Describes the configuration for the File Output Logger

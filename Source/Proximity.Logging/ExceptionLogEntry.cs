@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics;
 //****************************************
 
-namespace Proximity.Utility.Logging
+namespace Proximity.Logging
 {
 	/// <summary>
 	/// A log Entry representing an Exception

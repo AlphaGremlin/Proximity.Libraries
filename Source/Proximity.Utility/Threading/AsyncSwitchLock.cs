@@ -1,8 +1,4 @@
-﻿/****************************************\
- AsyncSwitchLock.cs
- Created: 2014-03-07
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Security;
@@ -26,9 +22,8 @@ namespace Proximity.Utility.Threading
 		private int _Counter = 0;
 		private readonly HashSet<AsyncSwitchLeftInstance> _LeftWaiting = new HashSet<AsyncSwitchLeftInstance>();
 		private readonly HashSet<AsyncSwitchRightInstance> _RightWaiting = new HashSet<AsyncSwitchRightInstance>();
-		private bool _IsUnfair = false;
 		//****************************************
-		
+
 		/// <summary>
 		/// Creates a new fair switch lock
 		/// </summary>
@@ -42,7 +37,7 @@ namespace Proximity.Utility.Threading
 		/// <param name="isUnfair">Whether to prefer fairness when switching</param>
 		public AsyncSwitchLock(bool isUnfair)
 		{
-			_IsUnfair = isUnfair;
+			IsUnfair = isUnfair;
 		}
 		
 		//****************************************
@@ -85,16 +80,13 @@ namespace Proximity.Utility.Threading
 			Left.SetCanceled();
 			Right.SetCanceled();
 		}
-		
+
 		/// <summary>
 		/// Take a left lock, running concurrently with other left locks
 		/// </summary>
 		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
-		public Task<IDisposable> LockLeft()
-		{
-			return LockLeft(CancellationToken.None);
-		}
-		
+		public Task<IDisposable> LockLeft() => LockLeft(CancellationToken.None);
+
 		/// <summary>
 		/// Take a left lock, running concurrently with other left locks, cancelling after a given timeout
 		/// </summary>
@@ -139,7 +131,7 @@ namespace Proximity.Utility.Threading
 					return Task.FromException<IDisposable>(new ObjectDisposedException("AsyncSwitchLock", "Lock has been disposed of"));
 				
 				// If there are zero or more lefts and no waiting rights (or we're in unfair mode)...
-				if (_Counter >= 0 && (_IsUnfair || _RightWaiting.Count == 0))
+				if (_Counter >= 0 && (IsUnfair || _RightWaiting.Count == 0))
 				{
 					// Add another left and return a completed task the caller can use to release the lock
 					Interlocked.Increment(ref _Counter);
@@ -161,16 +153,13 @@ namespace Proximity.Utility.Threading
 			
 			return NewTask;
 		}
-		
+
 		/// <summary>
 		/// Take a right lock, running concurrently with other right locks
 		/// </summary>
 		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
-		public Task<IDisposable> LockRight()
-		{
-			return LockRight(CancellationToken.None);
-		}
-		
+		public Task<IDisposable> LockRight() => LockRight(CancellationToken.None);
+
 		/// <summary>
 		/// Take a right lock, running concurrently with other right locks, cancelling after a given timeout
 		/// </summary>
@@ -215,7 +204,7 @@ namespace Proximity.Utility.Threading
 					return Task.FromException<IDisposable>(new ObjectDisposedException("AsyncSwitchLock", "Lock has been disposed of"));
 				
 				// If there are zero or more rights and no waiting lefts (or we're in unfair mode)...
-				if (_Counter <= 0 && (_IsUnfair || _LeftWaiting.Count == 0))
+				if (_Counter <= 0 && (IsUnfair || _LeftWaiting.Count == 0))
 				{
 					// Add another right and return a completed task the caller can use to release the lock
 					Interlocked.Decrement(ref _Counter);
@@ -279,11 +268,7 @@ namespace Proximity.Utility.Threading
 			}
 			
 			// Activate the next waiter
-#if NETSTANDARD1_3
-			TryRelease(NextTask);
-#else
 			ThreadPool.UnsafeQueueUserWorkItem(TryRelease, NextTask);
-#endif
 		}
 		
 		private static void TryRelease(object state)
@@ -333,11 +318,7 @@ namespace Proximity.Utility.Threading
 			}
 			
 			// Activate the next waiter
-#if NETSTANDARD1_3
-			TryRelease(NextTask);
-#else
 			ThreadPool.UnsafeQueueUserWorkItem(TryRelease, NextTask);
-#endif
 		}
 
 		[SecuritySafeCritical]
@@ -412,12 +393,8 @@ namespace Proximity.Utility.Threading
 			
 			if (NextLeft != null)
 			{
-#if NETSTANDARD1_3
-				TryRelease(NextLeft);
-#else
 				ThreadPool.UnsafeQueueUserWorkItem(TryRelease, NextLeft);
-#endif
-				
+
 				return;
 			}
 			
@@ -430,52 +407,37 @@ namespace Proximity.Utility.Threading
 		{
 			((CancellationTokenSource)state).Dispose();
 		}
-		
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Gets the number of left waiters queued
 		/// </summary>
-		public int WaitingLeft
-		{
-			get { return _LeftWaiting.Count; }
-		}
-		
+		public int WaitingLeft => _LeftWaiting.Count;
+
 		/// <summary>
 		/// Gets the number of right waiters queued
 		/// </summary>
-		public int WaitingRight
-		{
-			get { return _RightWaiting.Count; }
-		}
-		
+		public int WaitingRight => _RightWaiting.Count;
+
 		/// <summary>
 		/// Gets whether any concurrent left operations are in progress
 		/// </summary>
-		public bool IsLeft
-		{
-			get { return _Counter > 0; }
-		}
-		
+		public bool IsLeft => _Counter > 0;
+
 		/// <summary>
 		/// Gets whether any concurrent right operations are in progress
 		/// </summary>
-		public bool IsRight
-		{
-			get { return _Counter < 0; }
-		}
-		
+		public bool IsRight => _Counter < 0;
+
 		/// <summary>
 		/// Gets if the switch lock favours an unfair algorithm
 		/// </summary>
 		/// <remarks>In unfair mode, a lock on one side will succeed if it's already held elsewhere, even if there are waiters on the other side</remarks>
-		public bool IsUnfair
-		{
-			get { return _IsUnfair; }
-		}
-		
+		public bool IsUnfair { get; } = false;
+
 		//****************************************
-		
+
 		private class AsyncSwitchLeftInstance : IDisposable
 		{	//****************************************
 			private readonly AsyncSwitchLock _Source;
@@ -496,12 +458,9 @@ namespace Proximity.Utility.Threading
 				
 				return this;
 			}
-			
-			public void CancelLeft(Task<IDisposable> task)
-			{
-				_Source.CancelLeft(this);
-			}
-			
+
+			public void CancelLeft(Task<IDisposable> task) => _Source.CancelLeft(this);
+
 			public void Dispose()
 			{
 				if (_Source != null && Interlocked.Exchange(ref _Released, 1) == 0)
@@ -532,12 +491,9 @@ namespace Proximity.Utility.Threading
 				
 				return this;
 			}
-			
-			public void CancelRight(Task<IDisposable> task)
-			{
-				_Source.CancelRight(this);
-			}
-			
+
+			public void CancelRight(Task<IDisposable> task) => _Source.CancelRight(this);
+
 			public void Dispose()
 			{
 				if (_Source != null && Interlocked.Exchange(ref _Released, 1) == 0)

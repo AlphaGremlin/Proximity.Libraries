@@ -1,10 +1,6 @@
-﻿/****************************************\
- ConsoleLogEntry.cs
- Created: 9-06-2009
-\****************************************/
-using System;
+﻿using System;
 using System.Diagnostics;
-using Proximity.Utility.Logging;
+using Proximity.Logging;
 //****************************************
 
 namespace Proximity.Terminal

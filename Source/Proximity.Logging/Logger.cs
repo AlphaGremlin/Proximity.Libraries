@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 
-namespace Proximity.Utility.Logging
+namespace Proximity.Logging
 {
 	/// <summary>
 	/// A logger to write entries to a Log Target

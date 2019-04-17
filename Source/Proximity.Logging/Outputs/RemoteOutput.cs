@@ -1,8 +1,4 @@
-﻿/****************************************\
- RemoteOutput.cs
- Created: 2-06-2009
-\****************************************/
-#if !NETSTANDARD1_3 && !NETSTANDARD2_0
+﻿#if !NETSTANDARD1_3 && !NETSTANDARD2_0
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -18,7 +14,7 @@ using Proximity.Utility.Logging.Config;
 using Proximity.Utility.Threading;
 //****************************************
 
-namespace Proximity.Utility.Logging.Outputs
+namespace Proximity.Logging.Outputs
 {
 	/// <summary>
 	/// Provides support for cross-AppDomain logging
@@ -40,19 +36,13 @@ namespace Proximity.Utility.Logging.Outputs
 
 		/// <inheritdoc />
 		[SecurityCritical]
-		public override object InitializeLifetimeService()
-		{
-			return null; // Last until we're disposed
-		}
+		public override object InitializeLifetimeService() => null; // Last until we're disposed
 
 		/// <summary>
 		/// Disposes of the Remote Output receiver
 		/// </summary>
 		[SecuritySafeCritical]
-		public void Dispose()
-		{
-			RemotingServices.Disconnect(this);
-		}
+		public void Dispose() => RemotingServices.Disconnect(this);
 
 		//****************************************
 
@@ -66,10 +56,7 @@ namespace Proximity.Utility.Logging.Outputs
 		}
 
 		[SecuritySafeCritical]
-		internal void Flush()
-		{
-			LogManager.Flush();
-		}
+		internal void Flush() => LogManager.Flush();
 
 		internal void StartSection(LogEntry newEntry, int priority)
 		{
@@ -78,10 +65,7 @@ namespace Proximity.Utility.Logging.Outputs
 			_OpenSections.TryAdd(newEntry.Index, NewSection);
 		}
 
-		internal void Write(LogEntry entry)
-		{
-			Log.Write(entry);
-		}
+		internal void Write(LogEntry entry) => Log.Write(entry);
 
 		//****************************************
 
@@ -101,15 +85,9 @@ namespace Proximity.Utility.Logging.Outputs
 			{
 			}
 
-			protected internal override void FinishSection(LogSection oldSection)
-			{
-				_Receiver.FinishSection(oldSection.Entry.Index);
-			}
+			protected internal override void FinishSection(LogSection oldSection) => _Receiver.FinishSection(oldSection.Entry.Index);
 
-			protected internal override void Flush()
-			{
-				_Receiver.Flush();
-			}
+			protected internal override void Flush() => _Receiver.Flush();
 
 			protected internal override void Start()
 			{

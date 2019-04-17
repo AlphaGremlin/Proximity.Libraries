@@ -4,7 +4,7 @@ using System.Security;
 using Proximity.Utility.Configuration;
 //****************************************
 
-namespace Proximity.Utility.Logging.Outputs
+namespace Proximity.Logging.Outputs
 {
 	/// <summary>
 	/// Describes the configuration for the Text File Output Logger

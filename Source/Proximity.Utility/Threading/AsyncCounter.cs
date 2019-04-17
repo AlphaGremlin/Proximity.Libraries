@@ -1,8 +1,4 @@
-﻿/****************************************\
- AsyncCounter.cs
- Created: 2014-07-07
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -43,11 +39,7 @@ namespace Proximity.Utility.Threading
 			if (initialCount < 0)
 				throw new ArgumentException("Initial Count is invalid");
 
-#if NET40
-			_CompleteTask = TaskEx.FromResult<AsyncCounter>(this);
-#else
 			_CompleteTask = Task.FromResult<AsyncCounter>(this);
-#endif
 
 			_CurrentCount = initialCount;
 		}
@@ -119,10 +111,7 @@ namespace Proximity.Utility.Threading
 		/// Attempts to decrement the Counter
 		/// </summary>
 		/// <returns>A task that completes when we were able to decrement the counter</returns>
-		public Task Decrement()
-		{
-			return Decrement(CancellationToken.None);
-		}
+		public Task Decrement() => Decrement(CancellationToken.None);
 
 		/// <summary>
 		/// Attempts to decrement the Counter
@@ -187,35 +176,22 @@ namespace Proximity.Utility.Threading
 		/// Tries to decrement the counter without waiting
 		/// </summary>
 		/// <returns>True if the counter was decremented without waiting, otherwise False</returns>
-		public bool TryDecrement()
-		{
-			return _Waiters.IsEmpty && InternalTryDecrement();
-		}
-		
+		public bool TryDecrement() => _Waiters.IsEmpty && InternalTryDecrement();
+
 		/// <summary>
 		/// Blocks attempting to decrement the counter
 		/// </summary>
 		/// <param name="token">A cancellation token that can be used to abort waiting on the counter</param>
 		/// <returns>True if the counter was decremented without waiting, otherwise False due to disposal</returns>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
-		public bool TryDecrement(CancellationToken token)
-		{
-#if NET40
-			return TryDecrement(new TimeSpan(0, 0, 0, 0, -1), token);
-#else
-			return TryDecrement(Timeout.InfiniteTimeSpan, token);
-#endif
-		}
-		
+		public bool TryDecrement(CancellationToken token) => TryDecrement(Timeout.InfiniteTimeSpan, token);
+
 		/// <summary>
 		/// Blocks attempting to decrement the counter
 		/// </summary>
 		/// <param name="timeout">Number of milliseconds to block for a counter to become available. Pass zero to not block, or Timeout.InfiniteTimeSpan to block indefinitely</param>
 		/// <returns>True if the counter was decremented, otherwise False due to timeout or disposal</returns>
-		public bool TryDecrement(TimeSpan timeout)
-		{
-			return TryDecrement(timeout, CancellationToken.None);
-		}
+		public bool TryDecrement(TimeSpan timeout) => TryDecrement(timeout, CancellationToken.None);
 
 		/// <summary>
 		/// Blocks attempting to decrement the counter
@@ -243,11 +219,7 @@ namespace Proximity.Utility.Threading
 
 			//****************************************
 
-#if NET40
-			if (timeout == new TimeSpan(0, 0, 0, 0, -1) && timeout < TimeSpan.Zero)
-#else
 			if (timeout == Timeout.InfiniteTimeSpan && timeout < TimeSpan.Zero)
-#endif
 				throw new ArgumentOutOfRangeException("timeout", "Timeout must be Timeout.InfiniteTimeSpan or a positive time");
 
 			// We're okay with blocking, so create our waiter and add it to the queue
@@ -262,11 +234,7 @@ namespace Proximity.Utility.Threading
 			//****************************************
 
 			// Are we okay with blocking indefinitely (or until the token is raised)?
-#if NET40
-			if (timeout == new TimeSpan(0, 0, 0, 0, -1))
-#else
 			if (timeout == Timeout.InfiniteTimeSpan)
-#endif
 			{
 				// Prepare the cancellation token (if any)
 				PrepareWaiter(NewWaiter, token);
@@ -334,11 +302,7 @@ namespace Proximity.Utility.Threading
 					continue; // Yes, so find another
 
 				// Don't want to activate waiters on the calling thread though, since it can cause a stack overflow if Increment gets called from a Decrement continuation
-#if NETSTANDARD1_3
-				Task.Factory.StartNew(ReleaseWaiter, NextWaiter);
-#else
 				ThreadPool.QueueUserWorkItem(ReleaseWaiter, NextWaiter);
-#endif
 				return true;
 			}
 
@@ -377,10 +341,7 @@ namespace Proximity.Utility.Threading
 		/// Waits until it's possible to decrement this counter
 		/// </summary>
 		/// <returns>A task that completes when the counter is available for immediate decrementing</returns>
-		public Task<AsyncCounter> PeekDecrement()
-		{
-			return PeekDecrement(CancellationToken.None);
-		}
+		public Task<AsyncCounter> PeekDecrement() => PeekDecrement(CancellationToken.None);
 
 		/// <summary>
 		/// Waits until it's possible to decrement this counter
@@ -448,11 +409,7 @@ namespace Proximity.Utility.Threading
 						continue; // Yes, so find another
 
 					// Don't want to activate waiters on the calling thread though, since it can cause a stack overflow if Increment gets called from a Decrement continuation
-#if NETSTANDARD1_3
-					Task.Factory.StartNew(ReleaseWaiter, NextWaiter);
-#else
 					ThreadPool.QueueUserWorkItem(ReleaseWaiter, NextWaiter);
-#endif
 					return;
 				}
 
@@ -570,7 +527,7 @@ namespace Proximity.Utility.Threading
 				var MyRegistration = token.Register(Cancel, waiter);
 
 				// If we complete and haven't been cancelled, dispose of the registration
-				waiter.Task.ContinueWith((Action<Task<AsyncCounter>, object>)CleanupCancelRegistration, MyRegistration, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
+				waiter.Task.ContinueWith(CleanupCancelRegistration, MyRegistration, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
 			}
 
 			return waiter.Task;
@@ -590,19 +547,12 @@ namespace Proximity.Utility.Threading
 		}
 
 		private void ReleasePeekers()
-		{	//****************************************
-			TaskCompletionSource<AsyncCounter> NextWaiter;
-			//****************************************
-
+		{
 			// Is there a Peek Waiter?
-			if (_PeekWaiters.TryDequeue(out NextWaiter))
+			if (_PeekWaiters.TryDequeue(out var NextWaiter))
 			{
 				// Yes, release it on another thread so we don't hold up the caller
-#if NETSTANDARD1_3
-				Task.Factory.StartNew(ReleasePeeker, NextWaiter);
-#else
 				ThreadPool.QueueUserWorkItem(ReleasePeeker, NextWaiter);
-#endif
 			}
 		}
 
@@ -619,18 +569,15 @@ namespace Proximity.Utility.Threading
 		private void ReleasePeeker(object state)
 		{	//****************************************
 			var FirstWaiter = (TaskCompletionSource<AsyncCounter>)state;
-			TaskCompletionSource<AsyncCounter> NextWaiter;
 			List<TaskCompletionSource<AsyncCounter>> MyWaiters;
 			//****************************************
 
 			// If there are more peek waiters, release them too
-			if (_PeekWaiters.TryDequeue(out NextWaiter))
+			if (_PeekWaiters.TryDequeue(out var NextWaiter))
 			{
 				// We want to avoid a situation where the peek continuation queues another peek waiter, causing an infinite loop
-				MyWaiters = new List<TaskCompletionSource<AsyncCounter>>();
+				MyWaiters = new List<TaskCompletionSource<AsyncCounter>> { NextWaiter };
 
-				MyWaiters.Add(NextWaiter);
-				
 				// If they run synchronously, this also lets peek waiters have an order to run their continuations in
 				while (_PeekWaiters.TryDequeue(out NextWaiter))
 					MyWaiters.Add(NextWaiter);
@@ -681,10 +628,7 @@ namespace Proximity.Utility.Threading
 		/// <summary>
 		/// Gets the number of operations waiting to decrement the counter
 		/// </summary>
-		public int WaitingCount
-		{
-			get { return _Waiters.Count(waiter => !waiter.Task.IsCompleted); }
-		}
+		public int WaitingCount => _Waiters.Count(waiter => !waiter.Task.IsCompleted);
 
 		//****************************************
 
@@ -693,20 +637,14 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="counters">The counters to try and decrement</param>
 		/// <returns>A task returning the counter that was decremented</returns>
-		public static Task<AsyncCounter> DecrementAny(params AsyncCounter[] counters)
-		{
-			return DecrementAny(counters, CancellationToken.None);
-		}
+		public static Task<AsyncCounter> DecrementAny(params AsyncCounter[] counters) => DecrementAny(counters, CancellationToken.None);
 
 		/// <summary>
 		/// Decrements the first available counter
 		/// </summary>
 		/// <param name="counters">The counters to try and decrement</param>
 		/// <returns>A task returning the counter that was decremented</returns>
-		public static Task<AsyncCounter> DecrementAny(IEnumerable<AsyncCounter> counters)
-		{
-			return DecrementAny(counters, CancellationToken.None);
-		}
+		public static Task<AsyncCounter> DecrementAny(IEnumerable<AsyncCounter> counters) => DecrementAny(counters, CancellationToken.None);
 
 		/// <summary>
 		/// Decrements the first available counter
@@ -723,13 +661,7 @@ namespace Proximity.Utility.Threading
 			for (int Index = 0; Index < CounterSet.Length; Index++)
 			{
 				if (CounterSet[Index].TryDecrement())
-				{
-#if NET40
-					return TaskEx.FromResult(CounterSet[Index]);
-#else
 					return Task.FromResult(CounterSet[Index]);
-#endif
-				}
 			}
 
 			// No, so assign PeekDecrement on all the counters
@@ -748,10 +680,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="counters">The set of counters to try and decrement</param>
 		/// <returns>The counter that was successfully decremented, or null if none were able to be immediately decremented</returns>
-		public static AsyncCounter TryDecrementAny(params AsyncCounter[] counters)
-		{
-			return TryDecrementAny((IEnumerable<AsyncCounter>)counters);
-		}
+		public static AsyncCounter TryDecrementAny(params AsyncCounter[] counters) => TryDecrementAny((IEnumerable<AsyncCounter>)counters);
 
 		/// <summary>
 		/// Tries to decrement one of the given counters without waiting

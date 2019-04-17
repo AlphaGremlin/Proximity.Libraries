@@ -1,14 +1,10 @@
-﻿/****************************************\
- TerminalCommand.cs
- Created: 2014-02-28
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using System.Security;
 using System.Threading.Tasks;
-using Proximity.Utility;
+using Proximity.Logging;
 //****************************************
 
 namespace Proximity.Terminal
@@ -17,20 +13,16 @@ namespace Proximity.Terminal
 	/// Represents a Terminal Command
 	/// </summary>
 	public sealed class TerminalCommand
-	{	//****************************************
-		private readonly string _Name;
-		private readonly MethodInfo _Method;
+	{ //****************************************
 		private readonly bool _IsTask;
-		
-		private readonly string _Description;
 		//****************************************
-		
+
 		internal TerminalCommand(MethodInfo method, TerminalBindingAttribute binding)
 		{
-			_Name = binding.Name ?? method.Name;
-			_Method = method;
+			Name = binding.Name ?? method.Name;
+			Method = method;
 			
-			_Description = binding.Description;
+			Description = binding.Description;
 			
 			if (method.ReturnType == typeof(Task))
 				_IsTask = true;
@@ -48,24 +40,24 @@ namespace Proximity.Terminal
 		[SecurityCritical]
 		public void Invoke(object instance, object[] arguments)
 		{
-			if (instance != null && !_Method.DeclaringType.IsInstanceOfType(instance))
+			if (instance != null && !Method.DeclaringType.IsInstanceOfType(instance))
 				throw new ArgumentException("Instance is invalid for this Command");
 			
 			if (Debugger.IsAttached)
 			{
 				if (_IsTask)
-					((Task)_Method.Invoke(instance, arguments)).Wait();
+					((Task)Method.Invoke(instance, arguments)).Wait();
 				else
-					_Method.Invoke(instance, arguments);
+					Method.Invoke(instance, arguments);
 			}
 			else
 			{
 				try
 				{
 					if (_IsTask)
-						((Task)_Method.Invoke(instance, arguments)).Wait();
+						((Task)Method.Invoke(instance, arguments)).Wait();
 					else
-						_Method.Invoke(instance, arguments);
+						Method.Invoke(instance, arguments);
 				}
 				catch (TargetInvocationException x)
 				{
@@ -90,24 +82,24 @@ namespace Proximity.Terminal
 
 		internal async Task InternalInvokeAsync(object instance, object[] arguments)
 		{
-			if (instance != null && !_Method.DeclaringType.IsInstanceOfType(instance))
+			if (instance != null && !Method.DeclaringType.IsInstanceOfType(instance))
 				throw new ArgumentException("Instance is invalid for this Command");
 			
 			if (Debugger.IsAttached)
 			{
 				if (_IsTask)
-					await (Task)_Method.Invoke(instance, arguments);
+					await (Task)Method.Invoke(instance, arguments);
 				else
-					await Task.Run(() => _Method.Invoke(instance, arguments));
+					await Task.Run(() => Method.Invoke(instance, arguments));
 			}
 			else
 			{
 				try
 				{
 					if (_IsTask)
-						await (Task)_Method.Invoke(instance, arguments);
+						await (Task)Method.Invoke(instance, arguments);
 					else
-						await Task.Run(() => _Method.Invoke(instance, arguments));
+						await Task.Run(() => Method.Invoke(instance, arguments));
 				}
 				catch (TargetInvocationException e)
 				{
@@ -123,31 +115,22 @@ namespace Proximity.Terminal
 				}
 			}
 		}
-		
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Gets the name of this Command
 		/// </summary>
-		public string Name
-		{
-			get { return _Name; }
-		}
-		
+		public string Name { get; }
+
 		/// <summary>
 		/// Gets the underlying Method this Command invokes
 		/// </summary>
-		public MethodInfo Method
-		{
-			get { return _Method; }
-		}
-		
+		public MethodInfo Method { get; }
+
 		/// <summary>
 		/// Gets a description of this Command
 		/// </summary>
-		public string Description
-		{
-			get { return _Description; }
-		}
+		public string Description { get; }
 	}
 }

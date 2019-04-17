@@ -1,12 +1,7 @@
-﻿/****************************************\
- TerminalVariable.cs
- Created: 2014-02-28
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
-using Proximity.Utility.Collections;
 //****************************************
 
 namespace Proximity.Terminal
@@ -15,14 +10,13 @@ namespace Proximity.Terminal
 	/// Describes a set of commands grouped by name
 	/// </summary>
 	public sealed class TerminalCommandSet : IComparable<TerminalCommandSet>
-	{	//****************************************
-		private readonly string _Name;
+	{ //****************************************
 		private readonly List<TerminalCommand> _Commands = new List<TerminalCommand>();
 		//****************************************
 		
 		internal TerminalCommandSet(string name)
 		{
-			_Name = name;
+			Name = name;
 		}
 		
 		//****************************************
@@ -98,39 +92,27 @@ namespace Proximity.Terminal
 			
 			return null;
 		}
-		
+
 		/// <inheritdoc />
-		public override string ToString()
-		{
-			return _Name;
-		}
+		public override string ToString() => Name;
 
 		/// <summary>
 		/// Compares this command to another for the purposes of sorting
 		/// </summary>
 		/// <param name="other">The command to compare to</param>
 		/// <returns>The result of the comparison</returns>
-		public int CompareTo(TerminalCommandSet other)
-		{
-			return _Name.CompareTo(other._Name);
-		}
-		
+		public int CompareTo(TerminalCommandSet other) => Name.CompareTo(other.Name);
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Gets the name of this command set
 		/// </summary>
-		public string Name
-		{
-			get { return _Name; }
-		}
-		
+		public string Name { get; }
+
 		/// <summary>
 		/// Gets the commands under this set
 		/// </summary>
-		public IEnumerable<TerminalCommand> Commands
-		{
-			get { return _Commands; }
-		}
+		public IReadOnlyCollection<TerminalCommand> Commands => _Commands;
 	}
 }

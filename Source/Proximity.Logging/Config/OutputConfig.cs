@@ -4,30 +4,17 @@ using System.Reflection;
 using System.Diagnostics;
 using System.Configuration;
 using System.Collections.Generic;
-using Proximity.Utility.Logging.Outputs;
+using Proximity.Logging.Outputs;
 //****************************************
 
-namespace Proximity.Utility.Logging.Config
+namespace Proximity.Logging.Config
 {
 	/// <summary>
 	/// An configuration entry defining a Logging Output
 	/// </summary>
 	public sealed class OutputConfig : ConfigurationElement
 	{
-		/// <summary>
-		/// Creates a new Output Configuration element
-		/// </summary>
-		public OutputConfig()
-		{
-		}
-
-		//****************************************
-		
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="reader"></param>
-		/// <param name="serializeCollectionKey"></param>
+		/// <inheritdoc />
 		protected sealed override void DeserializeElement(XmlReader reader, bool serializeCollectionKey)
 		{	//****************************************
 			Type MyOutputType;
@@ -91,12 +78,7 @@ namespace Proximity.Utility.Logging.Config
 			reader.Read();
 		}
 
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="writer"></param>
-		/// <param name="serializeCollectionKey"></param>
-		/// <returns></returns>
+		/// <inheritdoc />
 		protected sealed override bool SerializeElement(XmlWriter writer, bool serializeCollectionKey) => base.SerializeElement(writer, serializeCollectionKey);
 
 		//****************************************

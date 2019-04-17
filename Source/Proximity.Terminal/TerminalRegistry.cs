@@ -1,16 +1,11 @@
-﻿/****************************************\
- TerminalRegistry.cs
- Created: 2014-02-28
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Security;
-using Proximity.Utility;
-using Proximity.Utility.Collections;
+using Proximity.Logging;
 //****************************************
 
 namespace Proximity.Terminal
@@ -135,18 +130,16 @@ namespace Proximity.Terminal
 		/// <returns>A new Terminal Instance describing this Instance</returns>
 		public TerminalInstance Add(string name, object instance)
 		{	//****************************************
-			TerminalType MyType;
-			TerminalTypeSet MyTypeSet;
 			TerminalInstance MyInstance;
 			//****************************************
 			
 			if (!_IsLoaded)
 				return null;
 			
-			if (!_Types.TryGetValue(instance.GetType(), out MyType))
+			if (!_Types.TryGetValue(instance.GetType(), out var MyType))
 				throw new ArgumentException("Unknown Instance Type");
 			
-			if (!_TypeSets.TryGetValue(MyType.Name, out MyTypeSet))
+			if (!_TypeSets.TryGetValue(MyType.Name, out var MyTypeSet))
 				throw new InvalidOperationException("Missing type set");
 			
 			//****************************************
@@ -170,18 +163,14 @@ namespace Proximity.Terminal
 		/// <param name="instance"></param>
 		/// <remarks>Instances are held with weak references, so this method is not necessary to call. It does, however, improve performance</remarks>
 		public void Remove(string name, object instance)
-		{	//****************************************
-			TerminalType MyType;
-			TerminalTypeSet MyTypeSet;
-			//****************************************
-			
+		{
 			if (!_IsLoaded)
 				return;
 			
-			if (!_Types.TryGetValue(instance.GetType(), out MyType))
+			if (!_Types.TryGetValue(instance.GetType(), out var MyType))
 				throw new ArgumentException("Unknown Instance Type");
 			
-			if (!_TypeSets.TryGetValue(MyType.Name, out MyTypeSet))
+			if (!_TypeSets.TryGetValue(MyType.Name, out var MyTypeSet))
 				throw new InvalidOperationException("Missing type set");
 			
 			//****************************************
@@ -197,13 +186,10 @@ namespace Proximity.Terminal
 		/// <param name="commandName">The global command set to find</param>
 		/// <returns>The named command set, or null if it doesn't exist</returns>
 		public TerminalCommandSet FindCommand(string commandName)
-		{	//****************************************
-			TerminalCommandSet MyCommand;
-			//****************************************
-			
+		{
 			lock (_LockObject)
 			{
-				if (_Commands.TryGetValue(commandName, out MyCommand))
+				if (_Commands.TryGetValue(commandName, out var MyCommand))
 					return MyCommand;
 			}
 			
@@ -216,13 +202,10 @@ namespace Proximity.Terminal
 		/// <param name="variableName">The global variable to find</param>
 		/// <returns>The named variable, or null if it doesn't exist</returns>
 		public TerminalVariable FindVariable(string variableName)
-		{	//****************************************
-			TerminalVariable MyVariable;
-			//****************************************
-			
+		{
 			lock (_LockObject)
 			{
-				if (_Variables.TryGetValue(variableName, out MyVariable))
+				if (_Variables.TryGetValue(variableName, out var MyVariable))
 					return MyVariable;
 			}
 			
@@ -235,13 +218,10 @@ namespace Proximity.Terminal
 		/// <param name="typeName">The type set to find</param>
 		/// <returns>The named type set, or null if it doesn't exist</returns>
 		public TerminalTypeSet FindTypeSet(string typeName)
-		{	//****************************************
-			TerminalTypeSet MyType;
-			//****************************************
-			
+		{
 			lock (_LockObject)
 			{
-				if (_TypeSets.TryGetValue(typeName, out MyType))
+				if (_TypeSets.TryGetValue(typeName, out var MyType))
 					return MyType;
 			}
 			
@@ -253,10 +233,9 @@ namespace Proximity.Terminal
 		internal TerminalCommand RegisterCommand(MethodInfo method, TerminalBindingAttribute binding)
 		{	//****************************************
 			var MyName = binding.Name ?? method.Name;
-			TerminalCommandSet MyCommands;
 			//****************************************
 			
-			if (!_Commands.TryGetValue(MyName, out MyCommands))
+			if (!_Commands.TryGetValue(MyName, out var MyCommands))
 				_Commands.Add(MyName, MyCommands = new TerminalCommandSet(MyName));
 			
 			return MyCommands.AddOverload(method, binding);

@@ -3,11 +3,11 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Security;
 using System.Xml;
+using Proximity.Logging.Config;
 using Proximity.Utility.Configuration;
-using Proximity.Utility.Logging.Config;
 //****************************************
 
-namespace Proximity.Utility.Logging.Outputs
+namespace Proximity.Logging.Outputs
 {
 	/// <summary>
 	/// Writes log entries to the Diagnostics Trace

@@ -2,7 +2,7 @@ using System;
 using System.Security;
 //****************************************
 
-namespace Proximity.Utility.Logging
+namespace Proximity.Logging
 {
 	/// <summary>
 	/// Represents a logical grouping for entries

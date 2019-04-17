@@ -7,11 +7,12 @@ using System.Reflection;
 using System.Security;
 using System.Security.Permissions;
 using System.Threading;
+using Proximity.Logging.Config;
+using Proximity.Utility;
 using Proximity.Utility.Collections;
-using Proximity.Utility.Logging.Config;
 //****************************************
 
-namespace Proximity.Utility.Logging
+namespace Proximity.Logging
 {
 	/// <summary>
 	/// Manages the logging framework

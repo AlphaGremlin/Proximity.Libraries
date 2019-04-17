@@ -1,12 +1,7 @@
-﻿/****************************************\
- TerminalType.cs
- Created: 2014-02-28
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
-using Proximity.Utility;
-using Proximity.Utility.Collections;
+using Proximity.Logging;
 //****************************************
 
 namespace Proximity.Terminal
@@ -114,11 +109,11 @@ namespace Proximity.Terminal
 		/// <summary>
 		/// Gets the collection of commands offered by this type
 		/// </summary>
-		public IEnumerable<TerminalCommandSet> Commands => _Commands.Values;
+		public IReadOnlyCollection<TerminalCommandSet> Commands => _Commands.Values;
 
 		/// <summary>
 		/// Gets the collection of variables offered by this type
 		/// </summary>
-		public IEnumerable<TerminalVariable> Variables => _Variables.Values;
+		public IReadOnlyCollection<TerminalVariable> Variables => _Variables.Values;
 	}
 }

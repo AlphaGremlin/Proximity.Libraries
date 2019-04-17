@@ -1,8 +1,4 @@
-﻿/****************************************\
- TerminalInstance.cs
- Created: 2014-03-03
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Proximity.Utility;

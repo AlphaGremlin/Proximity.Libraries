@@ -1,11 +1,11 @@
 using System;
 using System.Xml;
 using System.Configuration;
-using Proximity.Utility.Logging.Config;
+using Proximity.Logging.Config;
 using System.Security;
 //****************************************
 
-namespace Proximity.Utility.Logging
+namespace Proximity.Logging
 {
 	/// <summary>
 	/// Configuration for the Logging Infrastructure
@@ -38,9 +38,6 @@ namespace Proximity.Utility.Logging
 		/// Gets the collection of logging outputs
 		/// </summary>
 		[ConfigurationProperty("Outputs", IsDefaultCollection = false)]
-		public OutputCollection Outputs
-		{
-			get { return (OutputCollection)this["Outputs"] ?? (OutputCollection)(this["Outputs"] = new OutputCollection()); }
-		}
+		public OutputCollection Outputs => (OutputCollection)(this["Outputs"] ?? (this["Outputs"] = new OutputCollection()));
 	}
 }

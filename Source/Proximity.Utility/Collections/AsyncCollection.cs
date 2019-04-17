@@ -357,7 +357,7 @@ namespace Proximity.Utility.Collections
 			// Is there an item to take?
 			if (!_UsedSlots.TryDecrement(timeout))
 			{
-				item = default(TItem);
+				item = default;
 				return false;
 			}
 
@@ -487,7 +487,7 @@ namespace Proximity.Utility.Collections
 				yield return Task.FromResult(MyItem);
 
 				// Remember to clear the reference once we're back, so we don't hold onto it
-				MyItem = default(TItem);
+				MyItem = default;
 			}
 		}
 		
@@ -768,7 +768,7 @@ namespace Proximity.Utility.Collections
 					return new TakeResult(MyCollection, MyResult);
 			}
 
-			return default(TakeResult);
+			return default;
 		}
 		
 		//****************************************

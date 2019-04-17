@@ -8,22 +8,13 @@ using Proximity.Utility.Configuration;
 using System.Security;
 //****************************************
 
-namespace Proximity.Utility.Logging.Config
+namespace Proximity.Logging.Config
 {
 	/// <summary>
 	/// An configuration entry defining a Logging Output
 	/// </summary>
 	public class OutputElement : TypedElement
 	{
-		/// <summary>
-		/// Creates a new Output Configuration element
-		/// </summary>
-		public OutputElement()
-		{
-		}
-		
-		//****************************************
-		
 		/// <summary>
 		/// Transforms this output configuration into the appropriate configured logging output
 		/// </summary>

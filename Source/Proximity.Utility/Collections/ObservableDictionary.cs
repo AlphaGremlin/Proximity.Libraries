@@ -410,12 +410,7 @@ namespace Proximity.Utility.Collections
 			if (Index >= _Size)
 				return 0;
 
-			var RemovedItems = new List<KeyValuePair<TKey, TValue>>();
-
-			// We'll reindex the dictionary at the same time
-			//Array.Clear(Buckets, 0, Buckets.Length);
-
-			RemovedItems.Add(Entries[Index].Item);
+			var RemovedItems = new List<KeyValuePair<TKey, TValue>>() { Entries[Index].Item };
 
 			int InnerIndex = Index + 1;
 

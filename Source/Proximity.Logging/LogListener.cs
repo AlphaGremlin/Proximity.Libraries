@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 //****************************************
 
-namespace Proximity.Utility.Logging
+namespace Proximity.Logging
 {
 	/// <summary>
 	/// Output debug messages to a file for .NetCF

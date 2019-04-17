@@ -1,8 +1,4 @@
-﻿/****************************************\
- TerminalProviderAttribute.cs
- Created: 2014-02-28
-\****************************************/
-using System;
+﻿using System;
 //****************************************
 
 namespace Proximity.Terminal
@@ -12,11 +8,7 @@ namespace Proximity.Terminal
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
 	public sealed class TerminalProviderAttribute : Attribute
-	{	//****************************************
-		private string _InstanceType;
-		private bool _IsDefault;
-		//****************************************
-		
+	{
 		/// <summary>
 		/// Identifies a static class that provides terminal commands
 		/// </summary>
@@ -30,7 +22,7 @@ namespace Proximity.Terminal
 		/// <param name="instanceType">The name to identify instances of this class registered with the Terminal</param>
 		public TerminalProviderAttribute(string instanceType)
 		{
-			_InstanceType = instanceType;
+			InstanceType = instanceType;
 		}
 		
 		/// <summary>
@@ -40,28 +32,20 @@ namespace Proximity.Terminal
 		/// <param name="isDefault">Whether this instance acts as the default target for this instance type</param>
 		public TerminalProviderAttribute(string instanceType, bool isDefault)
 		{
-			_InstanceType = instanceType;
-			_IsDefault = isDefault;
+			InstanceType = instanceType;
+			IsDefault = isDefault;
 		}
-		
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Gets/Sets the name to identify instances of this class registered with the Terminal
 		/// </summary>
-		public string InstanceType
-		{
-			get { return _InstanceType; }
-			set { _InstanceType = value; }
-		}
-		
+		public string InstanceType { get; set; }
+
 		/// <summary>
 		/// Gets/Sets whether this instance acts as the default target for this instance type
 		/// </summary>
-		public bool IsDefault
-		{
-			get { return _IsDefault; }
-			set { _IsDefault = value; }
-		}
+		public bool IsDefault { get; set; }
 	}
 }

@@ -1,9 +1,4 @@
-﻿/****************************************\
- AsyncKeyedLock.cs
- Created: 2016-04-11
-\****************************************/
-#if !NET40
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -69,10 +64,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="key">The key to lock on</param>
 		/// <returns>A task that completes when the lock is taken, giving an IDisposable to release the counter</returns>
-		public Task<IDisposable> Lock(TKey key)
-		{
-			return Lock(key, CancellationToken.None);
-		}
+		public Task<IDisposable> Lock(TKey key) => Lock(key, CancellationToken.None);
 
 		/// <summary>
 		/// Attempts to take a lock
@@ -111,7 +103,7 @@ namespace Proximity.Utility.Threading
 		public Task<IDisposable> Lock(TKey key, CancellationToken token)
 		{	//****************************************
 			TaskCompletionSource<IDisposable> NewWaiter;
-			ImmutableQueue<TaskCompletionSource<IDisposable>> OldValue, NewValue;
+			ImmutableQueue<TaskCompletionSource<IDisposable>> NewValue;
 			//****************************************
 
 			// A null key means it's a disposal, so we can't allow the user to lock on it
@@ -127,7 +119,7 @@ namespace Proximity.Utility.Threading
 			// Try and add ourselves to the lock queue
 			for (; ;)
 			{
-				if (_Locks.TryGetValue(key, out OldValue))
+				if (_Locks.TryGetValue(key, out var OldValue))
 				{
 					// Has the lock been disposed? We may have been disposed while adding
 					if (!OldValue.IsEmpty && OldValue.Peek().Task.AsyncState == null)
@@ -181,12 +173,11 @@ namespace Proximity.Utility.Threading
 
 		private void Release(TKey key)
 		{	//****************************************
-			ImmutableQueue<TaskCompletionSource<IDisposable>> OldQueue, NewQueue;
-			TaskCompletionSource<IDisposable> NextWaiter;
+			ImmutableQueue<TaskCompletionSource<IDisposable>> NewQueue;
 			//****************************************
 
 				// Retrieve the current lock state
-			while (_Locks.TryGetValue(key, out OldQueue))
+			while (_Locks.TryGetValue(key, out var OldQueue))
 			{
 				NewQueue = OldQueue;
 
@@ -204,7 +195,7 @@ namespace Proximity.Utility.Threading
 					}
 
 					// Remove the next waiter from the queue
-					NewQueue = NewQueue.Dequeue(out NextWaiter);
+					NewQueue = NewQueue.Dequeue(out var NextWaiter);
 
 					// Check if we can release this Waiter
 					if (NextWaiter.Task.IsCompleted)
@@ -229,12 +220,8 @@ namespace Proximity.Utility.Threading
 						break;
 
 					// Don't want to activate waiters on the calling thread, since it can cause a stack overflow if Wait gets called from a Release continuation
-#if NETSTANDARD1_3
-					Task.Factory.StartNew(ReleaseWaiter, NextWaiter);
-#else
 					ThreadPool.QueueUserWorkItem(ReleaseWaiter, NextWaiter);
-					//					ThreadPool.UnsafeQueueUserWorkItem(ReleaseWaiter, NextWaiter);
-#endif
+
 					return;
 				}
 			}
@@ -306,10 +293,7 @@ namespace Proximity.Utility.Threading
 		/// <summary>
 		/// Gets an enumeration of the keys that are currently locked
 		/// </summary>
-		public IEnumerable<TKey> KeysHeld
-		{
-			get { return _Locks.Keys; }
-		}
+		public IEnumerable<TKey> KeysHeld => _Locks.Keys;
 
 		//****************************************
 
@@ -338,4 +322,3 @@ namespace Proximity.Utility.Threading
 		}
 	}
 }
-#endif

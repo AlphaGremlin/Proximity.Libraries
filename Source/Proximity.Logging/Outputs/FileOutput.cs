@@ -6,12 +6,12 @@ using System.Linq;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
+using Proximity.Logging.Config;
 using Proximity.Utility.Collections;
-using Proximity.Utility.Logging.Config;
 using Proximity.Utility.Threading;
 //****************************************
 
-namespace Proximity.Utility.Logging.Outputs
+namespace Proximity.Logging.Outputs
 {
 	/// <summary>
 	/// Base class for all outputs that write to a local file

@@ -3,26 +3,17 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Security;
+using Proximity.Logging.Outputs;
 using Proximity.Utility.Configuration;
-using Proximity.Utility.Logging.Outputs;
 //****************************************
 
-namespace Proximity.Utility.Logging.Config
+namespace Proximity.Logging.Config
 {
 	/// <summary>
 	/// Describes the configuration for a set of Logging Outputs
 	/// </summary>
 	public sealed class OutputCollection : TypedElementCollection<OutputElement>
 	{
-		/// <summary>
-		/// Creates a new Logging Output Collection
-		/// </summary>
-		public OutputCollection()
-		{
-		}
-		
-		//****************************************
-		
 		/// <inheritdoc />
 		protected override Type ResolveType(string typeName)
 		{

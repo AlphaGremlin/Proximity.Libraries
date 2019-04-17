@@ -5,7 +5,7 @@ using System.Diagnostics;
 using System.Security;
 //****************************************
 
-namespace Proximity.Utility.Logging
+namespace Proximity.Logging
 {
 	/// <summary>
 	/// A single entry in the Log

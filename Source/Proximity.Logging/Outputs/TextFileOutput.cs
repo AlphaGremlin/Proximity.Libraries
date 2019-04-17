@@ -7,12 +7,12 @@ using System.Security;
 using System.Text;
 using System.Threading;
 using System.Xml;
+using Proximity.Logging.Config;
 using Proximity.Utility.Collections;
 using Proximity.Utility.Configuration;
-using Proximity.Utility.Logging.Config;
 //****************************************
 
-namespace Proximity.Utility.Logging.Outputs
+namespace Proximity.Logging.Outputs
 {
 	/// <summary>
 	/// Writes log entries to a text file

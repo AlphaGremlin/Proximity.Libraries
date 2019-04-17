@@ -1,13 +1,7 @@
-﻿/****************************************\
- TerminalTypeSet.cs
- Created: 2014-03-03
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Proximity.Utility;
-using Proximity.Utility.Collections;
 //****************************************
 
 namespace Proximity.Terminal
@@ -110,7 +104,7 @@ namespace Proximity.Terminal
 		/// <summary>
 		/// Gets a list of currently known instance names
 		/// </summary>
-		public IEnumerable<string> Instances
+		public IReadOnlyCollection<string> Instances
 		{
 			get
 			{

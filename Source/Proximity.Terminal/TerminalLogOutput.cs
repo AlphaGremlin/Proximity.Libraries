@@ -1,14 +1,9 @@
-﻿/****************************************\
- TerminalLogOutput.cs
- Created: 2014-03-03
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading;
 using System.Text;
-using Proximity.Utility.Logging;
-using System.Security;
+using Proximity.Logging;
 //****************************************
 
 namespace Proximity.Terminal
@@ -118,7 +113,7 @@ namespace Proximity.Terminal
 		/// <param name="text">The text to write directly to the console</param>
 		public void Print(string text)
 		{	//****************************************
-			ConsoleRecord MyRecord = new ConsoleRecord(text);
+			var MyRecord = new ConsoleRecord(text);
 			//****************************************
 			
 			ThresholdWrite(MyRecord);

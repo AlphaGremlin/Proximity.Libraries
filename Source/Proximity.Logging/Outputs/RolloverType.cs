@@ -1,7 +1,7 @@
 ﻿using System;
 //****************************************
 
-namespace Proximity.Utility.Logging.Outputs
+namespace Proximity.Logging.Outputs
 {
 	/// <summary>
 	/// Identifies the condition under which the log file rolls over

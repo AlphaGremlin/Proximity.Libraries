@@ -1,18 +1,12 @@
-﻿/****************************************\
- LoggingTests.cs
- Created: 2015-02-24
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
-
 using NUnit.Framework;
-using Proximity.Utility.Logging;
-using Proximity.Utility.Logging.Outputs;
-
+using Proximity.Logging;
+using Proximity.Logging.Outputs;
 //****************************************
 
 namespace Proximity.Utility.Tests

@@ -1,10 +1,10 @@
 using System;
-using Proximity.Utility.Logging.Config;
+using Proximity.Logging.Config;
 using System.Xml;
 using System.Security;
 //****************************************
 
-namespace Proximity.Utility.Logging
+namespace Proximity.Logging
 {
 	/// <summary>
 	/// Defines an Output for logging information

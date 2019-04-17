@@ -1,8 +1,4 @@
-﻿/****************************************\
- AsyncReadWriteLock.cs
- Created: 2014-02-20
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Security;
@@ -25,10 +21,8 @@ namespace Proximity.Utility.Threading
 		
 		private readonly HashSet<AsyncReadLockInstance> _ReadersWaiting = new HashSet<AsyncReadLockInstance>();
 		private int _Counter = 0;
-		
-		private bool _IsUnfair = false;
 		//****************************************
-		
+
 		/// <summary>
 		/// Creates a new asynchronous reader/writer lock
 		/// </summary>
@@ -42,7 +36,7 @@ namespace Proximity.Utility.Threading
 		/// <param name="isUnfair">Whether to prefer fairness when switching</param>
 		public AsyncReadWriteLock(bool isUnfair)
 		{
-			_IsUnfair = isUnfair;
+			IsUnfair = isUnfair;
 		}
 		
 		//****************************************
@@ -146,7 +140,7 @@ namespace Proximity.Utility.Threading
 					return Task.FromException<IDisposable>(new ObjectDisposedException("AsyncReadWriteLock", "Lock has been disposed of"));
 				
 				// If there are zero or more readers and no waiting writers (or we're in unfair mode)...
-				if (_Counter >=0 && (_IsUnfair || _Writers.Count == 0))
+				if (_Counter >=0 && (IsUnfair || _Writers.Count == 0))
 				{
 					// Add another reader and return a completed task the caller can use to release the lock
 					Interlocked.Increment(ref _Counter);
@@ -283,11 +277,7 @@ namespace Proximity.Utility.Threading
 				}
 			}
 			
-#if NETSTANDARD1_3
-			TryReleaseRead(NextTask);
-#else
 			ThreadPool.UnsafeQueueUserWorkItem(TryReleaseRead, NextTask);
-#endif
 		}
 		
 		private void TryReleaseRead(object state)
@@ -394,16 +384,14 @@ namespace Proximity.Utility.Threading
 					return;
 				}
 
-#if !NETSTANDARD1_3
 				// If we're not on the threadpool, run TrySetResult on there, so we don't blow the stack if the result calls Release too (and so on)
 				if (!onThreadPool)
 				{
 					ThreadPool.UnsafeQueueUserWorkItem(TryReleaseWrite, NextRelease);
-					
+
 					return;
 				}
-#endif
-				
+
 				// A writer, however, may cancel, so we need to check for that and loop back if it fails
 			} while (!NextRelease.TrySetResult(new AsyncWriteLockInstance(this)));
 		}
@@ -479,52 +467,37 @@ namespace Proximity.Utility.Threading
 		{
 			((CancellationTokenSource)state).Dispose();
 		}
-		
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Gets whether any concurrent reading operations are in progress
 		/// </summary>
-		public bool IsReading
-		{
-			get { return _Counter > 0; }
-		}
-		
+		public bool IsReading => _Counter > 0;
+
 		/// <summary>
 		/// Gets whether an exclusive writing operation is in progress
 		/// </summary>
-		public bool IsWriting
-		{
-			get { return _Counter == -1; }
-		}
-		
+		public bool IsWriting => _Counter == -1;
+
 		/// <summary>
 		/// Gets the number of readers queued
 		/// </summary>
-		public int WaitingReaders
-		{
-			get { return _ReadersWaiting.Count; }
-		}
-		
+		public int WaitingReaders => _ReadersWaiting.Count;
+
 		/// <summary>
 		/// Gets the number of writers queued
 		/// </summary>
-		public int WaitingWriters
-		{
-			get { return _Writers.Count; }
-		}
-		
+		public int WaitingWriters => _Writers.Count;
+
 		/// <summary>
 		/// Gets if the read/write lock favours an unfair algorithm
 		/// </summary>
 		/// <remarks>In unfair mode, a read lock will succeed if it's already held elsewhere, even if there are writers waiting</remarks>
-		public bool IsUnfair
-		{
-			get { return _IsUnfair; }
-		}
-		
+		public bool IsUnfair { get; } = false;
+
 		//****************************************
-		
+
 		private class AsyncReadLockInstance : IDisposable
 		{	//****************************************
 			private readonly AsyncReadWriteLock _Source;
@@ -545,12 +518,9 @@ namespace Proximity.Utility.Threading
 				
 				return this;
 			}
-			
-			public void CancelRead(Task<IDisposable> task)
-			{
-				_Source.CancelRead(this);
-			}
-			
+
+			public void CancelRead(Task<IDisposable> task) => _Source.CancelRead(this);
+
 			public void Dispose()
 			{
 				if (_Source != null && Interlocked.Exchange(ref _Released, 1) == 0)

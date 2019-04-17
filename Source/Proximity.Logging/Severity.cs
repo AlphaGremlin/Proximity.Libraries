@@ -1,7 +1,7 @@
 ﻿using System;
 //****************************************
 
-namespace Proximity.Utility.Logging
+namespace Proximity.Logging
 {
 	/// <summary>
 	/// Identifies the severity of an entry in the log

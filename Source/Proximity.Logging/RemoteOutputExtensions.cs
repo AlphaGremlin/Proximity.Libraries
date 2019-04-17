@@ -1,13 +1,9 @@
-﻿/****************************************\
- RemoteOutput.cs
- Created: 2-06-2009
-\****************************************/
-#if !NETSTANDARD1_3 && !NETSTANDARD2_0
+﻿#if !NETSTANDARD1_3 && !NETSTANDARD2_0
 using System;
 using Proximity.Utility.Logging.Outputs;
 //****************************************
 
-namespace Proximity.Utility.Logging
+namespace Proximity.Logging
 {
 	/// <summary>
 	/// Extension methods for the Remote Output
@@ -19,10 +15,7 @@ namespace Proximity.Utility.Logging
 		/// </summary>
 		/// <param name="receiver">A Remote Output receiver passed from the parent AppDomain</param>
 		/// <returns>A Log Output to pass to <see cref="LogManager.AddOutput"/></returns>
-		public static LogOutput ToSender(this RemoteOutput receiver)
-		{
-			return new RemoteOutput.SendOutput(receiver);
-		}
+		public static LogOutput ToSender(this RemoteOutput receiver) => new RemoteOutput.SendOutput(receiver);
 	}
 }
 #endif

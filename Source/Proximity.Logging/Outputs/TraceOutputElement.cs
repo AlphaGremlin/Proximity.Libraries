@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Configuration;
 using System.Security;
+using Proximity.Logging.Config;
 using Proximity.Utility.Configuration;
-using Proximity.Utility.Logging.Config;
 //****************************************
 
-namespace Proximity.Utility.Logging.Outputs
+namespace Proximity.Logging.Outputs
 {
 	/// <summary>
 	/// Describes the configuration for the Trace Output Logger

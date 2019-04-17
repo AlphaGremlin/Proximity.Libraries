@@ -1,16 +1,11 @@
-﻿/****************************************\
- TerminalParser.cs
- Created: 2014-02-28
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
-using Proximity.Utility;
-using Proximity.Utility.Collections;
+using Proximity.Logging;
 //****************************************
 
 namespace Proximity.Terminal
@@ -120,6 +115,7 @@ namespace Proximity.Terminal
 		{
 			return InternalExecute(command, registries);
 		}
+
 		/// <summary>
 		/// Finds the next command for auto completion
 		/// </summary>
@@ -687,7 +683,6 @@ namespace Proximity.Terminal
 			int LastIndex = 0, CharIndex = 0, QuoteMode = 0;
 			TerminalCommand MyCommand;
 			char CurrentChar;
-			object[] OutParams;
 			//****************************************
 			
 			if (argumentText != null)
@@ -761,7 +756,7 @@ namespace Proximity.Terminal
 			//****************************************
 			
 			// Try with the broken up arguments
-			MyCommand = commandSet.FindCommand(RawParams.ToArray(), out OutParams);
+			MyCommand = commandSet.FindCommand(RawParams.ToArray(), out var OutParams);
 			
 			// If that fails, try and pass the whole argument text as the first argument, no quoting
 			if (MyCommand == null)
@@ -788,8 +783,8 @@ namespace Proximity.Terminal
 		/// </summary>
 		public static TerminalRegistry[] Context
 		{
-			get { return _Context.Value; }
-			private set { _Context.Value = value; }
+			get => _Context.Value;
+			private set => _Context.Value = value;
 		}
 	}
 }
