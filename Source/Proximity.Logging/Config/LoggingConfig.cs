@@ -23,7 +23,7 @@ namespace Proximity.Logging
 		{
 			if (ActiveConfig == null)
 			{
-				ActiveConfig = ConfigurationManager.GetSection("Proximity.Utility.Logging") as LoggingConfig;
+				ActiveConfig = ConfigurationManager.GetSection("Proximity.Logging") as LoggingConfig;
 				
 				if (ActiveConfig == null)
 					ActiveConfig = new LoggingConfig();

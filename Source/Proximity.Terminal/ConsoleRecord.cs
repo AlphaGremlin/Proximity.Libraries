@@ -33,7 +33,7 @@ namespace Proximity.Terminal
 			switch(entry.Severity)
 			{
 			case Severity.Critical:
-				ConsoleColour = ConsoleColor.Red;
+				ConsoleColour = ConsoleColor.DarkMagenta;
 				break;
 				
 			case Severity.Error:
@@ -53,7 +53,7 @@ namespace Proximity.Terminal
 				break;
 				
 			case Severity.Debug:
-				ConsoleColour = ConsoleColor.DarkGray;
+				ConsoleColour = ConsoleColor.Blue;
 				break;
 				
 			case Severity.Verbose:
