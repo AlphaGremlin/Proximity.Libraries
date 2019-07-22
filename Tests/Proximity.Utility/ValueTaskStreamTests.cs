@@ -1725,6 +1725,30 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(CompletionTask.IsCompleted, "Task is not completed");
 		}
 
+		[Test()]//, Timeout(1000)]
+		public async Task CompleteQueueValueTask()
+		{ //****************************************
+			var MyQueue = new ValueTaskStream();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			//****************************************
+
+			var MyTask1 = MyQueue.QueueValueTask(async () => await (Task)TaskSource.Task);
+
+			var CompletionTask = MyQueue.Complete();
+
+			var MyTask2 = MyQueue.QueueValueTask(async () => await (Task)TaskSource.Task);
+
+			Assert.IsFalse(CompletionTask.IsCompleted, "Task completed early");
+
+			TaskSource.SetResult(VoidStruct.Empty);
+
+			//****************************************
+
+			await CompletionTask;
+
+			await MyTask2;
+		}
+
 		[Test(), Timeout(2000)]
 		public async Task ConcurrentQueue()
 		{	//****************************************

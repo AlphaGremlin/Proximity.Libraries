@@ -346,20 +346,37 @@ namespace Proximity.Utility.Threading
 		/// <summary>
 		/// Completes when all queued tasks have been completed
 		/// </summary>
-		public Task Complete() => Complete(CancellationToken.None);
+		public Task Complete() => GetComplete();
 
 		/// <summary>
 		/// Completes when all queued tasks have been completed
 		/// </summary>
-		public Task Complete(CancellationToken token)
-		{ //****************************************
-			var CurrentTask = _NextTask;
-			//****************************************
+		public Task Complete(CancellationToken token) => GetComplete().When(token);
 
-			if (object.ReferenceEquals(CurrentTask, _CompletedTask)) // Nothing has been queued or the stream has been reset
-				return Task.CompletedTask;
+		private Task GetComplete()
+		{
+			for (; ; )
+			{
+				var OldNextTask = _NextTask;
 
-			return CurrentTask.GetCompletedTask().When(token);
+				if (OldNextTask == _CompletedTask)
+					return Task.CompletedTask;
+
+				if (OldNextTask is NullTask Null)
+					return Null.Completed; // The next Task is a Completed Task, so just return that rather than allocate a new one
+
+				// Insert a Null Task into the Stream
+				var NewNextTask = new NullTask(this, CancellationToken.None);
+				
+				if (Interlocked.CompareExchange(ref _NextTask, NewNextTask, OldNextTask) == OldNextTask)
+				{
+					OldNextTask.Queue(NewNextTask);
+
+					return NewNextTask.Completed;
+				}
+
+				// The next Task changed. Either a new Task was queued, or it just completed executing
+			}
 		}
 
 		//****************************************
@@ -375,11 +392,6 @@ namespace Proximity.Utility.Threading
 		{
 			void Queue(IStreamTask child);
 			void Execute();
-
-			/// <summary>
-			/// Gets a Task that will be completed when this Stream Task completes
-			/// </summary>
-			Task GetCompletedTask();
 		}
 
 		private sealed class CompletedTask : IStreamTask
@@ -387,8 +399,6 @@ namespace Proximity.Utility.Threading
 			void IStreamTask.Queue(IStreamTask child) => child.Execute();
 
 			void IStreamTask.Execute() => throw new InvalidOperationException("Cannot execute completed task");
-
-			Task IStreamTask.GetCompletedTask() => Task.CompletedTask;
 		}
 
 		//****************************************
@@ -484,31 +494,6 @@ namespace Proximity.Utility.Threading
 					throw new InvalidOperationException("Continuation already set");
 			}
 
-			public Task GetCompletedTask()
-			{
-				for (; ; )
-				{
-					var OldNextTask = _NextTask;
-
-					if (OldNextTask == _CompletedTask)
-						return Task.CompletedTask;
-
-					if (OldNextTask is NullTask Null)
-						return Null.Completed; // The next Task is a Completed Task, so just return that rather than allocate a new one
-
-					// Insert a Null Task into the Stream
-					var NewNextTask = new NullTask(Stream, CancellationToken.None);
-
-					if (_NextTask != null)
-						NewNextTask.Queue(_NextTask);
-
-					if (Interlocked.CompareExchange(ref _NextTask, NewNextTask, OldNextTask) == OldNextTask)
-						return NewNextTask.Completed;
-
-					// The next Task changed. Either a new Task was queued, or we ourselves just completed execution.
-				}
-			}
-
 			//****************************************
 
 			protected bool SwitchToPending()
@@ -575,6 +560,9 @@ namespace Proximity.Utility.Threading
 				var Continuation = _Continuation;
 
 				if (Continuation == null && (Continuation = Interlocked.CompareExchange(ref _Continuation, _CompletedContinuation, null)) == null)
+					return;
+
+				if (Continuation == _CompletedContinuation)
 					return;
 
 				var ContinuationState = _State;

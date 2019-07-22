@@ -205,6 +205,109 @@ namespace Proximity.Utility.Threading
 		/// <returns>An enumeration that returns the tasks in order of completion</returns>
 		public static IEnumerable<Task<TResult>> Interleave<TResult>(this IEnumerable<Task<TResult>> source, CancellationToken token) => new Interleave<TResult>(source, token);
 
+		/// <summary>
+		/// Waits until all given ValueTasks have completed
+		/// </summary>
+		/// <param name="tasks">The Tasks to wait on</param>
+		/// <returns>A ValueTask that completes when all given Tasks complete</returns>
+		public static ValueTask WhenAll(this IEnumerable<ValueTask> tasks)
+		{
+			if (tasks is null)
+				throw new ArgumentNullException(nameof(tasks));
+
+			if (tasks is ValueTask[] ArrayTasks)
+				return InternalWhenAll(ArrayTasks);
+
+			if (tasks is IReadOnlyCollection<ValueTask> ReadOnlyCollection)
+			{
+				if (ReadOnlyCollection.Count == 0)
+					return default;
+
+				var Index = 0;
+
+				ArrayTasks = new ValueTask[ReadOnlyCollection.Count];
+
+				foreach (var CurrentTask in tasks)
+					ArrayTasks[Index++] = CurrentTask;
+
+				return InternalWhenAll(ArrayTasks);
+			}
+
+			if (tasks is ICollection<ValueTask> Collection)
+			{
+				if (Collection.Count == 0)
+					return default;
+
+				var Index = 0;
+
+				ArrayTasks = new ValueTask[Collection.Count];
+
+				foreach (var CurrentTask in tasks)
+					ArrayTasks[Index++] = CurrentTask;
+
+				return InternalWhenAll(ArrayTasks);
+			}
+
+			var ListTasks = new List<ValueTask>(tasks);
+
+			if (ListTasks.Count == 0)
+				return default;
+
+			return InternalWhenAll(ListTasks);
+		}
+
+		/// <summary>
+		/// Waits until all given ValueTasks have completed
+		/// </summary>
+		/// <typeparam name="T">The type of the result from each Task</typeparam>
+		/// <param name="tasks">The Tasks to wait on</param>
+		/// <returns>A ValueTask that completes when all given Tasks complete</returns>
+		public static ValueTask<T[]> WhenAll<T>(this IEnumerable<ValueTask<T>> tasks)
+		{
+			if (tasks is null)
+				throw new ArgumentNullException(nameof(tasks));
+
+			if (tasks is ValueTask<T>[] ArrayTasks)
+				return InternalWhenAll(ArrayTasks);
+
+			if (tasks is IReadOnlyCollection<ValueTask<T>> ReadOnlyCollection)
+			{
+				if (ReadOnlyCollection.Count == 0)
+					return new ValueTask<T[]>(Array.Empty<T>());
+
+				var Index = 0;
+
+				ArrayTasks = new ValueTask<T>[ReadOnlyCollection.Count];
+
+				foreach (var CurrentTask in tasks)
+					ArrayTasks[Index++] = CurrentTask;
+
+				return InternalWhenAll(ArrayTasks);
+			}
+
+			if (tasks is ICollection<ValueTask<T>> Collection)
+			{
+				if (Collection.Count == 0)
+					return new ValueTask<T[]>(Array.Empty<T>());
+
+				var Index = 0;
+
+				ArrayTasks = new ValueTask<T>[Collection.Count];
+
+				foreach (var CurrentTask in tasks)
+					ArrayTasks[Index++] = CurrentTask;
+
+				return InternalWhenAll(ArrayTasks);
+			}
+
+			var ListTasks = new List<ValueTask<T>>(tasks);
+
+			if (ListTasks.Count == 0)
+				return new ValueTask<T[]>(Array.Empty<T>());
+
+			return InternalWhenAll(ListTasks);
+		}
+
 		//****************************************
 
 		internal static ValueTask AsValueTask(this Task task) => new ValueTask(task);
@@ -263,6 +366,55 @@ namespace Proximity.Utility.Threading
 		private static void DoObserveFault(Task innerTask)
 		{
 			var MyException = innerTask.Exception;
+		}
+
+		private static async ValueTask InternalWhenAll(IReadOnlyList<ValueTask> tasks)
+		{
+			List<Exception> Exceptions = null;
+
+			for (var Index = 0; Index < tasks.Count; Index++)
+			{
+				try
+				{
+					await tasks[Index];
+				}
+				catch (Exception e)
+				{
+					if (Exceptions == null)
+						Exceptions = new List<Exception>();
+
+					Exceptions.Add(e);
+				}
+			}
+
+			if (Exceptions != null)
+				throw new AggregateException(Exceptions);
+		}
+
+		private static async ValueTask<T[]> InternalWhenAll<T>(IReadOnlyList<ValueTask<T>> tasks)
+		{
+			var Results = new T[tasks.Count];
+			List<Exception> Exceptions = null;
+
+			for (var Index = 0; Index < tasks.Count; Index++)
+			{
+				try
+				{
+					Results[Index] = await tasks[Index];
+				}
+				catch (Exception e)
+				{
+					if (Exceptions == null)
+						Exceptions = new List<Exception>();
+
+					Exceptions.Add(e);
+				}
+			}
+
+			if (Exceptions != null)
+				throw new AggregateException(Exceptions);
+
+			return Results;
 		}
 
 		//****************************************

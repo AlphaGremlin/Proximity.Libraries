@@ -7,8 +7,8 @@
 		<Copyright>Copyright © Daniel Chandler 2019</Copyright>
 		<Product>Proximity Utility Library</Product>
 		<AssemblyVersion>20.0.0.0</AssemblyVersion>
-		<FileVersion>20.0.0.0</FileVersion>
-		<Version>20.0.0</Version>
+		<FileVersion>20.0.1.0</FileVersion>
+		<Version>20.0.1</Version>
 		<Description>Proximity Utility Library</Description>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
