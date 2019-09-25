@@ -59,9 +59,24 @@ namespace Proximity.Utility.Tests
         <Property Type=""Proximity.Utility.Tests.ConfigurationTests+SubTypedTestElement, Proximity.Utility.Tests"" Value=""1"" />
     </Test>
 </configuration>";
-		
+
+		private const string RawTypedCollectionSection = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<configuration>
+    <configSections>
+        <section name=""Test"" type=""Proximity.Utility.Tests.ConfigurationTests+TypedCollectionTestSection, Proximity.Utility.Tests"" allowExeDefinition=""MachineToRoamingUser"" />
+    </configSections>
+    <Test>
+        <Collection>
+            <add Type=""Proximity.Utility.Tests.ConfigurationTests+SubTypedTestElement, Proximity.Utility.Tests"" Value=""1"" />
+            <add Type=""Proximity.Utility.Tests.ConfigurationTests+SubTypedTestElement2, Proximity.Utility.Tests"" Value=""2"">
+                <Child Value=""3"" />
+            </add>
+        </Collection>
+    </Test>
+</configuration>";
+
 		//****************************************
-		
+
 		[Test]
 		public void ReadStringElement()
 		{
@@ -282,8 +297,57 @@ namespace Proximity.Utility.Tests
 			var MySection = TypedPropertyTestSection.FromString(RawXML);
 
 			Assert.IsNotNull(MySection.Property);
-			Assert.IsInstanceOf(typeof(SubTypedTestElement), MySection.Property.Content);
-			Assert.AreEqual("1", ((SubTypedTestElement)MySection.Property.Content).Value);
+
+			var RealElement = MySection.Property.Content.Populate<TypedTestElement>(Type.GetType(MySection.Property.Content.Type));
+
+			Assert.IsInstanceOf(typeof(SubTypedTestElement), RealElement);
+			Assert.AreEqual("1", ((SubTypedTestElement)RealElement).Value);
+		}
+
+		[Test]
+		public void ReadTypedProperty2()
+		{
+			var RawXML = @"
+	<Test>
+		<Property Type=""Proximity.Utility.Tests.ConfigurationTests+SubTypedTestElement2, Proximity.Utility.Tests"" Value=""1""><Child Value=""2"" /></Property>
+	</Test>";
+
+			var MySection = TypedPropertyTestSection.FromString(RawXML);
+
+			Assert.IsNotNull(MySection.Property);
+
+			var RealElement = MySection.Property.Content.Populate<TypedTestElement>(Type.GetType(MySection.Property.Content.Type));
+
+			Assert.IsInstanceOf(typeof(SubTypedTestElement2), RealElement);
+
+			var SubTypedElement2 = RealElement as SubTypedTestElement2;
+			Assert.AreEqual(1, SubTypedElement2.Value);
+			Assert.IsNotNull(SubTypedElement2.Child);
+			Assert.AreEqual("2", SubTypedElement2.Child.Value);
+		}
+
+		[Test]
+		public void ReadTypedProperty2Whitespace()
+		{
+			var RawXML = @"
+	<Test>
+		<Property Type=""Proximity.Utility.Tests.ConfigurationTests+SubTypedTestElement2, Proximity.Utility.Tests"" Value=""1"">
+			<Child      Value=""2""        />      
+		</Property>
+	</Test>";
+
+			var MySection = TypedPropertyTestSection.FromString(RawXML);
+
+			Assert.IsNotNull(MySection.Property);
+
+			var RealElement = MySection.Property.Content.Populate<TypedTestElement>(Type.GetType(MySection.Property.Content.Type));
+
+			Assert.IsInstanceOf(typeof(SubTypedTestElement2), RealElement);
+
+			var SubTypedElement2 = RealElement as SubTypedTestElement2;
+			Assert.AreEqual(1, SubTypedElement2.Value);
+			Assert.IsNotNull(SubTypedElement2.Child);
+			Assert.AreEqual("2", SubTypedElement2.Child.Value);
 		}
 
 		[Test]
@@ -304,8 +368,79 @@ namespace Proximity.Utility.Tests
 				var MySection = (TypedPropertyTestSection)MyConfig.GetSection("Test");
 
 				Assert.IsNotNull(MySection.Property);
-				Assert.IsInstanceOf(typeof(SubTypedTestElement), MySection.Property.Content);
-				Assert.AreEqual("1", ((SubTypedTestElement)MySection.Property.Content).Value);
+
+				var RealElement = MySection.Property.Content.Populate<TypedTestElement>(Type.GetType(MySection.Property.Content.Type));
+
+				Assert.IsInstanceOf(typeof(SubTypedTestElement), RealElement);
+				Assert.AreEqual("1", ((SubTypedTestElement)RealElement).Value);
+			}
+			finally
+			{
+				File.Delete(Temp1);
+			}
+		}
+
+		[Test]
+		public void ReadTypedCollection()
+		{
+			var RawXML = @"
+	<Test>
+		<Collection>
+			<add Type=""Proximity.Utility.Tests.ConfigurationTests+SubTypedTestElement, Proximity.Utility.Tests"" Value=""1"" />
+		</Collection>
+	</Test>";
+
+			var MySection = TypedCollectionTestSection.FromString(RawXML);
+
+			Assert.IsNotNull(MySection.Collection);
+			Assert.AreEqual(1, MySection.Collection.Count);
+
+			var FirstItem = MySection.Collection.First();
+
+			var RealElement = FirstItem.Populate<TypedTestElement>(Type.GetType(FirstItem.Type));
+
+			Assert.IsInstanceOf(typeof(SubTypedTestElement), RealElement);
+			Assert.AreEqual("1", ((SubTypedTestElement)RealElement).Value);
+		}
+
+		[Test]
+		public void ReadTypedCollectionSection()
+		{
+			var MyMap = new ExeConfigurationFileMap();
+
+			var Temp1 = Path.GetTempFileName();
+
+			try
+			{
+				MyMap.ExeConfigFilename = Temp1;
+
+				File.WriteAllText(Temp1, RawTypedCollectionSection);
+
+				var MyConfig = ConfigurationManager.OpenMappedExeConfiguration(MyMap, ConfigurationUserLevel.None);
+
+				var MySection = (TypedCollectionTestSection)MyConfig.GetSection("Test");
+
+				Assert.IsNotNull(MySection.Collection);
+				Assert.AreEqual(2, MySection.Collection.Count);
+
+				var FirstItem = MySection.Collection.First();
+
+				var RealElement = FirstItem.Populate<TypedTestElement>(Type.GetType(FirstItem.Type));
+
+				Assert.IsInstanceOf(typeof(SubTypedTestElement), RealElement);
+				Assert.AreEqual("1", ((SubTypedTestElement)RealElement).Value);
+
+				var SecondItem = MySection.Collection.Last();
+
+				var RealElement2 = SecondItem.Populate<TypedTestElement>(Type.GetType(SecondItem.Type));
+
+				Assert.IsInstanceOf(typeof(SubTypedTestElement2), RealElement2);
+
+				var SubTypedElement2 = RealElement2 as SubTypedTestElement2;
+
+				Assert.AreEqual(2, SubTypedElement2.Value);
+				Assert.IsNotNull(SubTypedElement2.Child);
+				Assert.AreEqual("3", SubTypedElement2.Child.Value);
 			}
 			finally
 			{
@@ -314,7 +449,7 @@ namespace Proximity.Utility.Tests
 		}
 
 		//****************************************
-		
+
 		public class StringElementSection : ConfigurationSection
 		{
 			public static StringElementSection FromString(string rawXml)
@@ -420,6 +555,23 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
+		public class SubTypedTestElement2 : TypedTestElement
+		{
+			[ConfigurationProperty("Child", IsRequired = false)]
+			public SubTypedTestElement Child
+			{
+				get { return (SubTypedTestElement)base["Child"]; }
+				set { base["Child"] = value; }
+			}
+
+			[ConfigurationProperty("Value", IsRequired = false)]
+			public int Value
+			{
+				get { return (int)base["Value"]; }
+				set { base["Value"] = value; }
+			}
+		}
+
 		public class TypedPropertyTestSection : ConfigurationSection
 		{
 			public static TypedPropertyTestSection FromString(string rawXml)
@@ -443,6 +595,34 @@ namespace Proximity.Utility.Tests
 				get { return (TypedElementProperty<TypedTestElement>)base["Property"]; }
 				set { base["Property"] = value; }
 			}
+		}
+
+		public class TypedCollectionTestSection : ConfigurationSection
+		{
+			public static TypedCollectionTestSection FromString(string rawXml)
+			{
+				using var MyStream = new StringReader(rawXml);
+				using var MyReader = XmlReader.Create(MyStream);
+
+				MyReader.Read();
+
+				var MySection = new TypedCollectionTestSection();
+
+				MySection.DeserializeSection(MyReader);
+
+				return MySection;
+			}
+
+			[ConfigurationProperty("Collection", IsRequired = false, IsDefaultCollection = false)]
+			public TypedTestCollection Collection
+			{
+				get { return (TypedTestCollection)base["Collection"]; }
+				set { base["Collection"] = value; }
+			}
+		}
+
+		public class TypedTestCollection : TypedElementCollection<TypedTestElement>
+		{
 		}
 	}
 }

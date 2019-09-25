@@ -17,7 +17,7 @@ namespace Proximity.Utility.Tests
 	[TestFixture]
 	public class TaskExtensionTests
 	{
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task When()
 		{
 			using (var CancelSource = new CancellationTokenSource())
@@ -28,7 +28,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void WhenCancel()
 		{
 			using (var CancelSource = new CancellationTokenSource(50))
@@ -39,7 +39,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task WhenResult()
 		{
 			int Result;
@@ -54,7 +54,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(100, Result);
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void WhenResultCancel()
 		{
 			using (var CancelSource = new CancellationTokenSource(50))
@@ -65,7 +65,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task WhenSourceCancel()
 		{
 			using (var CancelSource1 = new CancellationTokenSource(50))
@@ -89,7 +89,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task WhenSourceResultCancel()
 		{
 			int Result;

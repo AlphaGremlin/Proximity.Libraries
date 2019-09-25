@@ -15,7 +15,7 @@ namespace Proximity.Utility.Tests
 	[TestFixture]
 	public class AsyncKeyedLockTests
 	{
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LockNull()
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<object>();
@@ -32,7 +32,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void LockStruct([Values(-1, 0, 1, int.MaxValue)] int key)
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<int>();
@@ -46,7 +46,7 @@ namespace Proximity.Utility.Tests
 			CollectionAssert.AreEqual(new int[] { key }, MyLock.KeysHeld);
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void LockClass([Values(typeof(int), typeof(long), typeof(string), typeof(Version))] Type key)
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<Type>();
@@ -60,7 +60,7 @@ namespace Proximity.Utility.Tests
 			CollectionAssert.AreEqual(new Type[] { key }, MyLock.KeysHeld);
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void LockTwo([Values(-1, 0, 1)] int first, [Values(-1, 0, 1)] int second)
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<int>();
@@ -78,7 +78,7 @@ namespace Proximity.Utility.Tests
 			CollectionAssert.Contains(MyLock.KeysHeld, second, "Second key missing");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LockRelease()
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<int>();
@@ -93,7 +93,7 @@ namespace Proximity.Utility.Tests
 			CollectionAssert.IsEmpty(MyLock.KeysHeld);
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LockCancel()
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<int>();
@@ -122,8 +122,8 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test, Timeout(1000)]
-		public async Task LockNoTimeout()
+		[Test, MaxTime(1000)]
+		public async Task LockNoMaxTime()
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<int>();
 			Task<IDisposable> SecondTask;
@@ -141,7 +141,7 @@ namespace Proximity.Utility.Tests
 			CollectionAssert.IsEmpty(MyLock.KeysHeld);
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LockInstant()
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<int>();
@@ -156,8 +156,8 @@ namespace Proximity.Utility.Tests
 			CollectionAssert.IsEmpty(MyLock.KeysHeld);
 		}
 
-		[Test, Timeout(1000)]
-		public async Task LockTimeout()
+		[Test, MaxTime(1000)]
+		public async Task LockMaxTime()
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<int>();
 			Task<IDisposable> SecondTask;
@@ -183,7 +183,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LockCancelLock()
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<int>();
@@ -220,7 +220,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task Dispose()
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<int>();
@@ -229,7 +229,7 @@ namespace Proximity.Utility.Tests
 			await MyLock.Dispose();
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task DisposeLock()
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<int>();
@@ -248,7 +248,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LockDispose()
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<int>();
@@ -263,7 +263,7 @@ namespace Proximity.Utility.Tests
 			await MyDisposeTask;
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LockLockDispose()
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<int>();
@@ -293,7 +293,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LockDisposeLock()
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<int>();
@@ -318,7 +318,7 @@ namespace Proximity.Utility.Tests
 			await MyDisposeTask;
 		}
 
-		[Test, Timeout(2000), Repeat(10)]
+		[Test, MaxTime(2000), Repeat(10)]
 		public async Task ConcurrentFast()
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<int>();
@@ -349,7 +349,7 @@ namespace Proximity.Utility.Tests
 			CollectionAssert.IsEmpty(MyLock.KeysHeld, "Lock still held");
 		}
 			
-		[Test, Timeout(1000), Repeat(4)]
+		[Test, MaxTime(1000), Repeat(4)]
 		public async Task ConcurrentSlow()
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<int>();
@@ -383,7 +383,7 @@ namespace Proximity.Utility.Tests
 			CollectionAssert.IsEmpty(MyLock.KeysHeld, "Lock still held");
 		}
 
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, MaxTime(1000), Repeat(10)]
 		public async Task ConcurrentDispose()
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<int>();
@@ -409,7 +409,7 @@ namespace Proximity.Utility.Tests
 			await MyDisposeTask;
 		}
 
-		[Test, Timeout(2000), Repeat(2)]
+		[Test, MaxTime(2000), Repeat(2)]
 		public async Task ConcurrentMany()
 		{	//****************************************
 			var MyLock = new AsyncKeyedLock<int>();

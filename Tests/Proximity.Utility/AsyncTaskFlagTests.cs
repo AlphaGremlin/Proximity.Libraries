@@ -28,7 +28,7 @@ namespace Proximity.Utility.Tests
 		
 		//****************************************
 		
-		[Test(), Timeout(1500)]
+		[Test(), MaxTime(1500)]
 		public async Task SetNoWait()
 		{
 			var MyFlag = new AsyncTaskFlag(() => Task.CompletedTask);
@@ -36,7 +36,7 @@ namespace Proximity.Utility.Tests
 			await MyFlag.SetAndWait();
 		}
 		
-		[Test(), Timeout(1500)]
+		[Test(), MaxTime(1500)]
 		public async Task SetAndWait()
 		{
 			var MyFlag = new AsyncTaskFlag(WaitHalfSecond);
@@ -50,7 +50,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(1, _Counter, "Counter is not as expected");
 		}
 		
-		[Test(), Timeout(1500)]
+		[Test(), MaxTime(1500)]
 		public async Task SetAndWaitDelay()
 		{
 			var MyFlag = new AsyncTaskFlag(WaitHalfSecond, new TimeSpan(0, 0, 0, 0, 100));
@@ -70,7 +70,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(1, _Counter, "Counter is not as expected");
 		}
 		
-		[Test(), Timeout(2500)]
+		[Test(), MaxTime(2500)]
 		public async Task SetAndWaitTwice()
 		{
 			var MyFlag = new AsyncTaskFlag(WaitHalfSecond);
@@ -88,7 +88,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(2, _Counter, "Counter is not as expected");
 		}
 		
-		[Test(), Timeout(2500)]
+		[Test(), MaxTime(2500)]
 		public async Task SetAndWaitTwiceDelay()
 		{
 			var MyFlag = new AsyncTaskFlag(WaitHalfSecond, new TimeSpan(0, 0, 0, 0, 100));
@@ -106,7 +106,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(2, _Counter, "Counter is not as expected");
 		}
 		
-		[Test(), Timeout(1500)]
+		[Test(), MaxTime(1500)]
 		public async Task SetRuns()
 		{
 			var MyFlag = new AsyncTaskFlag(WaitFiftyMs);
@@ -126,7 +126,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreNotEqual(0, _Counter);
 		}
 		
-		[Test(), Timeout(1500)]
+		[Test(), MaxTime(1500)]
 		public async Task SetScheduler()
 		{
 			bool OnCorrectScheduler = false;

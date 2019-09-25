@@ -1,21 +1,17 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27130.2027
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29318.209
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Utility.Tests", "Tests\Proximity.Utility\Proximity.Utility.Tests.csproj", "{887C7D16-0E23-4055-8535-46AA76DD4DEA}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{AD24E051-CE39-492E-9197-151B51C0C893}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Utility.Tests.Help", "Tests\Proximity.Utility.Tests.Help\Proximity.Utility.Tests.Help.csproj", "{1B18BA61-71A5-4D01-986D-12307B1E44C8}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Utility", "Source\Proximity.Utility\Proximity.Utility.csproj", "{6A47012C-9EBF-46EC-98F4-EFA34864978E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Terminal", "Source\Proximity.Terminal\Proximity.Terminal.csproj", "{0DFECB3F-A769-4A8F-8DC0-AF967C7D0CF8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Remoting", "Source\Proximity.Remoting\Proximity.Remoting.csproj", "{9AB08436-562C-4E29-9219-B54CF696EEE9}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Logging", "Source\Proximity.Logging\Proximity.Logging.csproj", "{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Logging", "Source\Proximity.Logging\Proximity.Logging.csproj", "{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -45,18 +41,6 @@ Global
 		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Release|Net40.Build.0 = Release|Any CPU
 		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Release|Net45.ActiveCfg = Release|Any CPU
 		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Release|Net45.Build.0 = Release|Any CPU
-		{1B18BA61-71A5-4D01-986D-12307B1E44C8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1B18BA61-71A5-4D01-986D-12307B1E44C8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1B18BA61-71A5-4D01-986D-12307B1E44C8}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{1B18BA61-71A5-4D01-986D-12307B1E44C8}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
-		{1B18BA61-71A5-4D01-986D-12307B1E44C8}.Debug|Net40.ActiveCfg = Debug|Any CPU
-		{1B18BA61-71A5-4D01-986D-12307B1E44C8}.Debug|Net45.ActiveCfg = Debug|Any CPU
-		{1B18BA61-71A5-4D01-986D-12307B1E44C8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1B18BA61-71A5-4D01-986D-12307B1E44C8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1B18BA61-71A5-4D01-986D-12307B1E44C8}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{1B18BA61-71A5-4D01-986D-12307B1E44C8}.Release|Mixed Platforms.Build.0 = Release|Any CPU
-		{1B18BA61-71A5-4D01-986D-12307B1E44C8}.Release|Net40.ActiveCfg = Release|Any CPU
-		{1B18BA61-71A5-4D01-986D-12307B1E44C8}.Release|Net45.ActiveCfg = Release|Any CPU
 		{6A47012C-9EBF-46EC-98F4-EFA34864978E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{6A47012C-9EBF-46EC-98F4-EFA34864978E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6A47012C-9EBF-46EC-98F4-EFA34864978E}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
@@ -89,22 +73,6 @@ Global
 		{0DFECB3F-A769-4A8F-8DC0-AF967C7D0CF8}.Release|Net40.Build.0 = Release|Any CPU
 		{0DFECB3F-A769-4A8F-8DC0-AF967C7D0CF8}.Release|Net45.ActiveCfg = Release|Any CPU
 		{0DFECB3F-A769-4A8F-8DC0-AF967C7D0CF8}.Release|Net45.Build.0 = Release|Any CPU
-		{9AB08436-562C-4E29-9219-B54CF696EEE9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9AB08436-562C-4E29-9219-B54CF696EEE9}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9AB08436-562C-4E29-9219-B54CF696EEE9}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{9AB08436-562C-4E29-9219-B54CF696EEE9}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
-		{9AB08436-562C-4E29-9219-B54CF696EEE9}.Debug|Net40.ActiveCfg = Debug|Any CPU
-		{9AB08436-562C-4E29-9219-B54CF696EEE9}.Debug|Net40.Build.0 = Debug|Any CPU
-		{9AB08436-562C-4E29-9219-B54CF696EEE9}.Debug|Net45.ActiveCfg = Debug|Any CPU
-		{9AB08436-562C-4E29-9219-B54CF696EEE9}.Debug|Net45.Build.0 = Debug|Any CPU
-		{9AB08436-562C-4E29-9219-B54CF696EEE9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9AB08436-562C-4E29-9219-B54CF696EEE9}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9AB08436-562C-4E29-9219-B54CF696EEE9}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{9AB08436-562C-4E29-9219-B54CF696EEE9}.Release|Mixed Platforms.Build.0 = Release|Any CPU
-		{9AB08436-562C-4E29-9219-B54CF696EEE9}.Release|Net40.ActiveCfg = Release|Any CPU
-		{9AB08436-562C-4E29-9219-B54CF696EEE9}.Release|Net40.Build.0 = Release|Any CPU
-		{9AB08436-562C-4E29-9219-B54CF696EEE9}.Release|Net45.ActiveCfg = Release|Any CPU
-		{9AB08436-562C-4E29-9219-B54CF696EEE9}.Release|Net45.Build.0 = Release|Any CPU
 		{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{272DFC69-EF34-4BE7-84BD-CFFEEC102EAF}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
@@ -127,7 +95,6 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{887C7D16-0E23-4055-8535-46AA76DD4DEA} = {AD24E051-CE39-492E-9197-151B51C0C893}
-		{1B18BA61-71A5-4D01-986D-12307B1E44C8} = {AD24E051-CE39-492E-9197-151B51C0C893}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {EB167248-A858-437A-8144-0EBAC93C32FF}

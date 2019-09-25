@@ -34,7 +34,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(1, MyCollection.Count, "Count not as expected");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task AddTake()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
@@ -53,7 +53,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyCollection.Count, "Count not as expected");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, MaxTime(1000), Repeat(10)]
 		public async Task TakeAdd()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
@@ -74,7 +74,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyCollection.Count, "Count not as expected");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task AddMaximum()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(1);
@@ -93,7 +93,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(1, MyCollection.WaitingToAdd, "Waiting adders not as expected");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task AddMaximumCancel()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(1);
@@ -125,8 +125,8 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(1, MyCollection.Count, "Count not as expected");
 		}
 		
-		[Test, Timeout(1000)]
-		public async Task AddMaximumTimeout()
+		[Test, MaxTime(1000)]
+		public async Task AddMaximumMaxTime()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(1);
 			
@@ -152,7 +152,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(1, MyCollection.Count, "Count not as expected");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, MaxTime(1000), Repeat(10)]
 		public async Task AddMaximumTake()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(1);
@@ -174,7 +174,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyCollection.WaitingToAdd, "Waiting adders not as expected");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, MaxTime(1000), Repeat(10)]
 		public async Task TakeAddMaximum()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(1);
@@ -196,7 +196,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyCollection.WaitingToAdd, "Waiting adders not as expected");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task TakeCancel()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
@@ -220,8 +220,8 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyCollection.WaitingToTake, "Tasks unexpectedly waiting");
 		}
 		
-		[Test, Timeout(1000)]
-		public void TakeTimeout()
+		[Test, MaxTime(1000)]
+		public void TakeMaxTime()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
 			//****************************************
@@ -237,7 +237,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyCollection.WaitingToTake, "Tasks unexpectedly waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task TakeMultiCancel()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
@@ -267,7 +267,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyCollection.WaitingToTake, "Tasks unexpectedly waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task AddCancel()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(1);
@@ -293,7 +293,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyCollection.WaitingToAdd, "Tasks unexpectedly waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void AddComplete()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
@@ -310,7 +310,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(MyCollection.IsAddingCompleted, "Not completed");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task AddCompleteTake()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
@@ -329,7 +329,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(MyCollection.IsCompleted, "Not completed");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task AddCompleteAdd()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
@@ -354,7 +354,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(MyCollection.IsAddingCompleted, "Not completed");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task AddCompleteTakeTake()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
@@ -381,7 +381,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(MyCollection.IsCompleted, "Not completed");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task AddMaximumAddCompleteTake()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(1);
@@ -405,7 +405,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(MyCollection.IsAddingCompleted, "Adding is not completed");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task AddMaximumAddCompleteTakeTake()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(1);
@@ -433,7 +433,7 @@ namespace Proximity.Utility.Tests
 		
 		//****************************************
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task TakeThenComplete()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
@@ -461,7 +461,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(MyCollection.IsCompleted, "Collection not completed");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task AddMaximumThenComplete()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(1);
@@ -491,7 +491,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyCollection.IsCompleted, "Collection completed");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task AddMaximumThenCompleteTake()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(1);
@@ -513,7 +513,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(MyCollection.IsCompleted, "Collection not completed");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, MaxTime(1000), Repeat(10)]
 		public async Task TakeAddThenComplete()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
@@ -545,7 +545,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyCollection.TryTake(out MyResult), "Take succeeded unexpectedly");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task TryTakeSuccess()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
@@ -562,7 +562,7 @@ namespace Proximity.Utility.Tests
 		
 		//****************************************
 
-		[Test, Timeout(1000), Repeat(4)]
+		[Test, MaxTime(1000), Repeat(4)]
 		public async Task ConsumePreFilled()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
@@ -579,7 +579,7 @@ namespace Proximity.Utility.Tests
 			await MyTask;
 		}
 
-		[Test, Timeout(1000), Repeat(4)]
+		[Test, MaxTime(1000), Repeat(4)]
 		public async Task Consume()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
@@ -597,7 +597,7 @@ namespace Proximity.Utility.Tests
 			await MyTask;
 		}
 
-		[Test, Timeout(1000), Repeat(4)]
+		[Test, MaxTime(1000), Repeat(4)]
 		public async Task ConsumeLimit()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(10);
@@ -615,7 +615,7 @@ namespace Proximity.Utility.Tests
 			await MyTask;
 		}
 
-		[Test, Timeout(1000), Repeat(4)]
+		[Test, MaxTime(1000), Repeat(4)]
 		public async Task ConsumeLimitPreFilled()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(10);
@@ -632,7 +632,7 @@ namespace Proximity.Utility.Tests
 			await MyTask;
 		}
 
-		[Test, Timeout(1000), Repeat(4)]
+		[Test, MaxTime(1000), Repeat(4)]
 		public async Task ConsumeLimitPreFilledComplete()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(10);
@@ -647,7 +647,7 @@ namespace Proximity.Utility.Tests
 			await MyTask;
 		}
 
-		[Test, Timeout(1000), Repeat(4)]
+		[Test, MaxTime(1000), Repeat(4)]
 		public async Task ConsumeLimitOverFilledComplete()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(10);
@@ -662,7 +662,7 @@ namespace Proximity.Utility.Tests
 			await MyTask;
 		}
 
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, MaxTime(1000), Repeat(10)]
 		public async Task ConsumeEmpty()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
@@ -677,7 +677,7 @@ namespace Proximity.Utility.Tests
 		
 		//****************************************
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void TryAdd()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
@@ -686,7 +686,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(MyCollection.TryAdd(42), "Failed to add");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void TryAddMaximum()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(1);
@@ -699,7 +699,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyCollection.TryAdd(84), "Add unexpectedly succeeded");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void TryAddCompleted()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(1);
@@ -712,7 +712,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyCollection.TryAdd(42), "Add unexpectedly succeeded");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void TryTakeFromAnyEmpty()
 		{	//****************************************
 			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
@@ -725,7 +725,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyResult.HasItem, "Take succeeded unexpectedly");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task TryTakeFromAny([Values(0, 1)] int index)
 		{	//****************************************
 			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
@@ -744,7 +744,7 @@ namespace Proximity.Utility.Tests
 		
 		//****************************************
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void TakeFromAny()
 		{	//****************************************
 			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
@@ -757,7 +757,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyTask.IsCompleted, "Task completed unexpectedly");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task TakeFromAnyInitial([Values(0, 1)] int index)
 		{	//****************************************
 			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
@@ -776,7 +776,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(42, MyTask.Result.Item, "Item was not as expected");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task TakeFromAnySuccess([Values(0, 1)] int index)
 		{	//****************************************
 			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
@@ -805,7 +805,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyCollections[1].WaitingToTake, "Tasks unexpectedly waiting");
 		}
 		
-		[Test]//, Timeout(1000)]
+		[Test]//, MaxTime(1000)]
 		public async Task TakeFromAnyAddComplete()
 		{	//****************************************
 			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
@@ -836,7 +836,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(MyCollections[0].IsCompleted, "Not completed");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task TakeFromAnyCancel()
 		{	//****************************************
 			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
@@ -863,7 +863,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task TakeFromAnyComplete()
 		{	//****************************************
 			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
@@ -887,7 +887,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task TakeFromAnySingle()
 		{	//****************************************
 			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
@@ -907,7 +907,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(42, MyTask.Result.Item, "Result item is not as expected");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task TakeFromAnyMulti()
 		{	//****************************************
 			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
@@ -935,7 +935,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreNotEqual(MyResult1.Item, MyResult2.Item, "Same result for both takes");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task TakeFromAnyMultiCancel()
 		{	//****************************************
 			var MyCollections = new AsyncCollection<int>[] { new AsyncCollection<int>(), new AsyncCollection<int>() };
@@ -974,7 +974,7 @@ namespace Proximity.Utility.Tests
 		
 		//****************************************
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void TryPeek()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
@@ -983,7 +983,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyCollection.TryPeek(), "Peek succeeded unexpectedly");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void TryPeekSuccess()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
@@ -994,7 +994,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(MyCollection.TryPeek(), "Peek failed unexpectedly");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void Peek()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
@@ -1007,7 +1007,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyTask.IsCompleted, "Peek succeeded unexpectedly");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void PeekSuccess()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();

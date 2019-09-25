@@ -17,7 +17,7 @@ namespace Proximity.Utility.Tests
 	/// </summary>
 	public sealed class AsyncSwitchLockTests
 	{
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task SingleLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -39,7 +39,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task SingleRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -61,7 +61,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, MaxTime(1000), Repeat(10)]
 		public async Task ConcurrentLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -93,7 +93,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, MaxTime(1000), Repeat(10)]
 		public async Task ConcurrentRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -125,7 +125,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LeftRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -151,7 +151,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task RightLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -177,7 +177,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LeftRightLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -207,7 +207,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LeftRightLeftUnfair()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock(true);
@@ -235,7 +235,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task RightLeftRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -265,7 +265,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task RightLeftRightUnfair()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock(true);
@@ -293,7 +293,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LeftRightLeftRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -321,7 +321,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task RightLeftRightLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -349,7 +349,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LeftCancelRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -377,7 +377,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task RightCancelLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -405,7 +405,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LeftCancelRightRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -437,7 +437,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task RightCancelLeftLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -469,7 +469,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LeftCancelRightLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -500,7 +500,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LeftRightCancelLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -539,7 +539,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task RightCancelLeftRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -570,7 +570,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task RightLeftCancelRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -609,7 +609,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LeftTimeoutRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -633,7 +633,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task RightTimeoutLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -657,7 +657,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void NoTimeoutLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -678,7 +678,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void NoTimeoutRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -725,7 +725,7 @@ namespace Proximity.Utility.Tests
 			await ResultTask;
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LeftDispose()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -749,7 +749,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LeftDisposeLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -781,7 +781,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LeftLeftDispose()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -811,7 +811,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void LeftRightDispose()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -844,7 +844,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task RightDispose()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -868,7 +868,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task RightDisposeRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -902,7 +902,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task RightRightDispose()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -932,7 +932,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void RightLeftDispose()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -965,7 +965,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task Dispose()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -981,7 +981,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task DisposeLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -1009,7 +1009,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task DisposeRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -1037,7 +1037,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LeftDisposeContinueWithLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
@@ -1083,7 +1083,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(MyLock.IsRight, "Rights still running");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task RightDisposeContinueWithRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();

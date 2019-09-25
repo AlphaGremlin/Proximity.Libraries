@@ -1,13 +1,10 @@
-﻿/****************************************\
- TypedElementProperty.cs
- Created: 2014-02-11
-\****************************************/
-#if !NETSTANDARD1_3
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Linq;
 using System.Xml;
+using System.Xml.Linq;
 //****************************************
 
 namespace Proximity.Utility.Configuration
@@ -16,7 +13,7 @@ namespace Proximity.Utility.Configuration
 	/// Represents a Configuration Element that contains a single Typed Element
 	/// </summary>
 	/// <remarks>Allows using a Typed Element as a property rather than a collection. Adding properties to this class is not supported</remarks>
-	public class TypedElementProperty<TValue> : ConfigurationElement where TValue : TypedElement
+	public class TypedElementProperty<TValue> : ConfigurationElement where TValue : TypedElement, new()
 	{
 		private static ConfigurationProperty _ContentProperty = new ConfigurationProperty("__Content", typeof(TValue));
 
@@ -31,67 +28,25 @@ namespace Proximity.Utility.Configuration
 
 		/// <inheritdoc />
 		protected override void DeserializeElement(XmlReader reader, bool serializeCollectionKey)
-		{	//****************************************
-			string TypeName = reader.GetAttribute("Type");
-			Type TargetType;
-			object[] Attributes;
-			TValue NewElement;
-			//****************************************
+		{
+			var TypeName = reader.GetAttribute("Type");
 
-			// Will be null if we serialised a blank element
 			if (string.IsNullOrEmpty(TypeName))
 				return;
 
-			TargetType = ResolveType(TypeName);
+			var RawElement = XElement.Load(reader.ReadSubtree(), LoadOptions.None);
 
-			if (TargetType != null)
+			// It still returns whitespace, even if we tell it not to
+			foreach (var Node in RawElement.DescendantNodes().OfType<XText>().Where(text => string.IsNullOrWhiteSpace(text.Value)).ToArray())
+				Node.Remove();
+
+			var NewElement = new TValue
 			{
-				if (typeof(TValue).IsAssignableFrom(TargetType))
-				{
-					NewElement = (TValue)Activator.CreateInstance(TargetType);
+				Type = TypeName,
+				RawElement = RawElement
+			};
 
-					NewElement.InstanceType = TargetType;
-
-					NewElement.Deserialise(reader, false);
-
-					SetPropertyValue(_ContentProperty, NewElement, true);
-
-					return;
-				}
-
-				Attributes = TargetType.GetCustomAttributes(typeof(TypedElementAttribute), true);
-
-				if (Attributes.Length != 0)
-				{
-					NewElement = (TValue)Activator.CreateInstance(((TypedElementAttribute)Attributes[0]).ConfigType);
-
-					NewElement.InstanceType = TargetType;
-
-					NewElement.Deserialise(reader, false);
-
-					SetPropertyValue(_ContentProperty, NewElement, true);
-
-					return;
-				}
-			}
-
-			try
-			{
-				NewElement = Activator.CreateInstance<TValue>();
-
-				NewElement.InstanceType = TargetType;
-
-				NewElement.Deserialise(reader, false);
-
-				SetPropertyValue(_ContentProperty, NewElement, true);
-
-				return;
-			}
-			catch (MissingMethodException)
-			{
-			}
-
-			throw new ConfigurationErrorsException("Failed to create an instance of the Typed Element");
+			SetPropertyValue(_ContentProperty, NewElement, true);
 		}
 
 		/// <inheritdoc />
@@ -111,16 +66,6 @@ namespace Proximity.Utility.Configuration
 			return true;
 		}
 
-		/// <summary>
-		/// Resolves a type name into a .Net Type
-		/// </summary>
-		/// <param name="typeName">The name of the type</param>
-		/// <returns>A .Net Type, or null if the name could not be resolved</returns>
-		protected virtual Type ResolveType(string typeName)
-		{
-			return Type.GetType(typeName);
-		}
-
 		//****************************************
 
 		/// <summary>
@@ -133,4 +78,3 @@ namespace Proximity.Utility.Configuration
 		}
 	}
 }
-#endif

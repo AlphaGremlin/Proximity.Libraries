@@ -341,7 +341,7 @@ namespace Proximity.Utility.Tests
 
 		//****************************************
 
-		[Test(), Timeout(2000), Repeat(20)]
+		[Test(), MaxTime(2000), Repeat(20)]
 		public void PartialSort([Values(0, 1, 10, 255, 256, 512, 999, 1000)] int index)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -367,7 +367,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 		
-		[Test(), Timeout(2000)]
+		[Test(), MaxTime(2000)]
 		public void PartialSort([Values(0, 1, 10, 255, 256, 512, 999, 1000)] int index, [Values(192796144)] int seed)
 		{	//****************************************
 			var MyRandom = new Random(seed);

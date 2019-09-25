@@ -14,7 +14,7 @@ namespace Proximity.Utility.Tests
 	[TestFixture]
 	public class ObservableListViewDynamicTests
 	{
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public void Populate()
 		{ //****************************************
 			var MyRecords = new ObservableList<TestObject>(1024);
@@ -35,7 +35,7 @@ namespace Proximity.Utility.Tests
 			CollectionAssert.AreEqual(MySortedRecords, MyView);
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public void Change()
 		{ //****************************************
 			var MyRecords = new ObservableList<TestObject>(1024);
@@ -58,7 +58,7 @@ namespace Proximity.Utility.Tests
 			CollectionAssert.AreEqual(MySortedRecords, MyView);
 		}
 
-		[Test(), Timeout(2000), Repeat(20)]
+		[Test(), MaxTime(2000), Repeat(20)]
 		public void ChangeMultiple()
 		{ //****************************************
 			var MySeed = Environment.TickCount;
@@ -87,7 +87,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(20)]
+		[Test(), MaxTime(2000), Repeat(20)]
 		public void ChangeMultipleFilter()
 		{ //****************************************
 			var MySeed = Environment.TickCount;
@@ -116,7 +116,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(20)]
+		[Test(), MaxTime(2000), Repeat(20)]
 		public void ChangeMultipleMaximum([Values(256, 512, 1024)] int maximum)
 		{ //****************************************
 			var MySeed = Environment.TickCount;
@@ -147,7 +147,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(20)]
+		[Test(), MaxTime(2000), Repeat(20)]
 		public void ChangeMultipleMaximumFilter([Values(256, 512, 1024)] int maximum)
 		{ //****************************************
 			var MySeed = Environment.TickCount;

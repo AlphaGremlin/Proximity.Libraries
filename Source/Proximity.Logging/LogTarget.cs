@@ -8,6 +8,7 @@ using System.Security;
 using System.Security.Permissions;
 using System.Threading;
 using Proximity.Logging.Config;
+using Proximity.Logging.Outputs;
 using Proximity.Utility.Collections;
 //****************************************
 
@@ -58,7 +59,9 @@ namespace Proximity.Logging
 			{
 				foreach (var MyConfig in config.Outputs)
 				{
-					AddOutput(MyConfig.ToOutput());
+					var ResolvedOutput = MyConfig.Populate<OutputElement>(ResolveType(MyConfig.Type));
+
+					AddOutput(ResolvedOutput.ToOutput());
 				}
 			}
 		}
@@ -198,5 +201,24 @@ namespace Proximity.Logging
 		/// Gets whether the log target is active
 		/// </summary>
 		public bool IsStarted { get; private set; }
+
+		//****************************************
+
+		private static Type ResolveType(string typeName)
+		{
+			if (typeName.IndexOf(',') == -1)
+			{
+				// No Assembly Definition, just a Type
+				if (typeName.IndexOf('.') == -1)
+				{
+					// No namespace either. Add the default namespace
+					typeName = typeof(FileOutput).Namespace + System.Type.Delimiter + typeName;
+				}
+
+				return typeof(FileOutput).Assembly.GetType(typeName);
+			}
+
+			return Type.GetType(typeName);
+		}
 	}
 }

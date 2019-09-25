@@ -1,8 +1,4 @@
-﻿/****************************************\
- WeakDelegateSlim.cs
- Created: 2014-04-29
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -15,7 +11,7 @@ namespace Proximity.Utility
 	/// Provides methods for managing a delegate to a method on a weakly bound object
 	/// </summary>
 	[SecurityCritical]
-	public static class WeakDelegateSlim
+	public static class WeakDelegate
 	{
 		// IOS is statically compiled and doesn't do JIT, so we can't make generic types from reflection
 #if !IOS

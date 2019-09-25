@@ -32,7 +32,7 @@ namespace Proximity.Utility.Tests
 		
 		//****************************************
 		
-		[Test(), Timeout(1500)]
+		[Test(), MaxTime(1500)]
 		public async Task SetAndWait()
 		{
 			var MyFlag = new TaskFlag(WaitHalfSecond);
@@ -47,7 +47,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(_Concurrent, "Ran concurrently");
 		}
 		
-		[Test(), Timeout(1500)]
+		[Test(), MaxTime(1500)]
 		public async Task SetAndWaitDelay()
 		{
 			var MyFlag = new TaskFlag(WaitHalfSecond, new TimeSpan(0, 0, 0, 0, 100));
@@ -68,7 +68,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(_Concurrent, "Ran concurrently");
 		}
 		
-		[Test(), Timeout(2500)]
+		[Test(), MaxTime(2500)]
 		public async Task SetAndWaitTwice()
 		{
 			var MyFlag = new TaskFlag(WaitHalfSecond);
@@ -87,7 +87,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(_Concurrent, "Ran concurrently");
 		}
 
-		[Test(), Timeout(2500)]
+		[Test(), MaxTime(2500)]
 		public async Task SetAndWaitTwiceDelay()
 		{
 			var MyFlag = new TaskFlag(WaitHalfSecond, new TimeSpan(0, 0, 0, 0, 500));
@@ -106,7 +106,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(_Concurrent, "Ran concurrently");
 		}
 		
-		[Test(), Timeout(1500)]
+		[Test(), MaxTime(1500)]
 		public async Task SetRuns()
 		{
 			var MyFlag = new TaskFlag(WaitFiftyMs);
@@ -127,7 +127,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(_Concurrent, "Ran concurrently");
 		}
 
-		[Test(), Timeout(2500)]
+		[Test(), MaxTime(2500)]
 		public async Task SetAndWaitLots()
 		{
 			var MyFlag = new TaskFlag(WaitHalfSecond);
@@ -148,7 +148,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsFalse(_Concurrent, "Ran concurrently");
 		}
 		
-		[Test(), Timeout(2500)]
+		[Test(), MaxTime(2500)]
 		public async Task SetAndWaitLotsDelay()
 		{
 			var MyFlag = new TaskFlag(WaitHalfSecond, new TimeSpan(0, 0, 0, 0, 200));

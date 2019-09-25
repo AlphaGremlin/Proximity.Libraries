@@ -18,7 +18,7 @@ namespace Proximity.Utility.Tests
 	[TestFixture]
 	public sealed class AsyncReadWriteLockTests
 	{
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task SingleRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -40,7 +40,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task SingleWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -62,7 +62,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, MaxTime(1000), Repeat(10)]
 		public async Task ConcurrentRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -94,7 +94,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, MaxTime(1000), Repeat(10)]
 		public async Task ConcurrentReadWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -136,7 +136,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(2000), Repeat(4)]
+		[Test, MaxTime(2000), Repeat(4)]
 		public async Task ShortReadLongWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -188,7 +188,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(5000), Repeat(4)]
+		[Test, MaxTime(5000), Repeat(4)]
 		public async Task ShortWriteLongRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -242,7 +242,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task ReadWriteRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -272,7 +272,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task ReadWriteReadUnfair()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock(true);
@@ -300,7 +300,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task WriteReadWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -329,7 +329,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task WriteCancelRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -357,7 +357,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task WriteCancelWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -393,7 +393,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task WriteCancelReadRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -428,7 +428,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task WriteCancelReadWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -458,7 +458,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task WriteCancelReadMulti()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -490,7 +490,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task ReadCancelWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -520,7 +520,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task ReadWriteCancelReadRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -559,7 +559,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task ReadWriteCancelWriteRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -598,7 +598,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task ReadCancelWriteRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -632,7 +632,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task ReadCancelWriteMulti()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -664,7 +664,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task ReadCancelWriteMultiRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -695,7 +695,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task WriteTimeoutRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -719,7 +719,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task ReadTimeoutWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -745,7 +745,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void NoTimeoutRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -766,7 +766,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void NoTimeoutWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -813,7 +813,7 @@ namespace Proximity.Utility.Tests
 			await ResultTask;
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task Dispose()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -829,7 +829,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task ReadDispose()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -853,7 +853,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task ReadReadDispose()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -879,7 +879,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void ReadDisposeRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -909,7 +909,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void ReadDisposeContinueWithRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -938,7 +938,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyInnerTask.Exception.InnerException, "Inner Read is not disposed");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task ReadWriteDispose()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -973,7 +973,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task WriteDispose()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -997,7 +997,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void WriteDisposeWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -1027,7 +1027,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task WriteDisposeRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -1059,7 +1059,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void WriteDisposeContinueWithWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -1088,7 +1088,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsInstanceOf(typeof(ObjectDisposedException), MyInnerTask.Exception.InnerException, "Inner Write is not disposed");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task WriteReadDispose()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -1122,7 +1122,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task WriteReadDisposeInterleave()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -1158,7 +1158,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void WriteWriteDispose()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -1191,7 +1191,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void DisposeRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -1217,7 +1217,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void DisposeWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();

@@ -14,7 +14,7 @@ namespace Proximity.Utility.Tests
 	[TestFixture]
 	public sealed class AsyncSemaphoreSlimTests
 	{
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, MaxTime(1000), Repeat(10)]
 		public void Lock()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
@@ -30,7 +30,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, MaxTime(1000), Repeat(10)]
 		public async Task LockLock()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
@@ -52,7 +52,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, MaxTime(1000), Repeat(10)]
 		public async Task LockLockLock()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim(2);
@@ -81,7 +81,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, MaxTime(1000), Repeat(10)]
 		public async Task LockCancelLockLock()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
@@ -119,7 +119,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LockTimeoutLock()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
@@ -149,7 +149,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void TryTake()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
@@ -165,7 +165,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void TryTakeTake()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
@@ -183,7 +183,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void TryTakeTakeZero()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
@@ -202,7 +202,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task TryTakeLock()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
@@ -227,8 +227,8 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 
-		[Test, Timeout(1000)]
-		public void TryTakeTimeout()
+		[Test, MaxTime(1000)]
+		public void TryTakeMaxTime()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
 			IDisposable MyHandle1, MyHandle2;
@@ -252,8 +252,8 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 
-		[Test, Timeout(1000)]
-		public void TryTakeNoTimeout()
+		[Test, MaxTime(1000)]
+		public void TryTakeNoMaxTime()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
 			IDisposable MyHandle;
@@ -269,7 +269,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void TryTakeCancel()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
@@ -307,7 +307,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void NoTimeoutLock()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
@@ -326,7 +326,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 		
-		[Test, Timeout(2000)]
+		[Test, MaxTime(2000)]
 		public async Task ConcurrentHoldSingle()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
@@ -358,7 +358,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 		
-		[Test, Timeout(2000), Repeat(4)]
+		[Test, MaxTime(2000), Repeat(4)]
 		public async Task ConcurrentHoldMulti([Values(5, 10, 25, 50)] int startCount)
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim(startCount);
@@ -390,7 +390,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 		
-		[Test, Timeout(1000), Repeat(10)]
+		[Test, MaxTime(1000), Repeat(10)]
 		public async Task ConcurrentAll()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim(100);
@@ -448,7 +448,7 @@ namespace Proximity.Utility.Tests
 			await ResultTask;
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LockDispose()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
@@ -470,7 +470,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 		
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LockLockDispose()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim(2);
@@ -498,7 +498,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task TryTakeTakeDispose()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim(1);
@@ -526,7 +526,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task TryTakeTakeTimeoutDispose()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim(1);
@@ -554,7 +554,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task LockMaxLockDispose()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
@@ -586,7 +586,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task Dispose()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
@@ -600,7 +600,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task DisposeLock()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
@@ -624,7 +624,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task DisposeTryTake()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
@@ -643,7 +643,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public async Task DisposeTryTakeZero()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
@@ -662,7 +662,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 
-		[Test, Timeout(1000)]
+		[Test, MaxTime(1000)]
 		public void LockDisposeContinueWithLock()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();

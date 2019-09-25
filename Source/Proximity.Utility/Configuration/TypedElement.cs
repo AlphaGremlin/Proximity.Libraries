@@ -1,12 +1,9 @@
-﻿/****************************************\
- TypedElement.cs
- Created: 2011-05-09
-\****************************************/
-#if !NETSTANDARD1_3
-using System;
+﻿using System;
 using System.Configuration;
+using System.Linq;
 using System.Reflection;
 using System.Xml;
+using System.Xml.Linq;
 //****************************************
 
 namespace Proximity.Utility.Configuration
@@ -15,21 +12,97 @@ namespace Proximity.Utility.Configuration
 	/// The base class of an element within a <see cref="TypedElementCollection&lt;TValue&gt;" /> or <see cref="TypedElementProperty&lt;TValue&gt;" />
 	/// </summary>
 	public abstract class TypedElement : ConfigurationElement
-	{	//****************************************
-		private Type _InstanceType;
-		//****************************************
-		
+	{
 		/// <summary>
 		/// Creates a typed element
 		/// </summary>
 		protected TypedElement() : base()
 		{
+			base["Type"] = GetType().AssemblyQualifiedName;
 		}
-		
+
 		//****************************************
-		
+
+		public TValue Populate<TValue>() where TValue : TypedElement, new() => Populate<TValue>(System.Type.GetType(Type));
+
+		public TValue Populate<TValue>(Type targetType) where TValue : TypedElement, new()
+		{
+			if (RawElement == null)
+				throw new InvalidOperationException("Element already populated");
+
+			if (targetType != null)
+			{
+				var Attributes = targetType.GetCustomAttributes(typeof(TypedElementAttribute), true);
+
+				if (Attributes.Length != 0)
+				{
+					TValue NewElement;
+
+					var ConfigType = ((TypedElementAttribute)Attributes[0]).ConfigType;
+
+					if (typeof(TValue).IsAssignableFrom(targetType))
+					{
+						NewElement = (TValue)Activator.CreateInstance(targetType);
+
+						NewElement.InstanceType = ConfigType;
+					}
+					else
+					{
+						NewElement = (TValue)Activator.CreateInstance(ConfigType);
+
+						NewElement.InstanceType = targetType;
+					}
+
+					Populate(NewElement);
+
+					return NewElement;
+				}
+				else
+				{
+					var NewElement = (TValue)Activator.CreateInstance(targetType);
+
+					Populate(NewElement);
+
+					return NewElement;
+				}
+			}
+
+			try
+			{
+				var NewElement = new TValue();
+
+				// No TypedElement attribute, so InstanceType remains empty
+
+				Populate(NewElement);
+
+				return NewElement;
+			}
+			catch (MissingMethodException)
+			{
+				return null;
+			}
+		}
+
+		public void Populate(TypedElement target)
+		{
+			target.Type = Type;
+
+			using var Reader = RawElement.CreateReader();
+
+			Reader.Read();
+
+			target.Deserialise(Reader, false);
+		}
+
 		internal bool Serialise(XmlWriter writer, bool serializeCollectionKey)
 		{
+			if (RawElement != null)
+			{
+				RawElement.WriteTo(writer);
+
+				return true;
+			}
+
 			return SerializeElement(writer, serializeCollectionKey);
 		}
 		
@@ -46,58 +119,16 @@ namespace Proximity.Utility.Configuration
 		[ConfigurationProperty("Type", IsRequired=true)]
 		public string Type
 		{
-			get
-			{
-				var Result = (string)base["Type"];
-				
-				// Will be empty if we've manually constructed this type (eg: testing)
-				if (string.IsNullOrEmpty(Result))
-				{
-					var MyAttribute = (TypedElementAttribute)Attribute.GetCustomAttribute(GetType(), typeof(TypedElementAttribute), false);
-
-					if (MyAttribute != null)
-					{
-						_InstanceType = MyAttribute.ConfigType;
-
-						Result = _InstanceType.AssemblyQualifiedName;
-					}
-					else
-					{
-						Result = GetType().AssemblyQualifiedName;
-					}
-
-					if (!IsReadOnly())
-						SetPropertyValue(Properties["Type"], Result, true);
-				}
-				
-				return Result;
-			}
+			get => (string)base["Type"];
+			internal set => base["Type"] = value;
 		}
-		
+
 		/// <summary>
-		/// Gets the type resolved by the collection when using TypedElementAttribute
+		/// Gets the Type of the Instance this Typed Element refers to
 		/// </summary>
-		public Type InstanceType
-		{
-			get
-			{
-				if (_InstanceType == null)
-				{
-					var MyAttribute = (TypedElementAttribute)Attribute.GetCustomAttribute(GetType(), typeof(TypedElementAttribute), false);
-					
-					if (MyAttribute != null)
-					{
-						_InstanceType = MyAttribute.ConfigType;
-						
-						if (!IsReadOnly())
-							SetPropertyValue(Properties["Type"], _InstanceType.AssemblyQualifiedName, true);
-					}
-				}
-				
-				return _InstanceType;
-			}
-			internal set { _InstanceType = value; }
-		}
+		/// <remarks>Can be null if no TypedElementAttribute was found</remarks>
+		public Type InstanceType { get; private set; }
+
+		internal XElement RawElement { get; set; }
 	}
 }
-#endif

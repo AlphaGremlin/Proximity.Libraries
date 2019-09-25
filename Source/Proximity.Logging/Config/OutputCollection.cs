@@ -14,22 +14,5 @@ namespace Proximity.Logging.Config
 	/// </summary>
 	public sealed class OutputCollection : TypedElementCollection<OutputElement>
 	{
-		/// <inheritdoc />
-		protected override Type ResolveType(string typeName)
-		{
-			if (typeName.IndexOf(',') == -1)
-			{
-				// No Assembly Definition, just a Type
-				if (typeName.IndexOf('.') == -1)
-				{
-					// No namespace either. Add the default namespace
-					typeName = typeof(FileOutput).Namespace + System.Type.Delimiter + typeName;
-				}
-			
-				return typeof(FileOutput).Assembly.GetType(typeName);
-			}
-			
-			return Type.GetType(typeName);
-		}
 	}
 }

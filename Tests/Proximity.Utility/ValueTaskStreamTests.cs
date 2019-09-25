@@ -17,7 +17,7 @@ namespace Proximity.Utility.Tests
 	[TestFixture()]
 	public class ValueTaskStreamTests
 	{
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingle()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -33,7 +33,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleException()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -48,7 +48,7 @@ namespace Proximity.Utility.Tests
 			Assert.Fail("Should not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleInValue()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -57,7 +57,7 @@ namespace Proximity.Utility.Tests
 			await MyQueue.Queue((value) => { Assert.AreEqual(42, value); }, 42);
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleInValueToken()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -84,7 +84,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleInOutValue()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -97,7 +97,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(42, MyResult, "Value is incorrect");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleInOutValueToken()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -124,7 +124,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleOutValue()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -137,7 +137,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(42, MyResult, "Value is incorrect");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleOutValueToken()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -164,7 +164,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleToken()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -191,7 +191,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTask()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -210,7 +210,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskCancel()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -243,7 +243,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskCancelImmediate()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -268,7 +268,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskInValue()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -287,7 +287,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskInValueCancel()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -320,7 +320,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskInValueCancelImmediate()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -345,7 +345,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskInOutValue()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -365,7 +365,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(30, MyResult, "Value is incorrect");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskInOutValueCancel()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -398,7 +398,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskInOutValueCancelImmediate()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -423,7 +423,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskOutValue()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -443,7 +443,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(30, MyResult, "Value is incorrect");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskOutValueCancel()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -476,7 +476,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskOutValueCancelImmediate()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -501,7 +501,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskFinished()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -517,7 +517,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskException()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -548,7 +548,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskExceptionOutValue()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -579,7 +579,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskExceptionRaised()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -594,7 +594,7 @@ namespace Proximity.Utility.Tests
 			Assert.Fail("Should not reach this point");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskExceptionImmediate()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -616,7 +616,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskExceptionImmediateOutValue()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -638,7 +638,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleValueTask()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -657,7 +657,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleValueTaskCancel()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -690,7 +690,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleValueTaskCancelImmediate()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -715,7 +715,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleValueTaskInValue()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -734,7 +734,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleValueTaskInValueCancel()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -767,7 +767,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleValueTaskInValueCancelImmediate()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -792,7 +792,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleValueTaskInOutValue()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -812,7 +812,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(30, MyResult, "Value is incorrect");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleValueTaskInOutValueCancel()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -845,7 +845,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleValueTaskInOutValueCancelImmediate()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -870,7 +870,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleValueTaskOutValue()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -890,7 +890,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(30, MyResult, "Value is incorrect");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleValueTaskOutValueCancel()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -923,7 +923,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleValueTaskOutValueCancelImmediate()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -948,7 +948,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleValueTaskFinished()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -964,7 +964,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(TaskRan, "Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleValueTaskException()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -995,7 +995,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleValueTaskExceptionOutValue()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1026,7 +1026,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleValueTaskExceptionRaised()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1041,7 +1041,7 @@ namespace Proximity.Utility.Tests
 			Assert.Fail("Should not reach this point");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleValueTaskExceptionImmediate()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1063,7 +1063,7 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueSingleValueTaskExceptionImmediateOutValue()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1087,7 +1087,7 @@ namespace Proximity.Utility.Tests
 
 
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueMultiple()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1105,7 +1105,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(100, RunCounter);
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueMultipleInValue()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1123,7 +1123,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(100, RunCounter, "Not all tasks executed");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueMultipleOutValue()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1142,7 +1142,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(99, MyResult, "Result is not as expected");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueWaitQueue()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1159,7 +1159,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(SecondRan, "Second Task did not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueResultWaitQueueResult()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1179,7 +1179,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(2, SecondResult, "Second Task result incorrect");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueTwoCancelSecond()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1218,7 +1218,7 @@ namespace Proximity.Utility.Tests
 			await FirstTask;
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueTwoCancelSecondInValue()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1257,7 +1257,7 @@ namespace Proximity.Utility.Tests
 			await FirstTask;
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueTwoCancelSecondOutValue()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1298,7 +1298,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(1, MyResult, "First Task result incorrect");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueTwoCancelSecondTask()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1339,7 +1339,7 @@ namespace Proximity.Utility.Tests
 			await FirstTask;
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueTwoCancelSecondTaskInValue()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1380,7 +1380,7 @@ namespace Proximity.Utility.Tests
 			await FirstTask;
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueTwoExceptionSecond()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1405,7 +1405,7 @@ namespace Proximity.Utility.Tests
 			Assert.Fail("Should not run");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueTwoInValueCancelSecond()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1446,7 +1446,7 @@ namespace Proximity.Utility.Tests
 			await FirstTask;
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueThree()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1483,7 +1483,7 @@ namespace Proximity.Utility.Tests
 			await ThirdTask;
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueThreeCancelSecond()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1530,7 +1530,7 @@ namespace Proximity.Utility.Tests
 			await ThirdTask;
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueThreeCancelSecondTask()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1577,7 +1577,7 @@ namespace Proximity.Utility.Tests
 			await ThirdTask;
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueComplete()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1592,7 +1592,7 @@ namespace Proximity.Utility.Tests
 			await CompletionTask;
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueOutValueComplete()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1607,7 +1607,7 @@ namespace Proximity.Utility.Tests
 			await CompletionTask;
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueTaskComplete()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1627,7 +1627,7 @@ namespace Proximity.Utility.Tests
 			await CompletionTask;
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueTaskOutValueComplete()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1647,7 +1647,7 @@ namespace Proximity.Utility.Tests
 			await CompletionTask;
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueValueTaskComplete()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1667,7 +1667,7 @@ namespace Proximity.Utility.Tests
 			await CompletionTask;
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueValueTaskOutValueComplete()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1687,7 +1687,7 @@ namespace Proximity.Utility.Tests
 			await CompletionTask;
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public async Task QueueCompleteMultiple()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1714,7 +1714,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(100, RunCounter);
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public void Complete()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1725,7 +1725,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsTrue(CompletionTask.IsCompleted, "Task is not completed");
 		}
 
-		[Test()]//, Timeout(1000)]
+		[Test()]//, MaxTime(1000)]
 		public async Task CompleteQueueValueTask()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1749,7 +1749,7 @@ namespace Proximity.Utility.Tests
 			await MyTask2;
 		}
 
-		[Test(), Timeout(2000)]
+		[Test(), MaxTime(2000)]
 		public async Task ConcurrentQueue()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1780,7 +1780,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(20 * 10, RunCounter, "Did not run");
 		}
 
-		[Test(), Timeout(2000)]
+		[Test(), MaxTime(2000)]
 		public async Task ConcurrentLockCheck()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1822,7 +1822,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(100, RunCounter, "Did not run");
 		}
 
-		[Test(), Timeout(2000), Repeat(4)]
+		[Test(), MaxTime(2000), Repeat(4)]
 		public async Task ConcurrentOrderCheck()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();
@@ -1855,7 +1855,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(4 * 100, RunCounter, "Did not run");
 		}
 
-		[Test(), Timeout(2000)]
+		[Test(), MaxTime(2000)]
 		public async Task ConcurrentLockExtended()
 		{	//****************************************
 			var MyQueue = new ValueTaskStream();

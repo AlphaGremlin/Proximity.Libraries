@@ -16,7 +16,7 @@ namespace Proximity.Utility.Tests
 	[TestFixture]
 	public class ObservableListViewTests
 	{
-		[Test(), Timeout(2000), Repeat(20)]
+		[Test(), MaxTime(2000), Repeat(20)]
 		public void Comparer()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -40,7 +40,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(20)]
+		[Test(), MaxTime(2000), Repeat(20)]
 		public void PrePopulate()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -66,7 +66,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(5)]
+		[Test(), MaxTime(2000), Repeat(5)]
 		public void PrePopulateFilter([Values(16, 24, 777, 1024)] int count)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -92,7 +92,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(5)]
+		[Test(), MaxTime(2000), Repeat(5)]
 		public void PrePopulateMaximum([Values(256, 512, 1024, 2048)] int maximum)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -120,7 +120,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(20)]
+		[Test(), MaxTime(2000), Repeat(20)]
 		public void Populate()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -144,7 +144,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(20)]
+		[Test(), MaxTime(2000), Repeat(20)]
 		public void PopulateFilter()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -168,7 +168,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(5)]
+		[Test(), MaxTime(2000), Repeat(5)]
 		public void PopulateMaximum([Values(256, 512, 1024, 2048)] int maximum)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -194,7 +194,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 		
-		[Test(), Timeout(2000), Repeat(5)]
+		[Test(), MaxTime(2000), Repeat(5)]
 		public void PopulateMaximumFilter([Values(256, 512, 1024, 2048)] int maximum)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -220,7 +220,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(20)]
+		[Test(), MaxTime(2000), Repeat(20)]
 		public void PopulateBeginEnd()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -248,7 +248,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(20)]
+		[Test(), MaxTime(2000), Repeat(20)]
 		public void PopulateBeginEndFilter()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -276,7 +276,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(5)]
+		[Test(), MaxTime(2000), Repeat(5)]
 		public void PopulateBeginEndMaximum([Values(256, 512, 1024, 2048)] int maximum)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -306,7 +306,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(20)]
+		[Test(), MaxTime(2000), Repeat(20)]
 		public void Replace()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -335,7 +335,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 		
-		[Test(), Timeout(2000), Repeat(20)]
+		[Test(), MaxTime(2000), Repeat(20)]
 		public void ReplaceFilter()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -364,7 +364,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(20)]
+		[Test(), MaxTime(2000), Repeat(20)]
 		public void ReplaceFilterSeed([Values(357656222)] int seed)
 		{ //****************************************
 			var MyRandom = new Random(seed);
@@ -398,7 +398,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(5)]
+		[Test(), MaxTime(2000), Repeat(5)]
 		public void ReplaceMaximum([Values(256, 512, 1024, 2048)] int maximum)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -429,7 +429,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(10)]
+		[Test(), MaxTime(2000), Repeat(10)]
 		public void ReplaceMaximumFilter([Values(256, 512, 1024, 2048)] int maximum)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -460,7 +460,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(10)]
+		[Test(), MaxTime(2000), Repeat(10)]
 		public void ReplaceMaximumFilterSeed()
 		{ //****************************************
 			var MySeed = 356114168;
@@ -501,7 +501,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(10)]
+		[Test(), MaxTime(2000), Repeat(10)]
 		public void ReplaceMaximumFilter2([Values(256, 512, 1024, 2048)] int maximum)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -532,7 +532,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(20)]
+		[Test(), MaxTime(2000), Repeat(20)]
 		public void Remove()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -561,7 +561,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(20)]
+		[Test(), MaxTime(2000), Repeat(20)]
 		public void RemoveFilter()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -590,7 +590,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(5)]
+		[Test(), MaxTime(2000), Repeat(5)]
 		public void RemoveMaximum([Values(256, 512, 1024, 2048)] int maximum)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -621,7 +621,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 		
-		[Test(), Timeout(2000), Repeat(5)]
+		[Test(), MaxTime(2000), Repeat(5)]
 		public void RemoveMaximumFilter([Values(256, 512, 1024, 2048)] int maximum)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -652,7 +652,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(5)]
+		[Test(), MaxTime(2000), Repeat(5)]
 		public void RemoveMaximumFilter2([Values(256, 512, 1024, 2048)] int maximum)
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -685,7 +685,7 @@ namespace Proximity.Utility.Tests
 
 		//****************************************
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public void EventAdd()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -711,7 +711,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(42, MyEventArgs.NewItems[0], "New Items Value incorrect");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public void EventAddMany()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -733,7 +733,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(1024, EventCount, "Event Count does not match");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public void EventReplace()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -767,7 +767,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(84, MyEventArgs.NewItems[0], "New Items Value incorrect");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public void EventMove()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -805,7 +805,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(NewValue, MySecondEventArgs.NewItems[0], "New Items Value incorrect");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public void EventRemove()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -833,7 +833,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(42, MyEventArgs.OldItems[0], "Old Items Value incorrect");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public void EventRemoveMany()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -858,7 +858,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(1024, EventCount, "Event Count does not match");
 		}
 
-		[Test(), Timeout(2000), Repeat(5)]
+		[Test(), MaxTime(2000), Repeat(5)]
 		public void EventMaximum([Values(256, 512, 1024)] int maximum)
 		{ //****************************************
 			var MySeed = Environment.TickCount;
@@ -885,7 +885,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(5)]
+		[Test(), MaxTime(2000), Repeat(5)]
 		public void EventMaximumFilter([Values(256, 512, 1024)] int maximum)
 		{ //****************************************
 			var MySeed = Environment.TickCount;
@@ -912,7 +912,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(5)]
+		[Test(), MaxTime(2000), Repeat(5)]
 		public void EventReplaceMaximum([Values(256, 512, 1024)] int maximum)
 		{ //****************************************
 			var MySeed = Environment.TickCount;
@@ -944,7 +944,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 		
-		[Test(), Timeout(2000), Repeat(10)]
+		[Test(), MaxTime(2000), Repeat(10)]
 		public void EventReplaceMaximumFilter([Values(256, 512, 1024)] int maximum)
 		{ //****************************************
 			var MySeed = Environment.TickCount;
@@ -1009,7 +1009,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(5)]
+		[Test(), MaxTime(2000), Repeat(5)]
 		public void EventRemoveMaximum([Values(256, 512, 1024)] int maximum)
 		{ //****************************************
 			var MySeed = Environment.TickCount;
@@ -1041,7 +1041,7 @@ namespace Proximity.Utility.Tests
 			Thread.Sleep(1);
 		}
 
-		[Test(), Timeout(2000), Repeat(5)]
+		[Test(), MaxTime(2000), Repeat(5)]
 		public void EventRemoveMaximumFilter([Values(256, 512, 1024)] int maximum)
 		{ //****************************************
 			var MySeed = Environment.TickCount;

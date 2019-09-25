@@ -372,6 +372,8 @@ namespace Proximity.Utility.Threading
 				{
 					OldNextTask.Queue(NewNextTask);
 
+					Interlocked.Increment(ref _PendingActions);
+
 					return NewNextTask.Completed;
 				}
 

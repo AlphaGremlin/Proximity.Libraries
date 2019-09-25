@@ -14,7 +14,7 @@ using Proximity.Utility.Collections;
 
 namespace Proximity.Utility.Tests
 {
-	[TestFixture, Timeout(2000)]
+	[TestFixture]
 	public class ObservableSortedListTests
 	{
 		[Test(), Repeat(2)]
@@ -824,7 +824,7 @@ namespace Proximity.Utility.Tests
 
 		//****************************************
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public void EventAdd()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -867,7 +867,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(Pair.Value, MyValueEventArgs.NewItems[0], "New Value Items Value incorrect");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public void EventAddUpdate()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -908,7 +908,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(NotifyCollectionChangedAction.Reset, MyEventArgs.Action);
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public void EventAddMany()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -999,7 +999,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsNull(MyValueEventArgs, "Event Raised");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public void EventReplace()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -1060,7 +1060,7 @@ namespace Proximity.Utility.Tests
 			Assert.IsNull(MyValueEventArgs, "Event Raised");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public void EventRemove()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
@@ -1102,7 +1102,7 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(84, MyValueEventArgs.OldItems[0], "Old Value Items Value incorrect");
 		}
 
-		[Test(), Timeout(1000)]
+		[Test(), MaxTime(1000)]
 		public void EventRemoveMany()
 		{	//****************************************
 			var MySeed = Environment.TickCount;
