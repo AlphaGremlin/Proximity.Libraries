@@ -30,14 +30,14 @@ namespace Proximity.Utility.Configuration
 			if (RawElement == null)
 				throw new InvalidOperationException("Element already populated");
 
+			TValue NewElement;
+
 			if (targetType != null)
 			{
 				var Attributes = targetType.GetCustomAttributes(typeof(TypedElementAttribute), true);
 
 				if (Attributes.Length != 0)
 				{
-					TValue NewElement;
-
 					var ConfigType = ((TypedElementAttribute)Attributes[0]).ConfigType;
 
 					if (typeof(TValue).IsAssignableFrom(targetType))
@@ -59,7 +59,14 @@ namespace Proximity.Utility.Configuration
 				}
 				else
 				{
-					var NewElement = (TValue)Activator.CreateInstance(targetType);
+					if (typeof(TValue).IsAssignableFrom(targetType))
+					{
+						NewElement = (TValue)Activator.CreateInstance(targetType);
+					}
+					else
+					{
+						NewElement = new TValue { InstanceType = targetType };
+					}
 
 					Populate(NewElement);
 
@@ -69,7 +76,7 @@ namespace Proximity.Utility.Configuration
 
 			try
 			{
-				var NewElement = new TValue();
+				NewElement = new TValue();
 
 				// No TypedElement attribute, so InstanceType remains empty
 

@@ -48,7 +48,9 @@ namespace Proximity.Utility.Configuration
 			}
 			else
 			{
-				SetPropertyValue(_ContentProperty, reader.ReadElementContentAsString(), true);
+				reader.Read();
+
+				SetPropertyValue(_ContentProperty, reader.ReadContentAsString(), true);
 			}
 		}
 		
@@ -125,7 +127,9 @@ namespace Proximity.Utility.Configuration
 			}
 			else
 			{
-				var TempContent = reader.ReadElementContentAsString();
+				reader.Read();
+
+				var TempContent = reader.ReadContentAsString();
 				
 				SetPropertyValue(_ContentProperty, _Converter.ConvertFromInvariantString(TempContent), true);
 			}

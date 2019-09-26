@@ -136,7 +136,7 @@ namespace Proximity.Terminal
 			if (!_IsLoaded)
 				return null;
 			
-			if (!_Types.TryGetValue(instance.GetType(), out var MyType))
+			if (!_Types.TryGetValue(instance.GetType(), out var MyType) && (MyType = Scan(instance.GetType())) == null)
 				throw new ArgumentException("Unknown Instance Type");
 			
 			if (!_TypeSets.TryGetValue(MyType.Name, out var MyTypeSet))

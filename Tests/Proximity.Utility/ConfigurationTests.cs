@@ -71,6 +71,15 @@ namespace Proximity.Utility.Tests
             <add Type=""Proximity.Utility.Tests.ConfigurationTests+SubTypedTestElement2, Proximity.Utility.Tests"" Value=""2"">
                 <Child Value=""3"" />
             </add>
+            <add Type=""Proximity.Utility.Tests.ConfigurationTests+SubTypedTestElement3, Proximity.Utility.Tests"">
+                <Child>3</Child>
+            </add>
+            <add Type=""Proximity.Utility.Tests.ConfigurationTests+SubTypedTestElement4, Proximity.Utility.Tests"">
+                <Children>
+                    <add>4</add>
+                    <add>5</add>
+                </Children>
+            </add>
         </Collection>
     </Test>
 </configuration>";
@@ -421,7 +430,8 @@ namespace Proximity.Utility.Tests
 				var MySection = (TypedCollectionTestSection)MyConfig.GetSection("Test");
 
 				Assert.IsNotNull(MySection.Collection);
-				Assert.AreEqual(2, MySection.Collection.Count);
+				Assert.AreEqual(4, MySection.Collection.Count);
+
 
 				var FirstItem = MySection.Collection.First();
 
@@ -430,7 +440,8 @@ namespace Proximity.Utility.Tests
 				Assert.IsInstanceOf(typeof(SubTypedTestElement), RealElement);
 				Assert.AreEqual("1", ((SubTypedTestElement)RealElement).Value);
 
-				var SecondItem = MySection.Collection.Last();
+
+				var SecondItem = MySection.Collection.Skip(1).First();
 
 				var RealElement2 = SecondItem.Populate<TypedTestElement>(Type.GetType(SecondItem.Type));
 
@@ -441,6 +452,31 @@ namespace Proximity.Utility.Tests
 				Assert.AreEqual(2, SubTypedElement2.Value);
 				Assert.IsNotNull(SubTypedElement2.Child);
 				Assert.AreEqual("3", SubTypedElement2.Child.Value);
+
+
+				var ThirdItem = MySection.Collection.Skip(2).First();
+
+				var RealElement3 = ThirdItem.Populate<TypedTestElement>(Type.GetType(ThirdItem.Type));
+
+				Assert.IsInstanceOf(typeof(SubTypedTestElement3), RealElement3);
+
+				var SubTypedElement3 = RealElement3 as SubTypedTestElement3;
+
+				Assert.IsNotNull(SubTypedElement3.Child);
+				Assert.AreEqual("3", SubTypedElement3.Child.Content);
+
+
+				var FourthItem = MySection.Collection.Skip(3).First();
+
+				var RealElement4 = FourthItem.Populate<TypedTestElement>(Type.GetType(FourthItem.Type));
+
+				Assert.IsInstanceOf(typeof(SubTypedTestElement4), RealElement4);
+
+				var SubTypedElement4 = RealElement4 as SubTypedTestElement4;
+
+				Assert.IsNotNull(SubTypedElement4.Children);
+				Assert.AreEqual(2, SubTypedElement4.Children.Count);
+				CollectionAssert.AreEqual(new[] { "4", "5" }, SubTypedElement4.Children.Select(child => child.Content));
 			}
 			finally
 			{
@@ -569,6 +605,26 @@ namespace Proximity.Utility.Tests
 			{
 				get { return (int)base["Value"]; }
 				set { base["Value"] = value; }
+			}
+		}
+
+		public class SubTypedTestElement3 : TypedTestElement
+		{
+			[ConfigurationProperty("Child", IsRequired = false)]
+			public ConfigurationTextElement Child
+			{
+				get { return (ConfigurationTextElement)base["Child"]; }
+				set { base["Child"] = value; }
+			}
+		}
+
+		public class SubTypedTestElement4 : TypedTestElement
+		{
+			[ConfigurationProperty("Children", IsRequired = false)]
+			public TextElementCollection Children
+			{
+				get { return (TextElementCollection)base["Children"]; }
+				set { base["Children"] = value; }
 			}
 		}
 
