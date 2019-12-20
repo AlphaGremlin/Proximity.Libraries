@@ -5,9 +5,9 @@
 		<Company>Proximity Interactive</Company>
 		<Copyright>Copyright © Daniel Chandler 2019</Copyright>
 		<Product>Proximity Utility Library</Product>
-		<Version>21.0.0</Version>
+		<Version>21.0.1</Version>
 		<AssemblyVersion>21.0.0.0</AssemblyVersion>
-		<FileVersion>21.0.0.0</FileVersion>
+		<FileVersion>21.0.1.0</FileVersion>
 		<Description>Proximity Utility Library</Description>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>

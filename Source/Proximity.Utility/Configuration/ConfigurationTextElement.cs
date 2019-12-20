@@ -1,9 +1,4 @@
-﻿/****************************************\
- ConfigurationTextElement.cs
- Created: 2014-06-13
-\****************************************/
-#if !NETSTANDARD1_3
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
@@ -17,7 +12,7 @@ namespace Proximity.Utility.Configuration
 	/// </summary>
 	public class ConfigurationTextElement : ConfigurationElement
 	{	//****************************************
-		private static ConfigurationProperty _ContentProperty = new ConfigurationProperty("__Content", typeof(string));
+		private static readonly ConfigurationProperty _ContentProperty = new ConfigurationProperty("__Content", typeof(string));
 		//****************************************
 		
 		/// <summary>
@@ -36,8 +31,10 @@ namespace Proximity.Utility.Configuration
 			while (reader.MoveToNextAttribute())
 			{
 				var MyProperty = Properties[reader.LocalName];
-				
-				SetPropertyValue(MyProperty, reader.Value, true);
+
+				var MyValue = MyProperty.Converter.ConvertFromString(reader.Value);
+
+				SetPropertyValue(MyProperty, MyValue, true);
 			}
 			
 			reader.MoveToElement();
@@ -69,7 +66,7 @@ namespace Proximity.Utility.Configuration
 				if (MyProperty.Name == _ContentProperty.Name)
 					ContentValue = MyResult;
 				else if (MyResult != null)
-					writer.WriteAttributeString(MyProperty.Name, MyResult.ToString());
+					writer.WriteAttributeString(MyProperty.Name, MyProperty.Converter.ConvertToInvariantString(MyResult));
 			}
 			
 			if (ContentValue != null)
@@ -85,8 +82,8 @@ namespace Proximity.Utility.Configuration
 		/// </summary>
 		public string Content
 		{
-			get { return (string)base[_ContentProperty]; }
-			set { SetPropertyValue(_ContentProperty, value, false); }
+			get => (string)base[_ContentProperty];
+			set => SetPropertyValue(_ContentProperty, value, false);
 		}
 	}
 	
@@ -95,8 +92,8 @@ namespace Proximity.Utility.Configuration
 	/// </summary>
 	public class ConfigurationTextElement<TValue> : ConfigurationElement
 	{	//****************************************
-		private static ConfigurationProperty _ContentProperty = new ConfigurationProperty("__Content", typeof(TValue));
-		private static TypeConverter _Converter = TypeDescriptor.GetConverter(typeof(TValue));
+		private static readonly ConfigurationProperty _ContentProperty = new ConfigurationProperty("__Content", typeof(TValue));
+		private static readonly TypeConverter _Converter = TypeDescriptor.GetConverter(typeof(TValue));
 		//****************************************
 		
 		/// <summary>
@@ -115,8 +112,10 @@ namespace Proximity.Utility.Configuration
 			while (reader.MoveToNextAttribute())
 			{
 				var MyProperty = Properties[reader.LocalName];
-				
-				SetPropertyValue(MyProperty, reader.Value, true);
+
+				var MyValue = MyProperty.Converter.ConvertFromString(reader.Value);
+
+				SetPropertyValue(MyProperty, MyValue, true);
 			}
 			
 			reader.MoveToElement();
@@ -141,7 +140,7 @@ namespace Proximity.Utility.Configuration
 			if (writer == null) // Null when it does a validation pass?
 				return true;
 			
-			TValue ContentValue = default(TValue);
+			TValue ContentValue = default;
 			
 			foreach (ConfigurationProperty MyProperty in Properties)
 			{
@@ -150,10 +149,10 @@ namespace Proximity.Utility.Configuration
 				if (MyProperty.Name == _ContentProperty.Name)
 					ContentValue = (TValue)MyResult;
 				else if (MyResult != null)
-					writer.WriteAttributeString(MyProperty.Name, MyResult.ToString());
+					writer.WriteAttributeString(MyProperty.Name, MyProperty.Converter.ConvertToInvariantString(MyResult));
 			}
 
-			if (!EqualityComparer<TValue>.Default.Equals(ContentValue, default(TValue)))
+			if (!EqualityComparer<TValue>.Default.Equals(ContentValue, default))
 			{
 				var TempContent = _Converter.ConvertToInvariantString(ContentValue);
 
@@ -170,9 +169,8 @@ namespace Proximity.Utility.Configuration
 		/// </summary>
 		public TValue Content
 		{
-			get { return (TValue)base[_ContentProperty]; }
-			set { SetPropertyValue(_ContentProperty, value, false); }
+			get => (TValue)base[_ContentProperty];
+			set => SetPropertyValue(_ContentProperty, value, false);
 		}
 	}
 }
-#endif

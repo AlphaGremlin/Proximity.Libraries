@@ -17,7 +17,6 @@ namespace Proximity.Utility.Threading
 	public sealed class ValueTaskStream
 	{ //****************************************
 		private static readonly IStreamTask _CompletedTask = new CompletedTask();
-		private static readonly Action<object> _CompletedContinuation = (state) => throw new Exception("Should never be called");
 		//****************************************
 		private IStreamTask _NextTask = _CompletedTask;
 
@@ -405,15 +404,11 @@ namespace Proximity.Utility.Threading
 
 		//****************************************
 
-		private abstract class BaseStreamTask : IStreamTask
+		private abstract class BaseStreamTask<TResult> : IStreamTask
 		{ //****************************************
 			private IStreamTask _NextTask;
 
-			private Action<object> _Continuation;
-			private object _State;
-
-			private ExecutionContext _ExecutionContext;
-			private object _Scheduler;
+			private ManualResetValueTaskSourceCore<TResult> _TaskSource = new ManualResetValueTaskSourceCore<TResult>();
 
 			private CancellationTokenRegistration _Registration;
 			private volatile int _CanCancel;
@@ -422,6 +417,7 @@ namespace Proximity.Utility.Threading
 			protected BaseStreamTask(ValueTaskStream stream, CancellationToken token)
 			{
 				Stream = stream;
+				_TaskSource.RunContinuationsAsynchronously = true;
 
 				if (token.CanBeCanceled)
 				{
@@ -446,55 +442,11 @@ namespace Proximity.Utility.Threading
 
 			public abstract void Execute();
 
-			public ValueTaskSourceStatus GetStatus(short token)
-			{
-				if (token != TaskToken)
-					throw new InvalidOperationException("Value Task Token invalid");
+			public ValueTaskSourceStatus GetStatus(short token) => _TaskSource.GetStatus(token);
 
-				if (!IsCompleted)
-					return ValueTaskSourceStatus.Pending;
+			public TResult GetResult(short token) => _TaskSource.GetResult(token);
 
-				if (Exception == null)
-					return ValueTaskSourceStatus.Succeeded;
-
-				if (Exception.SourceException is OperationCanceledException)
-					return ValueTaskSourceStatus.Canceled;
-
-				return ValueTaskSourceStatus.Faulted;
-			}
-
-			public void OnCompleted(Action<object> continuation, object state, short token, ValueTaskSourceOnCompletedFlags flags)
-			{
-				if (token != TaskToken)
-					throw new InvalidOperationException("Value Task Token invalid");
-
-				if ((flags & ValueTaskSourceOnCompletedFlags.FlowExecutionContext) != ValueTaskSourceOnCompletedFlags.None)
-					_ExecutionContext = ExecutionContext.Capture();
-
-				if ((flags & ValueTaskSourceOnCompletedFlags.UseSchedulingContext) != ValueTaskSourceOnCompletedFlags.None)
-				{
-					var CurrentContext = SynchronizationContext.Current;
-					TaskScheduler CurrentScheduler;
-
-					if (CurrentContext != null && CurrentContext.GetType() != typeof(SynchronizationContext))
-						_Scheduler = CurrentContext;
-					else if ((CurrentScheduler = TaskScheduler.Current) != TaskScheduler.Default)
-						_Scheduler = CurrentScheduler;
-				}
-
-				_State = state;
-				var Previous = Interlocked.CompareExchange(ref _Continuation, continuation, null);
-
-				if (ReferenceEquals(Previous, _CompletedContinuation))
-				{
-					_ExecutionContext = null;
-					_State = null;
-
-					RaiseContinuation(continuation, state, true);
-				}
-				else if (Previous != null)
-					throw new InvalidOperationException("Continuation already set");
-			}
+			public void OnCompleted(Action<object> continuation, object state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
 
 			//****************************************
 
@@ -525,9 +477,9 @@ namespace Proximity.Utility.Threading
 				return true;
 			}
 
-			protected void SwitchToSucceeded()
+			protected void SwitchToSucceeded(TResult result)
 			{
-				RaiseContinuation();
+				_TaskSource.SetResult(result);
 				Complete();
 			}
 
@@ -537,8 +489,7 @@ namespace Proximity.Utility.Threading
 
 			protected void SwitchToFaulted(Exception exception)
 			{
-				Exception = ExceptionDispatchInfo.Capture(exception);
-				RaiseContinuation();
+				_TaskSource.SetException(exception);
 				Complete();
 			}
 
@@ -557,69 +508,16 @@ namespace Proximity.Utility.Threading
 					NextTask.Execute();
 			}
 
-			private void RaiseContinuation()
-			{
-				var Continuation = _Continuation;
-
-				if (Continuation == null && (Continuation = Interlocked.CompareExchange(ref _Continuation, _CompletedContinuation, null)) == null)
-					return;
-
-				if (Continuation == _CompletedContinuation)
-					return;
-
-				var ContinuationState = _State;
-
-				_Continuation = _CompletedContinuation;
-				_State = null;
-
-				if (_ExecutionContext == null)
-				{
-					RaiseContinuation(Continuation, ContinuationState, false);
-				}
-				else
-				{
-					ExecutionContext.Run(_ExecutionContext, (state) =>
-					{
-						var (task, continuation, continuationState) = ((BaseStreamTask, Action<object>, object))state;
-
-						task.RaiseContinuation(continuation, continuationState, false);
-					}, (this, Continuation, ContinuationState));
-				}
-			}
-
-			private void RaiseContinuation(Action<object> continuation, object state, bool forceAsync)
-			{
-				if (_Scheduler != null)
-				{
-					if (_Scheduler is SynchronizationContext Context)
-						Context.Post(RaiseContinuation, (continuation, state));
-					else if (_Scheduler is TaskScheduler Scheduler)
-						Task.Factory.StartNew(continuation, state, CancellationToken.None, TaskCreationOptions.DenyChildAttach, Scheduler);
-				}
-				else if (forceAsync)
-					ThreadPool.QueueUserWorkItem(RaiseContinuation, (continuation, state));
-				else
-					continuation(state);
-			}
-
-			private static void RaiseContinuation(object state)
-			{
-				var (innerContinuation, innerState) = ((Action<object>, object))state;
-
-				innerContinuation(innerState);
-			}
-
 			private static void CancelTask(object state)
 			{
-				var Task = (BaseStreamTask)state;
+				var Task = (BaseStreamTask<TResult>)state;
 
 				if (Task._CanCancel == 0 || Interlocked.CompareExchange(ref Task._CanCancel, 2, 1) != 1)
 					return; // Task has already begun execution, can no longer cancel
 
 				// Do not raise Complete here, since we can only do that once the Task has been reached in the Stream
-				Task.Exception = ExceptionDispatchInfo.Capture(new OperationCanceledException(Task.Token));
 				// We do run the continuation, since the Task has reached a final status
-				Task.RaiseContinuation();
+				Task._TaskSource.SetException(new OperationCanceledException(Task.Token));
 			}
 
 			//****************************************
@@ -628,14 +526,10 @@ namespace Proximity.Utility.Threading
 
 			public CancellationToken Token { get; }
 
-			internal short TaskToken { get; }
-
-			public bool IsCompleted => ReferenceEquals(_Continuation, _CompletedContinuation);
-
-			public ExceptionDispatchInfo Exception { get; private set; }
+			internal short TaskToken => _TaskSource.Version;
 		}
 
-		private abstract class BaseValueTaskSource : BaseStreamTask, IValueTaskSource
+		private abstract class BaseValueTaskSource : BaseStreamTask<VoidStruct>, IValueTaskSource
 		{
 			protected BaseValueTaskSource(ValueTaskStream stream, CancellationToken token) : base(stream, token)
 			{
@@ -643,12 +537,13 @@ namespace Proximity.Utility.Threading
 
 			//****************************************
 
-			void IValueTaskSource.GetResult(short token)
-			{
-				if (token != TaskToken)
-					throw new InvalidOperationException("Value Task Token invalid");
+			void IValueTaskSource.GetResult(short token) => GetResult(token);
 
-				Exception?.Throw();
+			//****************************************
+
+			protected void SwitchToSucceeded()
+			{
+				SwitchToSucceeded(default);
 			}
 
 			//****************************************
@@ -668,7 +563,7 @@ namespace Proximity.Utility.Threading
 			public override void Execute()
 			{
 				if (SwitchToPending())
-					ThreadPool.QueueUserWorkItem((state) => ((NullTask)state).SwitchToSucceeded(), this);
+					ThreadPool.QueueUserWorkItem((state) => ((NullTask)state).SwitchToSucceeded(default), this);
 			}
 
 			//****************************************
@@ -1010,34 +905,10 @@ namespace Proximity.Utility.Threading
 			}
 		}
 
-		private abstract class BaseValueTaskSource<TResult> : BaseStreamTask, IValueTaskSource<TResult>
-		{ //****************************************
-			private TResult _Result;
-			//****************************************
-
+		private abstract class BaseValueTaskSource<TResult> : BaseStreamTask<TResult>, IValueTaskSource<TResult>
+		{
 			protected BaseValueTaskSource(ValueTaskStream stream, CancellationToken token) : base(stream, token)
 			{
-			}
-
-			//****************************************
-
-			TResult IValueTaskSource<TResult>.GetResult(short token)
-			{
-				if (token != TaskToken)
-					throw new InvalidOperationException("Value Task Token invalid");
-
-				Exception?.Throw();
-
-				return _Result;
-			}
-
-			//****************************************
-
-			protected void SwitchToSucceeded(TResult result)
-			{
-				_Result = result;
-
-				SwitchToSucceeded();
 			}
 
 			//****************************************

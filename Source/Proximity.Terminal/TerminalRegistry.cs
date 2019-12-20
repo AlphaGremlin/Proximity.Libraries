@@ -279,7 +279,8 @@ namespace Proximity.Terminal
 			{
 				foreach (Type NewType in e.Types)
 				{
-					Scan(NewType);
+					if (NewType != null)
+						Scan(NewType);
 				}
 			}
 		}

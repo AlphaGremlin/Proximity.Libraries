@@ -5,9 +5,9 @@
     <Company>Proximity Interactive</Company>
     <Copyright>Copyright © Daniel Chandler 2019</Copyright>
     <Product>Proximity Terminal Library</Product>
-		<Version>21.0.0</Version>
+		<Version>21.1.0</Version>
 		<AssemblyVersion>21.0.0.0</AssemblyVersion>
-		<FileVersion>21.0.0.0</FileVersion>
+		<FileVersion>21.1.0.0</FileVersion>
 		<Description>Proximity Terminal Library</Description>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

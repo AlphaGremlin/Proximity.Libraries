@@ -1,12 +1,9 @@
-﻿/****************************************\
- AsyncCollection.cs
- Created: 2014-02-20
-\****************************************/
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Proximity.Utility;
@@ -335,17 +332,14 @@ namespace Proximity.Utility.Collections
 			// Increment the slots counter, releasing any Takers
 			return _UsedSlots.TryIncrement();
 		}
-		
+
 		/// <summary>
 		/// Attempts to take an item from the collection without waiting
 		/// </summary>
 		/// <param name="item">The item that was removed from the collection</param>
 		/// <returns>True if an item was removed without waiting, otherwise False</returns>
-		public bool TryTake(out TItem item)
-		{
-			return TryTake(out item, TimeSpan.Zero);
-		}
-		
+		public bool TryTake(out TItem item) => TryTake(out item, TimeSpan.Zero);
+
 		/// <summary>
 		/// Attempts to take an item from the collection without waiting
 		/// </summary>
@@ -406,10 +400,7 @@ namespace Proximity.Utility.Collections
 		/// Copies a snapshot of the collection to an array
 		/// </summary>
 		/// <returns>The current contents of the collection</returns>
-		public TItem[] ToArray()
-		{
-			return _Collection.ToArray();
-		}
+		public TItem[] ToArray() => _Collection.ToArray();
 
 		/// <summary>
 		/// Creates an enumerable that can be used to consume items as they are added to this collection
@@ -419,11 +410,8 @@ namespace Proximity.Utility.Collections
 		/// <para>If the provider calls <see cref="CompleteAdding" /> while wating, the returned task will throw <see cref="InvalidOperationException"/>.</para>
 		/// <para>If there are still items in the collection at that point, the enumeration will complete successfully.</para>
 		/// </remarks>
-		public IEnumerable<Task<TItem>> GetConsumingEnumerable()
-		{
-			return GetConsumingEnumerable(CancellationToken.None);
-		}
-		
+		public IEnumerable<Task<TItem>> GetConsumingEnumerable() => GetConsumingEnumerable(CancellationToken.None);
+
 		/// <summary>
 		/// Creates an enumerable that can be used to consume items as they are added to this collection
 		/// </summary>
@@ -490,9 +478,52 @@ namespace Proximity.Utility.Collections
 				MyItem = default;
 			}
 		}
-		
+
+#if !NETSTANDARD2_0
+		/// <summary>
+		/// Creates an enumerable that can be used to consume items as they are added to this collection
+		/// </summary>
+		/// <param name="token">A cancellation token to abort consuming</param>
+		/// <returns>An async enumerable that waits for items to be added</returns>
+		/// <remarks>
+		/// <para>If the provider calls <see cref="CompleteAdding" /> while wating, the returned enumerable will complete.</para>
+		/// </remarks>
+		public async IAsyncEnumerable<TItem> GetConsumingAsyncEnumerable([EnumeratorCancellation] CancellationToken token)
+		{
+			while (!IsCompleted)
+			{
+				try
+				{
+					// Is there an item to take?
+					await _UsedSlots.Decrement(token);
+				}
+				catch (ObjectDisposedException) // Adding has completed while we were requesting
+				{
+					yield break;
+				}
+
+				// Try and remove an item from the collection
+				if (!GetNextItem(out var MyItem))
+					throw new InvalidOperationException("Item was not returned by the underlying collection");
+
+				// Is there a maximum size?
+				if (_FreeSlots != null)
+				{
+					// We've removed an item, so release any Adders
+					// Use TryIncrement, so we ignore if we're disposed and there are no more adders
+					_FreeSlots.TryIncrement();
+				}
+
+				// If the collection is empty, cancel anyone waiting for items
+				if (IsCompleted)
+					_UsedSlots.Dispose();
+
+				yield return MyItem;
+			}
+		}
+#endif
 		//****************************************
-		
+
 		private void InternalAdd(Task task, object state)
 		{	//****************************************
 			var MyItem = (TItem)state;
@@ -590,22 +621,13 @@ namespace Proximity.Utility.Collections
 			return true;
 		}
 
-		private static void CleanupCancelSource(Task task, object state)
-		{
-			((CancellationTokenSource)state).Dispose();
-		}
-		
+		private static void CleanupCancelSource(Task task, object state) => ((CancellationTokenSource)state).Dispose();
+
 		//****************************************
-		
-		IEnumerator<TItem> IEnumerable<TItem>.GetEnumerator()
-		{
-			return _Collection.GetEnumerator();
-		}
-		
-		IEnumerator IEnumerable.GetEnumerator()
-		{
-			return _Collection.GetEnumerator();
-		}
+
+		IEnumerator<TItem> IEnumerable<TItem>.GetEnumerator() => _Collection.GetEnumerator();
+
+		IEnumerator IEnumerable.GetEnumerator() => _Collection.GetEnumerator();
 
 		//****************************************
 

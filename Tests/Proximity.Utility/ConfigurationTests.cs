@@ -98,7 +98,21 @@ namespace Proximity.Utility.Tests
 			
 			Assert.AreEqual("TestText", MySection.Text.Content);
 		}
-		
+
+		[Test]
+		public void ReadCustomTextElement()
+		{
+			var RawXML = @"
+<Test>
+	<Text Value=""10"">TestText</Text>
+</Test>";
+
+			var MySection = CustomTextElementSection.FromString(RawXML);
+
+			Assert.AreEqual("TestText", MySection.Text.Content);
+			Assert.AreEqual(10, MySection.Text.Value);
+		}
+
 		[Test]
 		public void ReadStringCollectionOne()
 		{
@@ -558,7 +572,32 @@ namespace Proximity.Utility.Tests
 				get { return (CustomTextElementCollection)this["Text"] ?? new CustomTextElementCollection(); }
 			}
 		}
-		
+
+		public class CustomTextElementSection : ConfigurationSection
+		{
+			public static CustomTextElementSection FromString(string rawXml)
+			{
+				using (var MyStream = new StringReader(rawXml))
+				using (var MyReader = XmlReader.Create(MyStream))
+				{
+					MyReader.Read();
+
+					var MySection = new CustomTextElementSection();
+
+					MySection.DeserializeSection(MyReader);
+
+					return MySection;
+				}
+			}
+
+			[ConfigurationProperty("Text", IsRequired = true)]
+			public CustomTextElement Text
+			{
+				get { return (CustomTextElement)base["Text"]; }
+				set { base["Text"] = value; }
+			}
+		}
+
 		public class TextElementCollection : ConfigCollection<ConfigurationTextElement>
 		{
 			public TextElementCollection() : base()
@@ -566,14 +605,24 @@ namespace Proximity.Utility.Tests
 			}
 		}
 		
-		public class CustomTextElementCollection : ConfigCollection<CustomTextElement>
+		public class CustomTextElementCollection : ConfigCollection<CustomIntTextElement>
 		{
 			public CustomTextElementCollection() : base()
 			{
 			}
 		}
-		
-		public class CustomTextElement : ConfigurationTextElement<int>
+
+		public class CustomTextElement : ConfigurationTextElement
+		{
+			[ConfigurationProperty("Value", IsRequired = false)]
+			public int Value
+			{
+				get { return (int)base["Value"]; }
+				set { base["Value"] = value; }
+			}
+		}
+
+		public class CustomIntTextElement : ConfigurationTextElement<int>
 		{
 		}
 

@@ -1,10 +1,9 @@
-﻿/****************************************\
- ConcurrentExtensions.cs
- Created: 2013-11-07
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+#if !NETSTANDARD2_0
+using System.Diagnostics.CodeAnalysis;
+#endif
 //****************************************
 
 namespace Proximity.Utility.Collections
@@ -220,6 +219,116 @@ namespace Proximity.Utility.Collections
 			//****************************************
 
 			return MyValues.ToArray();
+		}
+
+		/// <summary>
+		/// Updates a key/value pair in the <see cref="ConcurrentDictionary{TKey,TValue}"/> if the key exists, and optionally removes it
+		/// </summary>
+		/// <typeparam name="TKey">The type of the dictionary key</typeparam>
+		/// <typeparam name="TValue">The type of the dictionary value</typeparam>
+		/// <param name="dictionary">The <see cref="ConcurrentDictionary{TKey,TValue}"/> to update.</param>
+		/// <param name="key">The key whose value should be updated or removed.</param>
+		/// <param name="updateValueFactory">The function used to generate a new value for the existing key.</param>
+		/// <param name="removeWhen">The function used to determine if the newly generated value meets the criteria for deletion</param>
+		/// <param name="value">When this method returns, <paramref name="value"/> contains the updated value or the default value of <typeparamref name="TValue"/> if the key was removed or not found.</param>
+		/// <returns>True if the key/value pair was updated, False if it was removed or not found.</returns>
+		/// <exception cref="System.ArgumentNullException"><paramref name="key"/> is a null reference (Nothing in Visual Basic).</exception>
+		public static bool UpdateOrRemove<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> dictionary, TKey key, Func<TKey, TValue, TValue> updateValueFactory, Func<TKey, TValue, bool> removeWhen,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+			out TValue value) where TKey : notnull
+		{
+			if (dictionary == null)
+				throw new ArgumentNullException(nameof(dictionary));
+
+			if (key == null)
+				throw new ArgumentNullException(nameof(key));
+
+			if (updateValueFactory == null)
+				throw new ArgumentNullException(nameof(updateValueFactory));
+
+			if (removeWhen == null)
+				throw new ArgumentNullException(nameof(removeWhen));
+
+			while (dictionary.TryGetValue(key, out var OldValue))
+			{
+				var NewValue = updateValueFactory(key, OldValue);
+
+				if (removeWhen(key, NewValue))
+				{
+					if (((IDictionary<TKey, TValue>)dictionary).Remove(new KeyValuePair<TKey, TValue>(key, OldValue)))
+						break;
+				}
+				else
+				{
+					if (dictionary.TryUpdate(key, NewValue, OldValue))
+					{
+						value = NewValue;
+						return true;
+					}
+				}
+			}
+
+			value = default!;
+
+			return false;
+		}
+
+		/// <summary>
+		/// Updates a key/value pair in the <see cref="ConcurrentDictionary{TKey,TValue}"/> if the key exists, and optionally removes it
+		/// </summary>
+		/// <typeparam name="TKey">The type of the dictionary key</typeparam>
+		/// <typeparam name="TValue">The type of the dictionary value</typeparam>
+		/// <typeparam name="TArg">The type of factory argument</typeparam>
+		/// <param name="dictionary">The <see cref="ConcurrentDictionary{TKey,TValue}"/> to update.</param>
+		/// <param name="key">The key whose value should be updated or removed.</param>
+		/// <param name="updateValueFactory">The function used to generate a new value for the existing key.</param>
+		/// <param name="removeWhen">The function used to determine if the newly generated value meets the criteria for deletion.</param>
+		/// <param name="factoryArgument">An argument to pass into <paramref name="updateValueFactory"/>.</param>
+		/// <param name="value">When this method returns, <paramref name="value"/> contains the updated value or the default value of <typeparamref name="TValue"/> if the key was removed or not found.</param>
+		/// <returns>True if the key/value pair was updated, False if it was removed or could not be found</returns>
+		/// <exception cref="System.ArgumentNullException"><paramref name="key"/> is a null reference (Nothing in Visual Basic).</exception>
+		public static bool UpdateOrRemove<TKey, TValue, TArg>(this ConcurrentDictionary<TKey, TValue> dictionary, TKey key, Func<TKey, TValue, TArg, TValue> updateValueFactory, Func<TKey, TValue, bool> removeWhen, TArg factoryArgument,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+# endif
+			out TValue value) where TKey : notnull
+		{
+			if (dictionary == null)
+				throw new ArgumentNullException(nameof(dictionary));
+
+			if (key == null)
+				throw new ArgumentNullException(nameof(key));
+
+			if (updateValueFactory == null)
+				throw new ArgumentNullException(nameof(updateValueFactory));
+
+			if (removeWhen == null)
+				throw new ArgumentNullException(nameof(removeWhen));
+
+			while (dictionary.TryGetValue(key, out var OldValue))
+			{
+				var NewValue = updateValueFactory(key, OldValue, factoryArgument);
+
+				if (removeWhen(key, NewValue))
+				{
+					if (((IDictionary<TKey, TValue>)dictionary).Remove(new KeyValuePair<TKey, TValue>(key, OldValue)))
+						break;
+				}
+				else
+				{
+					if (dictionary.TryUpdate(key, NewValue, OldValue))
+					{
+						value = NewValue;
+						return true;
+					}
+				}
+			}
+
+			value = default!;
+
+			return false;
 		}
 	}
 }

@@ -23,8 +23,19 @@ namespace Proximity.Utility.Configuration
 
 		//****************************************
 
+		/// <summary>
+		/// Parses the content of this Typed Element as a particular type
+		/// </summary>
+		/// <typeparam name="TValue">The type of element to parse as</typeparam>
+		/// <returns>The Typed Element with the content applied</returns>
 		public TValue Populate<TValue>() where TValue : TypedElement, new() => Populate<TValue>(System.Type.GetType(Type));
 
+		/// <summary>
+		/// Parses the content of this Typed Element as a particular type
+		/// </summary>
+		/// <param name="targetType">The target subtype of <typeparamref name="TValue"/></param>
+		/// <typeparam name="TValue">The base type of element to parse as</typeparam>
+		/// <returns>The Typed Element with the content applied</returns>
 		public TValue Populate<TValue>(Type targetType) where TValue : TypedElement, new()
 		{
 			if (RawElement == null)
@@ -90,6 +101,10 @@ namespace Proximity.Utility.Configuration
 			}
 		}
 
+		/// <summary>
+		/// Applies the content of this Typed Element to an instance
+		/// </summary>
+		/// <param name="target">The target instance to parse the content</param>
 		public void Populate(TypedElement target)
 		{
 			target.Type = Type;
