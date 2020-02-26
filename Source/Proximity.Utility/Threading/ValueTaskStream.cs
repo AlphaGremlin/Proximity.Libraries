@@ -1,16 +1,12 @@
 ﻿#nullable enable
-#pragma warning disable IDE0016 // Use 'throw' expression
 
 using System;
 using System.Collections.Concurrent;
-using System.Linq;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
-using Proximity.Utility;
-using Proximity.Utility.Collections;
 //****************************************
 
 namespace Proximity.Utility.Threading
@@ -28,7 +24,7 @@ namespace Proximity.Utility.Threading
 		//****************************************
 
 		/// <summary>
-		/// Creates a new Task Stream with the default task factory
+		/// Creates a new Value Task Stream
 		/// </summary>
 		public ValueTaskStream()
 		{
@@ -44,7 +40,7 @@ namespace Proximity.Utility.Threading
 		/// <returns>The task that was created</returns>
 		public ValueTask Queue(Action action, CancellationToken token = default)
 		{
-			var NewTask = ActionTask.Retrieve(this, action, token);
+			var NewTask = ActionTask.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
 
 			Interlocked.Increment(ref _PendingActions);
 			Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
@@ -61,7 +57,7 @@ namespace Proximity.Utility.Threading
 		/// <returns>The task that was created</returns>
 		public ValueTask Queue<TValue>(Action<TValue> action, TValue value, CancellationToken token = default)
 		{
-			var NewTask = ActionTask<TValue>.Retrieve(this, action, value, token);
+			var NewTask = ActionTask<TValue>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);
 
 			Interlocked.Increment(ref _PendingActions);
 			Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
@@ -77,7 +73,7 @@ namespace Proximity.Utility.Threading
 		/// <returns>The task that was created</returns>
 		public ValueTask<TResult> Queue<TResult>(Func<TResult> action, CancellationToken token = default)
 		{
-			var NewTask = FuncTask<TResult>.Retrieve(this, action, token);
+			var NewTask = FuncTask<TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
 
 			Interlocked.Increment(ref _PendingActions);
 			Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
@@ -94,7 +90,7 @@ namespace Proximity.Utility.Threading
 		/// <returns>The task that was created</returns>
 		public ValueTask<TResult> Queue<TValue, TResult>(Func<TValue, TResult> action, TValue value, CancellationToken token = default)
 		{
-			var NewTask = FuncTask<TValue, TResult>.Retrieve(this, action, value, token);
+			var NewTask = FuncTask<TValue, TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);
 
 			Interlocked.Increment(ref _PendingActions);
 			Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
@@ -111,7 +107,7 @@ namespace Proximity.Utility.Threading
 		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
 		public ValueTask QueueTask(Func<Task> action, CancellationToken token = default)
 		{
-			var NewTask = WrappedTask.Retrieve(this, action, token);
+			var NewTask = WrappedTask.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
 
 			Interlocked.Increment(ref _PendingActions);
 			Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
@@ -128,7 +124,7 @@ namespace Proximity.Utility.Threading
 		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
 		public ValueTask<TResult> QueueTask<TResult>(Func<Task<TResult>> action, CancellationToken token = default)
 		{
-			var NewTask = WrappedFuncTask<TResult>.Retrieve(this, action, token);
+			var NewTask = WrappedFuncTask<TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
 
 			Interlocked.Increment(ref _PendingActions);
 			Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
@@ -146,7 +142,7 @@ namespace Proximity.Utility.Threading
 		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
 		public ValueTask QueueTask<TValue>(Func<TValue, Task> action, TValue value, CancellationToken token = default)
 		{
-			var NewTask = WrappedTask<TValue>.Retrieve(this, action, value, token);
+			var NewTask = WrappedTask<TValue>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);
 
 			Interlocked.Increment(ref _PendingActions);
 			Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
@@ -164,7 +160,7 @@ namespace Proximity.Utility.Threading
 		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
 		public ValueTask<TResult> QueueTask<TValue, TResult>(Func<TValue, Task<TResult>> action, TValue value, CancellationToken token = default)
 		{
-			var NewTask = WrappedFuncTask<TValue, TResult>.Retrieve(this, action, value, token);
+			var NewTask = WrappedFuncTask<TValue, TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);
 
 			Interlocked.Increment(ref _PendingActions);
 			Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
@@ -181,7 +177,7 @@ namespace Proximity.Utility.Threading
 		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
 		public ValueTask QueueTask(Func<ValueTask> action, CancellationToken token = default)
 		{
-			var NewTask = WrappedValueTask.Retrieve(this, action, token);
+			var NewTask = WrappedValueTask.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
 
 			Interlocked.Increment(ref _PendingActions);
 			Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
@@ -198,7 +194,7 @@ namespace Proximity.Utility.Threading
 		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
 		public ValueTask<TResult> QueueTask<TResult>(Func<ValueTask<TResult>> action, CancellationToken token = default)
 		{
-			var NewTask = WrappedFuncValueTask<TResult>.Retrieve(this, action, token);
+			var NewTask = WrappedFuncValueTask<TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
 
 			Interlocked.Increment(ref _PendingActions);
 			Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
@@ -216,7 +212,7 @@ namespace Proximity.Utility.Threading
 		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
 		public ValueTask QueueTask<TValue>(Func<TValue, ValueTask> action, TValue value, CancellationToken token = default)
 		{
-			var NewTask = WrappedValueTask<TValue>.Retrieve(this, action, value, token);
+			var NewTask = WrappedValueTask<TValue>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);
 
 			Interlocked.Increment(ref _PendingActions);
 			Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
@@ -234,7 +230,7 @@ namespace Proximity.Utility.Threading
 		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
 		public ValueTask<TResult> QueueTask<TValue, TResult>(Func<TValue, ValueTask<TResult>> action, TValue value, CancellationToken token = default)
 		{
-			var NewTask = WrappedFuncValueTask<TValue, TResult>.Retrieve(this, action, value, token);
+			var NewTask = WrappedFuncValueTask<TValue, TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);
 
 			Interlocked.Increment(ref _PendingActions);
 			Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
@@ -278,20 +274,50 @@ namespace Proximity.Utility.Threading
 
 		//****************************************
 
+		private static void ExecutePool(IStreamTask nextTask)
+		{
+#if NETSTANDARD2_0
+			ThreadPool.QueueUserWorkItem((state) => ExecuteNextTask((IStreamTask)state), nextTask);
+#else
+				ThreadPool.QueueUserWorkItem(ExecuteNextTask, nextTask, false);
+#endif
+		}
+
+		private static void ExecuteNextTask(IStreamTask nextTask)
+		{
+			while (!ReferenceEquals(nextTask, CompleteStreamTask))
+			{
+				if (nextTask.TryActivate(out var NextTask))
+					nextTask = nextTask.Execute();
+				else
+					nextTask = NextTask;
+			}
+		}
+
 		private interface IStreamTask
 		{
 			void Queue(IStreamTask child);
-			void ExecutePool();
-			void ExecuteLocal(bool isNested);
+
+			IStreamTask Execute();
+
+			bool TryActivate(
+#if !NETSTANDARD2_0
+				[MaybeNullWhen(true)]
+#endif
+			out IStreamTask nextTask);
 		}
 
 		private sealed class CompletedTask : IStreamTask
 		{
-			void IStreamTask.Queue(IStreamTask child) => child.ExecutePool();
+			void IStreamTask.Queue(IStreamTask child) => ExecutePool(child);
 
-			void IStreamTask.ExecutePool() => throw new InvalidOperationException("Cannot execute completed task");
+			bool IStreamTask.TryActivate(
+#if !NETSTANDARD2_0
+				[MaybeNullWhen(true)]
+#endif
+			out IStreamTask nextTask) => throw new InvalidOperationException("Cannot activate completed task");
 
-			void IStreamTask.ExecuteLocal(bool isNested) => throw new InvalidOperationException("Cannot execute completed task");
+			IStreamTask IStreamTask.Execute() => throw new InvalidOperationException("Cannot execute completed task");
 		}
 
 		//****************************************
@@ -322,24 +348,36 @@ namespace Proximity.Utility.Threading
 				if (_Stream == null)
 					throw new InvalidOperationException("Task is not in a valid state");
 
-				// Assign as the next task, only if there is none set
-				var NextTask = Interlocked.CompareExchange(ref _NextTask, child, null);
-
-				// If we're set to completed, just run it directly
-				if (NextTask == CompleteStreamTask)
-					child.ExecutePool();
+				// Assign as the next task, only if there is none set. If we're set to completed, just run it directly
+				if (Interlocked.CompareExchange(ref _NextTask, child, null) == CompleteStreamTask)
+					ExecutePool(child);
 			}
 
-			public void ExecutePool()
-			{
-#if NETSTANDARD2_0
-				ThreadPool.QueueUserWorkItem((state) => ((BaseStreamTask<TResult>)state).ExecuteLocal(false));
-#else
-				ThreadPool.QueueUserWorkItem((state) => state.ExecuteLocal(false), this, false);
+			public bool TryActivate(
+#if !NETSTANDARD2_0
+				[MaybeNullWhen(true)]
 #endif
+			out IStreamTask nextTask)
+			{
+				nextTask = null!;
+
+				if (_CanCancel == 0)
+					return true; // Task cannot be cancelled, so its free to execute
+
+				_Registration.Dispose();
+
+				// We've abandoned cancellation, but it may still be executing right now.
+				// Mark the Task as no longer cancellable
+				if (Interlocked.CompareExchange(ref _CanCancel, 0, 1) == 1)
+					return true; // Success, we're now able to begin executing
+
+				// The Task has already cancelled, so we can complete it now were not in the queue
+				nextTask = Complete();
+
+				return false;
 			}
 
-			public abstract void ExecuteLocal(bool isNested);
+			public abstract IStreamTask Execute();
 
 			public ValueTaskSourceStatus GetStatus(short token) => _TaskSource.GetStatus(token);
 
@@ -351,6 +389,7 @@ namespace Proximity.Utility.Threading
 				}
 				finally
 				{
+					// Only safe to release after the TaskSource has returned (or thrown)
 					TryRelease();
 				}
 			}
@@ -367,7 +406,7 @@ namespace Proximity.Utility.Threading
 				{
 					_CanCancel = 1;
 					_Token = token;
-					_Registration = token.Register(CancelTask, this);
+					_Registration = token.Register((state) => ((BaseStreamTask<TResult> )state).Cancel(), this, false);
 				}
 				else
 				{
@@ -375,58 +414,37 @@ namespace Proximity.Utility.Threading
 				}
 			}
 
-			protected bool SwitchToPending(bool isNested)
-			{
-				if (_CanCancel == 0)
-					return true; // Task cannot be cancelled, so its free to execute
-
-				_Registration.Dispose();
-
-				if (Interlocked.CompareExchange(ref _CanCancel, 0, 1) != 1)
-				{
-					// The task has already been cancelled. Move to the next Task in the stream
-					Complete(isNested);
-
-					return false;
-				}
-
-				if (_Token.IsCancellationRequested)
-				{
-					// The token was about to cancel, so cancel the Task
-					SwitchToCancelled(isNested);
-
-					return false;
-				}
-
-				// Task is allowed to begin execution
-				return true;
-			}
-
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			protected void SwitchToSucceeded(TResult result, bool isNested)
+			protected IStreamTask SwitchToSucceeded(TResult result)
 			{
-				Complete(isNested);
+				var NextTask = Complete();
+
 				_TaskSource.SetResult(result);
+
+				return NextTask;
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			protected void SwitchToCancelled(bool isNested) => SwitchToFaulted(new OperationCanceledException(), isNested);
+			protected IStreamTask SwitchToCancelled() => SwitchToFaulted(new OperationCanceledException());
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			protected void SwitchToCancelled(CancellationToken token, bool isNested) => SwitchToFaulted(new OperationCanceledException(token), isNested);
+			protected IStreamTask SwitchToCancelled(CancellationToken token) => SwitchToFaulted(new OperationCanceledException(token));
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			protected void SwitchToFaulted(Exception exception, bool isNested)
+			protected IStreamTask SwitchToFaulted(Exception exception)
 			{
-				Complete(isNested);
+				var NextTask = Complete();
+
 				_TaskSource.SetException(exception);
+
+				return NextTask;
 			}
 
 			protected abstract void Return();
 
 			//****************************************
 
-			private void Complete(bool isNested)
+			private IStreamTask Complete()
 			{
 				// Mark us as completed
 				var NextTask = Interlocked.CompareExchange(ref _NextTask, CompleteStreamTask, null);
@@ -434,15 +452,18 @@ namespace Proximity.Utility.Threading
 				// Reduce the number of pending actions
 				Interlocked.Decrement(ref _Stream!._PendingActions);
 
-				// If there's no task queued to run next, mark us as completed. Makes GetComplete faster
 				if (NextTask == null)
+				{
+					// There's no task queued to run next, so mark us as completed. Makes GetComplete faster
 					Interlocked.CompareExchange(ref _Stream._NextTask, CompleteStreamTask, this);
-				else if (isNested)
-					NextTask.ExecutePool(); // We're in the Complete of the previous Task, so break the call stack
-				else
-					NextTask.ExecuteLocal(true); // It's safe to try and start the next Task here
+
+					// Return Completed as well, so ExecuteNextTask can safely abort
+					NextTask = CompleteStreamTask;
+				}
 
 				TryRelease();
+
+				return NextTask;
 			}
 
 			private void TryRelease()
@@ -462,16 +483,12 @@ namespace Proximity.Utility.Threading
 				Return();
 			}
 
-			private static void CancelTask(object state)
+			private void Cancel()
 			{
-				var Task = (BaseStreamTask<TResult>)state;
-
-				if (Task._CanCancel == 0 || Interlocked.CompareExchange(ref Task._CanCancel, 2, 1) != 1)
-					return; // Task has already begun execution, can no longer cancel
-
-				// Do not raise Complete here, since we can only do that once the Task has been reached in the Stream
-				// We do run the continuation, since the Task has reached a final status
-				Task._TaskSource.SetException(new OperationCanceledException(Task._Token));
+				// Ensure we're still allowed to Cancel (the Task may have already been activated)
+				if (_CanCancel != 0 && Interlocked.CompareExchange(ref _CanCancel, 2, 1) == 1)
+					// Do not raise Complete here. It'll be called once the Task tries to activate
+					_TaskSource.SetException(new OperationCanceledException(_Token));
 			}
 
 			//****************************************
@@ -486,7 +503,7 @@ namespace Proximity.Utility.Threading
 			//****************************************
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			protected void SwitchToSucceeded(bool isNested) => SwitchToSucceeded(default, isNested);
+			protected IStreamTask SwitchToSucceeded() => SwitchToSucceeded(default);
 
 			//****************************************
 
@@ -503,11 +520,7 @@ namespace Proximity.Utility.Threading
 			private readonly static ConcurrentBag<NullTask> Cache = new ConcurrentBag<NullTask>();
 			//****************************************
 
-			public override void ExecuteLocal(bool isNested)
-			{
-				if (SwitchToPending(isNested))
-					SwitchToSucceeded(isNested);
-			}
+			public override IStreamTask Execute() => SwitchToSucceeded();
 
 			protected override void Return() => Cache.Add(this);
 
@@ -531,24 +544,21 @@ namespace Proximity.Utility.Threading
 			private Action? _Action;
 			//****************************************
 
-			public override void ExecuteLocal(bool isNested)
+			public override IStreamTask Execute()
 			{
-				if (SwitchToPending(isNested))
+				try
 				{
-					try
-					{
-						_Action!();
+					_Action!();
 
-						SwitchToSucceeded(isNested);
-					}
-					catch (OperationCanceledException e)
-					{
-						SwitchToCancelled(e.CancellationToken, isNested);
-					}
-					catch (Exception e)
-					{
-						SwitchToFaulted(e, isNested);
-					}
+					return SwitchToSucceeded();
+				}
+				catch (OperationCanceledException e)
+				{
+					return SwitchToCancelled(e.CancellationToken);
+				}
+				catch (Exception e)
+				{
+					return SwitchToFaulted(e);
 				}
 			}
 
@@ -563,9 +573,6 @@ namespace Proximity.Utility.Threading
 
 			public static BaseValueTaskSource Retrieve(ValueTaskStream stream, Action action, CancellationToken token)
 			{
-				if (action == null)
-					throw new ArgumentNullException(nameof(action));
-
 				if (!Cache.TryTake(out var Task))
 					Task = new ActionTask();
 
@@ -584,24 +591,21 @@ namespace Proximity.Utility.Threading
 			private TValue _Value = default!;
 			//****************************************
 
-			public override void ExecuteLocal(bool isNested)
+			public override IStreamTask Execute()
 			{
-				if (SwitchToPending(isNested))
+				try
 				{
-					try
-					{
-						_Action!(_Value!);
+					_Action!(_Value!);
 
-						SwitchToSucceeded(isNested);
-					}
-					catch (OperationCanceledException e)
-					{
-						SwitchToCancelled(e.CancellationToken, isNested);
-					}
-					catch (Exception e)
-					{
-						SwitchToFaulted(e, isNested);
-					}
+					return SwitchToSucceeded();
+				}
+				catch (OperationCanceledException e)
+				{
+					return SwitchToCancelled(e.CancellationToken);
+				}
+				catch (Exception e)
+				{
+					return SwitchToFaulted(e);
 				}
 			}
 
@@ -617,9 +621,6 @@ namespace Proximity.Utility.Threading
 
 			public static BaseValueTaskSource Retrieve(ValueTaskStream stream, Action<TValue> action, TValue value, CancellationToken token)
 			{
-				if (action == null)
-					throw new ArgumentNullException(nameof(action));
-
 				if (!Cache.TryTake(out var Task))
 					Task = new ActionTask<TValue>();
 
@@ -643,27 +644,26 @@ namespace Proximity.Utility.Threading
 
 			public WrappedTask() => _ContinueWrappedTask = ContinueWrappedTask;
 
-			public override void ExecuteLocal(bool isNested)
+			public override IStreamTask Execute()
 			{
-				if (SwitchToPending(isNested))
+				try
 				{
-					try
-					{
-						_InnerTask = _Action!().ConfigureAwait(false).GetAwaiter();
+					_InnerTask = _Action!().ConfigureAwait(false).GetAwaiter();
 
-						if (_InnerTask.IsCompleted)
-							ContinueWrappedTask(isNested);
-						else
-							_InnerTask.OnCompleted(_ContinueWrappedTask);
-					}
-					catch (OperationCanceledException e)
-					{
-						SwitchToCancelled(e.CancellationToken, isNested);
-					}
-					catch (Exception e)
-					{
-						SwitchToFaulted(e, isNested);
-					}
+					if (_InnerTask.IsCompleted)
+						return CompleteWrappedTask();
+					
+					_InnerTask.OnCompleted(_ContinueWrappedTask);
+
+					return CompleteStreamTask;
+				}
+				catch (OperationCanceledException e)
+				{
+					return SwitchToCancelled(e.CancellationToken);
+				}
+				catch (Exception e)
+				{
+					return SwitchToFaulted(e);
 				}
 			}
 
@@ -675,24 +675,23 @@ namespace Proximity.Utility.Threading
 				Cache.Add(this);
 			}
 
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			private void ContinueWrappedTask() => ContinueWrappedTask(false);
+			private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
 
-			private void ContinueWrappedTask(bool isNested)
+			private IStreamTask CompleteWrappedTask()
 			{
 				try
 				{
 					_InnerTask.GetResult();
 
-					SwitchToSucceeded(isNested);
+					return SwitchToSucceeded();
 				}
 				catch (OperationCanceledException e)
 				{
-					SwitchToCancelled(e.CancellationToken, isNested);
+					return SwitchToCancelled(e.CancellationToken);
 				}
 				catch (Exception e)
 				{
-					SwitchToFaulted(e, isNested);
+					return SwitchToFaulted(e);
 				}
 			}
 
@@ -700,9 +699,6 @@ namespace Proximity.Utility.Threading
 
 			public static BaseValueTaskSource Retrieve(ValueTaskStream stream, Func<Task> action, CancellationToken token)
 			{
-				if (action == null)
-					throw new ArgumentNullException(nameof(action));
-
 				if (!Cache.TryTake(out var Task))
 					Task = new WrappedTask();
 
@@ -726,27 +722,26 @@ namespace Proximity.Utility.Threading
 
 			public WrappedTask() => _ContinueWrappedTask = ContinueWrappedTask;
 
-			public override void ExecuteLocal(bool isNested)
+			public override IStreamTask Execute()
 			{
-				if (SwitchToPending(isNested))
+				try
 				{
-					try
-					{
-						_InnerTask = _Action!(_Value!).ConfigureAwait(false).GetAwaiter();
+					_InnerTask = _Action!(_Value!).ConfigureAwait(false).GetAwaiter();
 
-						if (_InnerTask.IsCompleted)
-							ContinueWrappedTask(isNested);
-						else
-							_InnerTask.OnCompleted(_ContinueWrappedTask);
-					}
-					catch (OperationCanceledException e)
-					{
-						SwitchToCancelled(e.CancellationToken, isNested);
-					}
-					catch (Exception e)
-					{
-						SwitchToFaulted(e, isNested);
-					}
+					if (_InnerTask.IsCompleted)
+						return CompleteWrappedTask();
+
+					_InnerTask.OnCompleted(_ContinueWrappedTask);
+
+					return CompleteStreamTask;
+				}
+				catch (OperationCanceledException e)
+				{
+					return SwitchToCancelled(e.CancellationToken);
+				}
+				catch (Exception e)
+				{
+					return SwitchToFaulted(e);
 				}
 			}
 
@@ -759,24 +754,23 @@ namespace Proximity.Utility.Threading
 				Cache.Add(this);
 			}
 
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			private void ContinueWrappedTask() => ContinueWrappedTask(false);
+			private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
 
-			private void ContinueWrappedTask(bool isNested)
+			private IStreamTask CompleteWrappedTask()
 			{
 				try
 				{
 					_InnerTask.GetResult();
 
-					SwitchToSucceeded(isNested);
+					return SwitchToSucceeded();
 				}
 				catch (OperationCanceledException e)
 				{
-					SwitchToCancelled(e.CancellationToken, isNested);
+					return SwitchToCancelled(e.CancellationToken);
 				}
 				catch (Exception e)
 				{
-					SwitchToFaulted(e, isNested);
+					return SwitchToFaulted(e);
 				}
 			}
 
@@ -784,9 +778,6 @@ namespace Proximity.Utility.Threading
 
 			public static BaseValueTaskSource Retrieve(ValueTaskStream stream, Func<TValue, Task> action, TValue value, CancellationToken token)
 			{
-				if (action == null)
-					throw new ArgumentNullException(nameof(action));
-
 				if (!Cache.TryTake(out var Task))
 					Task = new WrappedTask<TValue>();
 
@@ -810,27 +801,29 @@ namespace Proximity.Utility.Threading
 
 			public WrappedValueTask() => _ContinueWrappedTask = ContinueWrappedTask;
 
-			public override void ExecuteLocal(bool isNested)
+			public override IStreamTask Execute()
 			{
-				if (SwitchToPending(isNested))
-				{
-					try
-					{
-						var Awaiter = _InnerTask = _Action!().ConfigureAwait(false).GetAwaiter();
+				if (!TryActivate(out var NextTask))
+					return NextTask;
 
-						if (Awaiter.IsCompleted)
-							ContinueWrappedTask(isNested);
-						else
-							Awaiter.OnCompleted(_ContinueWrappedTask);
-					}
-					catch (OperationCanceledException e)
-					{
-						SwitchToCancelled(e.CancellationToken, isNested);
-					}
-					catch (Exception e)
-					{
-						SwitchToFaulted(e, isNested);
-					}
+				try
+				{
+					var Awaiter = _InnerTask = _Action!().ConfigureAwait(false).GetAwaiter();
+
+					if (Awaiter.IsCompleted)
+						return CompleteWrappedTask();
+					
+					Awaiter.OnCompleted(_ContinueWrappedTask);
+
+					return CompleteStreamTask;
+				}
+				catch (OperationCanceledException e)
+				{
+					return SwitchToCancelled(e.CancellationToken);
+				}
+				catch (Exception e)
+				{
+					return SwitchToFaulted(e);
 				}
 			}
 
@@ -842,24 +835,23 @@ namespace Proximity.Utility.Threading
 				Cache.Add(this);
 			}
 
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			private void ContinueWrappedTask() => ContinueWrappedTask(false);
+			private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
 
-			private void ContinueWrappedTask(bool isNested)
+			private IStreamTask CompleteWrappedTask()
 			{
 				try
 				{
 					_InnerTask.GetResult();
 
-					SwitchToSucceeded(isNested);
+					return SwitchToSucceeded();
 				}
 				catch (OperationCanceledException e)
 				{
-					SwitchToCancelled(e.CancellationToken, isNested);
+					return SwitchToCancelled(e.CancellationToken);
 				}
 				catch (Exception e)
 				{
-					SwitchToFaulted(e, isNested);
+					return SwitchToFaulted(e);
 				}
 			}
 
@@ -867,9 +859,6 @@ namespace Proximity.Utility.Threading
 
 			public static BaseValueTaskSource Retrieve(ValueTaskStream stream, Func<ValueTask> action, CancellationToken token)
 			{
-				if (action == null)
-					throw new ArgumentNullException(nameof(action));
-
 				if (!Cache.TryTake(out var Task))
 					Task = new WrappedValueTask();
 
@@ -893,27 +882,26 @@ namespace Proximity.Utility.Threading
 
 			internal WrappedValueTask() => _ContinueWrappedTask = ContinueWrappedTask;
 
-			public override void ExecuteLocal(bool isNested)
+			public override IStreamTask Execute()
 			{
-				if (SwitchToPending(isNested))
+				try
 				{
-					try
-					{
-						var Awaiter = _InnerTask = _Action!(_Value!).ConfigureAwait(false).GetAwaiter();
+					var Awaiter = _InnerTask = _Action!(_Value!).ConfigureAwait(false).GetAwaiter();
 
-						if (Awaiter.IsCompleted)
-							ContinueWrappedTask(isNested);
-						else
-							Awaiter.OnCompleted(_ContinueWrappedTask);
-					}
-					catch (OperationCanceledException e)
-					{
-						SwitchToCancelled(e.CancellationToken, isNested);
-					}
-					catch (Exception e)
-					{
-						SwitchToFaulted(e, isNested);
-					}
+					if (Awaiter.IsCompleted)
+						return CompleteWrappedTask();
+
+					Awaiter.OnCompleted(_ContinueWrappedTask);
+
+					return CompleteStreamTask;
+				}
+				catch (OperationCanceledException e)
+				{
+					return SwitchToCancelled(e.CancellationToken);
+				}
+				catch (Exception e)
+				{
+					return SwitchToFaulted(e);
 				}
 			}
 
@@ -926,24 +914,23 @@ namespace Proximity.Utility.Threading
 				Cache.Add(this);
 			}
 
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			private void ContinueWrappedTask() => ContinueWrappedTask(false);
+			private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
 
-			private void ContinueWrappedTask(bool isNested)
+			private IStreamTask CompleteWrappedTask()
 			{
 				try
 				{
 					_InnerTask.GetResult();
 
-					SwitchToSucceeded(isNested);
+					return SwitchToSucceeded();
 				}
 				catch (OperationCanceledException e)
 				{
-					SwitchToCancelled(e.CancellationToken, isNested);
+					return SwitchToCancelled(e.CancellationToken);
 				}
 				catch (Exception e)
 				{
-					SwitchToFaulted(e, isNested);
+					return SwitchToFaulted(e);
 				}
 			}
 
@@ -951,9 +938,6 @@ namespace Proximity.Utility.Threading
 
 			public static BaseValueTaskSource Retrieve(ValueTaskStream stream, Func<TValue, ValueTask> action, TValue value, CancellationToken token)
 			{
-				if (action == null)
-					throw new ArgumentNullException(nameof(action));
-
 				if (!Cache.TryTake(out var Task))
 					Task = new WrappedValueTask<TValue>();
 
@@ -973,22 +957,19 @@ namespace Proximity.Utility.Threading
 			private Func<TResult>? _Func;
 			//****************************************
 
-			public override void ExecuteLocal(bool isNested)
+			public override IStreamTask Execute()
 			{
-				if (SwitchToPending(isNested))
+				try
 				{
-					try
-					{
-						SwitchToSucceeded(_Func!(), isNested);
-					}
-					catch (OperationCanceledException e)
-					{
-						SwitchToCancelled(e.CancellationToken, isNested);
-					}
-					catch (Exception e)
-					{
-						SwitchToFaulted(e, isNested);
-					}
+					return SwitchToSucceeded(_Func!());
+				}
+				catch (OperationCanceledException e)
+				{
+					return SwitchToCancelled(e.CancellationToken);
+				}
+				catch (Exception e)
+				{
+					return SwitchToFaulted(e);
 				}
 			}
 
@@ -1003,9 +984,6 @@ namespace Proximity.Utility.Threading
 
 			public static BaseValueTaskSource<TResult> Retrieve(ValueTaskStream stream, Func<TResult> func, CancellationToken token)
 			{
-				if (func == null)
-					throw new ArgumentNullException(nameof(func));
-
 				if (!Cache.TryTake(out var Task))
 					Task = new FuncTask<TResult>();
 
@@ -1025,22 +1003,19 @@ namespace Proximity.Utility.Threading
 			private TValue _Value = default!;
 			//****************************************
 
-			public override void ExecuteLocal(bool isNested)
+			public override IStreamTask Execute()
 			{
-				if (SwitchToPending(isNested))
+				try
 				{
-					try
-					{
-						SwitchToSucceeded(_Func!(_Value!), isNested);
-					}
-					catch (OperationCanceledException e)
-					{
-						SwitchToCancelled(e.CancellationToken, isNested);
-					}
-					catch (Exception e)
-					{
-						SwitchToFaulted(e, isNested);
-					}
+					return SwitchToSucceeded(_Func!(_Value!));
+				}
+				catch (OperationCanceledException e)
+				{
+					return SwitchToCancelled(e.CancellationToken);
+				}
+				catch (Exception e)
+				{
+					return SwitchToFaulted(e);
 				}
 			}
 
@@ -1056,9 +1031,6 @@ namespace Proximity.Utility.Threading
 
 			public static BaseValueTaskSource<TResult> Retrieve(ValueTaskStream stream, Func<TValue, TResult> func, TValue value, CancellationToken token)
 			{
-				if (func == null)
-					throw new ArgumentNullException(nameof(func));
-
 				if (!Cache.TryTake(out var Task))
 					Task = new FuncTask<TValue, TResult>();
 
@@ -1083,27 +1055,26 @@ namespace Proximity.Utility.Threading
 
 			public WrappedFuncTask() => _ContinueWrappedTask = ContinueWrappedTask;
 
-			public override void ExecuteLocal(bool isNested)
+			public override IStreamTask Execute()
 			{
-				if (SwitchToPending(isNested))
+				try
 				{
-					try
-					{
-						_InnerTask = _Func!().ConfigureAwait(false).GetAwaiter();
+					_InnerTask = _Func!().ConfigureAwait(false).GetAwaiter();
 
-						if (_InnerTask.IsCompleted)
-							ContinueWrappedTask(isNested);
-						else
-							_InnerTask.OnCompleted(_ContinueWrappedTask);
-					}
-					catch (OperationCanceledException e)
-					{
-						SwitchToCancelled(e.CancellationToken, isNested);
-					}
-					catch (Exception e)
-					{
-						SwitchToFaulted(e, isNested);
-					}
+					if (_InnerTask.IsCompleted)
+						return CompleteWrappedTask();
+
+					_InnerTask.OnCompleted(_ContinueWrappedTask);
+
+					return CompleteStreamTask;
+				}
+				catch (OperationCanceledException e)
+				{
+					return SwitchToCancelled(e.CancellationToken);
+				}
+				catch (Exception e)
+				{
+					return SwitchToFaulted(e);
 				}
 			}
 
@@ -1115,22 +1086,21 @@ namespace Proximity.Utility.Threading
 				Cache.Add(this);
 			}
 
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			private void ContinueWrappedTask() => ContinueWrappedTask(false);
+			private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
 
-			private void ContinueWrappedTask(bool isNested)
+			private IStreamTask CompleteWrappedTask()
 			{
 				try
 				{
-					SwitchToSucceeded(_InnerTask.GetResult(), isNested);
+					return SwitchToSucceeded(_InnerTask.GetResult());
 				}
 				catch (OperationCanceledException e)
 				{
-					SwitchToCancelled(e.CancellationToken, isNested);
+					return SwitchToCancelled(e.CancellationToken);
 				}
 				catch (Exception e)
 				{
-					SwitchToFaulted(e, isNested);
+					return SwitchToFaulted(e);
 				}
 			}
 
@@ -1138,9 +1108,6 @@ namespace Proximity.Utility.Threading
 
 			public static BaseValueTaskSource<TResult> Retrieve(ValueTaskStream stream, Func<Task<TResult>> func, CancellationToken token)
 			{
-				if (func == null)
-					throw new ArgumentNullException(nameof(func));
-
 				if (!Cache.TryTake(out var Task))
 					Task = new WrappedFuncTask<TResult>();
 
@@ -1165,27 +1132,26 @@ namespace Proximity.Utility.Threading
 
 			public WrappedFuncTask() => _ContinueWrappedTask = ContinueWrappedTask;
 
-			public override void ExecuteLocal(bool isNested)
+			public override IStreamTask Execute()
 			{
-				if (SwitchToPending(isNested))
+				try
 				{
-					try
-					{
-						_InnerTask = _Func!(_Value!).ConfigureAwait(false).GetAwaiter();
+					_InnerTask = _Func!(_Value!).ConfigureAwait(false).GetAwaiter();
 
-						if (_InnerTask.IsCompleted)
-							ContinueWrappedTask(isNested);
-						else
-							_InnerTask.OnCompleted(_ContinueWrappedTask);
-					}
-					catch (OperationCanceledException e)
-					{
-						SwitchToCancelled(e.CancellationToken, isNested);
-					}
-					catch (Exception e)
-					{
-						SwitchToFaulted(e, isNested);
-					}
+					if (_InnerTask.IsCompleted)
+						return CompleteWrappedTask();
+
+					_InnerTask.OnCompleted(_ContinueWrappedTask);
+
+					return CompleteStreamTask;
+				}
+				catch (OperationCanceledException e)
+				{
+					return SwitchToCancelled(e.CancellationToken);
+				}
+				catch (Exception e)
+				{
+					return SwitchToFaulted(e);
 				}
 			}
 
@@ -1198,22 +1164,21 @@ namespace Proximity.Utility.Threading
 				Cache.Add(this);
 			}
 
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			private void ContinueWrappedTask() => ContinueWrappedTask(false);
+			private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
 
-			private void ContinueWrappedTask(bool isNested)
+			private IStreamTask CompleteWrappedTask()
 			{
 				try
 				{
-					SwitchToSucceeded(_InnerTask.GetResult(), isNested);
+					return SwitchToSucceeded(_InnerTask.GetResult());
 				}
 				catch (OperationCanceledException e)
 				{
-					SwitchToCancelled(e.CancellationToken, isNested);
+					return SwitchToCancelled(e.CancellationToken);
 				}
 				catch (Exception e)
 				{
-					SwitchToFaulted(e, isNested);
+					return SwitchToFaulted(e);
 				}
 			}
 
@@ -1221,9 +1186,6 @@ namespace Proximity.Utility.Threading
 
 			public static BaseValueTaskSource<TResult> Retrieve(ValueTaskStream stream, Func<TValue, Task<TResult>> func, TValue value, CancellationToken token)
 			{
-				if (func == null)
-					throw new ArgumentNullException(nameof(func));
-
 				if (!Cache.TryTake(out var Task))
 					Task = new WrappedFuncTask<TValue, TResult>();
 
@@ -1248,27 +1210,26 @@ namespace Proximity.Utility.Threading
 
 			internal WrappedFuncValueTask() => _ContinueWrappedTask = ContinueWrappedTask;
 
-			public override void ExecuteLocal(bool isNested)
+			public override IStreamTask Execute()
 			{
-				if (SwitchToPending(isNested))
+				try
 				{
-					try
-					{
-						_InnerTask = _Func!().ConfigureAwait(false).GetAwaiter();
+					_InnerTask = _Func!().ConfigureAwait(false).GetAwaiter();
 
-						if (_InnerTask.IsCompleted)
-							ContinueWrappedTask(isNested);
-						else
-							_InnerTask.OnCompleted(_ContinueWrappedTask);
-					}
-					catch (OperationCanceledException e)
-					{
-						SwitchToCancelled(e.CancellationToken, isNested);
-					}
-					catch (Exception e)
-					{
-						SwitchToFaulted(e, isNested);
-					}
+					if (_InnerTask.IsCompleted)
+						return CompleteWrappedTask();
+
+					_InnerTask.OnCompleted(_ContinueWrappedTask);
+
+					return CompleteStreamTask;
+				}
+				catch (OperationCanceledException e)
+				{
+					return SwitchToCancelled(e.CancellationToken);
+				}
+				catch (Exception e)
+				{
+					return SwitchToFaulted(e);
 				}
 			}
 
@@ -1280,22 +1241,21 @@ namespace Proximity.Utility.Threading
 				Cache.Add(this);
 			}
 
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			private void ContinueWrappedTask() => ContinueWrappedTask(false);
+			private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
 
-			private void ContinueWrappedTask(bool isNested)
+			private IStreamTask CompleteWrappedTask()
 			{
 				try
 				{
-					SwitchToSucceeded(_InnerTask.GetResult(), isNested);
+					return SwitchToSucceeded(_InnerTask.GetResult());
 				}
 				catch (OperationCanceledException e)
 				{
-					SwitchToCancelled(e.CancellationToken, isNested);
+					return SwitchToCancelled(e.CancellationToken);
 				}
 				catch (Exception e)
 				{
-					SwitchToFaulted(e, isNested);
+					return SwitchToFaulted(e);
 				}
 			}
 
@@ -1303,9 +1263,6 @@ namespace Proximity.Utility.Threading
 
 			public static BaseValueTaskSource<TResult> Retrieve(ValueTaskStream stream, Func<ValueTask<TResult>> func, CancellationToken token)
 			{
-				if (func == null)
-					throw new ArgumentNullException(nameof(func));
-
 				if (!Cache.TryTake(out var Task))
 					Task = new WrappedFuncValueTask<TResult>();
 
@@ -1330,27 +1287,26 @@ namespace Proximity.Utility.Threading
 
 			public WrappedFuncValueTask() => _ContinueWrappedTask = ContinueWrappedTask;
 
-			public override void ExecuteLocal(bool isNested)
+			public override IStreamTask Execute()
 			{
-				if (SwitchToPending(isNested))
+				try
 				{
-					try
-					{
-						_InnerTask = _Func!(_Value!).ConfigureAwait(false).GetAwaiter();
+					_InnerTask = _Func!(_Value!).ConfigureAwait(false).GetAwaiter();
 
-						if (_InnerTask.IsCompleted)
-							ContinueWrappedTask(isNested);
-						else
-							_InnerTask.OnCompleted(_ContinueWrappedTask);
-					}
-					catch (OperationCanceledException e)
-					{
-						SwitchToCancelled(e.CancellationToken, isNested);
-					}
-					catch (Exception e)
-					{
-						SwitchToFaulted(e, isNested);
-					}
+					if (_InnerTask.IsCompleted)
+						return CompleteWrappedTask();
+
+					_InnerTask.OnCompleted(_ContinueWrappedTask);
+
+					return CompleteStreamTask;
+				}
+				catch (OperationCanceledException e)
+				{
+					return SwitchToCancelled(e.CancellationToken);
+				}
+				catch (Exception e)
+				{
+					return SwitchToFaulted(e);
 				}
 			}
 
@@ -1362,22 +1318,21 @@ namespace Proximity.Utility.Threading
 				Cache.Add(this);
 			}
 
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			private void ContinueWrappedTask() => ContinueWrappedTask(false);
+			private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
 
-			private void ContinueWrappedTask(bool isNested)
+			private IStreamTask CompleteWrappedTask()
 			{
 				try
 				{
-					SwitchToSucceeded(_InnerTask.GetResult(), isNested);
+					return SwitchToSucceeded(_InnerTask.GetResult());
 				}
 				catch (OperationCanceledException e)
 				{
-					SwitchToCancelled(e.CancellationToken, isNested);
+					return SwitchToCancelled(e.CancellationToken);
 				}
 				catch (Exception e)
 				{
-					SwitchToFaulted(e, isNested);
+					return SwitchToFaulted(e);
 				}
 			}
 
@@ -1385,9 +1340,6 @@ namespace Proximity.Utility.Threading
 
 			public static BaseValueTaskSource<TResult> Retrieve(ValueTaskStream stream, Func<TValue, ValueTask<TResult>> func, TValue value, CancellationToken token)
 			{
-				if (func == null)
-					throw new ArgumentNullException(nameof(func));
-
 				if (!Cache.TryTake(out var Task))
 					Task = new WrappedFuncValueTask<TValue, TResult>();
 
