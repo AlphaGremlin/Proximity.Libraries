@@ -502,10 +502,9 @@ namespace Proximity.Utility.Tests
 		public async Task TryTakeTakeDispose()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim(1);
-			IDisposable MyHandle1, MyHandle2;
 			//****************************************
 
-			Assert.True(MyLock.TryTake(out MyHandle1), "Lock not taken");
+			Assert.True(MyLock.TryTake(out var MyHandle1), "Lock not taken");
 
 			var MyTask = Task.Run(async () =>
 				{
@@ -514,7 +513,7 @@ namespace Proximity.Utility.Tests
 					await MyLock.Dispose();
 				});
 
-			Assert.False(MyLock.TryTake(out MyHandle2, Timeout.InfiniteTimeSpan), "Nested lock taken");
+			Assert.False(MyLock.TryTake(out _, Timeout.InfiniteTimeSpan), "Nested lock taken");
 
 			MyHandle1.Dispose();
 
@@ -530,10 +529,9 @@ namespace Proximity.Utility.Tests
 		public async Task TryTakeTakeTimeoutDispose()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim(1);
-			IDisposable MyHandle1, MyHandle2;
 			//****************************************
 
-			Assert.True(MyLock.TryTake(out MyHandle1), "Lock not taken");
+			Assert.True(MyLock.TryTake(out var MyHandle1), "Lock not taken");
 
 			var MyTask = Task.Run(async () =>
 			{
@@ -542,7 +540,7 @@ namespace Proximity.Utility.Tests
 				await MyLock.Dispose();
 			});
 
-			Assert.False(MyLock.TryTake(out MyHandle2, TimeSpan.FromMilliseconds(100)), "Nested lock taken");
+			Assert.False(MyLock.TryTake(out _, TimeSpan.FromMilliseconds(100)), "Nested lock taken");
 
 			MyHandle1.Dispose();
 
@@ -628,12 +626,11 @@ namespace Proximity.Utility.Tests
 		public async Task DisposeTryTake()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
-			IDisposable MyHandle;
 			//****************************************
 
 			var MyDispose = MyLock.Dispose();
 
-			Assert.False(MyLock.TryTake(out MyHandle), "Nested lock taken");
+			Assert.False(MyLock.TryTake(out _), "Nested lock taken");
 
 			//****************************************
 
@@ -647,12 +644,11 @@ namespace Proximity.Utility.Tests
 		public async Task DisposeTryTakeZero()
 		{	//****************************************
 			var MyLock = new AsyncSemaphoreSlim();
-			IDisposable MyHandle;
 			//****************************************
 
 			var MyDispose = MyLock.Dispose();
 
-			Assert.False(MyLock.TryTake(out MyHandle, TimeSpan.Zero), "Nested lock taken");
+			Assert.False(MyLock.TryTake(out _, TimeSpan.Zero), "Nested lock taken");
 
 			//****************************************
 

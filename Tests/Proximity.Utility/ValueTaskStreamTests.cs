@@ -19,7 +19,7 @@ namespace Proximity.Utility.Tests
 	{
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingle()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			bool TaskRan = false;
 			//****************************************
@@ -35,7 +35,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleException()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			//****************************************
 
@@ -50,7 +50,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleInValue()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			//****************************************
 
@@ -59,7 +59,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleInValueToken()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			ValueTask MyTask;
 			//****************************************
@@ -86,7 +86,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleInOutValue()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			//****************************************
 
@@ -99,7 +99,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleInOutValueToken()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			ValueTask<int> MyTask;
 			//****************************************
@@ -126,7 +126,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleOutValue()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			//****************************************
 
@@ -139,7 +139,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleOutValueToken()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			ValueTask<int> MyTask;
 			//****************************************
@@ -166,7 +166,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleToken()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			ValueTask MyTask;
 			//****************************************
@@ -193,7 +193,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTask()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			bool TaskRan = false;
@@ -212,7 +212,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskCancel()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			bool TaskRan = false;
@@ -245,7 +245,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskCancelImmediate()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			bool TaskRan = false;
@@ -270,7 +270,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskInValue()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			bool TaskRan = false;
@@ -289,7 +289,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskInValueCancel()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			bool TaskRan = false;
@@ -322,7 +322,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskInValueCancelImmediate()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			bool TaskRan = false;
@@ -347,7 +347,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskInOutValue()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var TaskSource = new TaskCompletionSource<int>();
 			bool TaskRan = false;
@@ -367,7 +367,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskInOutValueCancel()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			bool TaskRan = false;
@@ -400,7 +400,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskInOutValueCancelImmediate()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			bool TaskRan = false;
@@ -425,7 +425,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskOutValue()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var TaskSource = new TaskCompletionSource<int>();
 			bool TaskRan = false;
@@ -445,7 +445,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskOutValueCancel()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			bool TaskRan = false;
@@ -478,7 +478,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskOutValueCancelImmediate()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			bool TaskRan = false;
@@ -503,7 +503,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskFinished()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			bool TaskRan = false;
 			//****************************************
@@ -519,7 +519,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskException()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			bool TaskRan = false;
@@ -550,7 +550,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskExceptionOutValue()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			bool TaskRan = false;
@@ -581,7 +581,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskExceptionRaised()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			//****************************************
 
@@ -596,7 +596,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskExceptionImmediate()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			//****************************************
@@ -618,7 +618,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueSingleTaskExceptionImmediateOutValue()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			//****************************************
@@ -646,7 +646,13 @@ namespace Proximity.Utility.Tests
 			bool TaskRan = false;
 			//****************************************
 
-			var MyTask = MyQueue.QueueValueTask(async () => { TaskRan = true; await TaskSource.Task; });
+			async ValueTask Callback()
+			{
+				TaskRan = true;
+				await TaskSource.Task;
+			}
+
+			var MyTask = MyQueue.QueueTask(Callback);
 
 			TaskSource.SetResult(VoidStruct.Empty);
 
@@ -666,7 +672,13 @@ namespace Proximity.Utility.Tests
 			var MySpinWait = new SpinWait();
 			//****************************************
 
-			var MyTask = MyQueue.QueueValueTask(async () => { TaskRan = true; await TaskSource.Task; });
+			async ValueTask Callback()
+			{
+				TaskRan = true;
+				await TaskSource.Task;
+			}
+
+			var MyTask = MyQueue.QueueTask(Callback);
 
 			while (!TaskRan)
 			{
@@ -698,7 +710,14 @@ namespace Proximity.Utility.Tests
 			bool TaskRan = false;
 			//****************************************
 
-			var MyTask = MyQueue.QueueValueTask(async () => { TaskRan = true; TaskSource.SetCanceled(); await TaskSource.Task; });
+			async ValueTask Callback() 
+			{
+				TaskRan = true; 
+				TaskSource.SetCanceled(); 
+				await TaskSource.Task; 
+			}
+
+			var MyTask = MyQueue.QueueTask(Callback);
 
 			try
 			{
@@ -723,7 +742,14 @@ namespace Proximity.Utility.Tests
 			bool TaskRan = false;
 			//****************************************
 
-			var MyTask = MyQueue.QueueValueTask(async (value) => { Assert.AreEqual(42, value); TaskRan = true; await TaskSource.Task; }, 42);
+			async ValueTask Callback(int value)
+			{ 
+				Assert.AreEqual(42, value);
+				TaskRan = true;
+				await TaskSource.Task;
+			}
+
+			var MyTask = MyQueue.QueueTask(Callback, 42);
 
 			TaskSource.SetResult(VoidStruct.Empty);
 
@@ -743,7 +769,14 @@ namespace Proximity.Utility.Tests
 			var MySpinWait = new SpinWait();
 			//****************************************
 
-			var MyTask = MyQueue.QueueValueTask(async (value) => { TaskRan = true; Assert.AreEqual(42, value); await TaskSource.Task; }, 42);
+			async ValueTask Callback(int value)
+			{
+				TaskRan = true; 
+				Assert.AreEqual(42, value);
+				await TaskSource.Task;
+			}
+
+			var MyTask = MyQueue.QueueTask(Callback, 42);
 
 			while (!TaskRan)
 			{
@@ -775,7 +808,15 @@ namespace Proximity.Utility.Tests
 			bool TaskRan = false;
 			//****************************************
 
-			var MyTask = MyQueue.QueueValueTask(async (value) => { TaskRan = true; Assert.AreEqual(42, value); TaskSource.SetCanceled(); await TaskSource.Task; }, 42);
+			async ValueTask Callback(int value)
+			{ 
+				TaskRan = true; 
+				Assert.AreEqual(42, value);
+				TaskSource.SetCanceled();
+				await TaskSource.Task;
+			}
+
+			var MyTask = MyQueue.QueueTask(Callback, 42);
 
 			try
 			{
@@ -800,7 +841,15 @@ namespace Proximity.Utility.Tests
 			bool TaskRan = false;
 			//****************************************
 
-			var MyTask = MyQueue.QueueValueTask(async (value) => { Assert.AreEqual(42, value); TaskRan = true; return await TaskSource.Task; }, 42);
+			async ValueTask<int> Callback(int value)
+			{ 
+				TaskRan = true;
+				Assert.AreEqual(42, value);
+				TaskRan = true;
+				return await TaskSource.Task;
+			}
+
+			var MyTask = MyQueue.QueueTask(Callback, 42);
 
 			TaskSource.SetResult(30);
 
@@ -816,12 +865,19 @@ namespace Proximity.Utility.Tests
 		public async Task QueueSingleValueTaskInOutValueCancel()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
-			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			var TaskSource = new TaskCompletionSource<int>();
 			bool TaskRan = false;
 			var MySpinWait = new SpinWait();
 			//****************************************
 
-			var MyTask = MyQueue.QueueValueTask(async (value) => { TaskRan = true; Assert.AreEqual(42, value); await TaskSource.Task; }, 42);
+			async ValueTask<int> Callback(int value)
+			{
+				TaskRan = true;
+				Assert.AreEqual(42, value);
+				return await TaskSource.Task;
+			}
+
+			var MyTask = MyQueue.QueueTask(Callback, 42);
 
 			while (!TaskRan)
 			{
@@ -849,11 +905,19 @@ namespace Proximity.Utility.Tests
 		public async Task QueueSingleValueTaskInOutValueCancelImmediate()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
-			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			var TaskSource = new TaskCompletionSource<int>();
 			bool TaskRan = false;
 			//****************************************
 
-			var MyTask = MyQueue.QueueValueTask(async (value) => { TaskRan = true; Assert.AreEqual(42, value); TaskSource.SetCanceled(); await TaskSource.Task; }, 42);
+			async ValueTask<int> Callback(int value)
+			{
+				TaskRan = true;
+				Assert.AreEqual(42, value);
+				TaskSource.SetCanceled();
+				return await TaskSource.Task;
+			}
+
+			var MyTask = MyQueue.QueueTask(Callback, 42);
 
 			try
 			{
@@ -878,7 +942,13 @@ namespace Proximity.Utility.Tests
 			bool TaskRan = false;
 			//****************************************
 
-			var MyTask = MyQueue.QueueValueTask(async () => { TaskRan = true; return await TaskSource.Task; });
+			async ValueTask<int> Callback()
+			{
+				TaskRan = true;
+				return await TaskSource.Task;
+			}
+
+			var MyTask = MyQueue.QueueTask(Callback);
 
 			TaskSource.SetResult(30);
 
@@ -894,12 +964,18 @@ namespace Proximity.Utility.Tests
 		public async Task QueueSingleValueTaskOutValueCancel()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
-			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			var TaskSource = new TaskCompletionSource<int>();
 			bool TaskRan = false;
 			var MySpinWait = new SpinWait();
 			//****************************************
 
-			var MyTask = MyQueue.QueueValueTask(async () => { TaskRan = true; return await TaskSource.Task; });
+			async ValueTask<int> Callback()
+			{
+				TaskRan = true;
+				return await TaskSource.Task;
+			}
+
+			var MyTask = MyQueue.QueueTask(Callback);
 
 			while (!TaskRan)
 			{
@@ -927,11 +1003,18 @@ namespace Proximity.Utility.Tests
 		public async Task QueueSingleValueTaskOutValueCancelImmediate()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
-			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			var TaskSource = new TaskCompletionSource<int>();
 			bool TaskRan = false;
 			//****************************************
 
-			var MyTask = MyQueue.QueueValueTask(async () => { TaskRan = true; TaskSource.SetCanceled(); return await TaskSource.Task; });
+			async ValueTask<int> Callback()
+			{
+				TaskRan = true;
+				TaskSource.SetCanceled();
+				return await TaskSource.Task;
+			}
+
+			var MyTask = MyQueue.QueueTask(Callback);
 
 			try
 			{
@@ -955,7 +1038,13 @@ namespace Proximity.Utility.Tests
 			bool TaskRan = false;
 			//****************************************
 
-			var MyTask = MyQueue.QueueValueTask(() => { TaskRan = true; return default; });
+			ValueTask Callback()
+			{
+				TaskRan = true;
+				return default;
+			}
+
+			var MyTask = MyQueue.QueueTask(Callback);
 
 			await MyTask;
 
@@ -973,7 +1062,13 @@ namespace Proximity.Utility.Tests
 			var MySpinWait = new SpinWait();
 			//****************************************
 
-			var MyTask = MyQueue.QueueValueTask(async () => { TaskRan = true; await TaskSource.Task; });
+			async ValueTask Callback()
+			{
+				TaskRan = true;
+				await TaskSource.Task;
+			}
+
+			var MyTask = MyQueue.QueueTask(Callback);
 
 			while (!TaskRan)
 			{
@@ -999,12 +1094,18 @@ namespace Proximity.Utility.Tests
 		public async Task QueueSingleValueTaskExceptionOutValue()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
-			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			var TaskSource = new TaskCompletionSource<int>();
 			bool TaskRan = false;
 			var MySpinWait = new SpinWait();
 			//****************************************
 
-			var MyTask = MyQueue.QueueValueTask(async () => { TaskRan = true; return await TaskSource.Task; });
+			async ValueTask<int> Callback()
+			{
+				TaskRan = true;
+				return await TaskSource.Task;
+			}
+
+			var MyTask = MyQueue.QueueTask(Callback);
 
 			while (!TaskRan)
 			{
@@ -1032,7 +1133,13 @@ namespace Proximity.Utility.Tests
 			var MyQueue = new ValueTaskStream();
 			//****************************************
 
-			var MyTask = MyQueue.QueueValueTask(() => { Assert.Pass("Completed"); return default; });
+			ValueTask Callback()
+			{
+				Assert.Pass("Completed");
+				return default;
+			}
+
+			var MyTask = MyQueue.QueueTask(Callback);
 
 			await MyTask;
 
@@ -1048,7 +1155,13 @@ namespace Proximity.Utility.Tests
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			//****************************************
 
-			var MyTask = MyQueue.QueueValueTask(async () => { TaskSource.SetException(new ApplicationException()); await TaskSource.Task; });
+			async ValueTask Callback()
+			{
+				TaskSource.SetException(new ApplicationException());
+				await TaskSource.Task;
+			}
+
+			var MyTask = MyQueue.QueueTask(Callback);
 
 			//****************************************
 
@@ -1067,10 +1180,16 @@ namespace Proximity.Utility.Tests
 		public async Task QueueSingleValueTaskExceptionImmediateOutValue()
 		{ //****************************************
 			var MyQueue = new ValueTaskStream();
-			var TaskSource = new TaskCompletionSource<VoidStruct>();
+			var TaskSource = new TaskCompletionSource<int>();
 			//****************************************
 
-			var MyTask = MyQueue.QueueValueTask(async () => { TaskSource.SetException(new ApplicationException()); return await TaskSource.Task; });
+			async ValueTask<int> Callback()
+			{
+				TaskSource.SetException(new ApplicationException());
+				return await TaskSource.Task;
+			}
+
+			var MyTask = MyQueue.QueueTask(Callback);
 
 			//****************************************
 
@@ -1089,7 +1208,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueMultiple()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			int RunCounter = 0;
 			ValueTask LatestTask = default;
@@ -1107,7 +1226,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueMultipleInValue()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			int RunCounter = 0;
 			ValueTask LatestTask = default;
@@ -1125,7 +1244,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueMultipleOutValue()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			int RunCounter = 0;
 			ValueTask<int> LatestTask = default;
@@ -1144,7 +1263,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueWaitQueue()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			bool FirstRan = false, SecondRan = false;
 			//****************************************
@@ -1161,7 +1280,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueResultWaitQueueResult()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			bool FirstRan = false, SecondRan = false;
 			//****************************************
@@ -1181,7 +1300,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueTwoCancelSecond()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			ValueTask FirstTask, SecondTask;
 			TaskCompletionSource<VoidStruct> FirstSource;
@@ -1220,7 +1339,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueTwoCancelSecondInValue()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			ValueTask FirstTask, SecondTask;
 			TaskCompletionSource<VoidStruct> FirstSource;
@@ -1259,7 +1378,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueTwoCancelSecondOutValue()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			ValueTask<int> FirstTask, SecondTask;
 			TaskCompletionSource<int> FirstSource;
@@ -1300,7 +1419,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueTwoCancelSecondTask()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			ValueTask FirstTask, SecondTask;
 			TaskCompletionSource<VoidStruct> FirstSource;
@@ -1341,7 +1460,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueTwoCancelSecondTaskInValue()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			ValueTask FirstTask, SecondTask;
 			TaskCompletionSource<VoidStruct> FirstSource;
@@ -1382,7 +1501,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueTwoExceptionSecond()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			ValueTask FirstTask, SecondTask;
 			TaskCompletionSource<VoidStruct> FirstSource;
@@ -1407,7 +1526,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueTwoInValueCancelSecond()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			ValueTask FirstTask, SecondTask;
 			TaskCompletionSource<VoidStruct> FirstSource;
@@ -1448,7 +1567,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueThree()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			ValueTask FirstTask, SecondTask, ThirdTask;
 			TaskCompletionSource<VoidStruct> FirstSource, SecondSource, ThirdSource;
@@ -1485,7 +1604,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueThreeCancelSecond()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			ValueTask FirstTask, SecondTask, ThirdTask;
 			TaskCompletionSource<VoidStruct> FirstSource, ThirdSource;
@@ -1532,7 +1651,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueThreeCancelSecondTask()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			ValueTask FirstTask, SecondTask, ThirdTask;
 			TaskCompletionSource<VoidStruct> FirstSource, ThirdSource;
@@ -1579,7 +1698,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueComplete()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			//****************************************
 
@@ -1594,7 +1713,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueOutValueComplete()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			//****************************************
 
@@ -1609,7 +1728,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueTaskComplete()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			//****************************************
@@ -1629,7 +1748,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueTaskOutValueComplete()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			//****************************************
@@ -1654,7 +1773,12 @@ namespace Proximity.Utility.Tests
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			//****************************************
 
-			var MyTask = MyQueue.QueueValueTask(async () => await (Task)TaskSource.Task);
+			async ValueTask Callback()
+			{
+				await TaskSource.Task;
+			}
+
+			var MyTask = MyQueue.QueueTask(Callback);
 
 			var CompletionTask = MyQueue.Complete();
 
@@ -1674,7 +1798,12 @@ namespace Proximity.Utility.Tests
 			var TaskSource = new TaskCompletionSource<int>();
 			//****************************************
 
-			var MyTask = MyQueue.QueueValueTask(async () => await TaskSource.Task);
+			async ValueTask<int> Callback()
+			{
+				return await TaskSource.Task;
+			}
+
+			var MyTask = MyQueue.QueueTask(Callback);
 
 			var CompletionTask = MyQueue.Complete();
 
@@ -1689,7 +1818,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public async Task QueueCompleteMultiple()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			ValueTask LatestTask = default;
@@ -1716,7 +1845,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(1000)]
 		public void Complete()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			//****************************************
 
@@ -1732,11 +1861,16 @@ namespace Proximity.Utility.Tests
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			//****************************************
 
-			var MyTask1 = MyQueue.QueueValueTask(async () => await (Task)TaskSource.Task);
+			async ValueTask Callback()
+			{
+				await TaskSource.Task;
+			}
+
+			var MyTask1 = MyQueue.QueueTask(Callback);
 
 			var CompletionTask = MyQueue.Complete();
 
-			var MyTask2 = MyQueue.QueueValueTask(async () => await (Task)TaskSource.Task);
+			var MyTask2 = MyQueue.QueueTask(Callback);
 
 			Assert.IsFalse(CompletionTask.IsCompleted, "Task completed early");
 
@@ -1751,7 +1885,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(2000)]
 		public async Task ConcurrentQueue()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			int RunCounter = 0;
 			//****************************************
@@ -1782,7 +1916,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(2000)]
 		public async Task ConcurrentLockCheck()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var MyLock = new AsyncSemaphore();
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
@@ -1792,23 +1926,25 @@ namespace Proximity.Utility.Tests
 
 			AllTasks.Add(MyQueue.QueueTask(() => (Task)TaskSource.Task).AsTask());
 
+			async ValueTask Callback(int index)
+			{
+				var MyTask = MyLock.Wait();
+
+				if (!MyTask.IsCompleted)
+					Assert.Fail("Failure on run {0}", index);
+
+				await Task.Yield();
+
+				RunCounter++;
+
+				Assert.AreEqual(0, MyLock.WaitingCount, "Someone was waiting on run {0}", index);
+
+				MyTask.Result.Dispose();
+			}
+
 			for (int Index = 0; Index < 100; Index++)
 			{
-				AllTasks.Add(MyQueue.QueueTask(async () =>
-				{
-					var MyTask = MyLock.Wait();
-
-					if (!MyTask.IsCompleted)
-						Assert.Fail("Failure");
-
-					await Task.Yield();
-
-					RunCounter++;
-
-					Assert.AreEqual(0, MyLock.WaitingCount, "Someone was waiting");
-
-					MyTask.Result.Dispose();
-				}).AsTask());
+				AllTasks.Add(MyQueue.QueueTask(Callback, Index).AsTask());
 			}
 
 			TaskSource.SetResult(VoidStruct.Empty);
@@ -1824,7 +1960,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(2000), Repeat(4)]
 		public async Task ConcurrentOrderCheck()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			int RunCounter = 0;
 			var AllTasks = new ConcurrentBag<Task>();
@@ -1857,7 +1993,7 @@ namespace Proximity.Utility.Tests
 
 		[Test(), MaxTime(2000)]
 		public async Task ConcurrentLockExtended()
-		{	//****************************************
+		{ //****************************************
 			var MyQueue = new ValueTaskStream();
 			var MyLock = new AsyncSemaphore();
 			var AllTasks = new List<Task>();
@@ -1867,25 +2003,27 @@ namespace Proximity.Utility.Tests
 
 			var EndTime = DateTime.Now.AddSeconds(1.0);
 
+			async ValueTask Callback()
+			{
+				var MyTask = MyLock.Wait();
+
+				if (!MyTask.IsCompleted)
+					Assert.Fail("Failure");
+
+				await Task.Yield();
+
+				RunCounter++;
+
+				Assert.AreEqual(0, MyLock.WaitingCount, "Someone was waiting");
+
+				MyTask.Result.Dispose();
+			}
+
 			do
 			{
 				if (MyQueue.PendingActions < 100)
 				{
-					AllTasks.Add(MyQueue.QueueTask(async () =>
-					{
-						var MyTask = MyLock.Wait();
-
-						if (!MyTask.IsCompleted)
-							Assert.Fail("Failure");
-
-						await Task.Yield();
-
-						RunCounter++;
-
-						Assert.AreEqual(0, MyLock.WaitingCount, "Someone was waiting");
-
-						MyTask.Result.Dispose();
-					}).AsTask());
+					AllTasks.Add(MyQueue.QueueTask(Callback).AsTask());
 				}
 
 				MySpinWait.SpinOnce();

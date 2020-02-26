@@ -15,16 +15,16 @@ namespace Proximity.Utility.Threading
 	/// Provides a lock-free primitive for semaphores supporting ValueTask async/await and a disposable model for releasing
 	/// </summary>
 	public sealed class AsyncSemaphoreSlim : IDisposable
+#if !NETSTANDARD2_0
+		, IAsyncDisposable
+#endif
 	{ //****************************************
-		private static readonly ConcurrentBag<AsyncLockInstance> _Instances = new ConcurrentBag<AsyncLockInstance>();
-		private static int _NextInstanceToken;
-
-		private static readonly Action<object> _CompletedContinuation = (state) => throw new Exception("Should never be called");
+		private static readonly ConcurrentBag<AsyncSemaphoreLock> _Instances = new ConcurrentBag<AsyncSemaphoreLock>();
 		//****************************************
-		private readonly ConcurrentQueue<AsyncLockInstance> _Waiters = new ConcurrentQueue<AsyncLockInstance>();
+		private readonly ConcurrentQueue<AsyncSemaphoreLock> _Waiters = new ConcurrentQueue<AsyncSemaphoreLock>();
 		private int _MaxCount, _CurrentCount;
 
-		private TaskCompletionSource<AsyncSemaphoreSlim> _Dispose;
+		private AsyncSemaphoreDisposer _Disposer;
 		//****************************************
 
 		/// <summary>
@@ -41,7 +41,7 @@ namespace Proximity.Utility.Threading
 		public AsyncSemaphoreSlim(int initialCount)
 		{
 			if (initialCount < 1)
-				throw new ArgumentException("Initial Count is invalid");
+				throw new ArgumentException("Initial Count is invalid", nameof(initialCount));
 
 			_CurrentCount = 0;
 			_MaxCount = initialCount;
@@ -54,26 +54,27 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <returns>A task that completes when all holders of the lock have exited</returns>
 		/// <remarks>All tasks waiting on the lock will throw ObjectDisposedException</remarks>
-		public Task Dispose()
+		public ValueTask Dispose()
 		{
-			((IDisposable)this).Dispose();
-
-			return _Dispose.Task;
-		}
-
-		void IDisposable.Dispose()
-		{
-			if (_Dispose != null || Interlocked.CompareExchange(ref _Dispose, new TaskCompletionSource<AsyncSemaphoreSlim>(), null) != null)
-				return;
+			if (_Disposer != null || Interlocked.CompareExchange(ref _Disposer, new AsyncSemaphoreDisposer(), null) != null)
+				return default;
 
 			// Success, now close any pending waiters
 			while (_Waiters.TryDequeue(out var Instance))
-				Instance.TryDispose();
+				Instance.SwitchToDisposed();
 
 			// If there's no counters, we can complete the dispose task
 			if (_CurrentCount == 0)
-				_Dispose.TrySetResult(this);
+				_Disposer.SwitchToComplete();
+
+			return new ValueTask(_Disposer, _Disposer.Token);
 		}
+
+#if !NETSTANDARD2_0
+		ValueTask IAsyncDisposable.DisposeAsync() => Dispose();
+#endif
+
+		void IDisposable.Dispose() => Dispose().AsTask().Wait();
 
 		/// <summary>
 		/// Attempts to take a counter
@@ -89,13 +90,15 @@ namespace Proximity.Utility.Threading
 		public ValueTask<IDisposable> Take(TimeSpan timeout)
 		{
 			// Are we disposed?
-			if (_Dispose != null)
-				return Task.FromException<IDisposable>(new ObjectDisposedException("AsyncSemaphoreSlim", "Semaphore has been disposed of")).AsValueTask();
+			if (_Disposer != null)
+				return Task.FromException<IDisposable>(new ObjectDisposedException(nameof(AsyncSemaphoreSlim), "Semaphore has been disposed of")).AsValueTask();
 
 			// Try and add a counter as long as nobody is waiting on it
 			var Instance = GetOrCreateInstance(_Waiters.IsEmpty && TryIncrement());
 
-			if (!Instance.IsCompleted)
+			var ValueTask = new ValueTask<IDisposable>(Instance, Instance.Version);
+
+			if (!ValueTask.IsCompleted)
 			{
 				var CancelSource = new CancellationTokenSource(timeout);
 
@@ -109,7 +112,7 @@ namespace Proximity.Utility.Threading
 					Decrement();
 			}
 
-			return new ValueTask<IDisposable>(Instance, Instance.TaskToken);
+			return ValueTask;
 		}
 
 		/// <summary>
@@ -120,13 +123,15 @@ namespace Proximity.Utility.Threading
 		public ValueTask<IDisposable> Take(CancellationToken token)
 		{
 			// Are we disposed?
-			if (_Dispose != null)
-				return Task.FromException<IDisposable>(new ObjectDisposedException("AsyncSemaphoreSlim", "Semaphore has been disposed of")).AsValueTask();
+			if (_Disposer != null)
+				return Task.FromException<IDisposable>(new ObjectDisposedException(nameof(AsyncSemaphoreSlim), "Semaphore has been disposed of")).AsValueTask();
 
 			// Try and add a counter as long as nobody is waiting on it
 			var Instance = GetOrCreateInstance(_Waiters.IsEmpty && TryIncrement());
 
-			if (!Instance.IsCompleted)
+			var ValueTask = new ValueTask<IDisposable>(Instance, Instance.Version);
+
+			if (!ValueTask.IsCompleted)
 			{
 				Instance.ApplyCancellation(token, null);
 
@@ -138,7 +143,7 @@ namespace Proximity.Utility.Threading
 					Decrement();
 			}
 
-			return new ValueTask<IDisposable>(Instance, Instance.TaskToken);
+			return ValueTask;
 		}
 
 		/// <summary>
@@ -149,7 +154,7 @@ namespace Proximity.Utility.Threading
 		public bool TryTake(out IDisposable handle)
 		{
 			// Are we disposed?
-			if (_Dispose == null && _Waiters.IsEmpty && TryIncrement())
+			if (_Disposer == null && _Waiters.IsEmpty && TryIncrement())
 			{
 				handle = GetOrCreateInstance(true);
 				return true;
@@ -188,7 +193,7 @@ namespace Proximity.Utility.Threading
 		public bool TryTake(out IDisposable handle, TimeSpan timeout, CancellationToken token)
 		{
 			// First up, try and take the counter if possible
-			if (_Dispose == null && _Waiters.IsEmpty && TryIncrement())
+			if (_Disposer == null && _Waiters.IsEmpty && TryIncrement())
 			{
 				handle = GetOrCreateInstance(true);
 				return true;
@@ -203,7 +208,7 @@ namespace Proximity.Utility.Threading
 			//****************************************
 
 			if (timeout != Timeout.InfiniteTimeSpan && timeout < TimeSpan.Zero)
-				throw new ArgumentOutOfRangeException("timeout", "Timeout must be Timeout.InfiniteTimeSpan or a positive time");
+				throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout must be Timeout.InfiniteTimeSpan or a positive time");
 
 			// We're okay with blocking, so create our waiter and add it to the queue
 			var Instance = GetOrCreateInstance(false);
@@ -234,17 +239,18 @@ namespace Proximity.Utility.Threading
 				Instance.ApplyCancellation(token, null);
 			}
 
-			// We need to block, so use a manual reset event
-			var Waiter = new ManualResetEventSlim();
-
 			try
 			{
-				Instance.OnCompleted((state) => ((ManualResetEventSlim)state).Set(), Waiter, Instance.TaskToken, ValueTaskSourceOnCompletedFlags.None);
+				lock (Instance)
+				{
+					Instance.OnCompleted((state) => { lock (state) Monitor.Pulse(state); }, Instance, Instance.Version, ValueTaskSourceOnCompletedFlags.None);
 
-				// Wait for a definitive result
-				Waiter.Wait();
+					// Wait for a definitive result
+					Monitor.Wait(Instance);
+				}
 
-				handle = Instance.GetResult(Instance.TaskToken);
+				// Result retrieved, now check if we were cancelled
+				handle = Instance.GetResult(Instance.Version);
 
 				return true;
 			}
@@ -256,20 +262,16 @@ namespace Proximity.Utility.Threading
 
 				throw; // Throw the cancellation
 			}
-			finally
-			{
-				Waiter.Dispose();
-			}
 		}
 
 		//****************************************
 
-		private AsyncLockInstance GetOrCreateInstance(bool isTaken)
+		private AsyncSemaphoreLock GetOrCreateInstance(bool isTaken)
 		{
 			if (!_Instances.TryTake(out var Instance))
-				Instance = new AsyncLockInstance();
+				Instance = new AsyncSemaphoreLock();
 
-			Instance.Prepare(this, isTaken);
+			Instance.Initialise(this, isTaken);
 
 			return Instance;
 		}
@@ -320,7 +322,7 @@ namespace Proximity.Utility.Threading
 					else
 					{
 						// Try and assign the counter to this Instance
-						if (NextInstance.TryAssign())
+						if (NextInstance.TrySwitchToHeld())
 							return;
 					}
 
@@ -335,17 +337,17 @@ namespace Proximity.Utility.Threading
 			} while (!_Waiters.IsEmpty && TryIncrement());
 
 			// If we've disposed and there's no counters, we can complete the dispose task
-			if (_Dispose != null && NewCount == 0)
-				_Dispose.TrySetResult(this);
+			if (_Disposer != null && NewCount == 0)
+				_Disposer.SwitchToComplete();
 		}
 
 		private static void ReleaseInstance(object state)
 		{ //****************************************
-			var Instance = (AsyncLockInstance)state;
+			var Instance = (AsyncSemaphoreLock)state;
 			//****************************************
 
 			// Try and assign the counter to this Instance
-			if (Instance.TryAssign())
+			if (Instance.TrySwitchToHeld())
 				return;
 
 			// Assignment failed, so it was cancelled
@@ -366,9 +368,9 @@ namespace Proximity.Utility.Threading
 		public int CurrentCount => _MaxCount - _CurrentCount;
 
 		/// <summary>
-		/// Gets the number of operations waiting for a counter
+		/// Gets the approximate number of operations waiting for a counter
 		/// </summary>
-		public int WaitingCount => _Waiters.Count(waiter => !waiter.IsCompleted);
+		public int WaitingCount => _Waiters.Count;
 
 		/// <summary>
 		/// Gets/Sets the maximum number of operations
@@ -384,8 +386,8 @@ namespace Proximity.Utility.Threading
 				if (value < 1)
 					throw new ArgumentOutOfRangeException(nameof(value));
 
-				if (_Dispose != null)
-					throw new ObjectDisposedException("AsyncSemaphoreSlim", "Object has been disposed");
+				if (_Disposer != null)
+					throw new ObjectDisposedException(nameof(AsyncSemaphoreSlim), "Object has been disposed");
 
 				_MaxCount = value;
 
@@ -397,39 +399,36 @@ namespace Proximity.Utility.Threading
 
 		//****************************************
 
-		private sealed class AsyncLockInstance : IDisposable, IValueTaskSource<IDisposable>
+		private sealed class AsyncSemaphoreLock : IDisposable, IValueTaskSource<IDisposable>
 		{ //****************************************
 			private volatile int _InstanceState;
 
-			private Action<object> _Continuation;
-			private object _State;
-
-			private ExecutionContext _ExecutionContext;
-			private object _Scheduler;
+#if NETSTANDARD2_0
+			private readonly ManualResetValueTaskSourceCore<IDisposable> _TaskSource = new ManualResetValueTaskSourceCore<IDisposable>();
+#else
+			private ManualResetValueTaskSourceCore<IDisposable> _TaskSource = new ManualResetValueTaskSourceCore<IDisposable>();
+#endif
 
 			private CancellationTokenRegistration _Registration;
+			private CancellationTokenSource _TokenSource;
 			//****************************************
 
-			internal AsyncLockInstance()
-			{
-				TaskToken = (short)(Interlocked.Increment(ref _NextInstanceToken) & 0xFFFF);
-			}
+			internal AsyncSemaphoreLock() => _TaskSource.RunContinuationsAsynchronously = true;
 
 			//****************************************
 
-			internal void Prepare(AsyncSemaphoreSlim owner, bool isTaken)
+			internal void Initialise(AsyncSemaphoreSlim owner, bool isHeld)
 			{
 				Owner = owner;
 
-				if (isTaken)
+				if (isHeld)
 				{
 					_InstanceState = Status.Held;
-					_Continuation = _CompletedContinuation;
+					_TaskSource.SetResult(this);
 				}
 				else
 				{
 					_InstanceState = Status.Pending;
-					_Continuation = null;
 				}
 			}
 
@@ -442,42 +441,32 @@ namespace Proximity.Utility.Threading
 					if (_InstanceState != Status.Pending)
 						throw new InvalidOperationException("Cannot register for cancellation when not pending");
 
-					_Registration = token.Register(CancelTask, this);
+					_TokenSource = tokenSource;
+
+					_Registration = token.Register((state) => ((AsyncSemaphoreLock)state).SwitchToCancelled(), this);
 				}
 			}
 
-			internal bool TryAssign()
+			internal bool TrySwitchToHeld()
 			{
 				// Called when an Instance is removed from the Waiters queue due to a Decrement
 				if (Interlocked.CompareExchange(ref _InstanceState, Status.Held, Status.Pending) != Status.Pending)
 					return false;
 
 				_Registration.Dispose();
-
-				RaiseContinuation();
+				_TaskSource.SetResult(this);
 
 				return true;
 			}
 
-			internal void TryDispose()
+			internal void SwitchToDisposed()
 			{
 				// Called when an Instance is removed from the Waiters queue due to a Dispose
 				if (Interlocked.CompareExchange(ref _InstanceState, Status.Disposed, Status.Pending) != Status.Pending)
 					return;
 
 				_Registration.Dispose();
-
-				RaiseContinuation();
-			}
-
-			internal void ResetAndReturn()
-			{
-				Owner = null;
-				Token = default;
-				TaskToken = (short)(Interlocked.Increment(ref _NextInstanceToken) & 0xFFFF);
-				_Continuation = null;
-
-				_Instances.Add(this);
+				_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncSemaphoreSlim), "Semaphore has been disposed of"));
 			}
 
 			internal void CompleteWaiting()
@@ -509,7 +498,7 @@ namespace Proximity.Utility.Threading
 				_Registration.Dispose();
 
 				if (InstanceState == Status.CancelledGotResult)
-					ResetAndReturn(); // GetResult has been called, so we can release this Instance
+					Release(); // GetResult has been called, so we can return to the pool
 			}
 
 			//****************************************
@@ -519,192 +508,120 @@ namespace Proximity.Utility.Threading
 				if (Interlocked.Exchange(ref _InstanceState, 0) != 1)
 					return;
 
+				// Release the counter and then return to the pool
 				Owner.Decrement();
-				ResetAndReturn();
+				Release();
 			}
 
-			ValueTaskSourceStatus IValueTaskSource<IDisposable>.GetStatus(short token)
-			{
-				if (token != TaskToken)
-					throw new InvalidOperationException("Value Task Token invalid");
+			ValueTaskSourceStatus IValueTaskSource<IDisposable>.GetStatus(short token) => _TaskSource.GetStatus(token);
 
-				if (!IsCompleted)
-					return ValueTaskSourceStatus.Pending;
-
-				switch (_InstanceState)
-				{
-				case Status.Held:
-					return ValueTaskSourceStatus.Succeeded;
-
-				case Status.Cancelled:
-				case Status.CancelledNotWaiting:
-					return ValueTaskSourceStatus.Canceled;
-
-				case Status.Disposed:
-					return ValueTaskSourceStatus.Faulted;
-
-				default:
-					throw new InvalidOperationException("Task is completed in an invalid state");
-				}
-			}
-
-			public void OnCompleted(Action<object> continuation, object state, short token, ValueTaskSourceOnCompletedFlags flags)
-			{
-				if (token != TaskToken)
-					throw new InvalidOperationException("Value Task Token invalid");
-
-				if ((flags & ValueTaskSourceOnCompletedFlags.FlowExecutionContext) != ValueTaskSourceOnCompletedFlags.None)
-					_ExecutionContext = ExecutionContext.Capture();
-
-				if ((flags & ValueTaskSourceOnCompletedFlags.UseSchedulingContext) != ValueTaskSourceOnCompletedFlags.None)
-				{
-					var CurrentContext = SynchronizationContext.Current;
-					TaskScheduler CurrentScheduler;
-
-					if (CurrentContext != null && CurrentContext.GetType() != typeof(SynchronizationContext))
-						_Scheduler = CurrentContext;
-					else if ((CurrentScheduler = TaskScheduler.Current) != TaskScheduler.Default)
-						_Scheduler = CurrentScheduler;
-				}
-
-				_State = state;
-				var Previous = Interlocked.CompareExchange(ref _Continuation, continuation, null);
-
-				if (ReferenceEquals(Previous, _CompletedContinuation))
-				{
-					_ExecutionContext = null;
-					_State = null;
-
-					RaiseContinuation(continuation, state, true);
-				}
-				else if (Previous != null)
-					throw new InvalidOperationException("Continuation already set");
-			}
+			public void OnCompleted(Action<object> continuation, object state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
 
 			public IDisposable GetResult(short token)
 			{
-				if (token != TaskToken)
-					throw new InvalidOperationException("Value Task Token invalid");
-
-				int InstanceState;
-				var InnerToken = Token;
-
-				// If we're Held or Cancelled, the Instance may exist elsewhere so we can't release it back into the pool
-				// CancelledNotWaiting and Disposed are both valid states where we can clear and release the Instance
-				// If we're Cancelled, we need to switch to CancelledGotResult, so when we're removed from the Waiters, we can release properly
-				do
+				try
 				{
-					InstanceState = _InstanceState;
+					return _TaskSource.GetResult(token);
 				}
-				while (InstanceState == Status.Cancelled && Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) != Status.Cancelled);
-
-				switch (InstanceState)
+				finally
 				{
-				case Status.Held:
-					return this;
-
-				case Status.Cancelled:
-					// Continuation has been run, but we're still in the wait list, so we can't release ourselves
-					throw new OperationCanceledException(InnerToken);
-
-				case Status.CancelledNotWaiting:
-					// Continuation has been run and we're not on the wait list, so we can release ourselves
-					ResetAndReturn();
-
-					throw new OperationCanceledException(InnerToken);
-
-				case Status.Disposed:
-					throw new ObjectDisposedException("AsyncSemaphoreSlim", "Semaphore has been disposed of");
-
-				default:
-					throw new InvalidOperationException("Task is completed in an invalid state");
+					if (_InstanceState == Status.CancelledNotWaiting)
+						Release(); // We're no longer on the Wait queue, so we can return to the pool
 				}
 			}
 
 			//****************************************
 
-			private void RaiseContinuation()
+			private void SwitchToCancelled()
 			{
-				var Continuation = _Continuation;
-
-				if (Continuation == null && (Continuation = Interlocked.CompareExchange(ref _Continuation, _CompletedContinuation, null)) == null)
-					return;
-
-				var ContinuationState = _State;
-
-				_Continuation = _CompletedContinuation;
-				_State = null;
-
-				if (_ExecutionContext == null)
-				{
-					RaiseContinuation(Continuation, ContinuationState, false);
-				}
-				else
-				{
-					ExecutionContext.Run(_ExecutionContext, (state) =>
-					{
-						var (task, continuation, continuationState) = ((AsyncLockInstance, Action<object>, object))state;
-
-						task.RaiseContinuation(continuation, continuationState, false);
-					}, (this, Continuation, ContinuationState));
-				}
-			}
-
-			private void RaiseContinuation(Action<object> continuation, object state, bool forceAsync)
-			{
-				if (_Scheduler != null)
-				{
-					if (_Scheduler is SynchronizationContext Context)
-						Context.Post(RaiseContinuation, (continuation, state));
-					else if (_Scheduler is TaskScheduler Scheduler)
-						Task.Factory.StartNew(continuation, state, CancellationToken.None, TaskCreationOptions.DenyChildAttach, Scheduler);
-
-					_Scheduler = null;
-				}
-				else if (forceAsync)
-					ThreadPool.QueueUserWorkItem(RaiseContinuation, (continuation, state));
-				else
-					continuation(state);
-			}
-
-			private static void RaiseContinuation(object state)
-			{
-				var (innerContinuation, innerState) = ((Action<object>, object))state;
-
-				innerContinuation(innerState);
-			}
-
-			private static void CancelTask(object state)
-			{
-				var Instance = (AsyncLockInstance)state;
-
-				if (Instance._InstanceState != Status.Pending || Interlocked.CompareExchange(ref Instance._InstanceState, Status.Cancelled, Status.Pending) != Status.Pending)
+				if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Cancelled, Status.Pending) != Status.Pending)
 					return; // Instance is no longer in a cancellable state
 
-				Instance.RaiseContinuation();
+				_TaskSource.SetException(new OperationCanceledException(Token));
+			}
+
+			private void Release()
+			{
+				Owner = null;
+				Token = default;
+				_TaskSource.Reset();
+				_TokenSource?.Dispose();
+				_TokenSource = null;
+				_InstanceState = Status.Unused;
+
+				_Instances.Add(this);
 			}
 
 			//****************************************
 
 			public AsyncSemaphoreSlim Owner { get; private set; }
 
-			public short TaskToken { get; private set; }
-
-			public bool IsCompleted => ReferenceEquals(_Continuation, _CompletedContinuation);
-
 			public bool IsPending => _InstanceState == Status.Pending;
 
 			public CancellationToken Token { get; private set; }
+
+			public short Version => _TaskSource.Version;
+		}
+
+		private sealed class AsyncSemaphoreDisposer : IValueTaskSource
+		{ //****************************************
+#if NETSTANDARD2_0
+			private readonly ManualResetValueTaskSourceCore<VoidStruct> _TaskSource = new ManualResetValueTaskSourceCore<VoidStruct>();
+#else
+			private ManualResetValueTaskSourceCore<VoidStruct> _TaskSource = new ManualResetValueTaskSourceCore<VoidStruct>();
+#endif
+
+			private int _IsDisposed;
+			//****************************************
+
+			public void SwitchToComplete()
+			{
+				if (Interlocked.Exchange(ref _IsDisposed, 1) == 0)
+					_TaskSource.SetResult(default);
+			}
+
+			//****************************************
+
+			void IValueTaskSource.GetResult(short token) => _TaskSource.GetResult(token);
+
+			ValueTaskSourceStatus IValueTaskSource.GetStatus(short token) => _TaskSource.GetStatus(token);
+
+			void IValueTaskSource.OnCompleted(Action<object> continuation, object state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
+
+			//****************************************
+
+			public short Token => _TaskSource.Version;
 		}
 
 		private static class Status
 		{
+			/// <summary>
+			/// The lock was cancelled and is currently on the list of waiters
+			/// </summary>
 			internal const int CancelledGotResult = -4;
+			/// <summary>
+			/// The lock is cancelled and waiting for GetResult
+			/// </summary>
 			internal const int CancelledNotWaiting = -3;
+			/// <summary>
+			/// The lock was cancelled and is currently on the list of waiters while waiting for GetResult
+			/// </summary>
 			internal const int Cancelled = -2;
+			/// <summary>
+			/// The lock was disposed of
+			/// </summary>
 			internal const int Disposed = -1;
+			/// <summary>
+			/// A lock starts in the Unused state
+			/// </summary>
 			internal const int Unused = 0;
+			/// <summary>
+			/// The lock is currently held, and waiting for GetResult and then Dispose
+			/// </summary>
 			internal const int Held = 1;
+			/// <summary>
+			/// The lock is on the list of waiters
+			/// </summary>
 			internal const int Pending = 2;
 		}
 	}

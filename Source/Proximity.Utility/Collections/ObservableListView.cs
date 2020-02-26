@@ -702,7 +702,7 @@ namespace Proximity.Utility.Collections
 			return LowIndex;
 		}
 #if DEBUG
-		protected void VerifyList()
+		private protected void VerifyList()
 		{
 			var LastItem = Items[0];
 

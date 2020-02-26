@@ -58,7 +58,7 @@ namespace Proximity.Utility.Threading
 			var NewTask = new ActionTask(this, action, cancellationToken);
 			
 			Interlocked.Increment(ref _PendingActions);
-			Interlocked.Exchange<IStreamTask>(ref _NextTask, NewTask).Queue(NewTask);
+			Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
 			
 			return NewTask;
 		}
@@ -83,7 +83,7 @@ namespace Proximity.Utility.Threading
 			var NewTask = new ActionTask(this, TaskValue<TValue>.Create(action, value), cancellationToken);
 			
 			Interlocked.Increment(ref _PendingActions);
-			Interlocked.Exchange<IStreamTask>(ref _NextTask, NewTask).Queue(NewTask);
+			Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
 			
 			return NewTask;
 		}
@@ -106,7 +106,7 @@ namespace Proximity.Utility.Threading
 			var NewTask = new FuncTask<TResult>(this, action, cancellationToken);
 			
 			Interlocked.Increment(ref _PendingActions);
-			Interlocked.Exchange<IStreamTask>(ref _NextTask, NewTask).Queue(NewTask);
+			Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
 			
 			return NewTask;
 		}
@@ -131,7 +131,7 @@ namespace Proximity.Utility.Threading
 			var NewTask = new FuncTask<TResult>(this, TaskValue<TValue, TResult>.Create(action, value), cancellationToken);
 			
 			Interlocked.Increment(ref _PendingActions);
-			Interlocked.Exchange<IStreamTask>(ref _NextTask, NewTask).Queue(NewTask);
+			Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
 			
 			return NewTask;
 		}
@@ -156,7 +156,7 @@ namespace Proximity.Utility.Threading
 			var NewTask = new WrappedTask(this, action, cancellationToken);
 			
 			Interlocked.Increment(ref _PendingActions);
-			Interlocked.Exchange<IStreamTask>(ref _NextTask, NewTask).Queue(NewTask);
+			Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
 			
 			return NewTask.Task;
 		}
@@ -181,7 +181,7 @@ namespace Proximity.Utility.Threading
 			var NewTask = new WrappedResultTask<TResult>(this, action, cancellationToken);
 			
 			Interlocked.Increment(ref _PendingActions);
-			Interlocked.Exchange<IStreamTask>(ref _NextTask, NewTask).Queue(NewTask);
+			Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
 			
 			return NewTask.Task;
 		}
@@ -208,7 +208,7 @@ namespace Proximity.Utility.Threading
 			var NewTask = new WrappedTask(this, TaskValue<TValue, Task>.Create(action, value), cancellationToken);
 			
 			Interlocked.Increment(ref _PendingActions);
-			Interlocked.Exchange<IStreamTask>(ref _NextTask, NewTask).Queue(NewTask);
+			Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
 			
 			return NewTask.Task;
 		}
@@ -235,7 +235,7 @@ namespace Proximity.Utility.Threading
 			var NewTask = new WrappedResultTask<TResult>(this, TaskValue<TValue, Task<TResult>>.Create(action, value), cancellationToken);
 			
 			Interlocked.Increment(ref _PendingActions);
-			Interlocked.Exchange<IStreamTask>(ref _NextTask, NewTask).Queue(NewTask);
+			Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
 			
 			return NewTask.Task;
 		}
@@ -314,7 +314,7 @@ namespace Proximity.Utility.Threading
 			void IStreamTask.Queue(IStreamTask child)
 			{
 				// Assign as the next task, only if there is none set
-				var NextTask = Interlocked.CompareExchange<IStreamTask>(ref _NextTask, child, null);
+				var NextTask = Interlocked.CompareExchange(ref _NextTask, child, null);
 				
 				// If we're set to completed, just run it directly
 				if (NextTask == _CompletedTask)
@@ -341,7 +341,7 @@ namespace Proximity.Utility.Threading
 						OnComplete();
 					else
 						// No, wait for it then
-						this.ConfigureAwait(false).GetAwaiter().OnCompleted(OnComplete); // 2 (TaskCompletion and Action)
+						ConfigureAwait(false).GetAwaiter().OnCompleted(OnComplete); // 2 (TaskCompletion and Action)
 				}
 				catch (InvalidOperationException)
 				{
@@ -354,7 +354,7 @@ namespace Proximity.Utility.Threading
 			private void OnComplete()
 			{
 				// Mark us as completed
-				var NextTask = Interlocked.CompareExchange<IStreamTask>(ref _NextTask, _CompletedTask, null);
+				var NextTask = Interlocked.CompareExchange(ref _NextTask, _CompletedTask, null);
 				
 				// Reduce the number of pending actions
 				Interlocked.Decrement(ref _Owner._PendingActions);
@@ -386,7 +386,7 @@ namespace Proximity.Utility.Threading
 			void IStreamTask.Queue(IStreamTask child)
 			{
 				// Assign as the next task, only if there is none set
-				var NextTask = Interlocked.CompareExchange<IStreamTask>(ref _NextTask, child, null);
+				var NextTask = Interlocked.CompareExchange(ref _NextTask, child, null);
 
 				// If we're set to completed, just run it directly
 				if (NextTask == _CompletedTask)
@@ -413,7 +413,7 @@ namespace Proximity.Utility.Threading
 						OnComplete();
 					else
 						// No, wait for it then
-						this.ConfigureAwait(false).GetAwaiter().OnCompleted(OnComplete); // 2 (TaskCompletion and Action)
+						ConfigureAwait(false).GetAwaiter().OnCompleted(OnComplete); // 2 (TaskCompletion and Action)
 				}
 				catch (InvalidOperationException)
 				{
@@ -426,7 +426,7 @@ namespace Proximity.Utility.Threading
 			private void OnComplete()
 			{
 				// Mark us as completed
-				var NextTask = Interlocked.CompareExchange<IStreamTask>(ref _NextTask, _CompletedTask, null);
+				var NextTask = Interlocked.CompareExchange(ref _NextTask, _CompletedTask, null);
 				
 				// Reduce the number of pending actions
 				Interlocked.Decrement(ref _Owner._PendingActions);
@@ -441,7 +441,7 @@ namespace Proximity.Utility.Threading
 			Task IStreamTask.Task => this;
 		}
 		
-		private class TaskValue<TValue>
+		private sealed class TaskValue<TValue>
 		{	//****************************************
 			private readonly Action<TValue> _Action;
 			private readonly TValue _Value;
@@ -462,7 +462,7 @@ namespace Proximity.Utility.Threading
 			internal static Action Create(Action<TValue> action, TValue value) => new TaskValue<TValue>(action, value).ExecWithValue;
 		}
 		
-		private class TaskValue<TValue, TResult>
+		private sealed class TaskValue<TValue, TResult>
 		{	//****************************************
 			private readonly Func<TValue, TResult> _Action;
 			private readonly TValue _Value;
