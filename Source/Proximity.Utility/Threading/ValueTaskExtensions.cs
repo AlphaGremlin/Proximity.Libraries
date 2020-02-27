@@ -323,12 +323,12 @@ namespace Proximity.Utility.Threading
 
 			//****************************************
 
-			internal static ValueTaskWhenToken Retrieve(ValueTask task, CancellationToken token)
+			internal static ValueTaskWhenToken Retrieve(ValueTask task, CancellationTokenSource tokenSource, CancellationToken token)
 			{
 				if (!_Cache.TryTake(out var TaskWhen))
 					TaskWhen = new ValueTaskWhenToken();
 
-				TaskWhen.Initialise(task, null, token);
+				TaskWhen.Initialise(task, tokenSource, token);
 
 				return TaskWhen;
 			}
@@ -450,12 +450,12 @@ namespace Proximity.Utility.Threading
 
 			//****************************************
 
-			internal static ValueTaskWhenToken<TResult> Retrieve(ValueTask<TResult> task, CancellationToken token)
+			internal static ValueTaskWhenToken<TResult> Retrieve(ValueTask<TResult> task, CancellationTokenSource tokenSource, CancellationToken token)
 			{
 				if (!_Cache.TryTake(out var TaskWhen))
 					TaskWhen = new ValueTaskWhenToken<TResult>();
 
-				TaskWhen.Initialise(task, null, token);
+				TaskWhen.Initialise(task, tokenSource, token);
 
 				return TaskWhen;
 			}

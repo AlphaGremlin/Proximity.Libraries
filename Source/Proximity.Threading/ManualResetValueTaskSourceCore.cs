@@ -35,7 +35,9 @@ namespace System.Threading.Tasks.Sources
 		/// <summary>Whether the current operation has completed.</summary>
 		private bool _completed;
 		/// <summary>The result with which the operation succeeded, or the default value if it hasn't yet completed or failed.</summary>
+#pragma warning disable CS8618 // Non-nullable field is uninitialized. Consider declaring as nullable.
 		private TResult _result;
+#pragma warning restore CS8618 // Non-nullable field is uninitialized. Consider declaring as nullable.
 		/// <summary>The exception with which the operation failed, or null if it hasn't yet completed or completed successfully.</summary>
 		private ExceptionDispatchInfo? _error;
 		/// <summary>The current version of this value, used to help prevent misuse.</summary>
@@ -51,7 +53,7 @@ namespace System.Threading.Tasks.Sources
 			// Reset/update state for the next use/await of this instance.
 			_version++;
 			_completed = false;
-			_result = default;
+			_result = default!;
 			_error = null;
 			_executionContext = null;
 			_capturedContext = null;
@@ -247,7 +249,7 @@ namespace System.Threading.Tasks.Sources
 				}
 				else
 				{
-					_continuation(_continuationState);
+					_continuation!(_continuationState);
 				}
 				break;
 
@@ -265,7 +267,7 @@ namespace System.Threading.Tasks.Sources
 		{
 			var Target = (ManualResetValueTaskSourceCore<TResult>)state;
 
-			Target._continuation(Target._continuationState);
+			Target._continuation!(Target._continuationState);
 		}
 	}
 

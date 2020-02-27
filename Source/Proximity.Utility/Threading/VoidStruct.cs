@@ -10,9 +10,5 @@ namespace Proximity.Utility.Threading
 	[Serializable]
 	public struct VoidStruct
 	{
-		/// <summary>
-		/// Provides an empty structure
-		/// </summary>
-		public static readonly VoidStruct Empty = default;
 	}
 }

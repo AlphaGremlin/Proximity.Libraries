@@ -29,6 +29,10 @@
 # /Source/Proximity.Terminal/
 /Source/Proximity.Terminal/obj
 
+# /Source/Proximity.Threading/
+/Source/Proximity.Threading/obj
+/Source/Proximity.Threading/*.user
+
 # /Source/Proximity.Utility/
 /Source/Proximity.Utility/obj
 /Source/Proximity.Utility/*.user
