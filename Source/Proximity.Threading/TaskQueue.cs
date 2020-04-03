@@ -12,30 +12,30 @@ namespace System.Threading.Tasks
 	/// <summary>
 	/// Provides a sequential queue of actions executed on the ThreadPool
 	/// </summary>
-	public sealed class TaskStream
+	public sealed class TaskQueue
 	{ //****************************************
-		private static readonly StreamTask CompleteStreamTask = new StreamTask();
+		private static readonly BaseTask CompleteStreamTask = new BaseTask();
 		//****************************************
-		private StreamTask _NextTask = CompleteStreamTask;
+		private BaseTask _NextTask = CompleteStreamTask;
 
 		private int _PendingActions;
 		//****************************************
 
 		/// <summary>
-		/// Creates a new Task Stream
+		/// Creates a new Task Queue
 		/// </summary>
-		public TaskStream()
+		public TaskQueue()
 		{
 		}
 
 		//****************************************
 
 		/// <summary>
-		/// Queues an action to the stream
+		/// Queues an action
 		/// </summary>
-		/// <param name="action">The action to execute at the end of the stream</param>
+		/// <param name="action">The action to execute at the end of the queue</param>
 		/// <param name="token">A token to cancel this action</param>
-		/// <returns>The task that was created</returns>
+		/// <returns>A task representing the completion of the action</returns>
 		public ValueTask Queue(Action action, CancellationToken token = default)
 		{
 			var NewTask = ActionTask.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
@@ -47,12 +47,12 @@ namespace System.Threading.Tasks
 		}
 
 		/// <summary>
-		/// Queues an action that takes a value to the stream
+		/// Queues an action that takes a value
 		/// </summary>
-		/// <param name="action">The action to execute at the end of the stream</param>
+		/// <param name="action">The action to execute at the end of the queue</param>
 		/// <param name="value">The value to pass to the action</param>
 		/// <param name="token">A token to cancel this action</param>
-		/// <returns>The task that was created</returns>
+		/// <returns>A task representing the completion of the action</returns>
 		public ValueTask Queue<TValue>(Action<TValue> action, TValue value, CancellationToken token = default)
 		{
 			var NewTask = ActionTask<TValue>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);
@@ -64,12 +64,12 @@ namespace System.Threading.Tasks
 		}
 
 		/// <summary>
-		/// Queues an action that returns a result to the stream
+		/// Queues an action that returns a result
 		/// </summary>
-		/// <param name="action">The action to execute at the end of the stream</param>
+		/// <param name="action">The action to execute at the end of the queue</param>
 		/// <param name="token">A token to cancel this action</param>
-		/// <returns>The task that was created</returns>
-		/// <remarks>If the action returns a Task, you may want to use <see cref="O:QueueTask"/> instead</remarks>
+		/// <returns>A task representing the completion of the action</returns>
+		/// <remarks>If the action returns a <see cref="Task"/>, you may want to use <see cref="O:QueueTask"/> instead</remarks>
 		public ValueTask<TResult> Queue<TResult>(Func<TResult> action, CancellationToken token = default)
 		{
 			var NewTask = FuncTask<TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
@@ -81,13 +81,13 @@ namespace System.Threading.Tasks
 		}
 
 		/// <summary>
-		/// Queues an action that takes a value and returns a result to the stream
+		/// Queues an action that takes a value and returns a result
 		/// </summary>
-		/// <param name="action">The action to execute at the end of the stream</param>
+		/// <param name="action">The action to execute at the end of the queue</param>
 		/// <param name="value">The value to pass to the action</param>
 		/// <param name="token">A token to cancel this action</param>
-		/// <returns>The task that was created</returns>
-		/// <remarks>If the action returns a Task, you may want to use <see cref="O:QueueTask"/> instead</remarks>
+		/// <returns>A task representing the completion of the action</returns>
+		/// <remarks>If the action returns a <see cref="Task"/>, you may want to use <see cref="O:QueueTask"/> instead</remarks>
 		public ValueTask<TResult> Queue<TValue, TResult>(Func<TValue, TResult> action, TValue value, CancellationToken token = default)
 		{
 			var NewTask = FuncTask<TValue, TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);
@@ -99,12 +99,12 @@ namespace System.Threading.Tasks
 		}
 
 		/// <summary>
-		/// Queues an action returning a task at the end of the Stream
+		/// Queues an action returning a <see cref="Task"/>
 		/// </summary>
-		/// <param name="action">The method to execute at the end of the stream</param>
+		/// <param name="action">The method to execute at the end of the queue</param>
 		/// <param name="token">A token to cancel this action</param>
 		/// <returns>A task representing the completion of the returned task</returns>
-		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
+		/// <remarks>The queue will not continue until the returned <see cref="Task"/> has been completed</remarks>
 		public ValueTask QueueTask(Func<Task> action, CancellationToken token = default)
 		{
 			var NewTask = WrappedTask.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
@@ -116,12 +116,12 @@ namespace System.Threading.Tasks
 		}
 
 		/// <summary>
-		/// Queues an action returning a task with a result at the end of the Stream
+		/// Queues an action returning a <see cref="Task{TResult}"/>
 		/// </summary>
-		/// <param name="action">The method to execute at the end of the stream</param>
+		/// <param name="action">The method to execute at the end of the queue</param>
 		/// <param name="token">A token to cancel this action</param>
-		/// <returns>A task representing the completion of the returned task</returns>
-		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
+		/// <returns>A task representing the completion of the returned task and its result</returns>
+		/// <remarks>The queue will not continue until the returned <see cref="Task{TResult}"/> has been completed</remarks>
 		public ValueTask<TResult> QueueTask<TResult>(Func<Task<TResult>> action, CancellationToken token = default)
 		{
 			var NewTask = WrappedFuncTask<TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
@@ -133,13 +133,13 @@ namespace System.Threading.Tasks
 		}
 
 		/// <summary>
-		/// Queues an action taking a value and returning a task at the end of the Stream
+		/// Queues an action taking a value and returning a <see cref="Task"/>
 		/// </summary>
-		/// <param name="action">The method to execute at the end of the stream</param>
+		/// <param name="action">The method to execute at the end of the queue</param>
 		/// <param name="value">The value to pass to the action</param>
 		/// <param name="token">A token to cancel this action</param>
 		/// <returns>A task representing the completion of the returned task</returns>
-		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
+		/// <remarks>The queue will not continue until the returned <see cref="Task"/> has been completed</remarks>
 		public ValueTask QueueTask<TValue>(Func<TValue, Task> action, TValue value, CancellationToken token = default)
 		{
 			var NewTask = WrappedTask<TValue>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);
@@ -151,13 +151,13 @@ namespace System.Threading.Tasks
 		}
 
 		/// <summary>
-		/// Queues an action taking a value and returning a task with a result at the end of the Stream
+		/// Queues an action taking a value and returning a <see cref="Task{TResult}"/>
 		/// </summary>
-		/// <param name="action">The method to execute at the end of the stream</param>
+		/// <param name="action">The method to execute at the end of the queue</param>
 		/// <param name="value">The value to pass to the action</param>
 		/// <param name="token">A token to cancel this action</param>
-		/// <returns>A task representing the completion of the returned task</returns>
-		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
+		/// <returns>A task representing the completion of the returned task and its result</returns>
+		/// <remarks>The queue will not continue until the returned <see cref="Task{TResult}"/> has been completed</remarks>
 		public ValueTask<TResult> QueueTask<TValue, TResult>(Func<TValue, Task<TResult>> action, TValue value, CancellationToken token = default)
 		{
 			var NewTask = WrappedFuncTask<TValue, TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);
@@ -169,12 +169,12 @@ namespace System.Threading.Tasks
 		}
 
 		/// <summary>
-		/// Queues an action returning a task at the end of the Stream
+		/// Queues an action returning a <see cref="ValueTask"/>
 		/// </summary>
-		/// <param name="action">The method to execute at the end of the stream</param>
+		/// <param name="action">The method to execute at the end of the queue</param>
 		/// <param name="token">A token to cancel this action</param>
 		/// <returns>A task representing the completion of the returned task</returns>
-		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
+		/// <remarks>The queue will not continue until the returned <see cref="ValueTask"/> has been completed</remarks>
 		public ValueTask QueueTask(Func<ValueTask> action, CancellationToken token = default)
 		{
 			var NewTask = WrappedValueTask.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
@@ -186,12 +186,12 @@ namespace System.Threading.Tasks
 		}
 
 		/// <summary>
-		/// Queues an action returning a task with a result at the end of the Stream
+		/// Queues an action returning a <see cref="ValueTask{TResult}"/>
 		/// </summary>
-		/// <param name="action">The method to execute at the end of the stream</param>
+		/// <param name="action">The method to execute at the end of the queue</param>
 		/// <param name="token">A token to cancel this action</param>
-		/// <returns>A task representing the completion of the returned task</returns>
-		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
+		/// <returns>A task representing the completion of the returned task and its result</returns>
+		/// <remarks>The queue will not continue until the returned <see cref="ValueTask{TResult}"/> has been completed</remarks>
 		public ValueTask<TResult> QueueTask<TResult>(Func<ValueTask<TResult>> action, CancellationToken token = default)
 		{
 			var NewTask = WrappedFuncValueTask<TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
@@ -203,13 +203,13 @@ namespace System.Threading.Tasks
 		}
 
 		/// <summary>
-		/// Queues an action taking a value and returning a task at the end of the Stream
+		/// Queues an action taking a value and returning a <see cref="ValueTask"/>
 		/// </summary>
-		/// <param name="action">The method to execute at the end of the stream</param>
+		/// <param name="action">The method to execute at the end of the queue</param>
 		/// <param name="value">The value to pass to the action</param>
 		/// <param name="token">A token to cancel this action</param>
 		/// <returns>A task representing the completion of the returned task</returns>
-		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
+		/// <remarks>The queue will not continue until the returned <see cref="ValueTask"/> has been completed</remarks>
 		public ValueTask QueueTask<TValue>(Func<TValue, ValueTask> action, TValue value, CancellationToken token = default)
 		{
 			var NewTask = WrappedValueTask<TValue>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);
@@ -221,13 +221,13 @@ namespace System.Threading.Tasks
 		}
 
 		/// <summary>
-		/// Queues an action taking a value and returning a task with a result at the end of the Stream
+		/// Queues an action taking a value and returning a <see cref="ValueTask{TResult}"/>
 		/// </summary>
-		/// <param name="action">The method to execute at the end of the stream</param>
+		/// <param name="action">The method to execute at the end of the queue</param>
 		/// <param name="value">The value to pass to the action</param>
 		/// <param name="token">A token to cancel this action</param>
-		/// <returns>A task representing the completion of the returned task</returns>
-		/// <remarks>The stream will not continue until the returned task has been completed</remarks>
+		/// <returns>A task representing the completion of the returned task and its result</returns>
+		/// <remarks>The queue will not continue until the returned <see cref="ValueTask{TResult}"/> has been completed</remarks>
 		public ValueTask<TResult> QueueTask<TValue, TResult>(Func<TValue, ValueTask<TResult>> action, TValue value, CancellationToken token = default)
 		{
 			var NewTask = WrappedFuncValueTask<TValue, TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);
@@ -239,13 +239,13 @@ namespace System.Threading.Tasks
 		}
 
 		/// <summary>
-		/// Resets the stream, so future queued actions will begin executing immediately (essentially starts a new stream)
+		/// Resets the queue, so future queued actions will begin executing immediately (essentially starts a new stream)
 		/// </summary>
-		/// <remarks>This does not reset the pending actions counter</remarks>
+		/// <remarks>This does not reset the pending actions counter or abort any queued actions</remarks>
 		public void Reset() => Interlocked.Exchange(ref _NextTask, CompleteStreamTask);
 
 		/// <summary>
-		/// Completes when all queued actions have been completed
+		/// Completes when all queued actions have been executed, and all returned tasks (if any) completed
 		/// </summary>
 		/// <param name="token">A token to abort waiting</param>
 		public ValueTask Complete(CancellationToken token = default)
@@ -266,15 +266,15 @@ namespace System.Threading.Tasks
 		//****************************************
 
 		/// <summary>
-		/// Gets the number of actions that have yet to complete executing
+		/// Gets the number of actions that have yet to execute
 		/// </summary>
 		public int PendingActions => _PendingActions;
 
 		//****************************************
 
-		private static void ExecutePool(StreamTask nextTask) => ThreadPool.UnsafeQueueUserWorkItem((state) => ExecuteNextTask((StreamTask)state), nextTask);
+		private static void ExecutePool(BaseTask nextTask) => ThreadPool.UnsafeQueueUserWorkItem((state) => ExecuteNextTask((BaseTask)state), nextTask);
 
-		private static void ExecuteNextTask(StreamTask nextTask)
+		private static void ExecuteNextTask(BaseTask nextTask)
 		{
 			while (!ReferenceEquals(nextTask, CompleteStreamTask))
 			{
@@ -287,29 +287,25 @@ namespace System.Threading.Tasks
 
 		//****************************************
 
-		private class StreamTask
+		private class BaseTask
 		{
-			public virtual void Queue(StreamTask child) => ExecutePool(child);
+			public virtual void Queue(BaseTask child) => ExecutePool(child);
 
 			public virtual bool TryActivate(
 #if !NETSTANDARD2_0
 				[MaybeNullWhen(true)]
 #endif
-			out StreamTask nextTask) => throw new InvalidOperationException("Cannot activate completed task");
+			out BaseTask nextTask) => throw new InvalidOperationException("Cannot activate completed task");
 
-			public virtual StreamTask Execute() => throw new InvalidOperationException("Cannot execute completed task");
+			public virtual BaseTask Execute() => throw new InvalidOperationException("Cannot execute completed task");
 		}
 
-		private abstract class BaseStreamTask<TResult> : StreamTask
+		private abstract class BaseTask<TResult> : BaseTask
 		{ //****************************************
-			private TaskStream? _Stream;
-			private StreamTask? _NextTask;
+			private TaskQueue? _Stream;
+			private BaseTask? _NextTask;
 
-#if NETSTANDARD2_0
-			private readonly ManualResetValueTaskSourceCore<TResult> _TaskSource = new ManualResetValueTaskSourceCore<TResult>();
-#else
 			private ManualResetValueTaskSourceCore<TResult> _TaskSource = new ManualResetValueTaskSourceCore<TResult>();
-#endif
 
 			private CancellationToken _Token;
 			private CancellationTokenRegistration _Registration;
@@ -317,11 +313,11 @@ namespace System.Threading.Tasks
 			private volatile int _CanCancel, _TaskState;
 			//****************************************
 
-			protected BaseStreamTask() => _TaskSource.RunContinuationsAsynchronously = true;
+			protected BaseTask() => _TaskSource.RunContinuationsAsynchronously = true;
 
 			//****************************************
 
-			public override sealed void Queue(StreamTask child)
+			public override sealed void Queue(BaseTask child)
 			{
 				if (_Stream == null)
 					throw new InvalidOperationException("Task is not in a valid state");
@@ -335,7 +331,7 @@ namespace System.Threading.Tasks
 #if !NETSTANDARD2_0
 				[MaybeNullWhen(true)]
 #endif
-			out StreamTask nextTask)
+			out BaseTask nextTask)
 			{
 				nextTask = null!;
 
@@ -355,7 +351,7 @@ namespace System.Threading.Tasks
 				return false;
 			}
 
-			public override abstract StreamTask Execute();
+			public override abstract BaseTask Execute();
 
 			public ValueTaskSourceStatus GetStatus(short token) => _TaskSource.GetStatus(token);
 
@@ -376,7 +372,7 @@ namespace System.Threading.Tasks
 
 			//****************************************
 
-			protected void Initialise(TaskStream stream, CancellationToken token)
+			protected void Initialise(TaskQueue stream, CancellationToken token)
 			{
 				_Stream = stream;
 
@@ -384,7 +380,7 @@ namespace System.Threading.Tasks
 				{
 					_CanCancel = 1;
 					_Token = token;
-					_Registration = token.Register((state) => ((BaseStreamTask<TResult> )state).Cancel(), this, false);
+					_Registration = token.Register((state) => ((BaseTask<TResult> )state).Cancel(), this, false);
 				}
 				else
 				{
@@ -393,7 +389,7 @@ namespace System.Threading.Tasks
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			protected StreamTask SwitchToSucceeded(TResult result)
+			protected BaseTask SwitchToSucceeded(TResult result)
 			{
 				var NextTask = Complete();
 
@@ -403,10 +399,10 @@ namespace System.Threading.Tasks
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			protected StreamTask SwitchToCancelled(CancellationToken token) => SwitchToFaulted(new OperationCanceledException(token));
+			protected BaseTask SwitchToCancelled(CancellationToken token) => SwitchToFaulted(new OperationCanceledException(token));
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			protected StreamTask SwitchToFaulted(Exception exception)
+			protected BaseTask SwitchToFaulted(Exception exception)
 			{
 				var NextTask = Complete();
 
@@ -419,7 +415,7 @@ namespace System.Threading.Tasks
 
 			//****************************************
 
-			private StreamTask Complete()
+			private BaseTask Complete()
 			{
 				// Mark us as completed
 				var NextTask = Interlocked.CompareExchange(ref _NextTask, CompleteStreamTask, null);
@@ -471,21 +467,21 @@ namespace System.Threading.Tasks
 			internal short TaskToken => _TaskSource.Version;
 		}
 
-		private abstract class BaseValueTaskSource : BaseStreamTask<VoidStruct>, IValueTaskSource
+		private abstract class BaseValueTaskSource : BaseTask<VoidStruct>, IValueTaskSource
 		{
 			void IValueTaskSource.GetResult(short token) => GetResult(token);
 
 			//****************************************
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			protected StreamTask SwitchToSucceeded() => SwitchToSucceeded(default);
+			protected BaseTask SwitchToSucceeded() => SwitchToSucceeded(default);
 
 			//****************************************
 
 			public ValueTask Task => new ValueTask(this, TaskToken);
 		}
 
-		private abstract class BaseValueTaskSource<TResult> : BaseStreamTask<TResult>, IValueTaskSource<TResult>
+		private abstract class BaseValueTaskSource<TResult> : BaseTask<TResult>, IValueTaskSource<TResult>
 		{
 			public ValueTask<TResult> Task => new ValueTask<TResult>(this, TaskToken);
 		}
@@ -495,13 +491,13 @@ namespace System.Threading.Tasks
 			private readonly static ConcurrentBag<NullTask> Cache = new ConcurrentBag<NullTask>();
 			//****************************************
 
-			public override StreamTask Execute() => SwitchToSucceeded();
+			public override BaseTask Execute() => SwitchToSucceeded();
 
 			protected override void Return() => Cache.Add(this);
 
 			//****************************************
 
-			public static NullTask Retrieve(TaskStream stream, CancellationToken token)
+			public static NullTask Retrieve(TaskQueue stream, CancellationToken token)
 			{
 				if (!Cache.TryTake(out var Task))
 					Task = new NullTask();
@@ -519,7 +515,7 @@ namespace System.Threading.Tasks
 			private Action? _Action;
 			//****************************************
 
-			public override StreamTask Execute()
+			public override BaseTask Execute()
 			{
 				try
 				{
@@ -546,7 +542,7 @@ namespace System.Threading.Tasks
 
 			//****************************************
 
-			public static BaseValueTaskSource Retrieve(TaskStream stream, Action action, CancellationToken token)
+			public static BaseValueTaskSource Retrieve(TaskQueue stream, Action action, CancellationToken token)
 			{
 				if (!Cache.TryTake(out var Task))
 					Task = new ActionTask();
@@ -566,7 +562,7 @@ namespace System.Threading.Tasks
 			private TValue _Value = default!;
 			//****************************************
 
-			public override StreamTask Execute()
+			public override BaseTask Execute()
 			{
 				try
 				{
@@ -594,7 +590,7 @@ namespace System.Threading.Tasks
 
 			//****************************************
 
-			public static BaseValueTaskSource Retrieve(TaskStream stream, Action<TValue> action, TValue value, CancellationToken token)
+			public static BaseValueTaskSource Retrieve(TaskQueue stream, Action<TValue> action, TValue value, CancellationToken token)
 			{
 				if (!Cache.TryTake(out var Task))
 					Task = new ActionTask<TValue>();
@@ -619,7 +615,7 @@ namespace System.Threading.Tasks
 
 			public WrappedTask() => _ContinueWrappedTask = ContinueWrappedTask;
 
-			public override StreamTask Execute()
+			public override BaseTask Execute()
 			{
 				try
 				{
@@ -652,7 +648,7 @@ namespace System.Threading.Tasks
 
 			private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
 
-			private StreamTask CompleteWrappedTask()
+			private BaseTask CompleteWrappedTask()
 			{
 				try
 				{
@@ -672,7 +668,7 @@ namespace System.Threading.Tasks
 
 			//****************************************
 
-			public static BaseValueTaskSource Retrieve(TaskStream stream, Func<Task> action, CancellationToken token)
+			public static BaseValueTaskSource Retrieve(TaskQueue stream, Func<Task> action, CancellationToken token)
 			{
 				if (!Cache.TryTake(out var Task))
 					Task = new WrappedTask();
@@ -697,7 +693,7 @@ namespace System.Threading.Tasks
 
 			public WrappedTask() => _ContinueWrappedTask = ContinueWrappedTask;
 
-			public override StreamTask Execute()
+			public override BaseTask Execute()
 			{
 				try
 				{
@@ -731,7 +727,7 @@ namespace System.Threading.Tasks
 
 			private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
 
-			private StreamTask CompleteWrappedTask()
+			private BaseTask CompleteWrappedTask()
 			{
 				try
 				{
@@ -751,7 +747,7 @@ namespace System.Threading.Tasks
 
 			//****************************************
 
-			public static BaseValueTaskSource Retrieve(TaskStream stream, Func<TValue, Task> action, TValue value, CancellationToken token)
+			public static BaseValueTaskSource Retrieve(TaskQueue stream, Func<TValue, Task> action, TValue value, CancellationToken token)
 			{
 				if (!Cache.TryTake(out var Task))
 					Task = new WrappedTask<TValue>();
@@ -776,7 +772,7 @@ namespace System.Threading.Tasks
 
 			public WrappedValueTask() => _ContinueWrappedTask = ContinueWrappedTask;
 
-			public override StreamTask Execute()
+			public override BaseTask Execute()
 			{
 				if (!TryActivate(out var NextTask))
 					return NextTask;
@@ -812,7 +808,7 @@ namespace System.Threading.Tasks
 
 			private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
 
-			private StreamTask CompleteWrappedTask()
+			private BaseTask CompleteWrappedTask()
 			{
 				try
 				{
@@ -832,7 +828,7 @@ namespace System.Threading.Tasks
 
 			//****************************************
 
-			public static BaseValueTaskSource Retrieve(TaskStream stream, Func<ValueTask> action, CancellationToken token)
+			public static BaseValueTaskSource Retrieve(TaskQueue stream, Func<ValueTask> action, CancellationToken token)
 			{
 				if (!Cache.TryTake(out var Task))
 					Task = new WrappedValueTask();
@@ -857,7 +853,7 @@ namespace System.Threading.Tasks
 
 			internal WrappedValueTask() => _ContinueWrappedTask = ContinueWrappedTask;
 
-			public override StreamTask Execute()
+			public override BaseTask Execute()
 			{
 				try
 				{
@@ -891,7 +887,7 @@ namespace System.Threading.Tasks
 
 			private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
 
-			private StreamTask CompleteWrappedTask()
+			private BaseTask CompleteWrappedTask()
 			{
 				try
 				{
@@ -911,7 +907,7 @@ namespace System.Threading.Tasks
 
 			//****************************************
 
-			public static BaseValueTaskSource Retrieve(TaskStream stream, Func<TValue, ValueTask> action, TValue value, CancellationToken token)
+			public static BaseValueTaskSource Retrieve(TaskQueue stream, Func<TValue, ValueTask> action, TValue value, CancellationToken token)
 			{
 				if (!Cache.TryTake(out var Task))
 					Task = new WrappedValueTask<TValue>();
@@ -932,7 +928,7 @@ namespace System.Threading.Tasks
 			private Func<TResult>? _Func;
 			//****************************************
 
-			public override StreamTask Execute()
+			public override BaseTask Execute()
 			{
 				try
 				{
@@ -957,7 +953,7 @@ namespace System.Threading.Tasks
 
 			//****************************************
 
-			public static BaseValueTaskSource<TResult> Retrieve(TaskStream stream, Func<TResult> func, CancellationToken token)
+			public static BaseValueTaskSource<TResult> Retrieve(TaskQueue stream, Func<TResult> func, CancellationToken token)
 			{
 				if (!Cache.TryTake(out var Task))
 					Task = new FuncTask<TResult>();
@@ -978,7 +974,7 @@ namespace System.Threading.Tasks
 			private TValue _Value = default!;
 			//****************************************
 
-			public override StreamTask Execute()
+			public override BaseTask Execute()
 			{
 				try
 				{
@@ -1004,7 +1000,7 @@ namespace System.Threading.Tasks
 
 			//****************************************
 
-			public static BaseValueTaskSource<TResult> Retrieve(TaskStream stream, Func<TValue, TResult> func, TValue value, CancellationToken token)
+			public static BaseValueTaskSource<TResult> Retrieve(TaskQueue stream, Func<TValue, TResult> func, TValue value, CancellationToken token)
 			{
 				if (!Cache.TryTake(out var Task))
 					Task = new FuncTask<TValue, TResult>();
@@ -1030,7 +1026,7 @@ namespace System.Threading.Tasks
 
 			public WrappedFuncTask() => _ContinueWrappedTask = ContinueWrappedTask;
 
-			public override StreamTask Execute()
+			public override BaseTask Execute()
 			{
 				try
 				{
@@ -1063,7 +1059,7 @@ namespace System.Threading.Tasks
 
 			private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
 
-			private StreamTask CompleteWrappedTask()
+			private BaseTask CompleteWrappedTask()
 			{
 				try
 				{
@@ -1081,7 +1077,7 @@ namespace System.Threading.Tasks
 
 			//****************************************
 
-			public static BaseValueTaskSource<TResult> Retrieve(TaskStream stream, Func<Task<TResult>> func, CancellationToken token)
+			public static BaseValueTaskSource<TResult> Retrieve(TaskQueue stream, Func<Task<TResult>> func, CancellationToken token)
 			{
 				if (!Cache.TryTake(out var Task))
 					Task = new WrappedFuncTask<TResult>();
@@ -1107,7 +1103,7 @@ namespace System.Threading.Tasks
 
 			public WrappedFuncTask() => _ContinueWrappedTask = ContinueWrappedTask;
 
-			public override StreamTask Execute()
+			public override BaseTask Execute()
 			{
 				try
 				{
@@ -1141,7 +1137,7 @@ namespace System.Threading.Tasks
 
 			private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
 
-			private StreamTask CompleteWrappedTask()
+			private BaseTask CompleteWrappedTask()
 			{
 				try
 				{
@@ -1159,7 +1155,7 @@ namespace System.Threading.Tasks
 
 			//****************************************
 
-			public static BaseValueTaskSource<TResult> Retrieve(TaskStream stream, Func<TValue, Task<TResult>> func, TValue value, CancellationToken token)
+			public static BaseValueTaskSource<TResult> Retrieve(TaskQueue stream, Func<TValue, Task<TResult>> func, TValue value, CancellationToken token)
 			{
 				if (!Cache.TryTake(out var Task))
 					Task = new WrappedFuncTask<TValue, TResult>();
@@ -1185,7 +1181,7 @@ namespace System.Threading.Tasks
 
 			internal WrappedFuncValueTask() => _ContinueWrappedTask = ContinueWrappedTask;
 
-			public override StreamTask Execute()
+			public override BaseTask Execute()
 			{
 				try
 				{
@@ -1218,7 +1214,7 @@ namespace System.Threading.Tasks
 
 			private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
 
-			private StreamTask CompleteWrappedTask()
+			private BaseTask CompleteWrappedTask()
 			{
 				try
 				{
@@ -1236,7 +1232,7 @@ namespace System.Threading.Tasks
 
 			//****************************************
 
-			public static BaseValueTaskSource<TResult> Retrieve(TaskStream stream, Func<ValueTask<TResult>> func, CancellationToken token)
+			public static BaseValueTaskSource<TResult> Retrieve(TaskQueue stream, Func<ValueTask<TResult>> func, CancellationToken token)
 			{
 				if (!Cache.TryTake(out var Task))
 					Task = new WrappedFuncValueTask<TResult>();
@@ -1262,7 +1258,7 @@ namespace System.Threading.Tasks
 
 			public WrappedFuncValueTask() => _ContinueWrappedTask = ContinueWrappedTask;
 
-			public override StreamTask Execute()
+			public override BaseTask Execute()
 			{
 				try
 				{
@@ -1295,7 +1291,7 @@ namespace System.Threading.Tasks
 
 			private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
 
-			private StreamTask CompleteWrappedTask()
+			private BaseTask CompleteWrappedTask()
 			{
 				try
 				{
@@ -1313,7 +1309,7 @@ namespace System.Threading.Tasks
 
 			//****************************************
 
-			public static BaseValueTaskSource<TResult> Retrieve(TaskStream stream, Func<TValue, ValueTask<TResult>> func, TValue value, CancellationToken token)
+			public static BaseValueTaskSource<TResult> Retrieve(TaskQueue stream, Func<TValue, ValueTask<TResult>> func, TValue value, CancellationToken token)
 			{
 				if (!Cache.TryTake(out var Task))
 					Task = new WrappedFuncValueTask<TValue, TResult>();

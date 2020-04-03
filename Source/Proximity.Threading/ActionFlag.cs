@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Security;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 //****************************************
@@ -9,36 +10,59 @@ namespace System.Threading
 	/// <summary>
 	/// Manages execution of a callback on the ThreadPool based on a flag being set
 	/// </summary>
-	public sealed class ActionFlag
+	public sealed class ActionFlag : IDisposable, IAsyncDisposable
 	{ //****************************************
 		private readonly Func<ValueTask> _Callback;
 
-		private readonly WaitCallback _ProcessTaskFlag;
-		private readonly Action _CompleteProcessTask;
-		private readonly Action _CompleteSecondTask;
-		private readonly TaskScheduler _Scheduler;
-		private int _State; // 0 if not running, 1 if flagged to run, 2 if running
-		private Timer? _DelayTimer;
+		private readonly WaitCallback _ExecuteTask;
+		private readonly Action _CompleteTask;
 
-		private TaskCompletionSource<bool> _WaitTask, _PendingWaitTask;
+		private int _State;
+		private readonly Timer? _DelayTimer;
 
-		private Task _CurrentTask;
+		private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _Awaiter;
+		private TaskCompletionSource<VoidStruct>? _WaitTask, _PendingWaitTask;
 		//****************************************
 
 		/// <summary>
 		/// Creates an Action Flag
 		/// </summary>
 		/// <param name="callback">The callback to execute</param>
-		public ActionFlag(Func<ValueTask> callback) : this(callback, TimeSpan.Zero, TaskScheduler.Current)
+		public ActionFlag(Action callback) : this(WrapCallback(callback), TimeSpan.Zero)
 		{
 		}
 
 		/// <summary>
-		/// Creates a Task Flag
+		/// Creates an Action Flag
 		/// </summary>
 		/// <param name="callback">The callback to execute</param>
-		/// <param name="scheduler">The task scheduler to schedule the callback on</param>
-		public ActionFlag(Func<ValueTask> callback, TaskScheduler scheduler) : this(callback, TimeSpan.Zero, scheduler)
+		/// <param name="delay">A fixed delay between callback executions</param>
+		public ActionFlag(Action callback, TimeSpan delay) : this(WrapCallback(callback), delay)
+		{
+		}
+
+		/// <summary>
+		/// Creates an Action Flag
+		/// </summary>
+		/// <param name="callback">The callback to execute</param>
+		public ActionFlag(Func<Task> callback) : this(WrapCallback(callback), TimeSpan.Zero)
+		{
+		}
+
+		/// <summary>
+		/// Creates an Action Flag
+		/// </summary>
+		/// <param name="callback">The callback to execute</param>
+		/// <param name="delay">A fixed delay between callback executions</param>
+		public ActionFlag(Func<Task> callback, TimeSpan delay) : this(WrapCallback(callback), delay)
+		{
+		}
+
+		/// <summary>
+		/// Creates an Action Flag
+		/// </summary>
+		/// <param name="callback">The callback to execute</param>
+		public ActionFlag(Func<ValueTask> callback) : this(callback, TimeSpan.Zero)
 		{
 		}
 
@@ -47,44 +71,81 @@ namespace System.Threading
 		/// </summary>
 		/// <param name="callback">The callback to execute</param>
 		/// <param name="delay">A fixed delay between callback executions</param>
-		public ActionFlag(Func<ValueTask> callback, TimeSpan delay) : this(callback, delay, TaskScheduler.Current)
-		{
-		}
-
-		/// <summary>
-		/// Creates a Task Flag
-		/// </summary>
-		/// <param name="callback">The callback to execute</param>
-		/// <param name="delay">A fixed delay between callback executions</param>
-		/// <param name="scheduler">The task scheduler to schedule the callback on</param>
-		public ActionFlag(Func<ValueTask> callback, TimeSpan delay, TaskScheduler scheduler)
+		public ActionFlag(Func<ValueTask> callback, TimeSpan delay)
 		{
 			_Callback = callback;
-			_Scheduler = scheduler;
 
 			if (delay == TimeSpan.Zero)
 			{
-				_ProcessTaskFlag = ProcessTaskFlag;
+				_ExecuteTask = ExecuteTask;
 			}
 			else
 			{
 				Delay = delay;
-				_ProcessTaskFlag = ProcessDelayTaskFlag;
-				_DelayTimer = new Timer(ProcessTaskFlag);
+				_ExecuteTask = ExecuteDelay;
+				_DelayTimer = new Timer(ExecuteTask);
 			}
 
-			_CompleteProcessTask = CompleteProcessTask;
-			_CompleteSecondTask = CompleteSecondTask;
+			_CompleteTask = CompleteTask;
 		}
 
 		//****************************************
 
+		void IDisposable.Dispose() => DisposeAsync();
+
 		/// <summary>
 		/// Disposes of the asynchronous task flag
 		/// </summary>
-		public void Dispose()
+		public ValueTask DisposeAsync()
 		{
-			Interlocked.Exchange(ref _DelayTimer, null)?.Dispose();
+			int PreviousState, NewState;
+
+			do
+			{
+				PreviousState = _State;
+
+				switch (PreviousState)
+				{
+				case Status.Disposed:
+				case Status.DisposedFlagged:
+				case Status.DisposedExecuting:
+					return default; // Already Disposed, or waiting on a Dispose
+
+				case Status.Executing:
+					NewState = Status.DisposedExecuting;
+					break;
+
+				case Status.Flagged:
+					NewState = Status.DisposedFlagged;
+					break;
+
+				default:
+					NewState = Status.Disposed;
+					break;
+				}
+			}
+			while (Interlocked.CompareExchange(ref _State, NewState, PreviousState) != PreviousState);
+
+#if NETSTANDARD2_0
+			_DelayTimer?.Dispose();
+#else
+			if (_DelayTimer != null)
+			{
+				var DisposeTimer = _DelayTimer.DisposeAsync();
+
+				if (!DisposeTimer.IsCompleted)
+					return InternalDispose(DisposeTimer);
+
+				async ValueTask InternalDispose(ValueTask disposeTask)
+				{
+					await disposeTask;
+
+					await WaitForExecution();
+				}
+			}
+#endif
+
+			return WaitForExecution();
 		}
 
 		//****************************************
@@ -94,14 +155,30 @@ namespace System.Threading
 		/// </summary>
 		public void Set()
 		{
-			// Set the state to 1 (flagged)
-			if (Interlocked.Exchange(ref _State, 1) == 0)
-			{
-				// If the previous state was 0 (not flagged), we need to start it executing
-				ThreadPool.UnsafeQueueUserWorkItem(_ProcessTaskFlag, null);
-			}
+			int PreviousState;
 
-			// If the previous state was 1 (flagged) or 2 (executing), then ProcessTaskFlag will take care of it
+			do
+			{
+				PreviousState = _State;
+
+				switch (PreviousState)
+				{
+				case Status.Disposed:
+				case Status.DisposedExecuting:
+					throw new ObjectDisposedException(nameof(ActionFlag), "Action Flag has been disposed");
+
+				case Status.Flagged:
+				case Status.DisposedFlagged:
+					return; // Already pending execution
+				}
+
+				// We're either Waiting or Executing
+			}
+			while (Interlocked.CompareExchange(ref _State, Status.Flagged, PreviousState) != PreviousState);
+
+			if (PreviousState == Status.Waiting)
+				// The ActionFlag was in a waiting state, so start the callback
+				ThreadPool.UnsafeQueueUserWorkItem(_ExecuteTask, null);
 		}
 
 		/// <summary>
@@ -110,107 +187,165 @@ namespace System.Threading
 		/// <returns>A task that will complete once the callback has run</returns>
 		public Task SetAndWait()
 		{
-			var MyWaitTask = _WaitTask;
+			var CurrentWaitTask = Volatile.Read(ref _WaitTask);
 
-			// Has someone else already called SetAndWait but the callback hasn't captured it?
-			if (MyWaitTask != null)
-				return _WaitTask.Task; // Yes, piggyback off that task
+			// Has someone else already called SetAndWait but the callback hasn't run yet?
+			if (CurrentWaitTask == null)
+			{
+				CurrentWaitTask = new TaskCompletionSource<VoidStruct>();
 
-			MyWaitTask = new TaskCompletionSource<bool>();
+				// Try and assign a new task
+				var NewWaitTask = Interlocked.CompareExchange(ref _WaitTask, CurrentWaitTask, null);
 
-			// Try and assign a new task
-			var NewWaitTask = Interlocked.CompareExchange(ref _WaitTask, MyWaitTask, null);
+				// If we got pre-empted, piggyback of the other task
+				if (NewWaitTask != null)
+					return NewWaitTask.Task;
 
-			// If we got pre-empted, piggyback of the other task
-			if (NewWaitTask != null)
-				return NewWaitTask.Task;
+				// Set the flag so our callback runs
+				// Our task may actually be completed at this point, if ProcessTaskFlag executes on another thread between now and the previous CompareExchange
+				Set();
+			}
 
-			// Set the flag so our callback runs
-			// Our task may actually be completed at this point, if ProcessTaskFlag executes on another thread between now and the previous CompareExchange
-			Set();
-
-			return MyWaitTask.Task;
+			return CurrentWaitTask.Task;
 		}
 
 		//****************************************
 
-		private void ProcessDelayTaskFlag(object state)
+		private ValueTask WaitForExecution()
 		{
-			// Wait a bit before acknowledging the flag
-			// May be null if we're disposing
-			_DelayTimer?.Change(Delay, new TimeSpan(0, 0, 0, 0, -1));
+			TaskCompletionSource<VoidStruct>? CurrentWaitTask;
+
+			for (; ; )
+			{
+				switch (Volatile.Read(ref _State))
+				{
+				case Status.Waiting:
+				case Status.Disposed:
+					return default; // Nothing to wait on
+
+				case Status.DisposedFlagged:
+				case Status.Flagged:
+					CurrentWaitTask = Volatile.Read(ref _WaitTask);
+
+					if (CurrentWaitTask != null)
+						return new ValueTask(CurrentWaitTask.Task);
+
+					Interlocked.CompareExchange(ref _WaitTask, new TaskCompletionSource<VoidStruct>(), null);
+					// Now loop back to make sure we're still flagged, otherwise we risk not being picked up
+					break;
+
+				case Status.DisposedExecuting:
+				case Status.Executing:
+					CurrentWaitTask = Volatile.Read(ref _PendingWaitTask);
+
+					if (CurrentWaitTask != null)
+						return new ValueTask(CurrentWaitTask.Task);
+
+					Interlocked.CompareExchange(ref _PendingWaitTask, new TaskCompletionSource<VoidStruct>(), null);
+					// Now loop back to make sure we're still executing, otherwise we risk not being picked up
+					break;
+				}
+			}
 		}
 
-		private void ProcessTaskFlag(object state)
+		private void ExecuteDelay(object state)
 		{
-			// Set the processing state to 2, showing we've acknowledged this flag
-			Interlocked.Exchange(ref _State, 2);
+			try
+			{
+				// Wait a bit before beginning execution
+				_DelayTimer!.Change(Delay, Timeout.InfiniteTimeSpan);
+			}
+			catch (ObjectDisposedException)
+			{
+			}
+		}
+
+		private void ExecuteTask(object state)
+		{
+			int PreviousState, NewState;
+
+			// Update the state of the Action Flag to Executing/DisposedExecuting
+			do
+			{
+				PreviousState = _State;
+
+				NewState = PreviousState switch
+				{
+					Status.DisposedFlagged => Status.DisposedExecuting,
+					Status.Flagged => Status.Executing,
+					_ => throw new InvalidOperationException($"Action Flag is in an unexpected state: {PreviousState}"),
+				};
+			}
+			while (Interlocked.CompareExchange(ref _State, NewState, PreviousState) != PreviousState);
 
 			// Capture any requests to wait for this callback
 			_PendingWaitTask = Interlocked.Exchange(ref _WaitTask, null);
 
-			// Raise the callback and get an awaiter
-			var MyResult = Task.Factory.StartNew(_Callback, CancellationToken.None, TaskCreationOptions.None, _Scheduler);
-
-			_CurrentTask = MyResult;
-
-			// Using GetAwaiter results in less allocations (TaskContinuation) than using ContinueWith (Task and TaskContinuation)
-			if (MyResult.IsCompleted)
-				CompleteProcessTask(true);
-			else
-				MyResult.ConfigureAwait(false).GetAwaiter().OnCompleted(_CompleteProcessTask);
-		}
-
-		private void CompleteProcessTask() => CompleteProcessTask(false);
-
-		private void CompleteProcessTask(bool isNested)
-		{ //****************************************
-			var FirstTask = (Task<Task>)_CurrentTask;
 			//****************************************
 
-			if (FirstTask.IsFaulted)
+			// Raise the callback
+			try
 			{
-				CompleteSecondTask(isNested);
-			}
-			else if (FirstTask.IsCanceled)
-			{
-				CompleteSecondTask(isNested);
-			}
-			else
-			{
-				_CurrentTask = FirstTask.Result;
+				var Task = _Callback();
 
-				// Is it complete?
-				if (_CurrentTask.IsCompleted)
-					CompleteSecondTask(true);
+				_Awaiter = Task.ConfigureAwait(false).GetAwaiter();
+
+				if (_Awaiter.IsCompleted)
+					CompleteTask();
 				else
-					// No, wait for it then
-					_CurrentTask.ConfigureAwait(false).GetAwaiter().OnCompleted(_CompleteSecondTask); // 2 (TaskCompletion and Action)
+					_Awaiter.OnCompleted(_CompleteTask);
+			}
+			catch (Exception)
+			{
+				if (!SwallowExceptions)
+					throw;
 			}
 		}
 
-		private void CompleteSecondTask() => CompleteSecondTask(false);
-
-		private void CompleteSecondTask(bool isNested)
+		private void CompleteTask()
 		{
-			// If we captured a wait task, set it
-			Interlocked.Exchange(ref _PendingWaitTask, null)?.SetResult(true);
-
-			// Set the state to 0 (not flagged) if it's 2 (executing)
-			if (Interlocked.CompareExchange(ref _State, 0, 2) == 1)
+			// Examine the result of the Task
+			try
 			{
-				// Queue the callback again if the previous value is 1 (flagged)
-				if (isNested)
+				_Awaiter.GetResult();
+			}
+			catch (Exception)
+			{
+				if (!SwallowExceptions)
+					throw;
+			}
+
+			//****************************************
+
+			// If we captured a wait task, set it
+			Interlocked.Exchange(ref _PendingWaitTask, null)?.SetResult(default);
+
+			int PreviousState, NewState;
+
+			// Update the state of the Action Flag to Waiting/Disposed, or Executing/DisposedExecuting if we've been flagged again
+			do
+			{
+				PreviousState = _State;
+
+				NewState = PreviousState switch
 				{
-					// We're called directly from ProcessTaskFlag, so call it again on the ThreadPool rather than risking blowing the stack
-					ThreadPool.UnsafeQueueUserWorkItem(_ProcessTaskFlag, null);
-				}
-				else
-				{
-					// Called from the Awaiter completion, so it's safe to call back to ProcessTaskFlag
-					// Use the delegate, since we may be raising the timer
-					_ProcessTaskFlag(null);
-				}
+					Status.Executing => Status.Waiting,
+					Status.DisposedExecuting => Status.Disposed,
+					Status.Flagged => Status.Executing,
+					Status.DisposedFlagged => Status.DisposedExecuting,
+					_ => throw new InvalidOperationException($"Action Flag is in an unexpected state: {PreviousState}"),
+				};
+			}
+			while (Interlocked.CompareExchange(ref _State, NewState, PreviousState) != PreviousState);
+
+			// If we're executing, queue the callback again
+			switch (NewState)
+			{
+			case Status.DisposedExecuting:
+			case Status.Executing:
+				// It's not safe to rely on OnComplete to queue us on another thread, so this makes sure we break the call stack
+				ThreadPool.UnsafeQueueUserWorkItem(_ExecuteTask, null);
+				break;
 			}
 		}
 
@@ -221,5 +356,33 @@ namespace System.Threading
 		/// </summary>
 		/// <remarks>Acts as a cheap batching mechanism, so rapid calls to Set do not execute the callback twice</remarks>
 		public TimeSpan Delay { get; } = TimeSpan.Zero;
+
+		/// <summary>
+		/// Gets/Sets whether to swallow exceptions returned by the callback, or leave them to trigger an UnhandledException
+		/// </summary>
+		public bool SwallowExceptions { get; set; }
+
+		//****************************************
+
+		private static Func<ValueTask> WrapCallback(Func<Task> callback) => () => new ValueTask(callback());
+
+		private static Func<ValueTask> WrapCallback(Action callback) => () => { callback(); return default; };
+
+		//****************************************
+
+		private static class Status
+		{
+			public const int DisposedExecuting = -3;
+
+			public const int DisposedFlagged = -2;
+
+			public const int Disposed = -1;
+
+			public const int Waiting = 0;
+
+			public const int Flagged = 1;
+
+			public const int Executing = 2;
+		}
 	}
 }

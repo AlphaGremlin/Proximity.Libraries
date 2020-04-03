@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Proximity.Utility.Threading
+namespace System.Threading.Tasks
 {
 	/// <summary>
 	/// Allows a fluent syntax for awaiting multiple <see cref="ValueTask"/> instances
@@ -26,14 +26,14 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter ThenWaitOn(ValueTask task) => new ValueTaskWaiter((Tasks ?? ImmutableStack<ValueTask>.Empty).Push(task));
+		public ValueTaskWaiter Then(ValueTask task) => new ValueTaskWaiter((Tasks ?? ImmutableStack<ValueTask>.Empty).Push(task));
 
 		/// <summary>
 		/// Adds a <see cref="ValueTask{T}"/> to the waiter
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T> ThenWaitOn<T>(ValueTask<T> task) => new ValueTaskWaiter<T>(this, task);
+		public ValueTaskWaiter<T> Then<T>(ValueTask<T> task) => new ValueTaskWaiter<T>(this, task);
 
 		/// <summary>
 		/// Gets an awaiter for the supplied tasks
@@ -96,21 +96,21 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1> ThenWaitOn(ValueTask task) => new ValueTaskWaiter<T1>(_Waiter.ThenWaitOn(task), Tasks1, Count1);
+		public ValueTaskWaiter<T1> Then(ValueTask task) => new ValueTaskWaiter<T1>(_Waiter.Then(task), Tasks1, Count1);
 
 		/// <summary>
 		/// Adds another <see cref="ValueTask{T1}"/> to the waiter
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1> ThenWaitOn(ValueTask<T1> task) => new ValueTaskWaiter<T1>(_Waiter, (Tasks1 ?? ImmutableStack<ValueTask<T1>>.Empty).Push(task), Count1 + 1);
+		public ValueTaskWaiter<T1> Then(ValueTask<T1> task) => new ValueTaskWaiter<T1>(_Waiter, (Tasks1 ?? ImmutableStack<ValueTask<T1>>.Empty).Push(task), Count1 + 1);
 
 		/// <summary>
 		/// Adds a <see cref="ValueTask{T2}"/> to the waiter
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1, T2> ThenWaitOn<T2>(ValueTask<T2> task) => new ValueTaskWaiter<T1, T2>(this, task);
+		public ValueTaskWaiter<T1, T2> Then<T2>(ValueTask<T2> task) => new ValueTaskWaiter<T1, T2>(this, task);
 
 		/// <summary>
 		/// Gets an awaiter for the supplied tasks
@@ -122,7 +122,7 @@ namespace Proximity.Utility.Threading
 
 		private async ValueTask<T1[]> WhenAll()
 		{
-			List<Exception> Exceptions = null;
+			List<Exception>? Exceptions = null;
 			var Results = new T1[Count1];
 
 			foreach (var Task in _Waiter.Tasks ?? ImmutableStack<ValueTask>.Empty)
@@ -210,28 +210,28 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1,T2> ThenWaitOn(ValueTask task) => new ValueTaskWaiter<T1, T2>(_Waiter.ThenWaitOn(task), Tasks2, Count2);
+		public ValueTaskWaiter<T1,T2> Then(ValueTask task) => new ValueTaskWaiter<T1, T2>(_Waiter.Then(task), Tasks2, Count2);
 
 		/// <summary>
 		/// Adds another <see cref="ValueTask{T1}"/> to the waiter
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1,T2> ThenWaitOn(ValueTask<T1> task) => new ValueTaskWaiter<T1, T2>(_Waiter.ThenWaitOn(task), Tasks2, Count2);
+		public ValueTaskWaiter<T1,T2> Then(ValueTask<T1> task) => new ValueTaskWaiter<T1, T2>(_Waiter.Then(task), Tasks2, Count2);
 
 		/// <summary>
 		/// Adds another <see cref="ValueTask{T2}"/> to the waiter
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1, T2> ThenWaitOn(ValueTask<T2> task) => new ValueTaskWaiter<T1, T2>(_Waiter, (Tasks2 ?? ImmutableStack<ValueTask<T2>>.Empty).Push(task), Count2 + 1);
+		public ValueTaskWaiter<T1, T2> Then(ValueTask<T2> task) => new ValueTaskWaiter<T1, T2>(_Waiter, (Tasks2 ?? ImmutableStack<ValueTask<T2>>.Empty).Push(task), Count2 + 1);
 
 		/// <summary>
 		/// Adds a <see cref="ValueTask{T3}"/> to the waiter
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1, T2, T3> ThenWaitOn<T3>(ValueTask<T3> task) => new ValueTaskWaiter<T1, T2, T3>(this, task);
+		public ValueTaskWaiter<T1, T2, T3> Then<T3>(ValueTask<T3> task) => new ValueTaskWaiter<T1, T2, T3>(this, task);
 
 		/// <summary>
 		/// Gets an awaiter for the supplied tasks
@@ -243,7 +243,7 @@ namespace Proximity.Utility.Threading
 
 		private async ValueTask<(T1[], T2[])> WhenAll()
 		{
-			List<Exception> Exceptions = null;
+			List<Exception>? Exceptions = null;
 			var Results1 = new T1[_Waiter.Count1];
 			var Results2 = new T2[Count2];
 
@@ -348,30 +348,30 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1, T2, T3> ThenWaitOn(ValueTask task) => new ValueTaskWaiter<T1, T2, T3>(_Waiter.ThenWaitOn(task), Tasks3, Count3);
+		public ValueTaskWaiter<T1, T2, T3> Then(ValueTask task) => new ValueTaskWaiter<T1, T2, T3>(_Waiter.Then(task), Tasks3, Count3);
 
 		/// <summary>
 		/// Adds another <see cref="ValueTask{T1}"/> to the waiter
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1, T2, T3> ThenWaitOn(ValueTask<T1> task) => new ValueTaskWaiter<T1, T2, T3>(_Waiter.ThenWaitOn(task), Tasks3, Count3);
+		public ValueTaskWaiter<T1, T2, T3> Then(ValueTask<T1> task) => new ValueTaskWaiter<T1, T2, T3>(_Waiter.Then(task), Tasks3, Count3);
 
 		/// <summary>
 		/// Adds another <see cref="ValueTask{T2}"/> to the waiter
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1, T2, T3> ThenWaitOn(ValueTask<T2> task) => new ValueTaskWaiter<T1, T2, T3>(_Waiter.ThenWaitOn(task), Tasks3, Count3);
+		public ValueTaskWaiter<T1, T2, T3> Then(ValueTask<T2> task) => new ValueTaskWaiter<T1, T2, T3>(_Waiter.Then(task), Tasks3, Count3);
 
 		/// <summary>
 		/// Adds another <see cref="ValueTask{T3}"/> to the waiter
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1, T2, T3> ThenWaitOn(ValueTask<T3> task) => new ValueTaskWaiter<T1, T2, T3>(_Waiter, (Tasks3 ?? ImmutableStack<ValueTask<T3>>.Empty).Push(task), Count3 + 1);
+		public ValueTaskWaiter<T1, T2, T3> Then(ValueTask<T3> task) => new ValueTaskWaiter<T1, T2, T3>(_Waiter, (Tasks3 ?? ImmutableStack<ValueTask<T3>>.Empty).Push(task), Count3 + 1);
 
-		//public ValueTaskWaiter<T1, T2, T3> ThenWaitOn<T3>(ValueTask<T2> task) => new ValueTaskWaiter<T1, T2>(this, task);
+		//public ValueTaskWaiter<T1, T2, T3, T4> ThenWaitOn<T4>(ValueTask<T4> task) => new ValueTaskWaiter<T1, T2, T3, T4>(this, task);
 
 		/// <summary>
 		/// Gets an awaiter for the supplied tasks
@@ -383,7 +383,7 @@ namespace Proximity.Utility.Threading
 
 		private async ValueTask<(T1[], T2[], T3[])> WhenAll()
 		{
-			List<Exception> Exceptions = null;
+			List<Exception>? Exceptions = null;
 			var Results1 = new T1[_Waiter.Count1];
 			var Results2 = new T2[_Waiter.Count2];
 			var Results3 = new T3[Count3];

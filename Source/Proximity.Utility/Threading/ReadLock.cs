@@ -1,8 +1,4 @@
-﻿/****************************************\
- ReadLock.cs
- Created: 2011-08-02
-\****************************************/
-using System;
+﻿using System;
 using System.Threading;
 //****************************************
 
@@ -11,28 +7,25 @@ namespace Proximity.Utility.Threading
 	/// <summary>
 	/// Utility Structure to enable a Using block for <see cref="ReaderWriterLockSlim" />
 	/// </summary>
-	public struct ReadLock : IDisposable
+	public readonly struct ReadLock : IDisposable
 	{	//****************************************
-		private ReaderWriterLockSlim _ReadLock;
+		private readonly ReaderWriterLockSlim _ReadLock;
 		//****************************************
-		
+
+		private ReadLock(ReaderWriterLockSlim readLock) => _ReadLock = readLock;
+
+		//****************************************
+
 		/// <summary>
 		/// Open a Read Lock for the duration of the Using Block
 		/// </summary>
 		/// <param name="readLock">The <see cref="ReaderWriterLockSlim" /> to lock</param>
 		/// <returns>An IDisposable structure to pass to a Using block</returns>
 		public static ReadLock From(ReaderWriterLockSlim readLock)
-		{	//****************************************
-			ReadLock MyReader;
-			//****************************************
-			
-			MyReader._ReadLock = readLock;
-			
+		{
 			readLock.EnterReadLock();
-			
-			//****************************************
-			
-			return MyReader;
+
+			return new ReadLock(readLock);
 		}
 
 		//****************************************
@@ -51,12 +44,9 @@ namespace Proximity.Utility.Threading
 			// Will block if there are writers, until the writing is all done
 			_ReadLock.EnterReadLock();
 		}
-		
+
 		//****************************************
-		
-		void IDisposable.Dispose()
-		{
-			_ReadLock.ExitReadLock();
-		}
+
+		void IDisposable.Dispose() => _ReadLock.ExitReadLock();
 	}
 }

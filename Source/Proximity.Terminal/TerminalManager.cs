@@ -56,7 +56,7 @@ namespace Proximity.Terminal
 			//****************************************
 
 			// No console if the input/output is redirected
-			_IsRedirected = Console.IsInputRedirected || Console.IsOutputRedirected;
+			_IsRedirected = Console.IsInputRedirected || Console.IsOutputRedirected || Console.BufferWidth == 0;
 
 			if (_IsRedirected)
 				HasCommandLine = false;

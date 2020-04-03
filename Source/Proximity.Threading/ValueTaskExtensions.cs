@@ -4,11 +4,9 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
 
-namespace Proximity.Utility.Threading
+namespace System.Threading.Tasks
 {
 	/// <summary>
 	/// Contains extension methods for <see cref="ValueTask" /> and <see cref="ValueTask{TResult}"/>
@@ -26,7 +24,7 @@ namespace Proximity.Utility.Threading
 			if (!token.CanBeCanceled || task.IsCompleted)
 				return task;
 
-			var Source = ValueTaskWhenToken.Retrieve(task, token);
+			var Source = ValueTaskWhenToken.Retrieve(task, null, token);
 
 			return new ValueTask(Source, Source.Token);
 		}
@@ -42,7 +40,7 @@ namespace Proximity.Utility.Threading
 			if (!token.CanBeCanceled || task.IsCompleted)
 				return task;
 
-			var Source = ValueTaskWhenToken<TResult>.Retrieve(task, token);
+			var Source = ValueTaskWhenToken<TResult>.Retrieve(task, null, token);
 
 			return new ValueTask<TResult>(Source, Source.Token);
 		}
@@ -57,7 +55,7 @@ namespace Proximity.Utility.Threading
 			if (tasks is null)
 				throw new ArgumentNullException(nameof(tasks));
 
-			List<Exception> Exceptions = null;
+			List<Exception>? Exceptions = null;
 
 			foreach (var Task in tasks)
 			{
@@ -172,16 +170,29 @@ namespace Proximity.Utility.Threading
 
 		//****************************************
 
-		internal static ValueTask AsValueTask(this Task task) => new ValueTask(task);
+		/// <summary>
+		/// Transforms a Task to a ValueTask
+		/// </summary>
+		/// <param name="task">The Task to transform</param>
+		/// <returns>The resulting ValueTask</returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static ValueTask AsValueTask(this Task task) => new ValueTask(task);
 
-		internal static ValueTask<TResult> AsValueTask<TResult>(this Task<TResult> task) => new ValueTask<TResult>(task);
+		/// <summary>
+		/// Transforms a Task with a result to a ValueTask
+		/// </summary>
+		/// <typeparam name="TResult">The type of result</typeparam>
+		/// <param name="task">The Task to transform</param>
+		/// <returns>The resulting ValueTask</returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static ValueTask<TResult> AsValueTask<TResult>(this Task<TResult> task) => new ValueTask<TResult>(task);
 
 		//****************************************
 
 		private static async ValueTask<T[]> InternalWhenAll<T>(IReadOnlyCollection<ValueTask<T>> tasks)
 		{
 			var Results = new T[tasks.Count];
-			List<Exception> Exceptions = null;
+			List<Exception>? Exceptions = null;
 			var Index = 0;
 
 			foreach (var Task in tasks)
@@ -213,15 +224,11 @@ namespace Proximity.Utility.Threading
 			//****************************************
 			private readonly Action _ContinueWrappedTask;
 
-#if NETSTANDARD2_0
-			private readonly ManualResetValueTaskSourceCore<VoidStruct> _TaskSource = new ManualResetValueTaskSourceCore<VoidStruct>();
-#else
 			private ManualResetValueTaskSourceCore<VoidStruct> _TaskSource = new ManualResetValueTaskSourceCore<VoidStruct>();
-#endif
 
-			private ValueTask _InnerTask;
+			private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _Awaiter;
 			private CancellationToken _Token;
-			private CancellationTokenSource _TokenSource;
+			private CancellationTokenSource? _TokenSource;
 			private CancellationTokenRegistration _Registration;
 			private volatile int _CanCancel;
 			//****************************************
@@ -230,23 +237,21 @@ namespace Proximity.Utility.Threading
 
 			//****************************************
 
-			public void Initialise(ValueTask task, CancellationTokenSource tokenSource, CancellationToken token)
+			public void Initialise(ValueTask task, CancellationTokenSource? tokenSource, CancellationToken token)
 			{
-				_InnerTask = task;
 				_TokenSource = tokenSource;
 				_Token = token;
 				_CanCancel = 1;
 
 				_Registration = token.Register(CancelTask, this);
+				_Awaiter = task.ConfigureAwait(false).GetAwaiter();
 
 				try
 				{
-					var Awaiter = task.GetAwaiter();
-
-					if (Awaiter.IsCompleted)
+					if (_Awaiter.IsCompleted)
 						ContinueWrappedTask();
 					else
-						Awaiter.OnCompleted(_ContinueWrappedTask);
+						_Awaiter.OnCompleted(_ContinueWrappedTask);
 				}
 				catch (Exception e)
 				{
@@ -261,11 +266,9 @@ namespace Proximity.Utility.Threading
 
 			private void ContinueWrappedTask()
 			{
-				var Awaiter = _InnerTask.GetAwaiter();
-
 				try
 				{
-					Awaiter.GetResult();
+					_Awaiter.GetResult();
 
 					if (_CanCancel == 0 || Interlocked.CompareExchange(ref _CanCancel, 2, 1) != 1)
 						return; // Task has already completed, can no longer cancel
@@ -292,7 +295,7 @@ namespace Proximity.Utility.Threading
 					_TaskSource.Reset();
 					_Token = default;
 					_Registration.Dispose();
-					_InnerTask = default;
+					_Awaiter = default;
 
 					_TokenSource?.Dispose();
 					_TokenSource = null;
@@ -303,7 +306,7 @@ namespace Proximity.Utility.Threading
 
 			ValueTaskSourceStatus IValueTaskSource.GetStatus(short token) => _TaskSource.GetStatus(token);
 
-			void IValueTaskSource.OnCompleted(Action<object> continuation, object state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
+			void IValueTaskSource.OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
 
 			//****************************************
 
@@ -323,7 +326,7 @@ namespace Proximity.Utility.Threading
 
 			//****************************************
 
-			internal static ValueTaskWhenToken Retrieve(ValueTask task, CancellationTokenSource tokenSource, CancellationToken token)
+			internal static ValueTaskWhenToken Retrieve(ValueTask task, CancellationTokenSource? tokenSource, CancellationToken token)
 			{
 				if (!_Cache.TryTake(out var TaskWhen))
 					TaskWhen = new ValueTaskWhenToken();
@@ -340,15 +343,11 @@ namespace Proximity.Utility.Threading
 			//****************************************
 			private readonly Action _ContinueWrappedTask;
 
-#if NETSTANDARD2_0
-			private readonly ManualResetValueTaskSourceCore<TResult> _TaskSource = new ManualResetValueTaskSourceCore<TResult>();
-#else
 			private ManualResetValueTaskSourceCore<TResult> _TaskSource = new ManualResetValueTaskSourceCore<TResult>();
-#endif
 
-			private ValueTask<TResult> _InnerTask;
+			private ConfiguredValueTaskAwaitable<TResult>.ConfiguredValueTaskAwaiter _Awaiter;
 			private CancellationToken _Token;
-			private CancellationTokenSource _TokenSource;
+			private CancellationTokenSource? _TokenSource;
 			private CancellationTokenRegistration _Registration;
 			private volatile int _CanCancel;
 			//****************************************
@@ -357,23 +356,21 @@ namespace Proximity.Utility.Threading
 
 			//****************************************
 
-			public void Initialise(ValueTask<TResult> task, CancellationTokenSource tokenSource, CancellationToken token)
+			public void Initialise(ValueTask<TResult> task, CancellationTokenSource? tokenSource, CancellationToken token)
 			{
-				_InnerTask = task;
 				_Token = token;
 				_TokenSource = tokenSource;
 				_CanCancel = 1;
 
 				_Registration = token.Register(CancelTask, this);
+				_Awaiter = task.ConfigureAwait(false).GetAwaiter();
 
 				try
 				{
-					var Awaiter = task.GetAwaiter();
-
-					if (Awaiter.IsCompleted)
+					if (_Awaiter.IsCompleted)
 						ContinueWrappedTask();
 					else
-						Awaiter.OnCompleted(_ContinueWrappedTask);
+						_Awaiter.OnCompleted(_ContinueWrappedTask);
 				}
 				catch (Exception e)
 				{
@@ -388,16 +385,14 @@ namespace Proximity.Utility.Threading
 
 			private void ContinueWrappedTask()
 			{
-				var Awaiter = _InnerTask.GetAwaiter();
-
 				try
 				{
-					Awaiter.GetResult();
+					var Result = _Awaiter.GetResult();
 
 					if (_CanCancel == 0 || Interlocked.CompareExchange(ref _CanCancel, 2, 1) != 1)
 						return; // Task has already completed, can no longer cancel
 
-					_TaskSource.SetResult(default);
+					_TaskSource.SetResult(Result);
 				}
 				catch (Exception e)
 				{
@@ -419,7 +414,7 @@ namespace Proximity.Utility.Threading
 					_TaskSource.Reset();
 					_Token = default;
 					_Registration.Dispose();
-					_InnerTask = default;
+					_Awaiter = default;
 
 					_TokenSource?.Dispose();
 					_TokenSource = null;
@@ -430,7 +425,7 @@ namespace Proximity.Utility.Threading
 
 			ValueTaskSourceStatus IValueTaskSource<TResult>.GetStatus(short token) => _TaskSource.GetStatus(token);
 
-			void IValueTaskSource<TResult>.OnCompleted(Action<object> continuation, object state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
+			void IValueTaskSource<TResult>.OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
 
 			//****************************************
 
@@ -450,7 +445,7 @@ namespace Proximity.Utility.Threading
 
 			//****************************************
 
-			internal static ValueTaskWhenToken<TResult> Retrieve(ValueTask<TResult> task, CancellationTokenSource tokenSource, CancellationToken token)
+			internal static ValueTaskWhenToken<TResult> Retrieve(ValueTask<TResult> task, CancellationTokenSource? tokenSource, CancellationToken token)
 			{
 				if (!_Cache.TryTake(out var TaskWhen))
 					TaskWhen = new ValueTaskWhenToken<TResult>();

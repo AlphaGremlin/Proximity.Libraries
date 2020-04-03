@@ -1,8 +1,4 @@
-﻿/****************************************\
- LinkedCancellationToken.cs
- Created: 2014-12-05
-\****************************************/
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,18 +10,17 @@ using System.Threading.Tasks;
 namespace Proximity.Utility.Threading
 {
 	/// <summary>
-	/// Provides a framework for linking cancellation tokens without constructing unnecessary <see cref="CancellationTokenSource" /> objects
+	/// Allows linking cancellation tokens without constructing unnecessary <see cref="CancellationTokenSource" /> objects
 	/// </summary>
 	public struct LinkedCancellationToken : IDisposable
 	{	//****************************************
 		private readonly CancellationTokenSource _LinkedSource;
-		private readonly CancellationToken _Token;
 		//****************************************
-		
+
 		private LinkedCancellationToken(CancellationTokenSource linkedSource, CancellationToken token)
 		{
 			_LinkedSource = linkedSource;
-			_Token = token;
+			Token = token;
 		}
 		
 		//****************************************
@@ -35,22 +30,18 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		public void Dispose()
 		{
-			if (_LinkedSource != null)
-				_LinkedSource.Dispose();
+			_LinkedSource?.Dispose();
 		}
-		
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Gets the <see cref="CancellationToken" /> associated with this linked cancellation token
 		/// </summary>
-		public CancellationToken Token
-		{
-			get { return _Token; }
-		}
-		
+		public CancellationToken Token { get; }
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Creates a linked cancellation token
 		/// </summary>
