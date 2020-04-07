@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -134,36 +134,18 @@ namespace System.Collections.Concurrent
 		public ValueTask<TItem> Take(TimeSpan timeout)
 		{
 			if (IsCompleted)
-				return Task.FromException<TItem>(new InvalidOperationException("Collection is empty and adding has been completed")).AsValueTask();
+				throw new InvalidOperationException("Collection is empty and adding has been completed");
 
 			// Is there an item to take?
 			var TakeItem = _UsedSlots.Decrement(timeout);
 
-			if (!TakeItem.IsCompleted)
-			{
-				// No, wait for one to arrive
-				var Instance = CollectionTakeInstance.GetOrCreateFor(this, TakeItem);
+			if (TakeItem.IsCompleted)
+				return new ValueTask<TItem>(CompleteTake());
 
-				return new ValueTask<TItem>(Instance, Instance.Version);
-			}
+			// No, wait for one to arrive
+			var Instance = CollectionTakeInstance.GetOrCreateFor(this, TakeItem);
 
-			// Try and remove an item from the collection
-			if (!GetNextItem(out var NextItem))
-				return Task.FromException<TItem>(new InvalidOperationException("Collection failed to add to the underlying collection. AsyncCollection is corrupted")).AsValueTask();
-
-			// Is there a maximum size?
-			if (_FreeSlots != null)
-			{
-				// We've removed an item, so release any Adders
-				// Use TryIncrement, so we ignore if we're disposed and there are no more adders
-				_FreeSlots.TryIncrement();
-			}
-
-			// If the collection is empty, cancel anyone waiting for items
-			if (IsCompleted)
-				_UsedSlots.Dispose();
-
-			return new ValueTask<TItem>(NextItem);
+			return new ValueTask<TItem>(Instance, Instance.Version);
 		}
 
 		/// <summary>
@@ -176,36 +158,18 @@ namespace System.Collections.Concurrent
 		public ValueTask<TItem> Take(CancellationToken token = default)
 		{
 			if (IsCompleted)
-				return Task.FromException<TItem>(new InvalidOperationException("Collection is empty and adding has been completed")).AsValueTask();
+				throw new InvalidOperationException("Collection is empty and adding has been completed");
 
 			// Is there an item to take?
 			var TakeItem = _UsedSlots.Decrement(token);
 
-			if (!TakeItem.IsCompleted)
-			{
-				// No, wait for one to arrive
-				var Instance = CollectionTakeInstance.GetOrCreateFor(this, TakeItem);
+			if (TakeItem.IsCompleted)
+				return new ValueTask<TItem>(CompleteTake());
 
-				return new ValueTask<TItem>(Instance, Instance.Version);
-			}
+			// No, wait for one to arrive
+			var Instance = CollectionTakeInstance.GetOrCreateFor(this, TakeItem);
 
-			// Try and remove an item from the collection
-			if (!GetNextItem(out var NextItem))
-				return Task.FromException<TItem>(new InvalidOperationException("Collection failed to add to the underlying collection. AsyncCollection is corrupted")).AsValueTask();
-
-			// Is there a maximum size?
-			if (_FreeSlots != null)
-			{
-				// We've removed an item, so release any Adders
-				// Use TryIncrement, so we ignore if we're disposed and there are no more adders
-				_FreeSlots.TryIncrement();
-			}
-
-			// If the collection is empty, cancel anyone waiting for items
-			if (IsCompleted)
-				_UsedSlots.Dispose();
-
-			return new ValueTask<TItem>(NextItem);
+			return new ValueTask<TItem>(Instance, Instance.Version);
 		}
 
 		/// <summary>
@@ -265,21 +229,7 @@ namespace System.Collections.Concurrent
 				return false;
 			}
 
-			// Yes, remove it from the collection
-			if (!GetNextItem(out item))
-				throw new InvalidOperationException("Collection failed to retrieve from the underlying collection. AsyncCollection is corrupted");
-
-			// Is there a maximum size?
-			if (_FreeSlots != null)
-			{
-				// We've removed an item, so release any Adders
-				// Use TryIncrement, so we ignore if we're disposed and there are no more adders
-				_FreeSlots.TryIncrement();
-			}
-
-			// If the collection is now empty, cancel anyone waiting for items
-			if (IsCompleted)
-				_UsedSlots.Dispose();
+			item = CompleteTake();
 
 			return true;
 		}
@@ -320,7 +270,7 @@ namespace System.Collections.Concurrent
 		/// <remarks>
 		/// <para>If the provider calls <see cref="CompleteAdding" /> while wating, the returned enumerable will complete.</para>
 		/// </remarks>
-		public async IAsyncEnumerable<TItem> GetConsumingAsyncEnumerable([EnumeratorCancellation] CancellationToken token)
+		public async IAsyncEnumerable<TItem> GetConsumingAsyncEnumerable([EnumeratorCancellation] CancellationToken token = default)
 		{
 			while (!IsCompleted)
 			{
@@ -340,17 +290,40 @@ namespace System.Collections.Concurrent
 
 				// Is there a maximum size?
 				if (_FreeSlots != null)
-				{
 					// We've removed an item, so release any Adders
 					// Use TryIncrement, so we ignore if we're disposed and there are no more adders
 					_FreeSlots.TryIncrement();
-				}
 
 				yield return MyItem;
 			}
 
 			// Cancel anyone waiting for items
 			_UsedSlots.Dispose();
+		}
+
+		internal bool TryPeekTake(CancellationToken token, out AsyncCounterDecrement decrement) => _UsedSlots.TryPeekDecrement(token, out decrement);
+
+		internal bool TryReserveTake() => _UsedSlots.TryDecrement();
+
+		internal void ReleaseTake() => _UsedSlots.ForceIncrement();
+
+		internal TItem CompleteTake()
+		{
+			// Remove the item reserved by TryReserveTake from the collection
+			if (!GetNextItem(out var Item))
+				throw new InvalidOperationException("Collection failed to retrieve from the underlying collection. AsyncCollection is corrupted");
+
+			// Is there a maximum size?
+			if (_FreeSlots != null)
+				// We've removed an item, so release any Adders
+				// Use TryIncrement, so we ignore if we're disposed and there are no more adders
+				_FreeSlots.TryIncrement();
+
+			// If the collection is now empty, cancel anyone waiting for items
+			if (IsCompleted)
+				_UsedSlots.DisposeIfZero();
+
+			return Item;
 		}
 
 		//****************************************
@@ -369,7 +342,7 @@ namespace System.Collections.Concurrent
 				if (!TakeSlot.IsCompleted)
 				{
 					// No slot, wait for it
-					var Instance = CollectionAddInstance.GetOrCreateFor(this, item, TakeSlot);
+					var Instance = CollectionAddInstance.GetOrCreateFor(this, item, TakeSlot, complete);
 
 					return new ValueTask(Instance, Instance.Version);
 				}
@@ -408,7 +381,7 @@ namespace System.Collections.Concurrent
 				if (!TakeSlot.IsCompleted)
 				{
 					// No slot, wait for it
-					var Instance = CollectionAddInstance.GetOrCreateFor(this, item, TakeSlot);
+					var Instance = CollectionAddInstance.GetOrCreateFor(this, item, TakeSlot, complete);
 
 					return new ValueTask(Instance, Instance.Version);
 				}
@@ -450,25 +423,6 @@ namespace System.Collections.Concurrent
 				_IsFailed = true;
 				throw new InvalidOperationException("Item was rejected by the underlying collection");
 			}
-		}
-
-		private TItem InternalTake()
-		{
-			// Try and remove an item from the collection
-			if (!GetNextItem(out var NextItem))
-				throw new InvalidOperationException("Item was not returned by the underlying collection");
-
-			// Is there a maximum size?
-			if (_FreeSlots != null)
-				// We've removed an item, so release any Adders
-				// Use TryIncrement, so we ignore if we're disposed and there are no more adders
-				_FreeSlots.TryIncrement();
-
-			// If the collection is now empty, cancel anyone waiting for items
-			if (_IsCompleted)
-				_UsedSlots.DisposeIfZero();
-
-			return NextItem;
 		}
 
 		private bool GetNextItem(out TItem item)
@@ -528,198 +482,5 @@ namespace System.Collections.Concurrent
 		/// Gets whether adding has been completed and the collection is empty
 		/// </summary>
 		public bool IsCompleted => _IsCompleted && _UsedSlots.CurrentCount == 0;
-
-		//****************************************
-
-		private abstract class CollectionInstance
-		{	//****************************************
-			private ManualResetValueTaskSourceCore<TItem> _TaskSource = new ManualResetValueTaskSourceCore<TItem>();
-			//****************************************
-
-			internal CollectionInstance() => _TaskSource.RunContinuationsAsynchronously = true;
-
-			//****************************************
-
-			protected void Initialise(AsyncCollection<TItem> owner)
-			{
-				Owner = owner;
-			}
-
-			protected void SwitchToFailed(Exception e) => _TaskSource.SetException(e);
-
-			protected void SwitchToCompleted(TItem item) => _TaskSource.SetResult(item);
-
-			protected TItem GetResult(short token)
-			{
-				try
-				{
-					return _TaskSource.GetResult(token);
-				}
-				finally
-				{
-					Release();
-				}
-			}
-
-			protected abstract void Release();
-
-			//****************************************
-
-			public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
-
-			public ValueTaskSourceStatus GetStatus(short token) => _TaskSource.GetStatus(token);
-
-			//****************************************
-
-			public AsyncCollection<TItem>? Owner { get; private set; }
-
-			public short Version => _TaskSource.Version;
-		}
-
-		private sealed class CollectionAddInstance : CollectionInstance, IValueTaskSource
-		{ //****************************************
-			private static readonly ConcurrentBag<CollectionAddInstance> _Instances = new ConcurrentBag<CollectionAddInstance>();
-			//****************************************
-			private readonly Action _OnTookSlot;
-
-			private TItem _Item = default!;
-			private bool _Complete;
-			private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _Awaiter;
-			//****************************************
-
-			internal CollectionAddInstance() => _OnTookSlot = OnTookSlot;
-
-			//****************************************
-
-			internal void Initialise(AsyncCollection<TItem> owner, TItem item, ValueTask waitForSlot, bool complete)
-			{
-				Initialise(owner);
-
-				_Item = item;
-				_Complete = complete;
-				_Awaiter = waitForSlot.ConfigureAwait(false).GetAwaiter();
-
-				if (_Awaiter.IsCompleted)
-					OnTookSlot();
-				else
-					_Awaiter.OnCompleted(_OnTookSlot);
-			}
-
-			//****************************************
-
-			void IValueTaskSource.GetResult(short token) => GetResult(token);
-
-			protected override void Release()
-			{
-				_Item = default!;
-				_Complete = false;
-				_Awaiter = default;
-
-				_Instances.Add(this);
-			}
-
-			//****************************************
-
-			private void OnTookSlot()
-			{
-				try
-				{
-					_Awaiter.GetResult();
-
-					Owner!.InternalAdd(_Item, _Complete);
-
-					SwitchToCompleted(default!);
-				}
-				catch (ObjectDisposedException)
-				{
-					SwitchToFailed(new InvalidOperationException("Adding was completed while waiting for a slot"));
-				}
-				catch (Exception e)
-				{
-					SwitchToFailed(e);
-				}
-			}
-
-			//****************************************
-
-			internal static CollectionAddInstance GetOrCreateFor(AsyncCollection<TItem> owner, TItem item, ValueTask waitForSlot, bool complete = false)
-			{
-				if (!_Instances.TryTake(out var Instance))
-					Instance = new CollectionAddInstance();
-
-				Instance.Initialise(owner, item, waitForSlot, complete);
-
-				return Instance;
-			}
-		}
-
-		private sealed class CollectionTakeInstance : CollectionInstance, IValueTaskSource<TItem>
-		{ //****************************************
-			private static readonly ConcurrentBag<CollectionTakeInstance> _Instances = new ConcurrentBag<CollectionTakeInstance>();
-			//****************************************
-			private readonly Action _OnTookItem;
-
-			private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _Awaiter;
-			//****************************************
-
-			internal CollectionTakeInstance() => _OnTookItem = OnTookItem;
-
-			//****************************************
-
-			internal void Initialise(AsyncCollection<TItem> owner, ValueTask waitForItem)
-			{
-				Initialise(owner);
-
-				_Awaiter = waitForItem.ConfigureAwait(false).GetAwaiter();
-
-				if (_Awaiter.IsCompleted)
-					OnTookItem();
-				else
-					_Awaiter.OnCompleted(_OnTookItem);
-			}
-
-			//****************************************
-
-			TItem IValueTaskSource<TItem>.GetResult(short token) => GetResult(token);
-
-			protected override void Release()
-			{
-				_Awaiter = default;
-
-				_Instances.Add(this);
-			}
-
-			//****************************************
-
-			private void OnTookItem()
-			{
-				try
-				{
-					_Awaiter.GetResult();
-
-					SwitchToCompleted(Owner!.InternalTake());
-				}
-				catch (ObjectDisposedException)
-				{
-					SwitchToFailed(new InvalidOperationException("Adding was completed while waiting for a slot"));
-				}
-				catch (Exception e)
-				{
-					SwitchToFailed(e);
-				}
-			}
-
-			//****************************************
-
-			internal static CollectionTakeInstance GetOrCreateFor(AsyncCollection<TItem> owner, ValueTask waitForSlot)
-			{
-				if (!_Instances.TryTake(out var Instance))
-					Instance = new CollectionTakeInstance();
-
-				Instance.Initialise(owner, waitForSlot);
-
-				return Instance;
-			}
-		}
 	}
 }

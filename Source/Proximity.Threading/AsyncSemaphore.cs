@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -18,7 +18,7 @@ namespace System.Threading
 	{ //****************************************
 		private static readonly ConcurrentBag<SemaphoreInstance> _Instances = new ConcurrentBag<SemaphoreInstance>();
 		//****************************************
-		private readonly ConcurrentQueue<SemaphoreInstance> _Waiters = new ConcurrentQueue<SemaphoreInstance>();
+		private readonly WaiterQueue<SemaphoreInstance> _Waiters = new WaiterQueue<SemaphoreInstance>();
 		private int _MaxCount, _CurrentCount;
 
 		private AsyncSemaphoreDisposer? _Disposer;
@@ -504,7 +504,7 @@ namespace System.Threading
 				}
 				finally
 				{
-					if (_InstanceState != Status.Cancelled || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledNotWaiting)
+					if (_InstanceState == Status.CancelledNotWaiting || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledNotWaiting)
 						Release(); // We're cancelled and no longer on the Wait queue, so we can return to the pool
 				}
 			}

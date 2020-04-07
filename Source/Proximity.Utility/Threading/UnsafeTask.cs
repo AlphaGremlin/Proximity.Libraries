@@ -1,4 +1,4 @@
-﻿/****************************************\
+/****************************************\
  UnsafeTask.cs
  Created: 2014-08-07
 \****************************************/
@@ -95,7 +95,7 @@ namespace Proximity.Utility.Threading
 			{
 				Definition._Action();
 				
-				Definition._TaskSource.SetResult(VoidStruct.Empty);
+				Definition._TaskSource.SetResult(default);
 			}
 			catch (OperationCanceledException)
 			{

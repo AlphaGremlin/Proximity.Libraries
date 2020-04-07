@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -17,8 +17,8 @@ namespace System.Threading
 	{ //****************************************
 		private static readonly ConcurrentBag<LockInstance> _Instances = new ConcurrentBag<LockInstance>();
 		//****************************************
-		private readonly ConcurrentQueue<LockInstance> _Writers = new ConcurrentQueue<LockInstance>();
-		private readonly ConcurrentBag<LockInstance> _Readers = new ConcurrentBag<LockInstance>();
+		private readonly WaiterQueue<LockInstance> _Writers = new WaiterQueue<LockInstance>();
+		private readonly WaiterQueue<LockInstance> _Readers = new WaiterQueue<LockInstance>();
 
 		private AsyncReadWriteDisposer? _Disposer;
 
@@ -68,7 +68,7 @@ namespace System.Threading
 			while (_Writers.TryDequeue(out var Instance))
 				Instance.SwitchToDisposed();
 
-			while (_Readers.TryTake(out var Instance))
+			while (_Readers.TryDequeue(out var Instance))
 				Instance.SwitchToDisposed();
 
 			// If there's no counters, we can complete the dispose task
@@ -103,7 +103,7 @@ namespace System.Threading
 				Instance.ApplyCancellation(CancelSource.Token, CancelSource);
 
 				// Unable to take the lock, add ourselves to the read waiters
-				_Readers.Add(Instance);
+				_Readers.Enqueue(Instance);
 
 				// Try and release the reader, just in case we added it after we switched to unlocked or read
 				TryActivateReader();
@@ -133,7 +133,7 @@ namespace System.Threading
 				Instance.ApplyCancellation(token, null);
 
 				// Unable to take the lock, add ourselves to the read waiters
-				_Readers.Add(Instance);
+				_Readers.Enqueue(Instance);
 
 				// Try and release the reader, just in case we added it after we switched to unlocked or read
 				TryActivateReader();
@@ -307,37 +307,44 @@ namespace System.Threading
 					return; // Switched to unlocked mode
 
 				if (NewCounter == -2)
-					throw new InvalidOperationException("Read Write Lock is in an invalid state (Disposed)");
+				{
+					_Disposer!.SwitchToComplete();
+
+					return;
+				}
 
 				if (NewCounter > 0)
 				{
-					// Switching to Read mode, which means there was at least one reader in the queue
-					if (!_Readers.TryTake(out var Reader))
-						throw new InvalidOperationException("Read Write Lock is in an invalid state (No Reader)");
+					if (!isWriter)
+						return; // Already in read mode
 
-					// There may be more than one reader in there
-					while (_Readers.TryTake(out var OtherReader))
+					// Switching to Read mode, which means there was at least one reader in the queue
+					if (_Readers.TryDequeue(out var Reader))
 					{
-						// Try to activate each waiting reader (they may be cancelled)
-						if (OtherReader.TrySwitchToCompleted())
-							// We can safely increment here, since we're holding a read lock (can't unexpectedly switch to write mode)
-							Interlocked.Increment(ref _Counter);
+						// There may be more than one reader in there
+						while (_Readers.TryDequeue(out var OtherReader))
+						{
+							// Try to activate each waiting reader (they may be cancelled)
+							if (OtherReader.TrySwitchToCompleted())
+								// We can safely increment here, since we're holding a read lock (can't unexpectedly switch to write mode)
+								Interlocked.Increment(ref _Counter);
+						}
+
+						// Now we try to release the final reader
+						if (Reader.TrySwitchToCompleted())
+							return;
 					}
 
-					// Now we try to release the final reader
-					if (Reader.TrySwitchToCompleted())
-						return;
-
-					// Failed to activate the reader (maybe they were cancelled), so we need to release the read lock we're holding
+					// Failed to dequeue or activate the reader (maybe they were cancelled), so we need to release the read lock we're holding on its behalf
 					isWriter = false;
 				}
 				else
 				{
-					// Switching to Write mode
-					if (!_Writers.TryDequeue(out var Writer))
-						throw new InvalidOperationException("Read Write Lock is in an invalid state (No Writer)");
+					if (isWriter)
+						return; // Already in write mode
 
-					do
+					// Switching to Write mode
+					while (_Writers.TryDequeue(out var Writer))
 					{
 						// Try to release the writer
 						if (Writer.TrySwitchToCompleted())
@@ -345,7 +352,6 @@ namespace System.Threading
 
 						// Failed to activate the writer (maybe they were cancelled), so look for another one
 					}
-					while (_Writers.TryDequeue(out Writer));
 
 					// Unable to activate any writers, so we need to release the write lock
 					isWriter = true;
@@ -375,8 +381,8 @@ namespace System.Threading
 			}
 			while (Interlocked.CompareExchange(ref _Counter, NewCounter, PreviousCounter) != PreviousCounter);
 
-			// We just queued a reader, so this should succeed unless we just switched away from write mode
-			if (_Readers.TryTake(out var Reader))
+			// We just queued a reader, so this should succeed unless we just switched away from write mode (or it cancelled)
+			if (_Readers.TryDequeue(out var Reader))
 			{
 				if (PreviousCounter == -2)
 				{
@@ -408,8 +414,8 @@ namespace System.Threading
 				if (PreviousCounter == -2)
 					break; // We're disposed, so we leave the counter alone and switch the instance to Disposed
 
-				if (PreviousCounter == -1)
-					return; // There is a writer already active, so leave the writer on the queue
+				if (PreviousCounter == -1 || PreviousCounter > 0)
+					return; // There is a writer already active, or other readers, so leave the writer on the queue
 
 				if (!_Readers.IsEmpty && !UnfairWrite)
 					return; // There are readers waiting, and we're not in unfair mode, so we can't take a write lock
@@ -620,7 +626,7 @@ namespace System.Threading
 				}
 				finally
 				{
-					if (_InstanceState == Status.Disposed || _InstanceState != Status.Cancelled || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledNotWaiting)
+					if (_InstanceState == Status.Disposed || _InstanceState == Status.CancelledNotWaiting || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledNotWaiting)
 						Release(); // We're cancelled/disposed and no longer on the Wait queue, so we can return to the pool
 				}
 			}

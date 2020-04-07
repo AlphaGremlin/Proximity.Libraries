@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks.Sources;
+using Proximity.Threading;
 
 namespace System.Threading.Tasks
 {
@@ -13,6 +14,21 @@ namespace System.Threading.Tasks
 	/// </summary>
 	public static class ValueTaskExtensions
 	{
+		/// <summary>
+		/// Interleaves an enumeration of tasks, returning the results in the order they complete
+		/// </summary>
+		/// <param name="source">The enumeration of tasks to interleave</param>
+		/// <returns>An enumeration that returns the tasks in order of completion</returns>
+		public static IAsyncEnumerable<ValueTask<TResult>> Interleave<TResult>(this IEnumerable<ValueTask<TResult>> source) => new InterleaveTask<TResult>(source, default);
+
+		/// <summary>
+		/// Interleaves an enumeration of tasks, returning them in the order they complete
+		/// </summary>
+		/// <param name="source">The enumeration of tasks to interleave</param>
+		/// <param name="token">A cancellation token to cancel the enumeration</param>
+		/// <returns>An enumeration that returns the task and the index of the original task in order of completion</returns>
+		public static IAsyncEnumerable<(ValueTask<TResult> result, int index)> InterleaveIndex<TResult>(this IEnumerable<ValueTask<TResult>> source, CancellationToken token) => new InterleaveTask<TResult>(source, token);
+
 		/// <summary>
 		/// Wraps the given ValueTask, waiting for it to complete or the given token to cancel
 		/// </summary>

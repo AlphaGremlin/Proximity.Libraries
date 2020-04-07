@@ -1,28 +1,25 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
-using Proximity.Utility.Threading;
 //****************************************
 
-namespace Proximity.Utility.Tests
+namespace Proximity.Threading.Tests
 {
 	/// <summary>
-	/// Tests the functionality of the ValueTask Asynchronous Semaphore
+	/// Tests the functionality of the Asynchronous Semaphore
 	/// </summary>
 	[TestFixture]
-	public sealed class AsyncSemaphoreSlimTests
+	public sealed class AsyncSemaphoreTests
 	{
-		[Test, MaxTime(1000), Repeat(10)]
-		public void Lock()
+		[Test, MaxTime(1000)]
+		public async Task Lock()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
+			var MyLock = new AsyncSemaphore();
 			//****************************************
-			
-			var MyWait = MyLock.Take();
-			
-			MyWait.Result.Dispose();
+
+			(await MyLock.Take()).Dispose();
 			
 			//****************************************
 			
@@ -30,10 +27,10 @@ namespace Proximity.Utility.Tests
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 		
-		[Test, MaxTime(1000), Repeat(10)]
-		public async Task LockLock()
+		[Test, MaxTime(1000)]
+		public void LockLock()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
+			var MyLock = new AsyncSemaphore();
 			//****************************************
 			
 			var MyWait1 = MyLock.Take();
@@ -44,18 +41,18 @@ namespace Proximity.Utility.Tests
 
 			//****************************************
 			
-			(await MyWait1).Dispose();
+			MyWait1.Result.Dispose();
 			
-			(await MyWait2).Dispose();
+			MyWait2.Result.Dispose();
 			
 			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
 			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 		
-		[Test, MaxTime(1000), Repeat(10)]
+		[Test, MaxTime(1000)]
 		public async Task LockLockLock()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim(2);
+			var MyLock = new AsyncSemaphore(2);
 			ValueTask<IDisposable> MyWaiter1, MyWaiter2;
 			//****************************************
 			
@@ -84,8 +81,8 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000), Repeat(10)]
 		public async Task LockCancelLockLock()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
-			bool Resource = false;
+			var MyLock = new AsyncSemaphore();
+			var Resource = false;
 			ValueTask<IDisposable> MyWaiter1, MyWaiter2;
 			//****************************************
 			
@@ -122,7 +119,7 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000)]
 		public async Task LockTimeoutLock()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
+			var MyLock = new AsyncSemaphore();
 			ValueTask<IDisposable> MyWait;
 			//****************************************
 			
@@ -152,10 +149,10 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000)]
 		public void TryTake()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
+			var MyLock = new AsyncSemaphore();
 			//****************************************
 
-			Assert.True(MyLock.TryTake(out var MyHandle), "Lock not taken");
+			Assert.True(MyLock.TryTake(out IDisposable MyHandle), "Lock not taken");
 
 			MyHandle.Dispose();
 
@@ -168,7 +165,7 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000)]
 		public void TryTakeTake()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
+			var MyLock = new AsyncSemaphore();
 			//****************************************
 
 			Assert.True(MyLock.TryTake(out var MyHandle1), "Lock not taken");
@@ -186,13 +183,12 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000)]
 		public void TryTakeTakeZero()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
-			IDisposable MyHandle1, MyHandle2;
+			var MyLock = new AsyncSemaphore();
 			//****************************************
 
-			Assert.True(MyLock.TryTake(out MyHandle1), "Lock not taken");
+			Assert.True(MyLock.TryTake(out var MyHandle1), "Lock not taken");
 
-			Assert.False(MyLock.TryTake(out MyHandle2, TimeSpan.Zero), "Nested lock taken");
+			Assert.False(MyLock.TryTake(out var MyHandle2, TimeSpan.Zero), "Nested lock taken");
 
 			MyHandle1.Dispose();
 
@@ -205,11 +201,10 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000)]
 		public async Task TryTakeLock()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
-			IDisposable MyHandle;
+			var MyLock = new AsyncSemaphore();
 			//****************************************
 
-			Assert.True(MyLock.TryTake(out MyHandle), "Lock not taken");
+			Assert.True(MyLock.TryTake(out var MyHandle), "Lock not taken");
 
 			var MyWait = MyLock.Take();
 
@@ -230,15 +225,14 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000)]
 		public void TryTakeMaxTime()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
-			IDisposable MyHandle1, MyHandle2;
+			var MyLock = new AsyncSemaphore();
 			//****************************************
 
-			Assert.True(MyLock.TryTake(out MyHandle1), "Lock not taken");
+			Assert.True(MyLock.TryTake(out var MyHandle1), "Lock not taken");
 
 			var StartTime = DateTime.Now;
 
-			Assert.False(MyLock.TryTake(out MyHandle2, TimeSpan.FromMilliseconds(50)), "Nested lock taken");
+			Assert.False(MyLock.TryTake(out var MyHandle2, TimeSpan.FromMilliseconds(50)), "Nested lock taken");
 
 			var EndTime = DateTime.Now;
 
@@ -255,11 +249,10 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000)]
 		public void TryTakeNoMaxTime()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
-			IDisposable MyHandle;
+			var MyLock = new AsyncSemaphore();
 			//****************************************
 
-			Assert.True(MyLock.TryTake(out MyHandle, TimeSpan.FromMilliseconds(50)), "Lock not taken");
+			Assert.True(MyLock.TryTake(out var MyHandle, TimeSpan.FromMilliseconds(50)), "Lock not taken");
 
 			MyHandle.Dispose();
 
@@ -272,11 +265,10 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000)]
 		public void TryTakeCancel()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
-			IDisposable MyHandle1, MyHandle2;
+			var MyLock = new AsyncSemaphore();
 			//****************************************
 
-			Assert.True(MyLock.TryTake(out MyHandle1), "Lock not taken");
+			Assert.True(MyLock.TryTake(out var MyHandle1), "Lock not taken");
 
 			using (var MyCancel = new CancellationTokenSource())
 			{
@@ -286,7 +278,7 @@ namespace Proximity.Utility.Tests
 
 				try
 				{
-					MyLock.TryTake(out MyHandle2, MyCancel.Token);
+					MyLock.TryTake(out _, MyCancel.Token);
 
 					Assert.Fail("Nested lock taken");
 				}
@@ -310,11 +302,10 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000)]
 		public void NoTimeoutLock()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
-			ValueTask<IDisposable> MyWait;
+			var MyLock = new AsyncSemaphore();
 			//****************************************
 			
-			MyWait = MyLock.Take(TimeSpan.FromMilliseconds(50));
+			var MyWait = MyLock.Take(TimeSpan.FromMilliseconds(50));
 			
 			//****************************************
 			
@@ -329,8 +320,8 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(2000)]
 		public async Task ConcurrentHoldSingle()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
-			int Resource = 0;
+			var MyLock = new AsyncSemaphore();
+			var Resource = 0;
 			//****************************************
 			
 			await Task.WhenAll(
@@ -361,8 +352,8 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(2000), Repeat(4)]
 		public async Task ConcurrentHoldMulti([Values(5, 10, 25, 50)] int startCount)
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim(startCount);
-			int Resource = 0;
+			var MyLock = new AsyncSemaphore(startCount);
+			var Resource = 0;
 			//****************************************
 			
 			await Task.WhenAll(
@@ -393,8 +384,8 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000), Repeat(10)]
 		public async Task ConcurrentAll()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim(100);
-			int Resource = 0;
+			var MyLock = new AsyncSemaphore(100);
+			var Resource = 0;
 			//****************************************
 			
 			await Task.WhenAll(
@@ -425,8 +416,8 @@ namespace Proximity.Utility.Tests
 		[Test]
 		public async Task StackBlow()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
-			int Depth = 0;
+			var MyLock = new AsyncSemaphore();
+			var Depth = 0;
 			Task ResultTask;
 			Task[] Results;
 			//****************************************
@@ -442,7 +433,7 @@ namespace Proximity.Utility.Tests
 						}
 					}).ToArray();
 				
-				ResultTask = Results[Results.Length -1].ContinueWith(task => Console.WriteLine("Done to " + new System.Diagnostics.StackTrace(false).FrameCount.ToString()), TaskContinuationOptions.ExecuteSynchronously);
+				ResultTask = Results[Results.Length -1].ContinueWith(task => System.Diagnostics.Debug.WriteLine("Done to " + new System.Diagnostics.StackTrace(false).FrameCount.ToString()), TaskContinuationOptions.ExecuteSynchronously);
 			}
 			
 			await ResultTask;
@@ -451,12 +442,12 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000)]
 		public async Task LockDispose()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
+			var MyLock = new AsyncSemaphore();
 			//****************************************
 			
 			var MyWait = MyLock.Take().Result;
 			
-			var MyDispose = MyLock.Dispose();
+			var MyDispose = MyLock.DisposeAsync();
 
 			Assert.IsFalse(MyDispose.IsCompleted, "Dispose completed early");
 			
@@ -473,14 +464,14 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000)]
 		public async Task LockLockDispose()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim(2);
+			var MyLock = new AsyncSemaphore(2);
 			//****************************************
 			
 			var MyWait1 = MyLock.Take();
 			
 			var MyWait2 = MyLock.Take();
 			
-			var MyDispose = MyLock.Dispose();
+			var MyDispose = MyLock.DisposeAsync();
 
 			Assert.IsFalse(MyDispose.IsCompleted, "Dispose completed early");
 			
@@ -501,7 +492,7 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000)]
 		public async Task TryTakeTakeDispose()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim(1);
+			var MyLock = new AsyncSemaphore(1);
 			//****************************************
 
 			Assert.True(MyLock.TryTake(out var MyHandle1), "Lock not taken");
@@ -510,10 +501,10 @@ namespace Proximity.Utility.Tests
 				{
 					await Task.Delay(50);
 
-					await MyLock.Dispose();
+					await MyLock.DisposeAsync();
 				});
 
-			Assert.False(MyLock.TryTake(out _, Timeout.InfiniteTimeSpan), "Nested lock taken");
+			Assert.False(MyLock.TryTake(out var MyHandle2, Timeout.InfiniteTimeSpan), "Nested lock taken");
 
 			MyHandle1.Dispose();
 
@@ -528,7 +519,7 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000)]
 		public async Task TryTakeTakeTimeoutDispose()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim(1);
+			var MyLock = new AsyncSemaphore(1);
 			//****************************************
 
 			Assert.True(MyLock.TryTake(out var MyHandle1), "Lock not taken");
@@ -537,10 +528,10 @@ namespace Proximity.Utility.Tests
 			{
 				await Task.Delay(50);
 
-				await MyLock.Dispose();
+				await MyLock.DisposeAsync();
 			});
 
-			Assert.False(MyLock.TryTake(out _, TimeSpan.FromMilliseconds(100)), "Nested lock taken");
+			Assert.False(MyLock.TryTake(out var MyHandle2, TimeSpan.FromMilliseconds(100)), "Nested lock taken");
 
 			MyHandle1.Dispose();
 
@@ -555,26 +546,26 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000)]
 		public async Task LockMaxLockDispose()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
+			var MyLock = new AsyncSemaphore();
 			//****************************************
 
 			var MyWait1 = MyLock.Take();
 
 			var MyWait2 = MyLock.Take();
 
-			var MyDispose = MyLock.Dispose();
+			var MyDispose = MyLock.DisposeAsync();
 
 			try
 			{
 				(await MyWait2).Dispose();
 
-				Assert.Fail("Should not reach this point");
+				Assert.Fail("Did not dispose");
 			}
 			catch (ObjectDisposedException)
 			{
 			}
 
-			(await MyWait1).Dispose();
+			MyWait1.Result.Dispose();
 
 			//****************************************
 
@@ -587,10 +578,10 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000)]
 		public async Task Dispose()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
+			var MyLock = new AsyncSemaphore();
 			//****************************************
 
-			await MyLock.Dispose();
+			await MyLock.DisposeAsync();
 
 			//****************************************
 
@@ -601,14 +592,14 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000)]
 		public async Task DisposeLock()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
+			var MyLock = new AsyncSemaphore();
 			//****************************************
 			
-			var MyDispose = MyLock.Dispose();
+			var MyDispose = MyLock.DisposeAsync();
 			
 			try
 			{
-				(await MyLock.Take()).Dispose();
+				MyLock.Take().GetAwaiter().GetResult().Dispose();
 			}
 			catch (ObjectDisposedException)
 			{
@@ -625,10 +616,10 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000)]
 		public async Task DisposeTryTake()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
+			var MyLock = new AsyncSemaphore();
 			//****************************************
 
-			var MyDispose = MyLock.Dispose();
+			var MyDispose = MyLock.DisposeAsync();
 
 			Assert.False(MyLock.TryTake(out _), "Nested lock taken");
 
@@ -643,10 +634,10 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000)]
 		public async Task DisposeTryTakeZero()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
+			var MyLock = new AsyncSemaphore();
 			//****************************************
 
-			var MyDispose = MyLock.Dispose();
+			var MyDispose = MyLock.DisposeAsync();
 
 			Assert.False(MyLock.TryTake(out _, TimeSpan.Zero), "Nested lock taken");
 
@@ -661,7 +652,7 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(1000)]
 		public void LockDisposeContinueWithLock()
 		{	//****************************************
-			var MyLock = new AsyncSemaphoreSlim();
+			var MyLock = new AsyncSemaphore();
 			//****************************************
 			
 			var MyCounter = MyLock.Take().Result;
@@ -670,7 +661,7 @@ namespace Proximity.Utility.Tests
 			
 			var MyInnerTask = MyTask.ContinueWith((task) => MyLock.Take().AsTask(), TaskContinuationOptions.ExecuteSynchronously).Unwrap();
 			
-			MyLock.Dispose();
+			MyLock.DisposeAsync();
 
 			//****************************************
 

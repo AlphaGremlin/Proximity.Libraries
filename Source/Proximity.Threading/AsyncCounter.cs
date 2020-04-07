@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -16,8 +16,8 @@ namespace System.Threading
 	/// </summary>
 	public sealed class AsyncCounter : IDisposable
 	{ //****************************************
-		private readonly ConcurrentQueue<AsyncCounterDecrement> _Waiters = new ConcurrentQueue<AsyncCounterDecrement>();
-		private readonly ConcurrentQueue<AsyncCounterDecrement> _PeekWaiters = new ConcurrentQueue<AsyncCounterDecrement>();
+		private readonly WaiterQueue<AsyncCounterDecrement> _Waiters = new WaiterQueue<AsyncCounterDecrement>();
+		private readonly WaiterQueue<AsyncCounterDecrement> _PeekWaiters = new WaiterQueue<AsyncCounterDecrement>();
 
 		private int _CurrentCount;
 		//****************************************
@@ -111,13 +111,27 @@ namespace System.Threading
 		/// <returns>A task that completes when we were able to decrement the counter</returns>
 		public ValueTask Decrement(TimeSpan timeout)
 		{
+			if (timeout == Timeout.InfiniteTimeSpan)
+				return Decrement();
+
+			if (timeout == TimeSpan.Zero)
+			{
+				if (TryDecrement())
+					return default;
+
+				throw new OperationCanceledException();
+			}
+
+			if (timeout < TimeSpan.Zero)
+				throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout must be Timeout.InfiniteTimeSpan or a positive time");
+
 			// Try and decrement without waiting
 			if (_Waiters.IsEmpty && InternalTryDecrement())
 				return default;
 
 			// No free counters, are we disposed?
 			if (_CurrentCount == -1)
-				return Task.FromException(new ObjectDisposedException(nameof(AsyncCounter), "Counter has been disposed of")).AsValueTask();
+				throw new ObjectDisposedException(nameof(AsyncCounter), "Counter has been disposed of");
 
 			var Instance = AsyncCounterDecrement.GetOrCreateFor(this, false, false);
 
@@ -148,7 +162,7 @@ namespace System.Threading
 
 			// No free counters, are we disposed?
 			if (_CurrentCount == -1)
-				return Task.FromException(new ObjectDisposedException(nameof(AsyncCounter), "Counter has been disposed of")).AsValueTask();
+				throw new ObjectDisposedException(nameof(AsyncCounter), "Counter has been disposed of");
 
 			var Instance = AsyncCounterDecrement.GetOrCreateFor(this, false, false);
 
@@ -201,7 +215,7 @@ namespace System.Threading
 
 			//****************************************
 
-			if (timeout == Timeout.InfiniteTimeSpan && timeout < TimeSpan.Zero)
+			if (timeout != Timeout.InfiniteTimeSpan && timeout < TimeSpan.Zero)
 				throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout must be Timeout.InfiniteTimeSpan or a positive time");
 
 			// We're okay with blocking, so create our waiter and add it to the queue
@@ -311,7 +325,7 @@ namespace System.Threading
 		public ValueTask PeekDecrement(CancellationToken token = default)
 		{
 			if (!TryPeekDecrement(token, out var Instance))
-				return Task.FromException(new ObjectDisposedException(nameof(AsyncCounter), "Counter has been disposed of")).AsValueTask();
+				throw new ObjectDisposedException(nameof(AsyncCounter), "Counter has been disposed of");
 
 			return new ValueTask(Instance, Instance.Version);
 		}
@@ -322,7 +336,7 @@ namespace System.Threading
 		/// <returns>True if the counter can be decremented, otherwise False</returns>
 		public bool TryPeekDecrement()
 		{
-			int MyCount = _CurrentCount;
+			var MyCount = _CurrentCount;
 
 			return (MyCount > 0 || MyCount < -1);
 		}
@@ -422,16 +436,12 @@ namespace System.Threading
 			return true;
 		}
 
-		internal void CancelDecrement(AsyncCounterDecrement decrement)
+		internal bool CancelDecrement(AsyncCounterDecrement decrement)
 		{
 			if (decrement.IsPeek)
-			{
-				// TODO: Remove from the queue
-			}
+				return _PeekWaiters.Erase(decrement);
 			else
-			{
-				// TODO: Remove from the queue
-			}
+				return _Waiters.Erase(decrement);
 		}
 
 		//****************************************
@@ -501,7 +511,7 @@ namespace System.Threading
 
 		private void DisposeWaiters()
 		{ //****************************************
-			AsyncCounterDecrement Instance;
+			AsyncCounterDecrement? Instance;
 			//****************************************
 
 			// Success, now close any pending waiters
@@ -540,7 +550,7 @@ namespace System.Threading
 		/// <summary>
 		/// Gets the number of operations waiting to decrement the counter
 		/// </summary>
-		public int WaitingCount => _Waiters.Count(waiter => !waiter.IsPending);
+		public int WaitingCount => _Waiters.Count;
 
 		//****************************************
 
@@ -578,12 +588,12 @@ namespace System.Threading
 			}
 
 			// No, so assign PeekDecrement on all the counters
-			var Operation = AsyncCounterDecrementAny.GetOrCreate();
+			var Operation = AsyncCounterDecrementAny.GetOrCreate(token);
 
 			for (var Index = 0; Index < CounterSet.Length; Index++)
 				Operation.Attach(CounterSet[Index]);
 
-			Operation.ApplyCancellation(token, null);
+			Operation.ApplyCancellation(null);
 
 			return new ValueTask<AsyncCounter>(Operation, Operation.Version);
 		}
@@ -598,7 +608,7 @@ namespace System.Threading
 #if !NETSTANDARD2_0
 			[MaybeNullWhen(false)]
 # endif
-			out AsyncCounter counter, params AsyncCounter[] counters) => TryDecrementAny(counters, out counter);
+			out AsyncCounter counter, params AsyncCounter[] counters) => TryDecrementAny(counters, out counter!);
 
 		/// <summary>
 		/// Tries to decrement one of the given counters without waiting

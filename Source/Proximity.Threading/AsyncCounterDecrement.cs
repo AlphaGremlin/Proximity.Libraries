@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
@@ -26,7 +26,7 @@ namespace System.Threading
 		internal void Initialise(AsyncCounter owner, bool isPeek, bool wasDecremented)
 		{
 			Owner = owner;
-			IsPeek = IsPeek;
+			IsPeek = isPeek;
 
 			if (wasDecremented)
 			{
@@ -69,12 +69,14 @@ namespace System.Threading
 			if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Cancelled, Status.Pending) != Status.Pending)
 				return; // Instance is no longer in a cancellable state
 
-			var Owner = this.Owner!;
+			if (Owner!.CancelDecrement(this))
+			{
+				if (Interlocked.CompareExchange(ref _InstanceState, Status.CancelledNotWaiting, Status.Cancelled) != Status.Cancelled)
+					throw new InvalidOperationException("Decrement is in an invalid state (Not cancelled)");
+			}
 
 			_Registration.Dispose();
 			_TaskSource.SetException(new OperationCanceledException(Token));
-
-			Owner.CancelDecrement(this);
 		}
 
 		internal bool TrySwitchToCompleted()
@@ -137,7 +139,7 @@ namespace System.Threading
 			finally
 			{
 				// Don't release if we're on the wait queue. If we are, let TrySwitchToCompleted know it can release when ready
-				if (_InstanceState != Status.Cancelled || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledNotWaiting)
+				if (_InstanceState == Status.CancelledNotWaiting || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledNotWaiting)
 					Release();
 			}
 		}

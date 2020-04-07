@@ -8,20 +8,20 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
 //****************************************
 
-namespace System.Threading
+namespace System.Collections.Concurrent
 {
 	/// <summary>
 	/// Provides the functionality for AsyncCounter.DecrementAny
 	/// </summary>
-	internal sealed class AsyncCounterDecrementAny : IValueTaskSource<AsyncCounter>
+	internal sealed class AsyncCollectionTakeAny<TItem> : IValueTaskSource<CollectionTakeResult<TItem>>
 	{ //****************************************
-		private static readonly ConcurrentBag<AsyncCounterDecrementAny> _Instances = new ConcurrentBag<AsyncCounterDecrementAny>();
-		private static readonly ConcurrentBag<PeekDecrementWaiter> _Waiters = new ConcurrentBag<PeekDecrementWaiter>();
+		private static readonly ConcurrentBag<AsyncCollectionTakeAny<TItem>> _Instances = new ConcurrentBag<AsyncCollectionTakeAny<TItem>>();
+		private static readonly ConcurrentBag<PeekTakeWaiter> _Waiters = new ConcurrentBag<PeekTakeWaiter>();
 		//****************************************
 		private int _InstanceState;
 		private int _IsStarted;
 
-		private ManualResetValueTaskSourceCore<AsyncCounter> _TaskSource = new ManualResetValueTaskSourceCore<AsyncCounter>();
+		private ManualResetValueTaskSourceCore<CollectionTakeResult<TItem>> _TaskSource = new ManualResetValueTaskSourceCore<CollectionTakeResult<TItem>>();
 
 		private CancellationTokenRegistration _Registration;
 		private CancellationTokenSource? _TokenSource;
@@ -29,7 +29,7 @@ namespace System.Threading
 		private int _OutstandingCounters;
 		//****************************************
 
-		internal AsyncCounterDecrementAny() => _TaskSource.RunContinuationsAsynchronously = true;
+		private AsyncCollectionTakeAny() => _TaskSource.RunContinuationsAsynchronously = true;
 
 		//****************************************
 
@@ -40,12 +40,12 @@ namespace System.Threading
 			Token = token;
 		}
 
-		internal void Attach(AsyncCounter counter)
+		internal void Attach(AsyncCollection<TItem> collection)
 		{
-			if (!counter.TryPeekDecrement(Token, out var Decrement))
-				return; // Counter is disposed, ignore it
+			if (!collection.TryPeekTake(Token, out var Decrement))
+				return; // Collection is completed, ignore it
 
-			var Waiter = PeekDecrementWaiter.GetOrCreate(this, Decrement);
+			var Waiter = PeekTakeWaiter.GetOrCreate(this, collection, Decrement);
 
 			Interlocked.Increment(ref _OutstandingCounters);
 
@@ -70,17 +70,17 @@ namespace System.Threading
 			if (Token.CanBeCanceled)
 			{
 				_TokenSource = tokenSource;
-				_Registration = Token.Register((state) => ((AsyncCounterDecrementAny)state).SwitchToCancelled(), this);
+				_Registration = Token.Register((state) => ((AsyncCollectionTakeAny<TItem>)state).SwitchToCancelled(), this);
 			}
 		}
 
 		//****************************************
 
-		ValueTaskSourceStatus IValueTaskSource<AsyncCounter>.GetStatus(short token) => _TaskSource.GetStatus(token);
+		ValueTaskSourceStatus IValueTaskSource<CollectionTakeResult<TItem>>.GetStatus(short token) => _TaskSource.GetStatus(token);
 
-		void IValueTaskSource<AsyncCounter>.OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
+		void IValueTaskSource<CollectionTakeResult<TItem>>.OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
 
-		AsyncCounter IValueTaskSource<AsyncCounter>.GetResult(short token)
+		CollectionTakeResult<TItem> IValueTaskSource<CollectionTakeResult<TItem>>.GetResult(short token)
 		{
 			try
 			{
@@ -90,7 +90,7 @@ namespace System.Threading
 			{
 				// We've received our result, mark as such
 				if (Interlocked.CompareExchange(ref _InstanceState, Status.GotResult, Status.Waiting) != Status.Waiting)
-					throw new InvalidOperationException("Counter Decrement Any is in an invalid state");
+					throw new InvalidOperationException("Collection Take Any is in an invalid state");
 
 				// If there are no more counters we're attached to, try and release us
 				if (Volatile.Read(ref _OutstandingCounters) == 0)
@@ -111,19 +111,6 @@ namespace System.Threading
 			_TaskSource.SetException(new OperationCanceledException(Token));
 		}
 
-		private bool TrySwitchToCompleted(AsyncCounter counter)
-		{
-			// State can be one of: Pending, Waiting, GotResult
-			// Try to switch from Pending to Waiting
-			if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Waiting, Status.Pending) != Status.Pending)
-				return false; // Too late, we already have a result
-
-			_Registration.Dispose();
-			_TaskSource.SetResult(counter);
-
-			return true;
-		}
-
 		private bool TrySwitchToDisposed()
 		{
 			// State can be one of: Pending, Waiting, GotResult
@@ -132,7 +119,8 @@ namespace System.Threading
 				return false; // Too late, we already have a result
 
 			_Registration.Dispose();
-			_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncCounterDecrementAny), "All counters have been disposed"));
+			//_TaskSource.SetResult(default);
+			_TaskSource.SetException(new InvalidOperationException("All collections are completed"));
 
 			return true;
 		}
@@ -152,25 +140,34 @@ namespace System.Threading
 			_Instances.Add(this);
 		}
 
-		private void OnPeekCompleted(AsyncCounter counter)
+		private void OnPeekCompleted(AsyncCollection<TItem> collection)
 		{
 			// Can be one of: Pending, Waiting, GotResult
 			if (_InstanceState == Status.Pending)
 			{
-				if (counter.TryDecrement())
+				if (collection.TryReserveTake())
 				{
-					if (TrySwitchToCompleted(counter))
+					// State can be one of: Pending, Waiting, GotResult
+					// Try to switch from Pending to Waiting
+					if (_InstanceState == Status.Pending && Interlocked.CompareExchange(ref _InstanceState, Status.Waiting, Status.Pending) == Status.Pending)
+					{
+						var Item = collection.CompleteTake();
+
+						_Registration.Dispose();
+						_TaskSource.SetResult(new CollectionTakeResult<TItem>(collection, Item));
+
 						return; // Success, no need to try and release since we'll do that after GetResult
+					}
 
 					// We can fail to switch to completion if we're cancelled - in which case we should return the counter we just took
-					counter.ForceIncrement();
+					collection.ReleaseTake();
 				}
 				else
 				{
 					// We failed to decrement this counter, but we're still pending, so try again
-					if (counter.TryPeekDecrement(Token, out var Decrement))
+					if (collection.TryPeekTake(Token, out var Decrement))
 					{
-						var Waiter = PeekDecrementWaiter.GetOrCreate(this, Decrement);
+						var Waiter = PeekTakeWaiter.GetOrCreate(this, collection, Decrement);
 
 						Waiter.Attach(Decrement);
 
@@ -180,7 +177,7 @@ namespace System.Threading
 					}
 
 					// Counter is disposed, fail
-					OnPeekFailed(counter);
+					OnPeekFailed(collection);
 
 					return;
 				}
@@ -191,7 +188,7 @@ namespace System.Threading
 				TryRelease();
 		}
 
-		private void OnPeekFailed(AsyncCounter counter)
+		private void OnPeekFailed(AsyncCollection<TItem> collection)
 		{
 			if (Interlocked.Decrement(ref _OutstandingCounters) > 0)
 				return; // There are other counters still waiting
@@ -211,10 +208,10 @@ namespace System.Threading
 
 		//****************************************
 
-		internal static AsyncCounterDecrementAny GetOrCreate(CancellationToken token)
+		internal static AsyncCollectionTakeAny<TItem> GetOrCreate(CancellationToken token)
 		{
 			if (!_Instances.TryTake(out var Instance))
-				Instance = new AsyncCounterDecrementAny();
+				Instance = new AsyncCollectionTakeAny<TItem>();
 
 			Instance.Initialise(token);
 
@@ -223,17 +220,18 @@ namespace System.Threading
 
 		//****************************************
 
-		private sealed class PeekDecrementWaiter
+		private sealed class PeekTakeWaiter
 		{ //****************************************
 			private readonly Action _ContinuePeekDecrement;
 
-			private AsyncCounterDecrementAny? _Operation;
+			private AsyncCollectionTakeAny<TItem>? _Operation;
+			private AsyncCollection<TItem>? _Collection;
 			private AsyncCounterDecrement? _Decrement;
 
 			private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _Awaiter;
 			//****************************************
 
-			public PeekDecrementWaiter()
+			public PeekTakeWaiter()
 			{
 				_ContinuePeekDecrement = OnContinuePeekDecrement;
 			}
@@ -258,17 +256,15 @@ namespace System.Threading
 
 			private void OnContinuePeekDecrement()
 			{
-				var Owner = _Decrement!.Owner!;
-
 				try
 				{
 					_Awaiter.GetResult();
 
-					_Operation!.OnPeekCompleted(Owner);
+					_Operation!.OnPeekCompleted(_Collection!);
 				}
 				catch
 				{
-					_Operation!.OnPeekFailed(Owner);
+					_Operation!.OnPeekFailed(_Collection!);
 				}
 				finally
 				{
@@ -279,7 +275,7 @@ namespace System.Threading
 			private void Release()
 			{
 				_Operation = null;
-				_Decrement = null;
+				_Collection = null;
 				_Awaiter = default;
 
 				_Waiters.Add(this);
@@ -287,12 +283,13 @@ namespace System.Threading
 
 			//****************************************
 
-			internal static PeekDecrementWaiter GetOrCreate(AsyncCounterDecrementAny operation, AsyncCounterDecrement decrement)
+			internal static PeekTakeWaiter GetOrCreate(AsyncCollectionTakeAny<TItem> operation, AsyncCollection<TItem> collection, AsyncCounterDecrement decrement)
 			{
 				if (!_Waiters.TryTake(out var Waiter))
-					Waiter = new PeekDecrementWaiter();
+					Waiter = new PeekTakeWaiter();
 
 				Waiter._Operation = operation;
+				Waiter._Collection = collection;
 				Waiter._Decrement = decrement;
 
 				return Waiter;

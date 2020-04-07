@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Security;
@@ -67,7 +67,7 @@ namespace Proximity.Utility.Threading
 				_Dispose = new TaskCompletionSource<VoidStruct>();
 
 				if (_Counter == 0)
-					_Dispose.SetResult(VoidStruct.Empty);
+					_Dispose.SetResult(default);
 
 				_LeftWaiting.Clear();
 				_RightWaiting.Clear();
@@ -276,7 +276,7 @@ namespace Proximity.Utility.Threading
 			var MyWaiter = (TaskCompletionSource<VoidStruct>)state;
 			//****************************************
 			
-			MyWaiter.SetResult(VoidStruct.Empty);
+			MyWaiter.SetResult(default);
 		}
 
 		[SecuritySafeCritical]
