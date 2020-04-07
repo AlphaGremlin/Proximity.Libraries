@@ -256,6 +256,7 @@ namespace System.Collections.Concurrent
 				// Starting with the head segment, look through all of the segments
 				// for the first one we can find that's not empty.
 				var Current = _Head;
+
 				for (; ; )
 				{
 					// Grab the next segment from this one, before we peek.

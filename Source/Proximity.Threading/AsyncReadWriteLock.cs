@@ -212,7 +212,7 @@ namespace System.Threading
 
 			do
 			{
-				PreviousCounter = _Counter;
+				PreviousCounter = Volatile.Read(ref _Counter);
 
 				if (PreviousCounter < 0)
 					return false; // We're disposed, or there is a writer active, can't take no matter what
@@ -234,16 +234,13 @@ namespace System.Threading
 
 			do
 			{
-				PreviousCounter = _Counter;
+				PreviousCounter = Volatile.Read(ref _Counter);
 
-				if (PreviousCounter < 0)
-					return false; // We're disposed, or there is a writer active, can't take no matter what
-
-				if (PreviousCounter > 0)
-					return false; // There are readers active, can't take a writer lock
+				if (PreviousCounter != 0)
+					return false; // We must be in the unlocked state to immediately switch to write mode
 
 				if (!_Writers.IsEmpty)
-					return false; // There are no readers, but there are writers waiting ahead of us
+					return false; // We're unlocked, but there are writers that got in ahead of us
 
 				// No readers or writers, try and take the writer lock
 			}
@@ -260,7 +257,7 @@ namespace System.Threading
 			{
 				do
 				{
-					PreviousCounter = _Counter;
+					PreviousCounter = Volatile.Read(ref _Counter);
 
 					if (PreviousCounter == 0)
 						throw new InvalidOperationException("Read Write Lock is in an invalid state (Unheld)");
@@ -268,7 +265,10 @@ namespace System.Threading
 					if (isWriter)
 					{
 						if (PreviousCounter > 0)
+						{
+							Debugger.Launch();
 							throw new InvalidOperationException("Read Write Lock is in an invalid state (Reader)");
+						}
 
 						if (_Disposer != null)
 							NewCounter = -2; // We're disposing, so we can only switch to disposed mode
@@ -284,12 +284,15 @@ namespace System.Threading
 						else if (_Readers.IsEmpty)
 							NewCounter = -1; // There are writers, and no readers, so stay in write mode
 						else
-							NewCounter = 1; // There are writers and also readers, and we're in fair write, so switch to read mode
+							NewCounter = 1; // There are writers and also readers, and we're using fair writes, so switch to read mode
 					}
 					else
 					{
 						if (PreviousCounter < 0)
+						{
+							Debugger.Launch();
 							throw new InvalidOperationException("Read Write Lock is in an invalid state (Writer)");
+						}
 
 						if (PreviousCounter > 1)
 							NewCounter = PreviousCounter - 1; // There are still other readers, so just decrease the active counter and stay in read mode
@@ -303,20 +306,53 @@ namespace System.Threading
 				}
 				while (Interlocked.CompareExchange(ref _Counter, NewCounter, PreviousCounter) != PreviousCounter);
 
-				if (NewCounter == 0)
-					return; // Switched to unlocked mode
-
-				if (NewCounter == -2)
+				switch (NewCounter)
 				{
+				case 0:
+					// Switched to unlocked mode
+					// Readers or Writers may have gotten queued while we were busy, so double-check
+					if (isWriter)
+					{
+						// We were a writer, so check readers first
+						if (!_Readers.IsEmpty)
+							TryActivateReader(true);
+						else if (!_Writers.IsEmpty)
+							TryActivateWriter();
+					}
+					else
+					{
+						// We were a reader, so check writers first
+						if (!_Writers.IsEmpty)
+							TryActivateWriter(true); // Force it to activate a writer even if there are readers and we're not in unfair mode
+						else if (!_Readers.IsEmpty)
+							TryActivateReader(true);
+					}
+
+					return;
+
+				case -1:
+					// Switching to Write mode
+					while (_Writers.TryDequeue(out var Writer))
+					{
+						// Try to release the writer
+						if (Writer.TrySwitchToCompleted())
+							return;
+
+						// Failed to activate the writer (maybe they were cancelled), so look for another one
+					}
+
+					// Unable to activate any writers, so we need to release the write lock
+					isWriter = true;
+					break;
+
+				case -2:
 					_Disposer!.SwitchToComplete();
 
 					return;
-				}
 
-				if (NewCounter > 0)
-				{
-					if (!isWriter)
-						return; // Already in read mode
+				default:
+					if (PreviousCounter > 0)
+						return; // We were already in read mode, no need to check for further readers
 
 					// Switching to Read mode, which means there was at least one reader in the queue
 					if (_Readers.TryDequeue(out var Reader))
@@ -337,35 +373,19 @@ namespace System.Threading
 
 					// Failed to dequeue or activate the reader (maybe they were cancelled), so we need to release the read lock we're holding on its behalf
 					isWriter = false;
-				}
-				else
-				{
-					if (isWriter)
-						return; // Already in write mode
 
-					// Switching to Write mode
-					while (_Writers.TryDequeue(out var Writer))
-					{
-						// Try to release the writer
-						if (Writer.TrySwitchToCompleted())
-							return;
-
-						// Failed to activate the writer (maybe they were cancelled), so look for another one
-					}
-
-					// Unable to activate any writers, so we need to release the write lock
-					isWriter = true;
+					break;
 				}
 			}
 		}
 
-		private void TryActivateReader()
+		private void TryActivateReader(bool multiple = false)
 		{
 			int PreviousCounter, NewCounter;
 
 			do
 			{
-				PreviousCounter = _Counter;
+				PreviousCounter = Volatile.Read(ref _Counter);
 
 				if (PreviousCounter == -2)
 					break; // We're disposed, so we leave the counter alone and switch the instance to Disposed
@@ -373,7 +393,7 @@ namespace System.Threading
 				if (PreviousCounter == -1)
 					return; // There is a writer active, so leave the reader on the queue
 
-				if (!_Writers.IsEmpty && !UnfairRead)
+				if (PreviousCounter > 0 && !_Writers.IsEmpty && !UnfairRead)
 					return; // There are writers waiting, and we're not in unfair mode, so we can't take a reader lock
 
 				// Take a reader lock if there are no writers waiting, or if there are but we're in unfair mode
@@ -381,7 +401,7 @@ namespace System.Threading
 			}
 			while (Interlocked.CompareExchange(ref _Counter, NewCounter, PreviousCounter) != PreviousCounter);
 
-			// We just queued a reader, so this should succeed unless we just switched away from write mode (or it cancelled)
+			// We just queued a reader, so this should succeed unless we were preempted by a writer Release (or it cancelled)
 			if (_Readers.TryDequeue(out var Reader))
 			{
 				if (PreviousCounter == -2)
@@ -389,6 +409,18 @@ namespace System.Threading
 					Reader.SwitchToDisposed();
 
 					return;
+				}
+
+				if (multiple)
+				{
+					// There may be more than one reader in there
+					while (_Readers.TryDequeue(out var OtherReader))
+					{
+						// Try to activate each waiting reader (they may be cancelled)
+						if (OtherReader.TrySwitchToCompleted())
+							// We can safely increment here, since we're holding a read lock (can't unexpectedly switch to write mode)
+							Interlocked.Increment(ref _Counter);
+					}
 				}
 
 				if (Reader.TrySwitchToCompleted())
@@ -403,28 +435,28 @@ namespace System.Threading
 			Release(false);
 		}
 
-		private void TryActivateWriter()
+		private void TryActivateWriter(bool ignoreReaders = false)
 		{
 			int PreviousCounter;
 
 			do
 			{
-				PreviousCounter = _Counter;
+				PreviousCounter = Volatile.Read(ref _Counter);
 
 				if (PreviousCounter == -2)
 					break; // We're disposed, so we leave the counter alone and switch the instance to Disposed
 
-				if (PreviousCounter == -1 || PreviousCounter > 0)
+				if (PreviousCounter != 0)
 					return; // There is a writer already active, or other readers, so leave the writer on the queue
 
-				if (!_Readers.IsEmpty && !UnfairWrite)
+				if (!ignoreReaders && !_Readers.IsEmpty && !UnfairWrite)
 					return; // There are readers waiting, and we're not in unfair mode, so we can't take a write lock
 
-				// Take a writer lock if there are no reader waiting, or if there are but we're in unfair mode
+				// Take a writer lock if there are no readers waiting, or if there are but we're in unfair mode
 			}
 			while (Interlocked.CompareExchange(ref _Counter, -1, PreviousCounter) != PreviousCounter);
 
-			// We just queued a writer, so this should succeed unless we just switched away from read mode
+			// We just queued a writer, so this should succeed unless were preempted by a reader Release (which triggered our writer, and then that writer Released and set us back to unlocked)
 			if (_Writers.TryDequeue(out var Writer))
 			{
 				if (PreviousCounter == -2)
@@ -444,6 +476,26 @@ namespace System.Threading
 
 			// We're still active, which means we need to release the lock we just took
 			Release(true);
+		}
+
+		private void CancelWaiter(LockInstance instance)
+		{
+			if (instance.IsWriter)
+			{
+				_Writers.Erase(instance);
+
+				// We cancelled writing, this may allow readers to start work when we're not in unfair mode
+				if (!UnfairRead)
+					TryActivateReader(true);
+			}
+			else
+			{
+				_Readers.Erase(instance);
+
+				// We cancelled reading, this may allow a writer to start work when we're not in unfair mode
+				if (!UnfairWrite)
+					TryActivateWriter();
+			}
 		}
 
 		private LockInstance GetOrCreateInstance(bool isWriter, bool isTaken)
@@ -554,7 +606,7 @@ namespace System.Threading
 					return;
 
 				_Registration.Dispose();
-				_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncSemaphore), "Semaphore has been disposed of"));
+				_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncReadWriteLock), "Read Write Lock has been disposed of"));
 			}
 
 			internal bool TrySwitchToCompleted()
@@ -637,6 +689,8 @@ namespace System.Threading
 			{
 				if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Cancelled, Status.Pending) != Status.Pending)
 					return; // Instance is no longer in a cancellable state
+
+				Owner!.CancelWaiter(this);
 
 				_TaskSource.SetException(new OperationCanceledException(Token));
 			}
