@@ -72,6 +72,8 @@ namespace Proximity.Threading.Tests
 						
 						using (await MyLock.LockRead())
 						{
+							await Task.Yield();
+
 							Interlocked.Increment(ref Resource);
 						}
 						
@@ -89,7 +91,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, MaxTime(10000), Repeat(100)]
+		[Test, /*MaxTime(10000),*/ Repeat(100)]
 		public void ConcurrentReadWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -106,7 +108,7 @@ namespace Proximity.Threading.Tests
 						{
 							using (await MyLock.LockWrite())
 							{
-								//await Task.Yield();
+								await Task.Yield();
 
 								Interlocked.Increment(ref Resource);
 							}
@@ -115,7 +117,7 @@ namespace Proximity.Threading.Tests
 						{
 							using (await MyLock.LockRead())
 							{
-								//await Task.Yield();
+								await Task.Yield();
 
 								Interlocked.Increment(ref Resource);
 							}
@@ -132,7 +134,41 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
-		
+
+		[Test, MaxTime(1000), Repeat(10)]
+		public async Task ConcurrentWrite()
+		{ //****************************************
+			var MyLock = new AsyncReadWriteLock();
+			var Resource = 0;
+			//****************************************
+
+			await Task.WhenAll(
+				Enumerable.Range(1, 100).Select(
+					async count =>
+					{
+						await Task.Yield(); // Yield, so it doesn't serialise
+
+						using (await MyLock.LockWrite())
+						{
+							await Task.Yield();
+
+							Interlocked.Increment(ref Resource);
+						}
+
+						return;
+					})
+			);
+
+			//****************************************
+
+			Assert.AreEqual(100, Resource, "Block not entered");
+
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+		}
+
 		[Test, MaxTime(2000), Repeat(4)]
 		public async Task ShortReadLongWrite()
 		{	//****************************************
@@ -243,7 +279,7 @@ namespace Proximity.Threading.Tests
 		public async Task ReadWriteRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
-			ValueTask<IDisposable> MyRead, MyWrite;
+			ValueTask<AsyncReadWriteLock.Instance> MyRead, MyWrite;
 			//****************************************
 
 			using (await MyLock.LockRead())
@@ -273,7 +309,7 @@ namespace Proximity.Threading.Tests
 		public async Task ReadWriteReadUnfair()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock(true);
-			ValueTask<IDisposable> MyRead, MyWrite;
+			ValueTask<AsyncReadWriteLock.Instance> MyRead, MyWrite;
 			//****************************************
 
 			using (await MyLock.LockRead())
@@ -301,7 +337,7 @@ namespace Proximity.Threading.Tests
 		public async Task WriteReadWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
-			ValueTask<IDisposable> MyRead, MyWrite;
+			ValueTask<AsyncReadWriteLock.Instance> MyRead, MyWrite;
 			//****************************************
 
 			using (await MyLock.LockWrite())
@@ -330,7 +366,7 @@ namespace Proximity.Threading.Tests
 		public async Task WriteReadWriteUnfair()
 		{ //****************************************
 			var MyLock = new AsyncReadWriteLock(true);
-			ValueTask<IDisposable> MyRead, MyWrite;
+			ValueTask<AsyncReadWriteLock.Instance> MyRead, MyWrite;
 			//****************************************
 
 			using (await MyLock.LockWrite())
@@ -359,7 +395,7 @@ namespace Proximity.Threading.Tests
 		public async Task WriteCancelRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
-			ValueTask<IDisposable> MyReader;
+			ValueTask<AsyncReadWriteLock.Instance> MyReader;
 			//****************************************
 			
 			var MyWriter = await MyLock.LockWrite();
@@ -387,7 +423,7 @@ namespace Proximity.Threading.Tests
 		public async Task WriteCancelWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
-			ValueTask<IDisposable> MyWriter2;
+			ValueTask<AsyncReadWriteLock.Instance> MyWriter2;
 			//****************************************
 			
 			var MyWriter1 = await MyLock.LockWrite();
@@ -423,7 +459,7 @@ namespace Proximity.Threading.Tests
 		public async Task WriteCancelReadRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
-			ValueTask<IDisposable> MyReader;
+			ValueTask<AsyncReadWriteLock.Instance> MyReader;
 			//****************************************
 			
 			using (await MyLock.LockWrite())
@@ -458,7 +494,7 @@ namespace Proximity.Threading.Tests
 		public async Task WriteCancelReadWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
-			ValueTask<IDisposable> MyReader;
+			ValueTask<AsyncReadWriteLock.Instance> MyReader;
 			//****************************************
 			
 			var MyWriter = await MyLock.LockWrite();
@@ -488,7 +524,7 @@ namespace Proximity.Threading.Tests
 		public async Task WriteCancelReadMulti()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
-			ValueTask<IDisposable> MyReader1, MyReader2;
+			ValueTask<AsyncReadWriteLock.Instance> MyReader1, MyReader2;
 			//****************************************
 			
 			var MyWriter = await MyLock.LockWrite();
@@ -520,7 +556,7 @@ namespace Proximity.Threading.Tests
 		public async Task ReadCancelWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
-			ValueTask<IDisposable> MyWriter;
+			ValueTask<AsyncReadWriteLock.Instance> MyWriter;
 			//****************************************
 			
 			var MyReader = await MyLock.LockRead();
@@ -550,7 +586,7 @@ namespace Proximity.Threading.Tests
 		public async Task ReadWriteCancelReadRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
-			ValueTask<IDisposable> MyWriter, MyReader;
+			ValueTask<AsyncReadWriteLock.Instance> MyWriter, MyReader;
 			//****************************************
 			
 			using (var MySource = new CancellationTokenSource())
@@ -589,7 +625,7 @@ namespace Proximity.Threading.Tests
 		public async Task ReadWriteCancelWriteRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
-			ValueTask<IDisposable> MyWriter1, MyWriter2;
+			ValueTask<AsyncReadWriteLock.Instance> MyWriter1, MyWriter2;
 			//****************************************
 
 			using (var MySource = new CancellationTokenSource())
@@ -628,7 +664,7 @@ namespace Proximity.Threading.Tests
 		public async Task ReadCancelWriteRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
-			ValueTask<IDisposable> MyWriter, MyReader2;
+			ValueTask<AsyncReadWriteLock.Instance> MyWriter, MyReader2;
 			//****************************************
 			
 			var MyReader1 = await MyLock.LockRead();
@@ -662,7 +698,7 @@ namespace Proximity.Threading.Tests
 		public async Task ReadCancelWriteMulti()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
-			ValueTask<IDisposable> MyWriter1, MyWriter2;
+			ValueTask<AsyncReadWriteLock.Instance> MyWriter1, MyWriter2;
 			//****************************************
 			
 			var MyReader = await MyLock.LockRead();
@@ -694,7 +730,7 @@ namespace Proximity.Threading.Tests
 		public async Task ReadCancelWriteMultiRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
-			ValueTask<IDisposable> MyWriter1, MyWriter2;
+			ValueTask<AsyncReadWriteLock.Instance> MyWriter1, MyWriter2;
 			//****************************************
 			
 			var MyReader = await MyLock.LockRead();
@@ -725,7 +761,7 @@ namespace Proximity.Threading.Tests
 		public async Task WriteTimeoutRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
-			ValueTask<IDisposable> MyReader;
+			ValueTask<AsyncReadWriteLock.Instance> MyReader;
 			//****************************************
 			
 			using (await MyLock.LockWrite())
@@ -749,7 +785,7 @@ namespace Proximity.Threading.Tests
 		public async Task ReadTimeoutWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
-			ValueTask<IDisposable> MyWriter;
+			ValueTask<AsyncReadWriteLock.Instance> MyWriter;
 			//****************************************
 			
 			using (await MyLock.LockRead())
@@ -775,7 +811,7 @@ namespace Proximity.Threading.Tests
 		public void NoTimeoutRead()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
-			ValueTask<IDisposable> MyReader;
+			ValueTask<AsyncReadWriteLock.Instance> MyReader;
 			//****************************************
 			
 			MyReader = MyLock.LockRead(TimeSpan.FromMilliseconds(50));
@@ -796,7 +832,7 @@ namespace Proximity.Threading.Tests
 		public void NoTimeoutWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
-			ValueTask<IDisposable> MyWriter;
+			ValueTask<AsyncReadWriteLock.Instance> MyWriter;
 			//****************************************
 			
 			MyWriter = MyLock.LockWrite(TimeSpan.FromMilliseconds(50));
@@ -1307,5 +1343,62 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
+
+		[Test, MaxTime(1000)]
+		public async Task ReadDualRelease()
+		{ //****************************************
+			var MyLock = new AsyncReadWriteLock();
+			//****************************************
+
+			var Instance = await MyLock.LockRead();
+
+			Instance.Dispose();
+
+			try
+			{
+				Instance.Dispose();
+
+				Assert.Fail("Allowed dual release");
+			}
+			catch (InvalidOperationException)
+			{
+			}
+
+			//****************************************
+
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+		}
+
+		[Test, MaxTime(1000)]
+		public async Task WriteDualRelease()
+		{ //****************************************
+			var MyLock = new AsyncReadWriteLock();
+			//****************************************
+
+			var Instance = await MyLock.LockWrite();
+
+			Instance.Dispose();
+
+			try
+			{
+				Instance.Dispose();
+
+				Assert.Fail("Allowed dual release");
+			}
+			catch (InvalidOperationException)
+			{
+			}
+
+			//****************************************
+
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+		}
+
 	}
 }
