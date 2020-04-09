@@ -162,8 +162,12 @@ namespace System.Collections.Concurrent
 			}
 		}
 
-		/// <summary>Checks if there is at least one non-erased item on the queue, removing erased items as necessary</summary>
-		internal bool HasItems()
+		/// <summary>Tries to peek at an non-erased element from the queue, removing erased items as necessary.</summary>
+		public bool TryPeek(
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+			out T result)
 		{
 			Slot[] slots = _slots;
 
@@ -171,20 +175,26 @@ namespace System.Collections.Concurrent
 			SpinWait spinner = default;
 			while (true)
 			{
-				// Get the head at which to try to dequeue.
+				// Get the head at which to try to peek.
 				var currentHead = Volatile.Read(ref _headAndTail.Head);
 				var slotsIndex = currentHead & _slotsMask;
 
 				// Read the sequence number for the head position.
 				var sequenceNumber = Volatile.Read(ref slots[slotsIndex].SequenceNumber);
 
-				// We can dequeue from this slot if it's been filled by an enqueuer, which
+				// We can peek from this slot if it's been filled by an enqueuer, which
 				// would have left the sequence number at pos+1.
 				var diff = sequenceNumber - (currentHead + 1);
 				if (diff == 0)
 				{
-					if (slots[slotsIndex].Item != null)
+					var Result = slots[slotsIndex].Item;
+
+					if (Result != null)
+					{
+						result = Result;
+
 						return true; // Head item exists
+					}
 
 					// We may be racing with other dequeuers.  Try to reserve the slot by incrementing
 					// the head.  Once we've done that, no one else will be able to read from this slot,
@@ -206,16 +216,19 @@ namespace System.Collections.Concurrent
 				else if (diff < 0)
 				{
 					// The sequence number was less than what we needed, which means this slot doesn't
-					// yet contain a value we can dequeue, i.e. the segment is empty.  Technically it's
+					// yet contain a value we can peek, i.e. the segment is empty.  Technically it's
 					// possible that multiple enqueuers could have written concurrently, with those
 					// getting later slots actually finishing first, so there could be elements after
-					// this one that are available, but we need to dequeue in order.  So before declaring
+					// this one that are available, but we need to peek in order.  So before declaring
 					// failure and that the segment is empty, we check the tail to see if we're actually
 					// empty or if we're just waiting for items in flight or after this one to become available.
-					var frozen = _frozenForEnqueues;
-					var currentTail = Volatile.Read(ref _headAndTail.Tail);
+					bool frozen = _frozenForEnqueues;
+					int currentTail = Volatile.Read(ref _headAndTail.Tail);
 					if (currentTail - currentHead <= 0 || (frozen && (currentTail - FreezeOffset - currentHead <= 0)))
-						return false; // List is empty, nothing to remove
+					{
+						result = default!;
+						return false;
+					}
 
 					// It's possible it could have become frozen after we checked _frozenForEnqueues
 					// and before reading the tail.  That's ok: in that rare race condition, we just

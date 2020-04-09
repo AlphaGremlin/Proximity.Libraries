@@ -56,7 +56,49 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
-		
+
+		[Test, MaxTime(1000)]
+		public async Task ReadUpgrade()
+		{ //****************************************
+			var MyLock = new AsyncReadWriteLock();
+			//****************************************
+
+			using (var Instance = await MyLock.LockRead())
+			{
+				Assert.IsTrue(await Instance.Upgrade(), "Upgrade was not exclusive");
+
+				Assert.IsTrue(Instance.IsWriter, "Lock is not a writer");
+			}
+
+			//****************************************
+
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+		}
+
+		[Test, MaxTime(1000)]
+		public async Task ReadUpgradeExclusive()
+		{ //****************************************
+			var MyLock = new AsyncReadWriteLock();
+			//****************************************
+
+			using (var Instance = await MyLock.LockRead())
+			{
+				Assert.IsTrue(await Instance.TryUpgrade(), "Upgrade was not exclusive");
+
+				Assert.IsTrue(Instance.IsWriter, "Lock is not a writer");
+			}
+
+			//****************************************
+
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+		}
+
 		[Test, MaxTime(1000), Repeat(10)]
 		public async Task ConcurrentRead()
 		{	//****************************************
@@ -91,10 +133,11 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
 		
-		[Test, /*MaxTime(10000),*/ Repeat(100)]
-		public void ConcurrentReadWrite()
+		[Test, MaxTime(1000), Repeat(100)]
+		[Pairwise]
+		public void ConcurrentReadWrite([Values(true, false)] bool unfairRead, [Values(true, false)] bool unfairWrite)
 		{	//****************************************
-			var MyLock = new AsyncReadWriteLock();
+			var MyLock = new AsyncReadWriteLock(unfairRead, unfairWrite);
 			var Resource = 0;
 			//****************************************
 			
@@ -334,6 +377,64 @@ namespace Proximity.Threading.Tests
 		}
 
 		[Test, MaxTime(1000)]
+		public async Task ReadWriteUpgrade()
+		{ //****************************************
+			var MyLock = new AsyncReadWriteLock();
+			//****************************************
+
+			using (var Instance = await MyLock.LockRead())
+			{
+				var MyWrite = MyLock.LockWrite();
+
+				var MyUpgrade = Instance.Upgrade();
+
+				Assert.IsFalse(MyUpgrade.IsCompleted, "Upgrade completed");
+				Assert.IsFalse(Instance.IsWriter, "Instance is writer");
+
+				(await MyWrite).Dispose();
+
+				Assert.IsFalse(await MyUpgrade, "Upgrade completed exclusively");
+				Assert.IsTrue(Instance.IsWriter, "Instance is reader");
+			}
+
+			//****************************************
+
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+		}
+
+		[Test, MaxTime(1000)]
+		public async Task ReadWriteUpgradeExclusive()
+		{ //****************************************
+			var MyLock = new AsyncReadWriteLock();
+			ValueTask<AsyncReadWriteLock.Instance> MyWrite;
+			//****************************************
+
+			using (var Instance = await MyLock.LockRead())
+			{
+				MyWrite = MyLock.LockWrite();
+
+				var MyUpgrade = Instance.TryUpgrade();
+
+				Assert.IsTrue(MyUpgrade.IsCompleted, "Upgrade not completed");
+				Assert.IsFalse(await MyUpgrade, "Upgrade completed exclusively");
+
+				Assert.IsFalse(Instance.IsWriter, "Instance is writer");
+			}
+
+			(await MyWrite).Dispose();
+
+			//****************************************
+
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+		}
+
+		[Test, MaxTime(1000)]
 		public async Task WriteReadWrite()
 		{	//****************************************
 			var MyLock = new AsyncReadWriteLock();
@@ -353,6 +454,32 @@ namespace Proximity.Threading.Tests
 			(await MyRead).Dispose();
 
 			(await MyWrite).Dispose();
+
+			//****************************************
+
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+		}
+
+		[Test, MaxTime(1000)]
+		public async Task WriteReadDowngrade()
+		{ //****************************************
+			var MyLock = new AsyncReadWriteLock();
+			ValueTask<AsyncReadWriteLock.Instance> MyRead;
+			//****************************************
+
+			using (var Instance = await MyLock.LockWrite())
+			{
+				MyRead = MyLock.LockRead();
+
+				Assert.IsFalse(MyRead.IsCompleted, "Read completed");
+
+				Instance.Downgrade();
+
+				(await MyRead).Dispose();
+			}
 
 			//****************************************
 
@@ -659,7 +786,122 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
-		
+
+		[Test, MaxTime(1000)]
+		public async Task ReadReadCancelUpgrade()
+		{ //****************************************
+			var MyLock = new AsyncReadWriteLock();
+			//****************************************
+
+			using var MySource = new CancellationTokenSource();
+
+			using (var Instance = await MyLock.LockRead())
+			{
+				using (await MyLock.LockRead())
+				{
+					var Upgrade = Instance.Upgrade(MySource.Token);
+
+					MySource.Cancel();
+
+					try
+					{
+						await Upgrade;
+
+						Assert.Fail("Did not cancel");
+					}
+					catch (OperationCanceledException)
+					{
+					}
+				}
+			}
+
+			//****************************************
+
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+		}
+
+		[Test, MaxTime(1000)]
+		public async Task ReadReadCancelUpgradeRead()
+		{ //****************************************
+			var MyLock = new AsyncReadWriteLock();
+			//****************************************
+
+			using var MySource = new CancellationTokenSource();
+
+			using (var Instance = await MyLock.LockRead())
+			{
+				using (await MyLock.LockRead())
+				{
+					var Upgrade = Instance.Upgrade(MySource.Token);
+
+					MySource.Cancel();
+
+					try
+					{
+						await Upgrade;
+
+						Assert.Fail("Did not cancel");
+					}
+					catch (OperationCanceledException)
+					{
+					}
+				}
+
+				using (await MyLock.LockRead())
+				{
+					// Ensure we can reach this point
+				}
+			}
+
+			//****************************************
+
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+		}
+
+		[Test, MaxTime(1000)]
+		public async Task ReadWriteCancelUpgrade()
+		{ //****************************************
+			var MyLock = new AsyncReadWriteLock();
+			ValueTask<AsyncReadWriteLock.Instance> MyWrite;
+			//****************************************
+
+			using var MySource = new CancellationTokenSource();
+
+			using (var Instance = await MyLock.LockRead())
+			{
+				MyWrite = MyLock.LockWrite();
+
+				var Upgrade = Instance.Upgrade(MySource.Token);
+
+				MySource.Cancel();
+
+				try
+				{
+					await Upgrade;
+
+					Assert.Fail("Did not cancel");
+				}
+				catch (OperationCanceledException)
+				{
+				}
+			}
+
+			(await MyWrite).Dispose();
+
+			//****************************************
+
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+		}
+
 		[Test, MaxTime(1000)]
 		public async Task ReadCancelWriteRead()
 		{	//****************************************
@@ -1291,7 +1533,35 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
-		
+
+		[Test, MaxTime(1000)]
+		public async Task WriteWriteDowngrade()
+		{ //****************************************
+			var MyLock = new AsyncReadWriteLock();
+			ValueTask<AsyncReadWriteLock.Instance> MyWrite;
+			//****************************************
+
+			using (var Instance = await MyLock.LockWrite())
+			{
+				MyWrite = MyLock.LockWrite();
+
+				Assert.IsFalse(MyWrite.IsCompleted, "Write completed");
+
+				Instance.Downgrade();
+
+				Assert.IsFalse(MyWrite.IsCompleted, "Write completed");
+			}
+
+			(await MyWrite).Dispose();
+
+			//****************************************
+
+			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
+			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
+			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
+			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
+		}
+
 		[Test, MaxTime(1000)]
 		public void DisposeRead()
 		{	//****************************************
@@ -1399,6 +1669,5 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
 			Assert.AreEqual(0, MyLock.WaitingWriters, "Writers still waiting");
 		}
-
 	}
 }

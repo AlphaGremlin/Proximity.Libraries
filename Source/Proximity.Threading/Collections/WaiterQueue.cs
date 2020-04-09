@@ -32,6 +32,7 @@ namespace System.Collections.Concurrent
 
 		/// <summary>Adds an object to the end of the <see cref="WaiterQueue{T}"/>.</summary>
 		/// <param name="item">The object to add to the end of the <see cref="WaiterQueue{T}"/>. The value cannot be null</param>
+		/// <returns>True if we're the first item in the queue, otherwise False</returns>
 		public void Enqueue(T item)
 		{
 			if (item == null)
@@ -212,6 +213,62 @@ namespace System.Collections.Concurrent
 			return false;
 		}
 
+		/// <summary>Attempts to retrieve the value for the first element in the queue.</summary>
+		/// <param name="result">The value of the first element, if found.</param>
+		/// <returns>true if an element was found; otherwise, false.</returns>
+		public bool TryPeek(
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+		out T result)
+		{
+			// Starting with the head segment, look through all of the segments
+			// for the first one we can find that's not empty.
+			WaiterQueueSegment<T> s = _Head;
+			while (true)
+			{
+				// Grab the next segment from this one, before we peek.
+				// This is to be able to see whether the value has changed
+				// during the peek operation.
+				WaiterQueueSegment<T>? next = Volatile.Read(ref s._nextSegment);
+
+				// Peek at the segment.  If we find an element, we're done.
+				if (s.TryPeek(out result!))
+					return true;
+
+				// The current segment was empty at the moment we checked.
+
+				if (next != null)
+				{
+					// If prior to the peek there was already a next segment, then
+					// during the peek no additional items could have been enqueued
+					// to it and we can just move on to check the next segment.
+					Debug.Assert(next == s._nextSegment);
+					s = next;
+				}
+				else if (Volatile.Read(ref s._nextSegment) == null)
+				{
+					// The next segment is null.  Nothing more to peek at.
+					break;
+				}
+
+				// The next segment was null before we peeked but non-null after.
+				// That means either when we peeked the first segment had
+				// already been frozen but the new segment not yet added,
+				// or that the first segment was empty and between the time
+				// that we peeked and then checked _nextSegment, so many items
+				// were enqueued that we filled the first segment and went
+				// into the next.  Since we need to peek in order, we simply
+				// loop around again to peek on the same segment.  The next
+				// time around on this segment we'll then either successfully
+				// peek or we'll find that next was non-null before peeking,
+				// and we'll traverse to that segment.
+			}
+
+			result = default!;
+			return false;
+		}
+
 		//****************************************
 
 		/// <summary>
@@ -265,7 +322,7 @@ namespace System.Collections.Concurrent
 					var next = Volatile.Read(ref Current._nextSegment);
 
 					// Peek at the segment.  If we find an element, we're done.
-					if (Current.HasItems())
+					if (Current.TryPeek(out _))
 						return false;
 
 					// The current segment was empty at the moment we checked.

@@ -13,12 +13,10 @@ namespace System.Threading
 	/// <summary>
 	/// Provides a reader/writer synchronisation object for async/await, and a disposable model for releasing
 	/// </summary>
-	public sealed class AsyncReadWriteLock : IDisposable, IAsyncDisposable
+	public sealed partial class AsyncReadWriteLock : IDisposable, IAsyncDisposable
 	{ //****************************************
-		private static readonly ConcurrentBag<LockInstance> Instances = new ConcurrentBag<LockInstance>();
-		//****************************************
-		private readonly WaiterQueue<LockInstance> _Writers = new WaiterQueue<LockInstance>();
-		private readonly WaiterQueue<LockInstance> _Readers = new WaiterQueue<LockInstance>();
+		private readonly WaiterQueue<ILockWaiter> _Writers = new WaiterQueue<ILockWaiter>();
+		private readonly WaiterQueue<ILockWaiter> _Readers = new WaiterQueue<ILockWaiter>();
 
 		private AsyncReadWriteDisposer? _Disposer;
 
@@ -89,7 +87,7 @@ namespace System.Threading
 				throw new ObjectDisposedException(nameof(AsyncReadWriteLock), "Read Write Lock has been disposed of");
 
 			// Try and take the lock
-			var NewInstance = GetOrCreateInstance(false, TryTakeReader());
+			var NewInstance = LockInstance.GetOrCreate(this, false, TryTakeReader());
 
 			var ValueTask = new ValueTask<Instance>(NewInstance, NewInstance.Version);
 
@@ -127,7 +125,7 @@ namespace System.Threading
 				throw new ObjectDisposedException(nameof(AsyncReadWriteLock), "Read Write Lock has been disposed of");
 
 			// Try and take the lock
-			var NewInstance = GetOrCreateInstance(false, TryTakeReader());
+			var NewInstance = LockInstance.GetOrCreate(this, false, TryTakeReader());
 
 			var ValueTask = new ValueTask<Instance>(NewInstance, NewInstance.Version);
 
@@ -163,7 +161,7 @@ namespace System.Threading
 				throw new ObjectDisposedException(nameof(AsyncReadWriteLock), "Read Write Lock has been disposed of");
 
 			// Try and take the lock
-			var NewInstance = GetOrCreateInstance(true, TryTakeWriter());
+			var NewInstance = LockInstance.GetOrCreate(this, true, TryTakeWriter());
 
 			var ValueTask = new ValueTask<Instance>(NewInstance, NewInstance.Version);
 
@@ -201,7 +199,7 @@ namespace System.Threading
 				throw new ObjectDisposedException(nameof(AsyncReadWriteLock), "Read Write Lock has been disposed of");
 
 			// Try and take the lock
-			var NewInstance = GetOrCreateInstance(true, TryTakeWriter());
+			var NewInstance = LockInstance.GetOrCreate(this, true, TryTakeWriter());
 
 			var ValueTask = new ValueTask<Instance>(NewInstance, NewInstance.Version);
 
@@ -227,9 +225,69 @@ namespace System.Threading
 
 		//****************************************
 
+		private ValueTask<bool> Upgrade(LockInstance instance, bool requireFirst, CancellationToken token)
+		{
+			bool TryUpgrade()
+			{
+				int PreviousCounter;
+
+				do
+				{
+					PreviousCounter = _Counter;
+
+					Debug.Assert(PreviousCounter >= LockState.Reader, "Read Write Lock is in an invalid state (Upgrade)");
+
+					if (PreviousCounter > LockState.Reader)
+						return false; // There are other Readers active, so we can't instantly upgrade
+
+					if (!_Writers.IsEmpty)
+						return false; // There are writers waiting, so we can't upgrade in front of them
+				}
+				while (Interlocked.CompareExchange(ref _Counter, LockState.Writer, PreviousCounter) != PreviousCounter);
+
+				return true;
+			}
+
+			// Try to instantly transition to a Writer
+			if (TryUpgrade())
+			{
+				instance.CompleteUpgrade();
+
+				return new ValueTask<bool>(true);
+			}
+
+			var Instance = LockUpgradeInstance.GetOrCreate(instance);
+
+			_Writers.Enqueue(Instance);
+
+			// We can't be dequeued yet, as we're still holding the read lock
+			var IsFirst = _Writers.TryPeek(out var FirstWriter) && FirstWriter == Instance;
+
+			// If first place is required and we weren't first, exit
+			if (requireFirst && !IsFirst)
+			{
+				if (!_Writers.Erase(Instance))
+					Debug.Fail("Read Write lock failed to remove instance");
+
+				Instance.Release(); // Return the Instance to the pool
+
+				return new ValueTask<bool>(false);
+			}
+
+			// Activate the upgrader, letting it know if we're first
+			Instance.Prepare(IsFirst, token);
+
+			// We're ready to upgrade, so release the read lock
+			// This complicates cancellation, as we will need to re-take the read lock before cancelling.
+			// This means a cancellation may not occur immediately (potentially never in unfair write mode), just less than if we waited for the writer
+			Release(false);
+
+			return new ValueTask<bool>(Instance, Instance.Version);
+		}
+
 		private bool TryTakeReader(bool ignoreOthers = false)
 		{
-			int PreviousCounter, NewCounter;
+			int PreviousCounter;
 
 			do
 			{
@@ -242,9 +300,8 @@ namespace System.Threading
 					return false; // There are writers waiting, and we're not in unfair mode, so we can't take a reader lock
 
 				// Take a reader lock if there are no writers waiting, or if there are but we're in unfair mode
-				NewCounter = PreviousCounter + 1;
 			}
-			while (Interlocked.CompareExchange(ref _Counter, NewCounter, PreviousCounter) != PreviousCounter);
+			while (Interlocked.CompareExchange(ref _Counter, PreviousCounter + 1, PreviousCounter) != PreviousCounter);
 
 			return true;
 		}
@@ -255,20 +312,54 @@ namespace System.Threading
 			return Interlocked.CompareExchange(ref _Counter, LockState.Writer, LockState.Unlocked) == LockState.Unlocked;
 		}
 
+		private void Downgrade()
+		{
+			int PreviousCounter, NewCounter;
+
+			do
+			{
+				PreviousCounter = _Counter;
+
+				Debug.Assert(PreviousCounter == LockState.Writer, "Read Write Lock is in an invalid state (Reader)");
+
+				if (_Readers.IsEmpty)
+					NewCounter = LockState.Reader; // No other readers, so just activate ourselves
+				else
+					NewCounter = LockState.Reader + 1; // Other readers, reserve at least one lock
+			}
+			while (Interlocked.CompareExchange(ref _Counter, NewCounter, PreviousCounter) != PreviousCounter);
+
+			if (NewCounter > LockState.Reader)
+			{
+				// We saw there were more Readers, so try and activate them
+				if (TryActivateReader(true))
+					return;
+
+				// Failed to activate the Reader, so release it
+				// Safe to just do a decrement, since we're holding the read lock ourselves
+				Interlocked.Decrement(ref _Counter);
+			}
+		}
+
+		private void Downgrade(LockUpgradeInstance instance)
+		{
+			_Readers.Enqueue(instance);
+
+			if (!TryTakeReader(true) || TryActivateReader())
+				return;
+
+			Release(false);
+		}
+
 		private void Release(bool isWriter)
 		{
 			int PreviousCounter, NewCounter;
-			var OuterAttempts = 0;
 
 			for (; ; )
 			{
-				OuterAttempts++;
-				var Attempts = 0;
-
-				for (; ;)
+				do
 				{
-					Attempts++;
-					PreviousCounter = Interlocked.CompareExchange(ref _Counter, 0, 0);
+					PreviousCounter = _Counter;
 
 					Debug.Assert(PreviousCounter != LockState.Unlocked, "Read Write Lock is in an invalid state (Unheld)");
 					Debug.Assert(PreviousCounter != LockState.Disposed, "Read Write Lock is in an invalid state (Disposed)");
@@ -312,10 +403,8 @@ namespace System.Threading
 						Debug.Assert(NewCounter == LockState.Writer, $"Read Write Lock did not change state ({NewCounter})");
 						break;
 					}
-
-					if (Interlocked.CompareExchange(ref _Counter, NewCounter, PreviousCounter) == PreviousCounter)
-						break;
 				}
+				while (Interlocked.CompareExchange(ref _Counter, NewCounter, PreviousCounter) != PreviousCounter);
 
 				switch (NewCounter)
 				{
@@ -424,12 +513,12 @@ namespace System.Threading
 			return false;
 		}
 
-		private void CancelWaiter(LockInstance instance)
+		private bool CancelWaiter(ILockWaiter instance, bool isWriter)
 		{
-			if (instance.IsWriter)
+			if (isWriter)
 			{
 				if (!_Writers.Erase(instance))
-					return;
+					return false;
 
 				// We cancelled writing, this may allow readers to start work when we're not in unfair mode
 				if (!UnfairRead && TryTakeReader() && !TryActivateReader(true))
@@ -438,12 +527,14 @@ namespace System.Threading
 			else
 			{
 				if (!_Readers.Erase(instance))
-					return;
+					return false;
 
 				// We cancelled reading, this may allow a writer to start work when we're not in unfair mode
 				if (!UnfairWrite && TryTakeWriter() && !TryActivateWriter())
 					Release(true);
 			}
+
+			return true;
 		}
 
 		private void DisposeReaders()
@@ -456,16 +547,6 @@ namespace System.Threading
 		{
 			while (_Writers.TryDequeue(out var Instance))
 				Instance.SwitchToDisposed();
-		}
-
-		private LockInstance GetOrCreateInstance(bool isWriter, bool isTaken)
-		{
-			if (!Instances.TryTake(out var Instance))
-				Instance = new LockInstance();
-
-			Instance.Initialise(this, isWriter, isTaken);
-
-			return Instance;
 		}
 
 		//****************************************
@@ -522,6 +603,28 @@ namespace System.Threading
 			//****************************************
 
 			/// <summary>
+			/// Upgrades a Read lock to a Write lock
+			/// </summary>
+			/// <param name="token">A cancellation token to abort the upgrade</param>
+			/// <returns>A Task returning True if we managed an exclusive upgrade, False if another Writer was activated first</returns>
+			/// <remarks>Can wait until other Readers finish. Can also wait until other waiting Writers have finished. Does nothing if you're already a Writer.</remarks>
+			public ValueTask<bool> Upgrade(CancellationToken token = default) => _Instance.Upgrade(_Token, token);
+
+			/// <summary>
+			/// Tries to exclusively upgrade a Read lock to a Write lock
+			/// </summary>
+			/// <param name="token">A cancellation token to abort the upgrade</param>
+			/// <returns>A Task returning True if we managed an upgrade to a Write lock, False if we remain a Read lock because there are waiting Writers.</returns>
+			/// <remarks>Can wait until other Readers finish. Will not wait for other Writers. Does nothing if you're already a Writer.</remarks>
+			public ValueTask<bool> TryUpgrade(CancellationToken token = default) => _Instance.TryUpgrade(_Token, token);
+
+			/// <summary>
+			/// Downgrades a Write lock to a Read lock
+			/// </summary>
+			/// <remarks>Does nothing if you're already a Reader</remarks>
+			public void Downgrade() => _Instance.Downgrade(_Token);
+
+			/// <summary>
 			/// Releases the lock currently held
 			/// </summary>
 			public void Dispose() => _Instance.Release(_Token);
@@ -529,248 +632,16 @@ namespace System.Threading
 			//****************************************
 
 			/// <summary>
-			/// Gets whether the lock is an exclusive (write) lock
+			/// Gets whether the lock is a write (exclusive) lock
 			/// </summary>
-			public bool IsExclusive => _Instance.IsWriter;
+			public bool IsWriter => _Instance.IsWriter;
 		}
 
-		internal sealed class LockInstance : IValueTaskSource<Instance>
-		{ //****************************************
-			private volatile int _InstanceState;
+		internal interface ILockWaiter
+		{
+			void SwitchToDisposed();
 
-			private ManualResetValueTaskSourceCore<Instance> _TaskSource = new ManualResetValueTaskSourceCore<Instance>();
-
-			private CancellationTokenRegistration _Registration;
-			private CancellationTokenSource? _TokenSource;
-			//****************************************
-
-			internal LockInstance() => _TaskSource.RunContinuationsAsynchronously = true;
-
-			~LockInstance()
-			{
-				if (_InstanceState != Status.Unused)
-				{
-					// TODO: Lock instance was garbage collected without being released
-				}
-			}
-
-			//****************************************
-
-			internal void Initialise(AsyncReadWriteLock owner, bool isWriter, bool isHeld)
-			{
-				Owner = owner;
-				IsWriter = isWriter;
-
-				GC.ReRegisterForFinalize(this);
-
-				if (isHeld)
-				{
-					_InstanceState = Status.Held;
-					_TaskSource.SetResult(new Instance(this));
-				}
-				else
-				{
-					_InstanceState = Status.Pending;
-				}
-			}
-
-			internal void ApplyCancellation(CancellationToken token, CancellationTokenSource? tokenSource)
-			{
-				if (token.CanBeCanceled)
-				{
-					Token = token;
-
-					if (_InstanceState != Status.Pending)
-						throw new InvalidOperationException("Cannot register for cancellation when not pending");
-
-					_TokenSource = tokenSource;
-
-					_Registration = token.Register((state) => ((LockInstance)state).SwitchToCancelled(), this);
-				}
-			}
-
-			internal void SwitchToDisposed()
-			{
-				// Called when an Instance is removed from the Waiters queue due to a Dispose
-				if (Interlocked.CompareExchange(ref _InstanceState, Status.Disposed, Status.Pending) != Status.Pending)
-					return;
-
-				_Registration.Dispose();
-				_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncReadWriteLock), "Read Write Lock has been disposed of"));
-			}
-
-			internal bool TrySwitchToCompleted()
-			{
-				// Try and assign the counter to this Instance
-				if (Interlocked.CompareExchange(ref _InstanceState, Status.Held, Status.Pending) == Status.Pending)
-				{
-					if (IsWriter)
-						Debug.Assert(Owner!._Counter == LockState.Writer, "Read Write lock is in an invalid state (Unheld writer)");
-					else
-						Debug.Assert(Owner!._Counter >= LockState.Reader, "Read Write lock is in an invalid state (Unheld reader)");
-
-					_Registration.Dispose();
-					_TaskSource.SetResult(new Instance(this));
-
-					return true;
-				}
-
-				// Assignment failed, so it was cancelled
-				// If the result has already been retrieved, return the Instance to the pool
-				int InstanceState, NewInstanceState;
-
-				do
-				{
-					InstanceState = _InstanceState;
-
-					switch (InstanceState)
-					{
-					case Status.Cancelled:
-						NewInstanceState = Status.CancelledNotWaiting;
-						break;
-
-					case Status.CancelledGotResult:
-						NewInstanceState = Status.Unused;
-						break;
-
-					case Status.Unused:
-						throw new InvalidOperationException("Read Write Lock instance is in an invalid state (Unused)");
-
-					case Status.Pending:
-						throw new InvalidOperationException("Read Write Lock instance is in an invalid state (Pending)");
-
-					case Status.Held:
-						throw new InvalidOperationException("Read Write Lock instance is in an invalid state (Held)");
-
-					case Status.CancelledNotWaiting:
-						_Registration.Dispose();
-
-						return false;
-
-					default:
-						throw new InvalidOperationException($"Read Write Lock instance is in an invalid state ({InstanceState})");
-					}
-				}
-				while (Interlocked.CompareExchange(ref _InstanceState, NewInstanceState, InstanceState) != InstanceState);
-
-				_Registration.Dispose();
-
-				if (InstanceState == Status.CancelledGotResult)
-					Release(); // GetResult has been called, so we can return to the pool
-
-				return false;
-			}
-
-			internal void Release(short token)
-			{
-				if (_TaskSource.Version != token || Interlocked.CompareExchange(ref _InstanceState, Status.Unused, Status.Held) != Status.Held)
-					throw new InvalidOperationException("Lock cannot be released multiple times");
-
-				// Release the counter and then return to the pool
-				Owner!.Release(IsWriter);
-				Release();
-			}
-
-			//****************************************
-
-			ValueTaskSourceStatus IValueTaskSource<Instance>.GetStatus(short token) => _TaskSource.GetStatus(token);
-
-			public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
-
-			public Instance GetResult(short token)
-			{
-				try
-				{
-					return _TaskSource.GetResult(token);
-				}
-				finally
-				{
-					switch (_InstanceState)
-					{
-					case Status.Disposed:
-					case Status.CancelledNotWaiting:
-						Release();
-						break;
-
-					case Status.Cancelled:
-						if (Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledNotWaiting)
-							Release(); // We're cancelled/disposed and no longer on the Wait queue, so we can return to the pool
-						break;
-					}
-				}
-			}
-
-			//****************************************
-
-			private void SwitchToCancelled()
-			{
-				if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Cancelled, Status.Pending) != Status.Pending)
-					return; // Instance is no longer in a cancellable state
-
-				Owner!.CancelWaiter(this);
-
-				_TaskSource.SetException(new OperationCanceledException(Token));
-			}
-
-			private void Release()
-			{
-				Owner = null;
-				Token = default;
-				_TaskSource.Reset();
-				_TokenSource?.Dispose();
-				_TokenSource = null;
-				_InstanceState = Status.Unused;
-				IsWriter = false;
-
-				GC.SuppressFinalize(this);
-				Instances.Add(this);
-			}
-
-			//****************************************
-
-			public AsyncReadWriteLock? Owner { get; private set; }
-
-			public bool IsWriter { get; private set; }
-
-			public bool IsPending => _InstanceState == Status.Pending;
-
-			public CancellationToken Token { get; private set; }
-
-			public short Version => _TaskSource.Version;
-
-			//****************************************
-
-			private static class Status
-			{
-				/// <summary>
-				/// The lock was cancelled and is currently on the list of waiters
-				/// </summary>
-				internal const int CancelledGotResult = -4;
-				/// <summary>
-				/// The lock is cancelled and waiting for GetResult
-				/// </summary>
-				internal const int CancelledNotWaiting = -3;
-				/// <summary>
-				/// The lock was cancelled and is currently on the list of waiters while waiting for GetResult
-				/// </summary>
-				internal const int Cancelled = -2;
-				/// <summary>
-				/// The lock was disposed of
-				/// </summary>
-				internal const int Disposed = -1;
-				/// <summary>
-				/// A lock starts in the Unused state
-				/// </summary>
-				internal const int Unused = 0;
-				/// <summary>
-				/// The lock is currently held, and waiting for GetResult and then Dispose
-				/// </summary>
-				internal const int Held = 1;
-				/// <summary>
-				/// The lock is on the list of waiters
-				/// </summary>
-				internal const int Pending = 2;
-			}
+			bool TrySwitchToCompleted(bool isWriter);
 		}
 
 		private static class LockState
@@ -779,6 +650,8 @@ namespace System.Threading
 			internal const int Unlocked = 0;
 			internal const int Writer = -1;
 			internal const int Disposed = -2;
+
+			internal const int UpgradingReader = unchecked((int)0x80000000);
 		}
 
 		private sealed class AsyncReadWriteDisposer : IValueTaskSource
