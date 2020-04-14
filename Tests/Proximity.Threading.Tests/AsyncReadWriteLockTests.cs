@@ -881,6 +881,9 @@ namespace Proximity.Threading.Tests
 
 				MySource.Cancel();
 
+				// The Writer will have taken our place, so we need to release it
+				(await MyWrite).Dispose();
+
 				try
 				{
 					await Upgrade;
@@ -890,9 +893,9 @@ namespace Proximity.Threading.Tests
 				catch (OperationCanceledException)
 				{
 				}
-			}
 
-			(await MyWrite).Dispose();
+				Assert.IsFalse(Instance.IsWriter, "Is Writer");
+			}
 
 			//****************************************
 

@@ -486,7 +486,7 @@ namespace System.Threading
 							Interlocked.Increment(ref _Counter);
 
 						// Try to activate each waiting reader (they may be cancelled)
-						ConsumedLock = OtherReader.TrySwitchToCompleted();
+						ConsumedLock = OtherReader.TrySwitchToCompleted(false);
 					}
 
 					// If the reader didn't take the lock, we need to release it again
@@ -494,7 +494,7 @@ namespace System.Threading
 						Interlocked.Decrement(ref _Counter);
 				}
 
-				return Reader.TrySwitchToCompleted();
+				return Reader.TrySwitchToCompleted(false);
 			}
 
 			// Failed to dequeue, so trigger a release
@@ -505,7 +505,7 @@ namespace System.Threading
 		{
 			while (_Writers.TryDequeue(out var Writer))
 			{
-				if (Writer.TrySwitchToCompleted())
+				if (Writer.TrySwitchToCompleted(true))
 					return true;
 			}
 

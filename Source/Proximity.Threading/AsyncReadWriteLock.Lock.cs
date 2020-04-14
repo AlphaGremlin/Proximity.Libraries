@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,6 +16,11 @@ namespace System.Threading
 		{ //****************************************
 			private static readonly ConcurrentBag<LockInstance> Instances = new ConcurrentBag<LockInstance>();
 			//****************************************
+#if !NETSTANDARD2_0
+			private readonly Action _CompletedCleanup;
+			private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _Awaiter;
+#endif
+
 			private volatile int _InstanceState;
 
 			private ManualResetValueTaskSourceCore<Instance> _TaskSource = new ManualResetValueTaskSourceCore<Instance>();
@@ -23,7 +29,13 @@ namespace System.Threading
 			private CancellationTokenSource? _TokenSource;
 			//****************************************
 
-			internal LockInstance() => _TaskSource.RunContinuationsAsynchronously = true;
+			internal LockInstance()
+			{
+				_TaskSource.RunContinuationsAsynchronously = true;
+#if !NETSTANDARD2_0
+				_CompletedCleanup = OnCompletedCleanup;
+#endif
+			}
 
 			~LockInstance()
 			{
@@ -46,7 +58,10 @@ namespace System.Threading
 
 					_TokenSource = tokenSource;
 
-					_Registration = token.Register((state) => ((LockInstance)state).SwitchToCancelled(), this);
+					if (token.IsCancellationRequested)
+						SwitchToCancelled();
+					else
+						_Registration = token.Register((state) => ((LockInstance)state).SwitchToCancelled(), this);
 				}
 			}
 
@@ -56,8 +71,7 @@ namespace System.Threading
 				if (Interlocked.CompareExchange(ref _InstanceState, Status.Disposed, Status.Pending) != Status.Pending)
 					return;
 
-				_Registration.Dispose();
-				_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncReadWriteLock), "Read Write Lock has been disposed of"));
+				CleanupCancellation();
 			}
 
 			public bool TrySwitchToCompleted(bool isWriter)
@@ -72,8 +86,7 @@ namespace System.Threading
 					else
 						Debug.Assert(Owner!._Counter >= LockState.Reader, "Read Write lock is in an invalid state (Unheld reader)");
 
-					_Registration.Dispose();
-					_TaskSource.SetResult(new Instance(this));
+					CleanupCancellation();
 
 					return true;
 				}
@@ -105,18 +118,11 @@ namespace System.Threading
 					case Status.Held:
 						throw new InvalidOperationException("Read Write Lock instance is in an invalid state (Held)");
 
-					case Status.CancelledNotWaiting:
-						_Registration.Dispose();
-
-						return false;
-
 					default:
 						throw new InvalidOperationException($"Read Write Lock instance is in an invalid state ({InstanceState})");
 					}
 				}
 				while (Interlocked.CompareExchange(ref _InstanceState, NewInstanceState, InstanceState) != InstanceState);
-
-				_Registration.Dispose();
 
 				if (InstanceState == Status.CancelledGotResult)
 					Release(); // GetResult has been called, so we can return to the pool
@@ -252,6 +258,40 @@ namespace System.Threading
 
 				GC.SuppressFinalize(this);
 				Instances.Add(this);
+			}
+
+			private void CleanupCancellation()
+			{
+#if NETSTANDARD2_0
+				_Registration.Dispose();
+
+				OnCompletedCleanup();
+#else
+				_Awaiter = _Registration.DisposeAsync().ConfigureAwait(false).GetAwaiter();
+
+				if (_Awaiter.IsCompleted)
+					OnCompletedCleanup();
+				else
+					_Awaiter.OnCompleted(_CompletedCleanup);
+#endif
+			}
+
+			private void OnCompletedCleanup()
+			{
+#if !NETSTANDARD2_0
+				_Awaiter.GetResult();
+#endif
+
+				switch (_InstanceState)
+				{
+				case Status.Disposed:
+					_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncReadWriteLock), "Read Write Lock has been disposed of"));
+					break;
+
+				case Status.Held:
+					_TaskSource.SetResult(new Instance(this));
+					break;
+				}
 			}
 
 			//****************************************

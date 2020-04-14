@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks.Sources;
 
@@ -13,16 +14,26 @@ namespace System.Threading
 		{ //****************************************
 			private static readonly ConcurrentBag<LockUpgradeInstance> Instances = new ConcurrentBag<LockUpgradeInstance>();
 			//****************************************
+#if !NETSTANDARD2_0
+			private readonly Action _CompletedCleanup;
+			private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _Awaiter;
+#endif
+
 			private volatile int _InstanceState;
+			private bool _IsFirst;
 
 			private ManualResetValueTaskSourceCore<bool> _TaskSource = new ManualResetValueTaskSourceCore<bool>();
 
 			private CancellationTokenRegistration _Registration;
-
-			private bool _IsFirst;
 			//****************************************
 
-			internal LockUpgradeInstance() => _TaskSource.RunContinuationsAsynchronously = true;
+			internal LockUpgradeInstance()
+			{
+				_TaskSource.RunContinuationsAsynchronously = true;
+#if !NETSTANDARD2_0
+				_CompletedCleanup = OnCompletedCleanup;
+#endif
+			}
 
 			//****************************************
 
@@ -37,7 +48,10 @@ namespace System.Threading
 				{
 					Token = token;
 
-					_Registration = token.Register((state) => ((LockUpgradeInstance)state).SwitchToCancelled(), this);
+					if (token.IsCancellationRequested)
+						SwitchToCancelled();
+					else
+						_Registration = token.Register((state) => ((LockUpgradeInstance)state).SwitchToCancelled(), this);
 				}
 			}
 
@@ -47,8 +61,8 @@ namespace System.Threading
 				Token = default;
 
 				_TaskSource.Reset();
-				_Registration.Dispose();
 				_IsFirst = false;
+				_InstanceState = Status.Unused;
 
 				Instances.Add(this);
 			}
@@ -59,8 +73,7 @@ namespace System.Threading
 				if (Interlocked.CompareExchange(ref _InstanceState, Status.Disposed, Status.Pending) != Status.Pending)
 					return;
 
-				_Registration.Dispose();
-				_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncReadWriteLock), "Read Write Lock has been disposed of"));
+				CleanupCancellation();
 			}
 
 			public bool TrySwitchToCompleted(bool isWriter)
@@ -95,13 +108,13 @@ namespace System.Threading
 						break;
 
 					case Status.Pending:
-						Debug.Assert(!isWriter, "Read Write lock upgrade is in an invalid state (Reader)");
+						Debug.Assert(isWriter, "Read Write lock upgrade is in an invalid state (Pending Reader)");
 
 						NewInstanceState = Status.Upgraded;
 						break;
 
 					default:
-						throw new InvalidOperationException($"Read Write Lock upgrade is in an invalid state ({InstanceState})");
+						throw new InvalidOperationException($"Read Write Lock upgrade is in an unexpected state ({InstanceState})");
 					}
 				}
 				while (Interlocked.CompareExchange(ref _InstanceState, NewInstanceState, InstanceState) != InstanceState);
@@ -136,7 +149,7 @@ namespace System.Threading
 					// We've upgraded and now hold the write lock, ensure our instance is up-to-date first
 					Owner!.CompleteUpgrade();
 
-					_TaskSource.SetResult(_IsFirst);
+					CleanupCancellation();
 
 					return true;
 
@@ -200,7 +213,7 @@ namespace System.Threading
 				if (Owner.TryTakeReader(true))
 				{
 					// We have a reader lock, but we may have already gotten upgraded
-					if (Interlocked.CompareExchange(ref _InstanceState, Status.Cancelled, Status.Downgrading) != Status.Pending)
+					if (Interlocked.CompareExchange(ref _InstanceState, Status.Cancelled, Status.Downgrading) != Status.Downgrading)
 					{
 						Owner.Release(false);
 
@@ -226,6 +239,40 @@ namespace System.Threading
 					// We've switched to write mode, but it's not us - add to the waiting readers before we can cancel
 					// Add to the read queue 
 					Owner.Downgrade(this);
+				}
+			}
+
+			private void CleanupCancellation()
+			{
+#if NETSTANDARD2_0
+				_Registration.Dispose();
+
+				OnCompletedCleanup();
+#else
+				_Awaiter = _Registration.DisposeAsync().ConfigureAwait(false).GetAwaiter();
+
+				if (_Awaiter.IsCompleted)
+					OnCompletedCleanup();
+				else
+					_Awaiter.OnCompleted(_CompletedCleanup);
+#endif
+			}
+
+			private void OnCompletedCleanup()
+			{
+#if !NETSTANDARD2_0
+				_Awaiter.GetResult();
+#endif
+
+				switch (_InstanceState)
+				{
+				case Status.Disposed:
+					_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncReadWriteLock), "Read Write Lock has been disposed of"));
+					break;
+
+				case Status.Upgraded:
+					_TaskSource.SetResult(_IsFirst);
+					break;
 				}
 			}
 

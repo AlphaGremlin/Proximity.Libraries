@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks.Sources;
@@ -11,6 +12,11 @@ namespace System.Threading
 	{ //****************************************
 		private static readonly ConcurrentBag<AsyncCounterDecrement> _Instances = new ConcurrentBag<AsyncCounterDecrement>();
 		//****************************************
+#if !NETSTANDARD2_0
+		private readonly Action _CompletedCleanup;
+		private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _Awaiter;
+#endif
+
 		private volatile int _InstanceState;
 
 		private ManualResetValueTaskSourceCore<VoidStruct> _TaskSource = new ManualResetValueTaskSourceCore<VoidStruct>();
@@ -19,7 +25,13 @@ namespace System.Threading
 		private CancellationTokenSource? _TokenSource;
 		//****************************************
 
-		internal AsyncCounterDecrement() => _TaskSource.RunContinuationsAsynchronously = true;
+		internal AsyncCounterDecrement()
+		{
+			_TaskSource.RunContinuationsAsynchronously = true;
+#if !NETSTANDARD2_0
+			_CompletedCleanup = OnCompletedCleanup;
+#endif
+		}
 
 		//****************************************
 
@@ -50,7 +62,10 @@ namespace System.Threading
 
 				_TokenSource = tokenSource;
 
-				_Registration = token.Register((state) => ((AsyncCounterDecrement)state).SwitchToCancelled(), this);
+				if (token.IsCancellationRequested)
+					SwitchToCancelled();
+				else
+					_Registration = token.Register((state) => ((AsyncCounterDecrement)state).SwitchToCancelled(), this);
 			}
 		}
 
@@ -60,8 +75,7 @@ namespace System.Threading
 			if (Interlocked.CompareExchange(ref _InstanceState, Status.Disposed, Status.Pending) != Status.Pending)
 				return;
 
-			_Registration.Dispose();
-			_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncCounter), "Counter has been disposed of"));
+			CleanupCancellation();
 		}
 
 		internal void SwitchToCancelled()
@@ -84,8 +98,7 @@ namespace System.Threading
 			// Try and assign the counter to this Instance
 			if (Interlocked.CompareExchange(ref _InstanceState, Status.Decremented, Status.Pending) == Status.Pending)
 			{
-				_Registration.Dispose();
-				_TaskSource.SetResult(default);
+				CleanupCancellation();
 
 				return true;
 			}
@@ -109,14 +122,10 @@ namespace System.Threading
 					break;
 
 				default:
-					_Registration.Dispose();
-
 					return false;
 				}
 			}
 			while (Interlocked.CompareExchange(ref _InstanceState, NewInstanceState, InstanceState) != InstanceState);
-
-			_Registration.Dispose();
 
 			if (InstanceState == Status.CancelledGotResult)
 				Release(); // GetResult has been called, so we can return to the pool
@@ -145,6 +154,40 @@ namespace System.Threading
 		}
 
 		//****************************************
+
+		private void CleanupCancellation()
+		{
+#if NETSTANDARD2_0
+				_Registration.Dispose();
+
+				OnCompletedCleanup();
+#else
+			_Awaiter = _Registration.DisposeAsync().ConfigureAwait(false).GetAwaiter();
+
+			if (_Awaiter.IsCompleted)
+				OnCompletedCleanup();
+			else
+				_Awaiter.OnCompleted(_CompletedCleanup);
+#endif
+		}
+
+		private void OnCompletedCleanup()
+		{
+#if !NETSTANDARD2_0
+			_Awaiter.GetResult();
+#endif
+
+			switch (_InstanceState)
+			{
+			case Status.Disposed:
+				_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncCounter), "Counter has been disposed of"));
+				break;
+
+			case Status.Decremented:
+				_TaskSource.SetResult(default);
+				break;
+			}
+		}
 
 		private void Release()
 		{

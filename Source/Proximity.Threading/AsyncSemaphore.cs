@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
@@ -373,6 +374,11 @@ namespace System.Threading
 
 		private sealed class SemaphoreInstance : IDisposable, IValueTaskSource<IDisposable>
 		{ //****************************************
+#if !NETSTANDARD2_0
+			private readonly Action _CompletedCleanup;
+			private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _Awaiter;
+#endif
+
 			private volatile int _InstanceState;
 
 			private ManualResetValueTaskSourceCore<IDisposable> _TaskSource = new ManualResetValueTaskSourceCore<IDisposable>();
@@ -381,7 +387,13 @@ namespace System.Threading
 			private CancellationTokenSource? _TokenSource;
 			//****************************************
 
-			internal SemaphoreInstance() => _TaskSource.RunContinuationsAsynchronously = true;
+			internal SemaphoreInstance()
+			{
+				_TaskSource.RunContinuationsAsynchronously = true;
+#if !NETSTANDARD2_0
+				_CompletedCleanup = OnCompletedCleanup;
+#endif
+			}
 
 			~SemaphoreInstance()
 			{
@@ -431,8 +443,7 @@ namespace System.Threading
 				if (Interlocked.CompareExchange(ref _InstanceState, Status.Disposed, Status.Pending) != Status.Pending)
 					return;
 
-				_Registration.Dispose();
-				_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncSemaphore), "Semaphore has been disposed of"));
+				CleanupCancellation();
 			}
 
 			internal bool TrySwitchToCompleted()
@@ -440,8 +451,7 @@ namespace System.Threading
 				// Try and assign the counter to this Instance
 				if (Interlocked.CompareExchange(ref _InstanceState, Status.Held, Status.Pending) == Status.Pending)
 				{
-					_Registration.Dispose();
-					_TaskSource.SetResult(this);
+					CleanupCancellation();
 
 					return true;
 				}
@@ -465,14 +475,10 @@ namespace System.Threading
 						break;
 
 					default:
-						_Registration.Dispose();
-
 						return false;
 					}
 				}
 				while (Interlocked.CompareExchange(ref _InstanceState, NewInstanceState, InstanceState) != InstanceState);
-
-				_Registration.Dispose();
 
 				if (InstanceState == Status.CancelledGotResult)
 					Release(); // GetResult has been called, so we can return to the pool
@@ -530,6 +536,40 @@ namespace System.Threading
 
 				GC.SuppressFinalize(this);
 				_Instances.Add(this);
+			}
+
+			private void CleanupCancellation()
+			{
+#if NETSTANDARD2_0
+				_Registration.Dispose();
+
+				OnCompletedCleanup();
+#else
+				_Awaiter = _Registration.DisposeAsync().ConfigureAwait(false).GetAwaiter();
+
+				if (_Awaiter.IsCompleted)
+					OnCompletedCleanup();
+				else
+					_Awaiter.OnCompleted(_CompletedCleanup);
+#endif
+			}
+
+			private void OnCompletedCleanup()
+			{
+#if !NETSTANDARD2_0
+				_Awaiter.GetResult();
+#endif
+
+				switch (_InstanceState)
+				{
+				case Status.Disposed:
+					_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncSemaphore), "Semaphore has been disposed of"));
+					break;
+
+				case Status.Held:
+					_TaskSource.SetResult(this);
+					break;
+				}
 			}
 
 			//****************************************
