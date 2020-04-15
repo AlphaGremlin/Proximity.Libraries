@@ -301,7 +301,7 @@ namespace System.Collections.Concurrent
 			_UsedSlots.Dispose();
 		}
 
-		internal bool TryPeekTake(CancellationToken token, out AsyncCounterDecrement decrement) => _UsedSlots.TryPeekDecrement(token, out decrement);
+		internal bool TryPeekTake(CancellationToken token, out AsyncCounterDecrement decrement) => _UsedSlots.TryPeekDecrement(Timeout.InfiniteTimeSpan, token, out decrement);
 
 		internal bool TryReserveTake() => _UsedSlots.TryDecrement();
 
