@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
@@ -69,7 +69,7 @@ namespace System.Threading.Tasks
 		/// <param name="action">The action to execute at the end of the queue</param>
 		/// <param name="token">A token to cancel this action</param>
 		/// <returns>A task representing the completion of the action</returns>
-		/// <remarks>If the action returns a <see cref="Task"/>, you may want to use <see cref="O:QueueTask"/> instead</remarks>
+		/// <remarks>If the action returns a <see cref="Task"/> or <see cref="ValueTask"/>, you may want to use <see cref="O:QueueTask"/> instead</remarks>
 		public ValueTask<TResult> Queue<TResult>(Func<TResult> action, CancellationToken token = default)
 		{
 			var NewTask = FuncTask<TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
@@ -87,7 +87,7 @@ namespace System.Threading.Tasks
 		/// <param name="value">The value to pass to the action</param>
 		/// <param name="token">A token to cancel this action</param>
 		/// <returns>A task representing the completion of the action</returns>
-		/// <remarks>If the action returns a <see cref="Task"/>, you may want to use <see cref="O:QueueTask"/> instead</remarks>
+		/// <remarks>If the action returns a <see cref="Task"/> or <see cref="ValueTask"/>, you may want to use <see cref="O:QueueTask"/> instead</remarks>
 		public ValueTask<TResult> Queue<TValue, TResult>(Func<TValue, TResult> action, TValue value, CancellationToken token = default)
 		{
 			var NewTask = FuncTask<TValue, TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);

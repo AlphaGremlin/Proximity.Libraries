@@ -8,30 +8,16 @@ using System.Threading.Tasks.Sources;
 
 namespace System.Threading
 {
-	internal sealed class AsyncCounterDecrement : IValueTaskSource
+	internal sealed class AsyncCounterDecrement : BaseCancellable, IValueTaskSource
 	{ //****************************************
 		private static readonly ConcurrentBag<AsyncCounterDecrement> _Instances = new ConcurrentBag<AsyncCounterDecrement>();
 		//****************************************
-#if !NETSTANDARD2_0
-		private readonly Action _CompletedCleanup;
-		private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _Awaiter;
-#endif
-
 		private volatile int _InstanceState;
 
 		private ManualResetValueTaskSourceCore<VoidStruct> _TaskSource = new ManualResetValueTaskSourceCore<VoidStruct>();
-
-		private CancellationTokenRegistration _Registration;
-		private CancellationTokenSource? _TokenSource;
 		//****************************************
 
-		internal AsyncCounterDecrement()
-		{
-			_TaskSource.RunContinuationsAsynchronously = true;
-#if !NETSTANDARD2_0
-			_CompletedCleanup = OnCompletedCleanup;
-#endif
-		}
+		internal AsyncCounterDecrement() => _TaskSource.RunContinuationsAsynchronously = true;
 
 		//****************************************
 
@@ -51,22 +37,12 @@ namespace System.Threading
 			}
 		}
 
-		internal void ApplyCancellation(CancellationToken token, CancellationTokenSource? tokenSource)
+		internal void ApplyCancellation(CancellationToken token, TimeSpan timeout)
 		{
-			if (token.CanBeCanceled)
-			{
-				Token = token;
+			if (_InstanceState != Status.Pending)
+				throw new InvalidOperationException("Cannot register for cancellation when not pending");
 
-				if (_InstanceState != Status.Pending)
-					throw new InvalidOperationException("Cannot register for cancellation when not pending");
-
-				_TokenSource = tokenSource;
-
-				if (token.IsCancellationRequested)
-					SwitchToCancelled();
-				else
-					_Registration = token.Register((state) => ((AsyncCounterDecrement)state).SwitchToCancelled(), this);
-			}
+			RegisterCancellation(token, timeout);
 		}
 
 		internal void SwitchToDisposed()
@@ -75,22 +51,7 @@ namespace System.Threading
 			if (Interlocked.CompareExchange(ref _InstanceState, Status.Disposed, Status.Pending) != Status.Pending)
 				return;
 
-			CleanupCancellation();
-		}
-
-		internal void SwitchToCancelled()
-		{
-			if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Cancelled, Status.Pending) != Status.Pending)
-				return; // Instance is no longer in a cancellable state
-
-			if (Owner!.CancelDecrement(this))
-			{
-				if (Interlocked.CompareExchange(ref _InstanceState, Status.CancelledNotWaiting, Status.Cancelled) != Status.Cancelled)
-					throw new InvalidOperationException("Decrement is in an invalid state (Not cancelled)");
-			}
-
-			_Registration.Dispose();
-			_TaskSource.SetException(new OperationCanceledException(Token));
+			UnregisterCancellation();
 		}
 
 		internal bool TrySwitchToCompleted()
@@ -98,7 +59,7 @@ namespace System.Threading
 			// Try and assign the counter to this Instance
 			if (Interlocked.CompareExchange(ref _InstanceState, Status.Decremented, Status.Pending) == Status.Pending)
 			{
-				CleanupCancellation();
+				UnregisterCancellation();
 
 				return true;
 			}
@@ -135,6 +96,35 @@ namespace System.Threading
 
 		//****************************************
 
+		protected override void SwitchToCancelled()
+		{
+			if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Cancelled, Status.Pending) != Status.Pending)
+				return; // Instance is no longer in a cancellable state
+
+			if (Owner!.CancelDecrement(this))
+			{
+				if (Interlocked.CompareExchange(ref _InstanceState, Status.CancelledNotWaiting, Status.Cancelled) != Status.Cancelled)
+					throw new InvalidOperationException("Decrement is in an invalid state (Not cancelled)");
+			}
+
+			// The cancellation token was raised
+			_TaskSource.SetException(CreateCancellationException());
+		}
+
+		protected override void UnregisteredCancellation()
+		{
+			switch (_InstanceState)
+			{
+			case Status.Disposed:
+				_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncCounter), "Counter has been disposed of"));
+				break;
+
+			case Status.Decremented:
+				_TaskSource.SetResult(default);
+				break;
+			}
+		}
+
 		public ValueTaskSourceStatus GetStatus(short token) => _TaskSource.GetStatus(token);
 
 		public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
@@ -155,49 +145,14 @@ namespace System.Threading
 
 		//****************************************
 
-		private void CleanupCancellation()
-		{
-#if NETSTANDARD2_0
-				_Registration.Dispose();
-
-				OnCompletedCleanup();
-#else
-			_Awaiter = _Registration.DisposeAsync().ConfigureAwait(false).GetAwaiter();
-
-			if (_Awaiter.IsCompleted)
-				OnCompletedCleanup();
-			else
-				_Awaiter.OnCompleted(_CompletedCleanup);
-#endif
-		}
-
-		private void OnCompletedCleanup()
-		{
-#if !NETSTANDARD2_0
-			_Awaiter.GetResult();
-#endif
-
-			switch (_InstanceState)
-			{
-			case Status.Disposed:
-				_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncCounter), "Counter has been disposed of"));
-				break;
-
-			case Status.Decremented:
-				_TaskSource.SetResult(default);
-				break;
-			}
-		}
-
 		private void Release()
 		{
 			Owner = null;
-			Token = default;
 			IsPeek = false;
+
 			_TaskSource.Reset();
-			_TokenSource?.Dispose();
-			_TokenSource = null;
 			_InstanceState = Status.Unused;
+			ResetCancellation();
 
 			_Instances.Add(this);
 		}
@@ -209,8 +164,6 @@ namespace System.Threading
 		public bool IsPending => _InstanceState == Status.Pending;
 
 		public bool IsPeek { get; private set; }
-
-		public CancellationToken Token { get; private set; }
 
 		public short Version => _TaskSource.Version;
 

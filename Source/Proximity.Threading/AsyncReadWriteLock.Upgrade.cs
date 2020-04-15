@@ -10,59 +10,38 @@ namespace System.Threading
 {
 	public sealed partial class AsyncReadWriteLock
 	{
-		internal sealed class LockUpgradeInstance : ILockWaiter, IValueTaskSource<bool>
+		internal sealed class LockUpgradeInstance : BaseCancellable, ILockWaiter, IValueTaskSource<bool>
 		{ //****************************************
 			private static readonly ConcurrentBag<LockUpgradeInstance> Instances = new ConcurrentBag<LockUpgradeInstance>();
 			//****************************************
-#if !NETSTANDARD2_0
-			private readonly Action _CompletedCleanup;
-			private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _Awaiter;
-#endif
-
 			private volatile int _InstanceState;
 			private bool _IsFirst;
 
 			private ManualResetValueTaskSourceCore<bool> _TaskSource = new ManualResetValueTaskSourceCore<bool>();
-
-			private CancellationTokenRegistration _Registration;
 			//****************************************
 
-			internal LockUpgradeInstance()
-			{
-				_TaskSource.RunContinuationsAsynchronously = true;
-#if !NETSTANDARD2_0
-				_CompletedCleanup = OnCompletedCleanup;
-#endif
-			}
+			internal LockUpgradeInstance() => _TaskSource.RunContinuationsAsynchronously = true;
 
 			//****************************************
 
-			public void Prepare(bool isFirst, CancellationToken token)
+			public void Prepare(bool isFirst, CancellationToken token, TimeSpan timeout)
 			{
 				_IsFirst = isFirst;
 
 				if (_InstanceState != Status.Pending)
 					throw new InvalidOperationException($"Read Write Lock upgrade is in an invalid state (Prepare)");
 
-				if(token.CanBeCanceled)
-				{
-					Token = token;
-
-					if (token.IsCancellationRequested)
-						SwitchToCancelled();
-					else
-						_Registration = token.Register((state) => ((LockUpgradeInstance)state).SwitchToCancelled(), this);
-				}
+				RegisterCancellation(token, timeout);
 			}
 
 			public void Release()
 			{
 				Owner = null;
-				Token = default;
 
 				_TaskSource.Reset();
 				_IsFirst = false;
 				_InstanceState = Status.Unused;
+				ResetCancellation();
 
 				Instances.Add(this);
 			}
@@ -73,7 +52,7 @@ namespace System.Threading
 				if (Interlocked.CompareExchange(ref _InstanceState, Status.Disposed, Status.Pending) != Status.Pending)
 					return;
 
-				CleanupCancellation();
+				UnregisterCancellation();
 			}
 
 			public bool TrySwitchToCompleted(bool isWriter)
@@ -132,7 +111,7 @@ namespace System.Threading
 					// Cancel the write waiter
 					Owner!.Owner!.CancelWaiter(this, true);
 
-					_TaskSource.SetException(new OperationCanceledException(Token));
+					_TaskSource.SetException(CreateCancellationException());
 
 					return true;
 
@@ -144,12 +123,10 @@ namespace System.Threading
 					goto case Status.Upgraded;
 
 				case Status.Upgraded:
-					_Registration.Dispose();
-
 					// We've upgraded and now hold the write lock, ensure our instance is up-to-date first
 					Owner!.CompleteUpgrade();
 
-					CleanupCancellation();
+					UnregisterCancellation();
 
 					return true;
 
@@ -159,6 +136,60 @@ namespace System.Threading
 			}
 
 			//****************************************
+
+			protected override void SwitchToCancelled()
+			{
+				var Owner = this.Owner!.Owner!;
+
+				if (Interlocked.CompareExchange(ref _InstanceState, Status.Downgrading, Status.Pending) != Status.Pending)
+					return; // Instance was not in a cancellable state (did we get activated?)
+
+				// Try and downgrade by retaking the read-lock, ignoring unfair mode
+				if (Owner.TryTakeReader(true))
+				{
+					// We have a reader lock, but we may have already gotten upgraded
+					if (Interlocked.CompareExchange(ref _InstanceState, Status.Cancelled, Status.Downgrading) != Status.Downgrading)
+					{
+						Owner.Release(false);
+
+						// If we've already gotten our result, we can release
+						if (Interlocked.CompareExchange(ref _InstanceState, Status.Upgraded, Status.UpgradedDowngrade) == Status.UpgradedGotResult)
+							Release();
+
+						return;
+					}
+
+					// We switched back to the read lock, try to cancel our waiting writer (should succeed)
+					if (Owner.CancelWaiter(this, true))
+					{
+						if (Interlocked.CompareExchange(ref _InstanceState, Status.CancelledNotWaiting, Status.Cancelled) != Status.Cancelled)
+							throw new InvalidOperationException("Lock was completed while erased");
+					}
+
+					// Cancelled, complete the Task
+					_TaskSource.SetException(CreateCancellationException());
+				}
+				else
+				{
+					// We've switched to write mode, but it's not us - add to the waiting readers before we can cancel
+					// Add to the read queue 
+					Owner.Downgrade(this);
+				}
+			}
+
+			protected override void UnregisteredCancellation()
+			{
+				switch (_InstanceState)
+				{
+				case Status.Disposed:
+					_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncReadWriteLock), "Read Write Lock has been disposed of"));
+					break;
+
+				case Status.Upgraded:
+					_TaskSource.SetResult(_IsFirst);
+					break;
+				}
+			}
 
 			ValueTaskSourceStatus IValueTaskSource<bool>.GetStatus(short token) => _TaskSource.GetStatus(token);
 
@@ -193,6 +224,8 @@ namespace System.Threading
 				}
 			}
 
+			//****************************************
+
 			private void Initialise(LockInstance owner)
 			{
 				Owner = owner;
@@ -202,85 +235,7 @@ namespace System.Threading
 
 			//****************************************
 
-			private void SwitchToCancelled()
-			{
-				var Owner = this.Owner!.Owner!;
-
-				if (Interlocked.CompareExchange(ref _InstanceState, Status.Downgrading, Status.Pending) != Status.Pending)
-					return; // Instance was not in a cancellable state (did we get activated?)
-
-				// Try and downgrade by retaking the read-lock, ignoring unfair mode
-				if (Owner.TryTakeReader(true))
-				{
-					// We have a reader lock, but we may have already gotten upgraded
-					if (Interlocked.CompareExchange(ref _InstanceState, Status.Cancelled, Status.Downgrading) != Status.Downgrading)
-					{
-						Owner.Release(false);
-
-						// If we've already gotten our result, we can release
-						if (Interlocked.CompareExchange(ref _InstanceState, Status.Upgraded, Status.UpgradedDowngrade) == Status.UpgradedGotResult)
-							Release();
-
-						return;
-					}
-
-					// We switched back to the read lock, try to cancel our waiting writer (should succeed)
-					if (Owner.CancelWaiter(this, true))
-					{
-						if (Interlocked.CompareExchange(ref _InstanceState, Status.CancelledNotWaiting, Status.Cancelled) != Status.Cancelled)
-							throw new InvalidOperationException("Lock was completed while erased");
-					}
-
-					// Cancelled, complete the Task
-					_TaskSource.SetException(new OperationCanceledException(Token));
-				}
-				else
-				{
-					// We've switched to write mode, but it's not us - add to the waiting readers before we can cancel
-					// Add to the read queue 
-					Owner.Downgrade(this);
-				}
-			}
-
-			private void CleanupCancellation()
-			{
-#if NETSTANDARD2_0
-				_Registration.Dispose();
-
-				OnCompletedCleanup();
-#else
-				_Awaiter = _Registration.DisposeAsync().ConfigureAwait(false).GetAwaiter();
-
-				if (_Awaiter.IsCompleted)
-					OnCompletedCleanup();
-				else
-					_Awaiter.OnCompleted(_CompletedCleanup);
-#endif
-			}
-
-			private void OnCompletedCleanup()
-			{
-#if !NETSTANDARD2_0
-				_Awaiter.GetResult();
-#endif
-
-				switch (_InstanceState)
-				{
-				case Status.Disposed:
-					_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncReadWriteLock), "Read Write Lock has been disposed of"));
-					break;
-
-				case Status.Upgraded:
-					_TaskSource.SetResult(_IsFirst);
-					break;
-				}
-			}
-
-			//****************************************
-
 			internal LockInstance? Owner { get; private set; }
-
-			public CancellationToken Token { get; private set; }
 
 			public short Version => _TaskSource.Version;
 
@@ -340,6 +295,5 @@ namespace System.Threading
 				internal const int UpgradedGotResult = 10;
 			}
 		}
-
 	}
 }

@@ -12,30 +12,16 @@ namespace System.Threading
 {
 	public sealed partial class AsyncReadWriteLock
 	{
-		internal sealed class LockInstance : ILockWaiter, IValueTaskSource<Instance>
+		internal sealed class LockInstance : BaseCancellable, ILockWaiter, IValueTaskSource<Instance>
 		{ //****************************************
 			private static readonly ConcurrentBag<LockInstance> Instances = new ConcurrentBag<LockInstance>();
 			//****************************************
-#if !NETSTANDARD2_0
-			private readonly Action _CompletedCleanup;
-			private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _Awaiter;
-#endif
-
 			private volatile int _InstanceState;
 
 			private ManualResetValueTaskSourceCore<Instance> _TaskSource = new ManualResetValueTaskSourceCore<Instance>();
-
-			private CancellationTokenRegistration _Registration;
-			private CancellationTokenSource? _TokenSource;
 			//****************************************
 
-			internal LockInstance()
-			{
-				_TaskSource.RunContinuationsAsynchronously = true;
-#if !NETSTANDARD2_0
-				_CompletedCleanup = OnCompletedCleanup;
-#endif
-			}
+			internal LockInstance() => _TaskSource.RunContinuationsAsynchronously = true;
 
 			~LockInstance()
 			{
@@ -47,22 +33,12 @@ namespace System.Threading
 
 			//****************************************
 
-			internal void ApplyCancellation(CancellationToken token, CancellationTokenSource? tokenSource)
+			internal void ApplyCancellation(CancellationToken token, TimeSpan timeout)
 			{
-				if (token.CanBeCanceled)
-				{
-					Token = token;
+				if (_InstanceState != Status.Pending)
+					throw new InvalidOperationException("Cannot register for cancellation when not pending");
 
-					if (_InstanceState != Status.Pending)
-						throw new InvalidOperationException("Cannot register for cancellation when not pending");
-
-					_TokenSource = tokenSource;
-
-					if (token.IsCancellationRequested)
-						SwitchToCancelled();
-					else
-						_Registration = token.Register((state) => ((LockInstance)state).SwitchToCancelled(), this);
-				}
+				RegisterCancellation(token, timeout);
 			}
 
 			public void SwitchToDisposed()
@@ -71,7 +47,7 @@ namespace System.Threading
 				if (Interlocked.CompareExchange(ref _InstanceState, Status.Disposed, Status.Pending) != Status.Pending)
 					return;
 
-				CleanupCancellation();
+				UnregisterCancellation();
 			}
 
 			public bool TrySwitchToCompleted(bool isWriter)
@@ -86,7 +62,7 @@ namespace System.Threading
 					else
 						Debug.Assert(Owner!._Counter >= LockState.Reader, "Read Write lock is in an invalid state (Unheld reader)");
 
-					CleanupCancellation();
+					UnregisterCancellation();
 
 					return true;
 				}
@@ -130,7 +106,7 @@ namespace System.Threading
 				return false;
 			}
 
-			internal ValueTask<bool> Upgrade(short token, CancellationToken cancellationToken)
+			internal ValueTask<bool> Upgrade(short token, CancellationToken cancellationToken, TimeSpan timeout)
 			{
 				if (_TaskSource.Version != token || _InstanceState != Status.Held)
 					throw new InvalidOperationException("Lock has already been released");
@@ -138,10 +114,10 @@ namespace System.Threading
 				if (IsWriter)
 					return new ValueTask<bool>(true);
 
-				return Owner!.Upgrade(this, false, cancellationToken);
+				return Owner!.Upgrade(this, false, cancellationToken, timeout);
 			}
 
-			internal ValueTask<bool> TryUpgrade(short token, CancellationToken cancellationToken)
+			internal ValueTask<bool> TryUpgrade(short token, CancellationToken cancellationToken, TimeSpan timeout)
 			{
 				if (_TaskSource.Version != token || _InstanceState != Status.Held)
 					throw new InvalidOperationException("Lock has already been released");
@@ -149,7 +125,7 @@ namespace System.Threading
 				if (IsWriter)
 					return new ValueTask<bool>(true);
 
-				return Owner!.Upgrade(this, true, cancellationToken);
+				return Owner!.Upgrade(this, true, cancellationToken, timeout);
 			}
 
 			internal void CompleteUpgrade()
@@ -183,6 +159,35 @@ namespace System.Threading
 			}
 
 			//****************************************
+
+			protected override void SwitchToCancelled()
+			{
+				if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Cancelled, Status.Pending) != Status.Pending)
+					return; // Instance is no longer in a cancellable state
+
+				if (Owner!.CancelWaiter(this, IsWriter))
+				{
+					if (Interlocked.CompareExchange(ref _InstanceState, Status.CancelledNotWaiting, Status.Cancelled) != Status.Cancelled)
+						throw new InvalidOperationException("Lock was completed while erased");
+				}
+
+				// The cancellation token was raised
+				_TaskSource.SetException(CreateCancellationException());
+			}
+
+			protected override void UnregisteredCancellation()
+			{
+				switch (_InstanceState)
+				{
+				case Status.Disposed:
+					_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncReadWriteLock), "Read Write Lock has been disposed of"));
+					break;
+
+				case Status.Held:
+					_TaskSource.SetResult(new Instance(this));
+					break;
+				}
+			}
 
 			ValueTaskSourceStatus IValueTaskSource<Instance>.GetStatus(short token) => _TaskSource.GetStatus(token);
 
@@ -231,67 +236,17 @@ namespace System.Threading
 				}
 			}
 
-			private void SwitchToCancelled()
-			{
-				if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Cancelled, Status.Pending) != Status.Pending)
-					return; // Instance is no longer in a cancellable state
-
-				if (Owner!.CancelWaiter(this, IsWriter))
-				{
-					if (Interlocked.CompareExchange(ref _InstanceState, Status.CancelledNotWaiting, Status.Cancelled) != Status.Cancelled)
-						throw new InvalidOperationException("Lock was completed while erased");
-				}
-
-				_TaskSource.SetException(new OperationCanceledException(Token));
-			}
-
 			private void Release()
 			{
 				Owner = null;
-				Token = default;
-				_TaskSource.Reset();
-				_TokenSource?.Dispose();
-				_TokenSource = null;
-				_InstanceState = Status.Unused;
 				IsWriter = false;
 				IsUpgrading = false;
 
+				_InstanceState = Status.Unused;
+				ResetCancellation();
+
 				GC.SuppressFinalize(this);
 				Instances.Add(this);
-			}
-
-			private void CleanupCancellation()
-			{
-#if NETSTANDARD2_0
-				_Registration.Dispose();
-
-				OnCompletedCleanup();
-#else
-				_Awaiter = _Registration.DisposeAsync().ConfigureAwait(false).GetAwaiter();
-
-				if (_Awaiter.IsCompleted)
-					OnCompletedCleanup();
-				else
-					_Awaiter.OnCompleted(_CompletedCleanup);
-#endif
-			}
-
-			private void OnCompletedCleanup()
-			{
-#if !NETSTANDARD2_0
-				_Awaiter.GetResult();
-#endif
-
-				switch (_InstanceState)
-				{
-				case Status.Disposed:
-					_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncReadWriteLock), "Read Write Lock has been disposed of"));
-					break;
-
-				case Status.Held:
-					_TaskSource.SetResult(new Instance(this));
-					break;
-				}
 			}
 
 			//****************************************
@@ -303,8 +258,6 @@ namespace System.Threading
 			public bool IsUpgrading { get; private set; }
 
 			public bool IsPending => _InstanceState == Status.Pending;
-
-			public CancellationToken Token { get; private set; }
 
 			public short Version => _TaskSource.Version;
 

@@ -107,13 +107,20 @@ namespace System.Threading
 		/// <summary>
 		/// Attempts to decrement the Counter
 		/// </summary>
-		/// <param name="timeout">The amount of time to wait</param>
+		/// <param name="token">A cancellation token that can be used to abort waiting on the counter</param>
 		/// <returns>A task that completes when we were able to decrement the counter</returns>
-		public ValueTask Decrement(TimeSpan timeout)
-		{
-			if (timeout == Timeout.InfiniteTimeSpan)
-				return Decrement();
+		public ValueTask Decrement(CancellationToken token = default) => Decrement(Timeout.InfiniteTimeSpan, token);
 
+		/// <summary>
+		/// Attempts to decrement the Counter
+		/// </summary>
+		/// <param name="timeout">The amount of time to wait</param>
+		/// <param name="token">A cancellation token that can be used to abort waiting on the counter</param>
+		/// <returns>A task that completes when we were able to decrement the counter</returns>
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		/// <exception cref="TimeoutException">The timeout elapsed</exception>
+		public ValueTask Decrement(TimeSpan timeout, CancellationToken token = default)
+		{
 			if (timeout == TimeSpan.Zero)
 			{
 				if (TryDecrement())
@@ -135,38 +142,7 @@ namespace System.Threading
 
 			var Instance = AsyncCounterDecrement.GetOrCreateFor(this, false, false);
 
-			var CancelSource = new CancellationTokenSource(timeout);
-
-			Instance.ApplyCancellation(CancelSource.Token, CancelSource);
-
-			// No free counters, add ourselves to the queue waiting on a counter
-			_Waiters.Enqueue(Instance);
-
-			// Was a counter added while we were busy?
-			if (InternalTryDecrement())
-				ForceIncrement(); // Try and activate a waiter, or at least increment
-
-			return new ValueTask(Instance, Instance.Version);
-		}
-
-		/// <summary>
-		/// Attempts to decrement the Counter
-		/// </summary>
-		/// <param name="token">A cancellation token that can be used to abort waiting on the counter</param>
-		/// <returns>A task that completes when we were able to decrement the counter</returns>
-		public ValueTask Decrement(CancellationToken token = default)
-		{
-			// Try and decrement without waiting
-			if (_Waiters.IsEmpty && InternalTryDecrement())
-				return default;
-
-			// No free counters, are we disposed?
-			if (_CurrentCount == -1)
-				throw new ObjectDisposedException(nameof(AsyncCounter), "Counter has been disposed of");
-
-			var Instance = AsyncCounterDecrement.GetOrCreateFor(this, false, false);
-
-			Instance.ApplyCancellation(token, null);
+			Instance.ApplyCancellation(token, timeout);
 
 			// No free counters, add ourselves to the queue waiting on a counter
 			_Waiters.Enqueue(Instance);
@@ -199,6 +175,7 @@ namespace System.Threading
 		/// <param name="token">A cancellation token that can be used to abort waiting on the counter</param>
 		/// <returns>True if the counter was decremented, otherwise False due to timeout or disposal</returns>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		/// <exception cref="TimeoutException">The timeout elapsed</exception>
 		public bool TryDecrement(TimeSpan timeout, CancellationToken token = default)
 		{
 			// First up, try and take the counter if possible
@@ -206,7 +183,7 @@ namespace System.Threading
 				return true;
 
 			// If we're not okay with blocking, then we fail
-			if (timeout == TimeSpan.Zero)
+			if (timeout == TimeSpan.Zero && !token.CanBeCanceled)
 				return false;
 
 			// No free counters, are we disposed?
@@ -229,21 +206,7 @@ namespace System.Threading
 
 			//****************************************
 
-			// Are we okay with blocking indefinitely (or until the token is raised)?
-			if (timeout != Timeout.InfiniteTimeSpan)
-			{
-				var TokenSource = token.CanBeCanceled ? CancellationTokenSource.CreateLinkedTokenSource(token) : new CancellationTokenSource();
-
-				TokenSource.CancelAfter(timeout);
-
-				// Prepare the cancellation token
-				Instance.ApplyCancellation(TokenSource.Token, TokenSource);
-			}
-			else
-			{
-				// Prepare the cancellation token (if any)
-				Instance.ApplyCancellation(token, null);
-			}
+			Instance.ApplyCancellation(token, timeout);
 
 			try
 			{
@@ -322,9 +285,27 @@ namespace System.Threading
 		/// <param name="token">A cancellation token to stop waiting</param>
 		/// <returns>A task that completes when the counter is available for immediate decrementing</returns>
 		/// <remarks>This will only succeed when nobody is waiting on a Decrement operation, so Decrement operations won't be waiting while the counter is non-zero</remarks>
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
 		public ValueTask PeekDecrement(CancellationToken token = default)
 		{
-			if (!TryPeekDecrement(token, out var Instance))
+			if (!TryPeekDecrement(Timeout.InfiniteTimeSpan, token, out var Instance))
+				throw new ObjectDisposedException(nameof(AsyncCounter), "Counter has been disposed of");
+
+			return new ValueTask(Instance, Instance.Version);
+		}
+
+		/// <summary>
+		/// Waits until it's possible to decrement this counter
+		/// </summary>
+		/// <param name="timeout">Number of milliseconds to block for a counter to become available. Pass zero to not block, or Timeout.InfiniteTimeSpan to block indefinitely</param>
+		/// <param name="token">A cancellation token to stop waiting</param>
+		/// <returns>A task that completes when the counter is available for immediate decrementing</returns>
+		/// <remarks>This will only succeed when nobody is waiting on a Decrement operation, so Decrement operations won't be waiting while the counter is non-zero</remarks>
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		/// <exception cref="TimeoutException">The timeout elapsed</exception>
+		public ValueTask PeekDecrement(TimeSpan timeout, CancellationToken token = default)
+		{
+			if (!TryPeekDecrement(timeout, token, out var Instance))
 				throw new ObjectDisposedException(nameof(AsyncCounter), "Counter has been disposed of");
 
 			return new ValueTask(Instance, Instance.Version);
@@ -403,7 +384,7 @@ namespace System.Threading
 			}
 		}
 
-		internal bool TryPeekDecrement(CancellationToken token, out AsyncCounterDecrement decrement)
+		internal bool TryPeekDecrement(TimeSpan timeout, CancellationToken token, out AsyncCounterDecrement decrement)
 		{
 			var MyCount = _CurrentCount;
 
@@ -420,7 +401,7 @@ namespace System.Threading
 
 			if (Instance.GetStatus(Instance.Version) == ValueTaskSourceStatus.Pending)
 			{
-				Instance.ApplyCancellation(token, null);
+				Instance.ApplyCancellation(token, timeout);
 
 				// Create a new waiter and add it to the queue
 				_PeekWaiters.Enqueue(Instance);
@@ -588,12 +569,12 @@ namespace System.Threading
 			}
 
 			// No, so assign PeekDecrement on all the counters
-			var Operation = AsyncCounterDecrementAny.GetOrCreate(token);
+			var Operation = AsyncCounterDecrementAny.GetOrCreate(token, Timeout.InfiniteTimeSpan);
 
 			for (var Index = 0; Index < CounterSet.Length; Index++)
 				Operation.Attach(CounterSet[Index]);
 
-			Operation.ApplyCancellation(null);
+			Operation.Activate();
 
 			return new ValueTask<AsyncCounter>(Operation, Operation.Version);
 		}

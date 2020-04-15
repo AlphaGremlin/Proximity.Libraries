@@ -30,35 +30,89 @@ namespace System.Threading.Tasks
 		public static IAsyncEnumerable<(ValueTask<TResult> result, int index)> InterleaveIndex<TResult>(this IEnumerable<ValueTask<TResult>> source, CancellationToken token) => new InterleaveTask<TResult>(source, token);
 
 		/// <summary>
-		/// Wraps the given ValueTask, waiting for it to complete or the given token to cancel
+		/// Wraps the given task, waiting for it to complete or the given token to cancel
 		/// </summary>
 		/// <param name="task">The task to wait to complete</param>
 		/// <param name="token">The cancellation token to abort waiting for the original task</param>
+		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
+		/// <remarks>Will throw any exceptions from the original task, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		public static ValueTask When(this ValueTask task, CancellationToken token) => task.When(Timeout.InfiniteTimeSpan, token);
+
+		/// <summary>
+		/// Wraps the given task, waiting for it to complete or the given timeout to occur
+		/// </summary>
+		/// <param name="task">The task to wait to complete</param>
+		/// <param name="milliseconds">The number of millisecond before we abort waiting for the original task</param>
+		/// <param name="token">The cancellation token to abort waiting for the original task</param>
+		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
+		/// <remarks>Will throw any exceptions from the original task, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		/// <exception cref="TimeoutException">The timeout elapsed</exception>
+		public static ValueTask When(this ValueTask task, int milliseconds, CancellationToken token = default) => task.When(new TimeSpan(milliseconds * TimeSpan.TicksPerMillisecond), token);
+
+		/// <summary>
+		/// Wraps the given task, waiting for it to complete or the given token to cancel
+		/// </summary>
+		/// <param name="task">The task to wait to complete</param>
+		/// <param name="timeout">The time before we abort waiting for the original task</param>
+		/// <param name="token">The cancellation token to abort waiting for the original task</param>
 		/// <returns>A task that completes with the original task, and cancelling if either the original task or the given token cancel</returns>
-		public static ValueTask When(this ValueTask task, CancellationToken token)
+		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" />, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
+		public static ValueTask When(this ValueTask task, TimeSpan timeout, CancellationToken token = default)
 		{
 			if (!token.CanBeCanceled || task.IsCompleted)
 				return task;
 
-			var Source = ValueTaskWhenToken.Retrieve(task, null, token);
+			var Instance = TaskCancelInstance<VoidStruct>.GetOrCreate(task);
 
-			return new ValueTask(Source, Source.Token);
+			Instance.ApplyCancellation(token, timeout);
+
+			return new ValueTask(Instance, Instance.Version);
 		}
 
 		/// <summary>
-		/// Wraps the given ValueTask, waiting for it to complete or the given token to cancel
+		/// Wraps the given task, waiting for it to complete or the given token to cancel
 		/// </summary>
 		/// <param name="task">The task to wait to complete</param>
 		/// <param name="token">The cancellation token to abort waiting for the original task</param>
-		/// <returns>A task that completes with the original task, and cancelling if either the original task or the given token cancel</returns>
-		public static ValueTask<TResult> When<TResult>(this ValueTask<TResult> task, CancellationToken token)
+		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
+		/// <remarks>Will throw any exceptions from the original task, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		public static ValueTask<TResult> When<TResult>(this ValueTask<TResult> task, CancellationToken token) => task.When(Timeout.InfiniteTimeSpan, token);
+
+		/// <summary>
+		/// Wraps the given task, waiting for it to complete or the given timeout to occur
+		/// </summary>
+		/// <param name="task">The task to wait to complete</param>
+		/// <param name="milliseconds">The number of millisecond before we abort waiting for the original task</param>
+		/// <param name="token">The cancellation token to abort waiting for the original task</param>
+		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
+		/// <remarks>Will throw any exceptions from the original task, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		/// <exception cref="TimeoutException">The timeout elapsed</exception>
+		public static ValueTask<TResult> When<TResult>(this ValueTask<TResult> task, int milliseconds, CancellationToken token = default) => task.When(TimeSpan.FromMilliseconds(milliseconds), token);
+
+		/// <summary>
+		/// Wraps the given task, waiting for it to complete or the given token to cancel
+		/// </summary>
+		/// <param name="task">The task to wait to complete</param>
+		/// <param name="timeout">The time before we abort waiting for the original task</param>
+		/// <param name="token">The cancellation token to abort waiting for the original task</param>
+		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
+		/// <remarks>Will throw any exceptions from the original task, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		/// <exception cref="TimeoutException">The timeout elapsed</exception>
+		public static ValueTask<TResult> When<TResult>(this ValueTask<TResult> task, TimeSpan timeout, CancellationToken token = default)
 		{
 			if (!token.CanBeCanceled || task.IsCompleted)
 				return task;
 
-			var Source = ValueTaskWhenToken<TResult>.Retrieve(task, null, token);
+			var Instance = TaskCancelInstance<TResult>.GetOrCreate(task);
 
-			return new ValueTask<TResult>(Source, Source.Token);
+			Instance.ApplyCancellation(token, timeout);
+
+			return new ValueTask<TResult>(Instance, Instance.Version);
 		}
 
 		/// <summary>
@@ -230,246 +284,6 @@ namespace System.Threading.Tasks
 				throw new AggregateException(Exceptions);
 
 			return Results;
-		}
-
-		//****************************************
-
-		private sealed class ValueTaskWhenToken : IValueTaskSource
-		{ //****************************************
-			private static readonly ConcurrentBag<ValueTaskWhenToken> _Cache = new ConcurrentBag<ValueTaskWhenToken>();
-			//****************************************
-			private readonly Action _ContinueWrappedTask;
-
-			private ManualResetValueTaskSourceCore<VoidStruct> _TaskSource = new ManualResetValueTaskSourceCore<VoidStruct>();
-
-			private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _Awaiter;
-			private CancellationToken _Token;
-			private CancellationTokenSource? _TokenSource;
-			private CancellationTokenRegistration _Registration;
-			private volatile int _CanCancel;
-			//****************************************
-
-			public ValueTaskWhenToken() => _ContinueWrappedTask = ContinueWrappedTask;
-
-			//****************************************
-
-			public void Initialise(ValueTask task, CancellationTokenSource? tokenSource, CancellationToken token)
-			{
-				_TokenSource = tokenSource;
-				_Token = token;
-				_CanCancel = 1;
-
-				_Registration = token.Register(CancelTask, this);
-				_Awaiter = task.ConfigureAwait(false).GetAwaiter();
-
-				try
-				{
-					if (_Awaiter.IsCompleted)
-						ContinueWrappedTask();
-					else
-						_Awaiter.OnCompleted(_ContinueWrappedTask);
-				}
-				catch (Exception e)
-				{
-					if (_CanCancel == 0 || Interlocked.CompareExchange(ref _CanCancel, 2, 1) != 1)
-						return; // Task has already completed, can no longer cancel
-
-					_TaskSource.SetException(e);
-				}
-			}
-
-			//****************************************
-
-			private void ContinueWrappedTask()
-			{
-				try
-				{
-					_Awaiter.GetResult();
-
-					if (_CanCancel == 0 || Interlocked.CompareExchange(ref _CanCancel, 2, 1) != 1)
-						return; // Task has already completed, can no longer cancel
-
-					_TaskSource.SetResult(default);
-				}
-				catch (Exception e)
-				{
-					if (_CanCancel == 0 || Interlocked.CompareExchange(ref _CanCancel, 2, 1) != 1)
-						return; // Task has already completed, can no longer cancel
-
-					_TaskSource.SetException(e);
-				}
-			}
-
-			void IValueTaskSource.GetResult(short token)
-			{
-				try
-				{
-					_TaskSource.GetResult(token);
-				}
-				finally
-				{
-					_TaskSource.Reset();
-					_Token = default;
-					_Registration.Dispose();
-					_Awaiter = default;
-
-					_TokenSource?.Dispose();
-					_TokenSource = null;
-
-					_Cache.Add(this);
-				}
-			}
-
-			ValueTaskSourceStatus IValueTaskSource.GetStatus(short token) => _TaskSource.GetStatus(token);
-
-			void IValueTaskSource.OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
-
-			//****************************************
-
-			public short Token => _TaskSource.Version;
-
-			//****************************************
-
-			private static void CancelTask(object state)
-			{
-				var Task = (ValueTaskWhenToken)state;
-
-				if (Task._CanCancel == 0 || Interlocked.CompareExchange(ref Task._CanCancel, 2, 1) != 1)
-					return; // Task has already completed, can no longer cancel
-
-				Task._TaskSource.SetException(new OperationCanceledException(Task._Token));
-			}
-
-			//****************************************
-
-			internal static ValueTaskWhenToken Retrieve(ValueTask task, CancellationTokenSource? tokenSource, CancellationToken token)
-			{
-				if (!_Cache.TryTake(out var TaskWhen))
-					TaskWhen = new ValueTaskWhenToken();
-
-				TaskWhen.Initialise(task, tokenSource, token);
-
-				return TaskWhen;
-			}
-		}
-
-		private sealed class ValueTaskWhenToken<TResult> : IValueTaskSource<TResult>
-		{ //****************************************
-			private static readonly ConcurrentBag<ValueTaskWhenToken<TResult>> _Cache = new ConcurrentBag<ValueTaskWhenToken<TResult>>();
-			//****************************************
-			private readonly Action _ContinueWrappedTask;
-
-			private ManualResetValueTaskSourceCore<TResult> _TaskSource = new ManualResetValueTaskSourceCore<TResult>();
-
-			private ConfiguredValueTaskAwaitable<TResult>.ConfiguredValueTaskAwaiter _Awaiter;
-			private CancellationToken _Token;
-			private CancellationTokenSource? _TokenSource;
-			private CancellationTokenRegistration _Registration;
-			private volatile int _CanCancel;
-			//****************************************
-
-			public ValueTaskWhenToken() => _ContinueWrappedTask = ContinueWrappedTask;
-
-			//****************************************
-
-			public void Initialise(ValueTask<TResult> task, CancellationTokenSource? tokenSource, CancellationToken token)
-			{
-				_Token = token;
-				_TokenSource = tokenSource;
-				_CanCancel = 1;
-
-				_Registration = token.Register(CancelTask, this);
-				_Awaiter = task.ConfigureAwait(false).GetAwaiter();
-
-				try
-				{
-					if (_Awaiter.IsCompleted)
-						ContinueWrappedTask();
-					else
-						_Awaiter.OnCompleted(_ContinueWrappedTask);
-				}
-				catch (Exception e)
-				{
-					if (_CanCancel == 0 || Interlocked.CompareExchange(ref _CanCancel, 2, 1) != 1)
-						return; // Task has already completed, can no longer cancel
-
-					_TaskSource.SetException(e);
-				}
-			}
-
-			//****************************************
-
-			private void ContinueWrappedTask()
-			{
-				try
-				{
-					var Result = _Awaiter.GetResult();
-
-					if (_CanCancel == 0 || Interlocked.CompareExchange(ref _CanCancel, 2, 1) != 1)
-						return; // Task has already completed, can no longer cancel
-
-					_TaskSource.SetResult(Result);
-				}
-				catch (Exception e)
-				{
-					if (_CanCancel == 0 || Interlocked.CompareExchange(ref _CanCancel, 2, 1) != 1)
-						return; // Task has already completed, can no longer cancel
-
-					_TaskSource.SetException(e);
-				}
-			}
-
-			TResult IValueTaskSource<TResult>.GetResult(short token)
-			{
-				try
-				{
-					return _TaskSource.GetResult(token);
-				}
-				finally
-				{
-					_TaskSource.Reset();
-					_Token = default;
-					_Registration.Dispose();
-					_Awaiter = default;
-
-					_TokenSource?.Dispose();
-					_TokenSource = null;
-
-					_Cache.Add(this);
-				}
-			}
-
-			ValueTaskSourceStatus IValueTaskSource<TResult>.GetStatus(short token) => _TaskSource.GetStatus(token);
-
-			void IValueTaskSource<TResult>.OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
-
-			//****************************************
-
-			public short Token => _TaskSource.Version;
-
-			//****************************************
-
-			private static void CancelTask(object state)
-			{
-				var Task = (ValueTaskWhenToken<TResult>)state;
-
-				if (Task._CanCancel == 0 || Interlocked.CompareExchange(ref Task._CanCancel, 2, 1) != 1)
-					return; // Task has already completed, can no longer cancel
-
-				Task._TaskSource.SetException(new OperationCanceledException(Task._Token));
-			}
-
-			//****************************************
-
-			internal static ValueTaskWhenToken<TResult> Retrieve(ValueTask<TResult> task, CancellationTokenSource? tokenSource, CancellationToken token)
-			{
-				if (!_Cache.TryTake(out var TaskWhen))
-					TaskWhen = new ValueTaskWhenToken<TResult>();
-
-				TaskWhen.Initialise(task, tokenSource, token);
-
-				return TaskWhen;
-			}
 		}
 	}
 }

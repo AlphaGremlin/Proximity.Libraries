@@ -76,11 +76,22 @@ namespace System.Threading
 		void IDisposable.Dispose() => DisposeAsync();
 
 		/// <summary>
+		/// Take a read lock, running concurrently with other read locks, with cancellation
+		/// </summary>
+		/// <param name="token">The cancellation token to abort waiting for the lock</param>
+		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		public ValueTask<Instance> LockRead(CancellationToken token = default) => LockRead(Timeout.InfiniteTimeSpan, token);
+
+		/// <summary>
 		/// Take a read lock, running concurrently with other read locks, cancelling after a given timeout
 		/// </summary>
 		/// <param name="timeout">The amount of time to wait for the read lock</param>
+		/// <param name="token">The cancellation token to abort waiting for the lock</param>
 		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
-		public ValueTask<Instance> LockRead(TimeSpan timeout)
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		/// <exception cref="TimeoutException">The timeout elapsed</exception>
+		public ValueTask<Instance> LockRead(TimeSpan timeout, CancellationToken token = default)
 		{
 			// Are we disposed?
 			if (_Disposer != null)
@@ -93,9 +104,7 @@ namespace System.Threading
 
 			if (!ValueTask.IsCompleted)
 			{
-				var CancelSource = new CancellationTokenSource(timeout);
-
-				NewInstance.ApplyCancellation(CancelSource.Token, CancelSource);
+				NewInstance.ApplyCancellation(token, timeout);
 
 				// Unable to take the lock, add ourselves to the read waiters
 				_Readers.Enqueue(NewInstance);
@@ -114,47 +123,22 @@ namespace System.Threading
 		}
 
 		/// <summary>
-		/// Take a read lock, running concurrently with other read locks, with cancellation
+		/// Take a write lock, running exclusively, with cancellation
 		/// </summary>
 		/// <param name="token">The cancellation token to abort waiting for the lock</param>
 		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
-		public ValueTask<Instance> LockRead(CancellationToken token = default)
-		{
-			// Are we disposed?
-			if (_Disposer != null)
-				throw new ObjectDisposedException(nameof(AsyncReadWriteLock), "Read Write Lock has been disposed of");
-
-			// Try and take the lock
-			var NewInstance = LockInstance.GetOrCreate(this, false, TryTakeReader());
-
-			var ValueTask = new ValueTask<Instance>(NewInstance, NewInstance.Version);
-
-			if (!ValueTask.IsCompleted)
-			{
-				NewInstance.ApplyCancellation(token, null);
-
-				// Unable to take the lock, add ourselves to the read waiters
-				_Readers.Enqueue(NewInstance);
-
-				// Try and release the reader, just in case we added it after we switched to unlocked or read
-				if (TryTakeReader())
-				{
-					if (!TryActivateReader())
-						Release(false); // Failed, we need to release it
-				}
-				else if (_Disposer != null)
-					DisposeReaders();
-			}
-
-			return ValueTask;
-		}
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		public ValueTask<Instance> LockWrite(CancellationToken token = default) => LockWrite(Timeout.InfiniteTimeSpan, token);
 
 		/// <summary>
 		/// Take a write lock, running exclusively, cancelling after a given timeout
 		/// </summary>
 		/// <param name="timeout">The amount of time to wait for the write lock</param>
+		/// <param name="token">The cancellation token to abort waiting for the lock</param>
 		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
-		public ValueTask<Instance> LockWrite(TimeSpan timeout)
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		/// <exception cref="TimeoutException">The timeout elapsed</exception>
+		public ValueTask<Instance> LockWrite(TimeSpan timeout, CancellationToken token = default)
 		{
 			// Are we disposed?
 			if (_Disposer != null)
@@ -167,9 +151,7 @@ namespace System.Threading
 
 			if (!ValueTask.IsCompleted)
 			{
-				var CancelSource = new CancellationTokenSource(timeout);
-
-				NewInstance.ApplyCancellation(CancelSource.Token, CancelSource);
+				NewInstance.ApplyCancellation(token, timeout);
 
 				// Unable to take the lock, queue ourselves to the write waiters
 				_Writers.Enqueue(NewInstance);
@@ -187,45 +169,9 @@ namespace System.Threading
 			return ValueTask;
 		}
 
-		/// <summary>
-		/// Take a write lock, running exclusively, with cancellation
-		/// </summary>
-		/// <param name="token">The cancellation token to abort waiting for the lock</param>
-		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
-		public ValueTask<Instance> LockWrite(CancellationToken token = default)
-		{
-			// Are we disposed?
-			if (_Disposer != null)
-				throw new ObjectDisposedException(nameof(AsyncReadWriteLock), "Read Write Lock has been disposed of");
-
-			// Try and take the lock
-			var NewInstance = LockInstance.GetOrCreate(this, true, TryTakeWriter());
-
-			var ValueTask = new ValueTask<Instance>(NewInstance, NewInstance.Version);
-
-			if (!ValueTask.IsCompleted)
-			{
-				NewInstance.ApplyCancellation(token, null);
-
-				// Unable to take the lock, queue ourselves to the write waiters
-				_Writers.Enqueue(NewInstance);
-
-				// Try and activate the writer, just in case we added it after we switched to unlocked
-				if (TryTakeWriter())
-				{
-					if (!TryActivateWriter())
-						Release(true); // Failed, we need to release it
-				}
-				else if (_Disposer != null)
-					DisposeWriters();
-			}
-
-			return ValueTask;
-		}
-
 		//****************************************
 
-		private ValueTask<bool> Upgrade(LockInstance instance, bool requireFirst, CancellationToken token)
+		private ValueTask<bool> Upgrade(LockInstance instance, bool requireFirst, CancellationToken token, TimeSpan timeout)
 		{
 			bool TryUpgrade()
 			{
@@ -275,7 +221,7 @@ namespace System.Threading
 			}
 
 			// Activate the upgrader, letting it know if we're first
-			Instance.Prepare(IsFirst, token);
+			Instance.Prepare(IsFirst, token, timeout);
 
 			// We're ready to upgrade, so release the read lock
 			// This complicates cancellation, as we will need to re-take the read lock before cancelling.
@@ -608,7 +554,19 @@ namespace System.Threading
 			/// <param name="token">A cancellation token to abort the upgrade</param>
 			/// <returns>A Task returning True if we managed an exclusive upgrade, False if another Writer was activated first</returns>
 			/// <remarks>Can wait until other Readers finish. Can also wait until other waiting Writers have finished. Does nothing if you're already a Writer.</remarks>
-			public ValueTask<bool> Upgrade(CancellationToken token = default) => _Instance.Upgrade(_Token, token);
+			/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+			public ValueTask<bool> Upgrade(CancellationToken token = default) => _Instance.Upgrade(_Token, token, Timeout.InfiniteTimeSpan);
+
+			/// <summary>
+			/// Upgrades a Read lock to a Write lock
+			/// </summary>
+			/// <param name="timeout">The amount of time to wait for the write lock</param>
+			/// <param name="token">A cancellation token to abort the upgrade</param>
+			/// <returns>A Task returning True if we managed an exclusive upgrade, False if another Writer was activated first</returns>
+			/// <remarks>Can wait until other Readers finish. Can also wait until other waiting Writers have finished. Does nothing if you're already a Writer.</remarks>
+			/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+			/// <exception cref="TimeoutException">The timeout elapsed</exception>
+			public ValueTask<bool> Upgrade(TimeSpan timeout, CancellationToken token = default) => _Instance.Upgrade(_Token, token, timeout);
 
 			/// <summary>
 			/// Tries to exclusively upgrade a Read lock to a Write lock
@@ -616,7 +574,17 @@ namespace System.Threading
 			/// <param name="token">A cancellation token to abort the upgrade</param>
 			/// <returns>A Task returning True if we managed an upgrade to a Write lock, False if we remain a Read lock because there are waiting Writers.</returns>
 			/// <remarks>Can wait until other Readers finish. Will not wait for other Writers. Does nothing if you're already a Writer.</remarks>
-			public ValueTask<bool> TryUpgrade(CancellationToken token = default) => _Instance.TryUpgrade(_Token, token);
+			/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+			public ValueTask<bool> TryUpgrade(CancellationToken token = default) => _Instance.TryUpgrade(_Token, token, Timeout.InfiniteTimeSpan);
+
+			/// <summary>
+			/// Tries to exclusively upgrade a Read lock to a Write lock
+			/// </summary>
+			/// <param name="timeout">The amount of time to wait for the write lock</param>
+			/// <param name="token">A cancellation token to abort the upgrade</param>
+			/// <returns>A Task returning True if we managed an upgrade to a Write lock, False if we remain a Read lock because there are waiting Writers.</returns>
+			/// <remarks>Can wait until other Readers finish. Will not wait for other Writers. Does nothing if you're already a Writer.</remarks>
+			public ValueTask<bool> TryUpgrade(TimeSpan timeout, CancellationToken token = default) => _Instance.TryUpgrade(_Token, token, timeout);
 
 			/// <summary>
 			/// Downgrades a Write lock to a Read lock

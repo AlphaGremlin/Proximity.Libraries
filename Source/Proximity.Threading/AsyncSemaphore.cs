@@ -15,10 +15,8 @@ namespace System.Threading
 	/// <summary>
 	/// Provides a lock-free primitive for semaphores supporting ValueTask async/await and a disposable model for releasing
 	/// </summary>
-	public sealed class AsyncSemaphore : IDisposable, IAsyncDisposable
+	public sealed partial class AsyncSemaphore : IDisposable, IAsyncDisposable
 	{ //****************************************
-		private static readonly ConcurrentBag<SemaphoreInstance> _Instances = new ConcurrentBag<SemaphoreInstance>();
-		//****************************************
 		private readonly WaiterQueue<SemaphoreInstance> _Waiters = new WaiterQueue<SemaphoreInstance>();
 		private int _MaxCount, _CurrentCount;
 
@@ -73,61 +71,33 @@ namespace System.Threading
 		/// <summary>
 		/// Attempts to take a counter
 		/// </summary>
+		/// <param name="token">A cancellation token that can be used to abort waiting on the lock</param>
 		/// <returns>A task that completes when a counter is taken, giving an IDisposable to release the counter</returns>
-		public ValueTask<IDisposable> Take() => Take(CancellationToken.None);
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		public ValueTask<IDisposable> Take(CancellationToken token = default) => Take(Timeout.InfiniteTimeSpan, token);
 
 		/// <summary>
 		/// Attempts to take a counter
 		/// </summary>
-		/// <param name="timeout">The amount of time to wait for a counters</param>
+		/// <param name="timeout">The amount of time to wait for a counter</param>
+		/// <param name="token">A cancellation token that can be used to abort waiting on the lock</param>
 		/// <returns>A task that completes when a counter is taken, giving an IDisposable to release the counter</returns>
-		public ValueTask<IDisposable> Take(TimeSpan timeout)
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		/// <exception cref="TimeoutException">The timeout elapsed</exception>
+		public ValueTask<IDisposable> Take(TimeSpan timeout, CancellationToken token = default)
 		{
 			// Are we disposed?
 			if (_Disposer != null)
 				return Task.FromException<IDisposable>(new ObjectDisposedException(nameof(AsyncSemaphore), "Semaphore has been disposed of")).AsValueTask();
 
 			// Try and add a counter as long as nobody is waiting on it
-			var Instance = GetOrCreateInstance(_Waiters.IsEmpty && TryIncrement());
+			var Instance = SemaphoreInstance.GetOrCreate(this, _Waiters.IsEmpty && TryIncrement());
 
 			var ValueTask = new ValueTask<IDisposable>(Instance, Instance.Version);
 
 			if (!ValueTask.IsCompleted)
 			{
-				var CancelSource = new CancellationTokenSource(timeout);
-
-				Instance.ApplyCancellation(CancelSource.Token, CancelSource);
-
-				// No free counters, add ourselves to the queue waiting on a counter
-				_Waiters.Enqueue(Instance);
-
-				// Did a counter become available while we were busy?
-				if (TryIncrement())
-					Decrement();
-			}
-
-			return ValueTask;
-		}
-
-		/// <summary>
-			/// Attempts to take a counter
-			/// </summary>
-			/// <param name="token">A cancellation token that can be used to abort waiting on the lock</param>
-			/// <returns>A task that completes when a counter is taken, giving an IDisposable to release the counter</returns>
-		public ValueTask<IDisposable> Take(CancellationToken token)
-		{
-			// Are we disposed?
-			if (_Disposer != null)
-				return Task.FromException<IDisposable>(new ObjectDisposedException(nameof(AsyncSemaphore), "Semaphore has been disposed of")).AsValueTask();
-
-			// Try and add a counter as long as nobody is waiting on it
-			var Instance = GetOrCreateInstance(_Waiters.IsEmpty && TryIncrement());
-
-			var ValueTask = new ValueTask<IDisposable>(Instance, Instance.Version);
-
-			if (!ValueTask.IsCompleted)
-			{
-				Instance.ApplyCancellation(token, null);
+				Instance.ApplyCancellation(token, timeout);
 
 				// No free counters, add ourselves to the queue waiting on a counter
 				_Waiters.Enqueue(Instance);
@@ -154,7 +124,7 @@ namespace System.Threading
 			// Are we disposed?
 			if (_Disposer == null && _Waiters.IsEmpty && TryIncrement())
 			{
-				handle = GetOrCreateInstance(true);
+				handle = SemaphoreInstance.GetOrCreate(this, true);
 				return true;
 			}
 
@@ -181,38 +151,27 @@ namespace System.Threading
 		/// </summary>
 		/// <param name="handle">An IDisposable to release the counter if TryTake succeeds</param>
 		/// <param name="timeout">Number of milliseconds to block for a counter to become available. Pass zero to not block, or Timeout.InfiniteTimeSpan to block indefinitely</param>
-		/// <returns>True if the counter was taken, otherwise False due to timeout or disposal</returns>
-		public bool TryTake(
-#if !NETSTANDARD2_0
-			[MaybeNullWhen(false)]
-#endif
-			out IDisposable handle, TimeSpan timeout) => TryTake(out handle!, timeout, CancellationToken.None);
-
-		/// <summary>
-		/// Blocks attempting to take a counter
-		/// </summary>
-		/// <param name="handle">An IDisposable to release the counter if TryTake succeeds</param>
-		/// <param name="timeout">Number of milliseconds to block for a counter to become available. Pass zero to not block, or Timeout.InfiniteTimeSpan to block indefinitely</param>
 		/// <param name="token">A cancellation token that can be used to abort waiting on the counter</param>
 		/// <returns>True if the counter was taken, otherwise False due to timeout or disposal</returns>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		/// <exception cref="TimeoutException">The timeout elapsed</exception>
 		public bool TryTake(
 #if !NETSTANDARD2_0
 			[MaybeNullWhen(false)]
 #endif
-			out IDisposable handle, TimeSpan timeout, CancellationToken token)
+			out IDisposable handle, TimeSpan timeout, CancellationToken token = default)
 		{
 			// First up, try and take the counter if possible
 			if (_Disposer == null && _Waiters.IsEmpty && TryIncrement())
 			{
-				handle = GetOrCreateInstance(true);
+				handle = SemaphoreInstance.GetOrCreate(this, true);
 				return true;
 			}
 
 			handle = null!;
 
 			// If we're not okay with blocking, then we fail
-			if (timeout == TimeSpan.Zero)
+			if (timeout == TimeSpan.Zero && !token.CanBeCanceled)
 				return false;
 
 			//****************************************
@@ -221,7 +180,7 @@ namespace System.Threading
 				throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout must be Timeout.InfiniteTimeSpan or a positive time");
 
 			// We're okay with blocking, so create our waiter and add it to the queue
-			var Instance = GetOrCreateInstance(false);
+			var Instance = SemaphoreInstance.GetOrCreate(this, false);
 
 			_Waiters.Enqueue(Instance);
 
@@ -231,21 +190,7 @@ namespace System.Threading
 
 			//****************************************
 
-			// Are we okay with blocking indefinitely (or until the token is raised)?
-			if (timeout != Timeout.InfiniteTimeSpan)
-			{
-				var TokenSource = token.CanBeCanceled ? CancellationTokenSource.CreateLinkedTokenSource(token) : new CancellationTokenSource();
-
-				TokenSource.CancelAfter(timeout);
-
-				// Prepare the cancellation token
-				Instance.ApplyCancellation(TokenSource.Token, TokenSource);
-			}
-			else
-			{
-				// Prepare the cancellation token (if any)
-				Instance.ApplyCancellation(token, null);
-			}
+			Instance.ApplyCancellation(token, timeout);
 
 			try
 			{
@@ -274,16 +219,6 @@ namespace System.Threading
 		}
 
 		//****************************************
-
-		private SemaphoreInstance GetOrCreateInstance(bool isTaken)
-		{
-			if (!_Instances.TryTake(out var Instance))
-				Instance = new SemaphoreInstance();
-
-			Instance.Initialise(this, isTaken);
-
-			return Instance;
-		}
 
 		private bool TryIncrement()
 		{ //****************************************
@@ -371,251 +306,6 @@ namespace System.Threading
 		}
 
 		//****************************************
-
-		private sealed class SemaphoreInstance : IDisposable, IValueTaskSource<IDisposable>
-		{ //****************************************
-#if !NETSTANDARD2_0
-			private readonly Action _CompletedCleanup;
-			private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _Awaiter;
-#endif
-
-			private volatile int _InstanceState;
-
-			private ManualResetValueTaskSourceCore<IDisposable> _TaskSource = new ManualResetValueTaskSourceCore<IDisposable>();
-
-			private CancellationTokenRegistration _Registration;
-			private CancellationTokenSource? _TokenSource;
-			//****************************************
-
-			internal SemaphoreInstance()
-			{
-				_TaskSource.RunContinuationsAsynchronously = true;
-#if !NETSTANDARD2_0
-				_CompletedCleanup = OnCompletedCleanup;
-#endif
-			}
-
-			~SemaphoreInstance()
-			{
-				if (_InstanceState != Status.Unused)
-				{
-					// TODO: Lock instance was garbage collected without being released
-				}
-			}
-
-			//****************************************
-
-			internal void Initialise(AsyncSemaphore owner, bool isHeld)
-			{
-				Owner = owner;
-
-				GC.ReRegisterForFinalize(this);
-
-				if (isHeld)
-				{
-					_InstanceState = Status.Held;
-					_TaskSource.SetResult(this);
-				}
-				else
-				{
-					_InstanceState = Status.Pending;
-				}
-			}
-
-			internal void ApplyCancellation(CancellationToken token, CancellationTokenSource? tokenSource)
-			{
-				if (token.CanBeCanceled)
-				{
-					Token = token;
-
-					if (_InstanceState != Status.Pending)
-						throw new InvalidOperationException("Cannot register for cancellation when not pending");
-
-					_TokenSource = tokenSource;
-
-					_Registration = token.Register((state) => ((SemaphoreInstance)state).SwitchToCancelled(), this);
-				}
-			}
-
-			internal void SwitchToDisposed()
-			{
-				// Called when an Instance is removed from the Waiters queue due to a Dispose
-				if (Interlocked.CompareExchange(ref _InstanceState, Status.Disposed, Status.Pending) != Status.Pending)
-					return;
-
-				CleanupCancellation();
-			}
-
-			internal bool TrySwitchToCompleted()
-			{
-				// Try and assign the counter to this Instance
-				if (Interlocked.CompareExchange(ref _InstanceState, Status.Held, Status.Pending) == Status.Pending)
-				{
-					CleanupCancellation();
-
-					return true;
-				}
-
-				// Assignment failed, so it was cancelled
-				// If the result has already been retrieved, return the Instance to the pool
-				int InstanceState, NewInstanceState;
-
-				do
-				{
-					InstanceState = _InstanceState;
-
-					switch (InstanceState)
-					{
-					case Status.Cancelled:
-						NewInstanceState = Status.CancelledNotWaiting;
-						break;
-
-					case Status.CancelledGotResult:
-						NewInstanceState = Status.Unused;
-						break;
-
-					default:
-						return false;
-					}
-				}
-				while (Interlocked.CompareExchange(ref _InstanceState, NewInstanceState, InstanceState) != InstanceState);
-
-				if (InstanceState == Status.CancelledGotResult)
-					Release(); // GetResult has been called, so we can return to the pool
-
-				return false;
-			}
-
-			//****************************************
-
-			void IDisposable.Dispose()
-			{
-				if (Interlocked.Exchange(ref _InstanceState, Status.Unused) != Status.Held)
-					return;
-
-				// Release the counter and then return to the pool
-				Owner!.Decrement();
-				Release();
-			}
-
-			ValueTaskSourceStatus IValueTaskSource<IDisposable>.GetStatus(short token) => _TaskSource.GetStatus(token);
-
-			public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
-
-			public IDisposable GetResult(short token)
-			{
-				try
-				{
-					return _TaskSource.GetResult(token);
-				}
-				finally
-				{
-					if (_InstanceState == Status.CancelledNotWaiting || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledNotWaiting)
-						Release(); // We're cancelled and no longer on the Wait queue, so we can return to the pool
-				}
-			}
-
-			//****************************************
-
-			private void SwitchToCancelled()
-			{
-				if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Cancelled, Status.Pending) != Status.Pending)
-					return; // Instance is no longer in a cancellable state
-
-				_TaskSource.SetException(new OperationCanceledException(Token));
-			}
-
-			private void Release()
-			{
-				Owner = null;
-				Token = default;
-				_TaskSource.Reset();
-				_TokenSource?.Dispose();
-				_TokenSource = null;
-				_InstanceState = Status.Unused;
-
-				GC.SuppressFinalize(this);
-				_Instances.Add(this);
-			}
-
-			private void CleanupCancellation()
-			{
-#if NETSTANDARD2_0
-				_Registration.Dispose();
-
-				OnCompletedCleanup();
-#else
-				_Awaiter = _Registration.DisposeAsync().ConfigureAwait(false).GetAwaiter();
-
-				if (_Awaiter.IsCompleted)
-					OnCompletedCleanup();
-				else
-					_Awaiter.OnCompleted(_CompletedCleanup);
-#endif
-			}
-
-			private void OnCompletedCleanup()
-			{
-#if !NETSTANDARD2_0
-				_Awaiter.GetResult();
-#endif
-
-				switch (_InstanceState)
-				{
-				case Status.Disposed:
-					_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncSemaphore), "Semaphore has been disposed of"));
-					break;
-
-				case Status.Held:
-					_TaskSource.SetResult(this);
-					break;
-				}
-			}
-
-			//****************************************
-
-			public AsyncSemaphore? Owner { get; private set; }
-
-			public bool IsPending => _InstanceState == Status.Pending;
-
-			public CancellationToken Token { get; private set; }
-
-			public short Version => _TaskSource.Version;
-
-			//****************************************
-
-			private static class Status
-			{
-				/// <summary>
-				/// The lock was cancelled and is currently on the list of waiters
-				/// </summary>
-				internal const int CancelledGotResult = -4;
-				/// <summary>
-				/// The lock is cancelled and waiting for GetResult
-				/// </summary>
-				internal const int CancelledNotWaiting = -3;
-				/// <summary>
-				/// The lock was cancelled and is currently on the list of waiters while waiting for GetResult
-				/// </summary>
-				internal const int Cancelled = -2;
-				/// <summary>
-				/// The lock was disposed of
-				/// </summary>
-				internal const int Disposed = -1;
-				/// <summary>
-				/// A lock starts in the Unused state
-				/// </summary>
-				internal const int Unused = 0;
-				/// <summary>
-				/// The lock is currently held, and waiting for GetResult and then Dispose
-				/// </summary>
-				internal const int Held = 1;
-				/// <summary>
-				/// The lock is on the list of waiters
-				/// </summary>
-				internal const int Pending = 2;
-			}
-		}
 
 		private sealed class AsyncSemaphoreDisposer : IValueTaskSource
 		{ //****************************************

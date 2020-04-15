@@ -1907,7 +1907,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(20 * 10, RunCounter, "Did not run");
 		}
 
-		[Test(), MaxTime(2000)]
+		[Test(), MaxTime(2000), Repeat(10)]
 		public async Task ConcurrentLockCheck()
 		{ //****************************************
 			var MyQueue = new TaskQueue();

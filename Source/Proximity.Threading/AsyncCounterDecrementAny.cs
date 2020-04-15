@@ -13,7 +13,7 @@ namespace System.Threading
 	/// <summary>
 	/// Provides the functionality for AsyncCounter.DecrementAny
 	/// </summary>
-	internal sealed class AsyncCounterDecrementAny : IValueTaskSource<AsyncCounter>
+	internal sealed class AsyncCounterDecrementAny : BaseCancellable, IValueTaskSource<AsyncCounter>
 	{ //****************************************
 		private static readonly ConcurrentBag<AsyncCounterDecrementAny> _Instances = new ConcurrentBag<AsyncCounterDecrementAny>();
 		private static readonly ConcurrentBag<PeekDecrementWaiter> _Waiters = new ConcurrentBag<PeekDecrementWaiter>();
@@ -23,26 +23,24 @@ namespace System.Threading
 
 		private ManualResetValueTaskSourceCore<AsyncCounter> _TaskSource = new ManualResetValueTaskSourceCore<AsyncCounter>();
 
-		private CancellationTokenRegistration _Registration;
-		private CancellationTokenSource? _TokenSource;
-
 		private int _OutstandingCounters;
+		private AsyncCounter? _WinningCounter;
 		//****************************************
 
 		internal AsyncCounterDecrementAny() => _TaskSource.RunContinuationsAsynchronously = true;
 
 		//****************************************
 
-		internal void Initialise(CancellationToken token)
+		internal void Initialise(CancellationToken token, TimeSpan timeout)
 		{
 			_InstanceState = Status.Pending;
 
-			Token = token;
+			RegisterCancellation(token, timeout);
 		}
 
 		internal void Attach(AsyncCounter counter)
 		{
-			if (!counter.TryPeekDecrement(Token, out var Decrement))
+			if (!counter.TryPeekDecrement(Timeout.InfiniteTimeSpan, Token, out var Decrement))
 				return; // Counter is disposed, ignore it
 
 			var Waiter = PeekDecrementWaiter.GetOrCreate(this, Decrement);
@@ -52,7 +50,7 @@ namespace System.Threading
 			Waiter.Attach(Decrement);
 		}
 
-		internal void ApplyCancellation(CancellationTokenSource? tokenSource)
+		internal void Activate()
 		{
 			Interlocked.Exchange(ref _IsStarted, 1);
 
@@ -66,15 +64,37 @@ namespace System.Threading
 
 				return;
 			}
-
-			if (Token.CanBeCanceled)
-			{
-				_TokenSource = tokenSource;
-				_Registration = Token.Register((state) => ((AsyncCounterDecrementAny)state).SwitchToCancelled(), this);
-			}
 		}
 
 		//****************************************
+
+		protected override void SwitchToCancelled()
+		{
+			// State can be one of: Pending, Waiting, GotResult
+			// Try to switch from Pending to Waiting
+			if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Waiting, Status.Pending) != Status.Pending)
+				return; // Too late, we already have a result
+
+			// The cancellation token was raised
+			_TaskSource.SetException(CreateCancellationException());
+		}
+
+		protected override void UnregisteredCancellation()
+		{
+			switch (_InstanceState)
+			{
+			case Status.Disposed:
+				if (Interlocked.CompareExchange(ref _InstanceState, Status.Waiting, Status.Disposed) != Status.Disposed)
+					throw new InvalidOperationException("Counter Decrement Any is in an invalid state");
+
+				_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncCounterDecrementAny), "All counters have been disposed"));
+				break;
+
+			case Status.Waiting:
+				_TaskSource.SetResult(_WinningCounter!);
+				break;
+			}
+		}
 
 		ValueTaskSourceStatus IValueTaskSource<AsyncCounter>.GetStatus(short token) => _TaskSource.GetStatus(token);
 
@@ -100,26 +120,16 @@ namespace System.Threading
 
 		//****************************************
 
-		private void SwitchToCancelled()
-		{
-			// State can be one of: Pending, Waiting, GotResult
-			// Try to switch from Pending to Waiting
-			if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Waiting, Status.Pending) != Status.Pending)
-				return; // Too late, we already have a result
-
-			_Registration.Dispose();
-			_TaskSource.SetException(new OperationCanceledException(Token));
-		}
-
 		private bool TrySwitchToCompleted(AsyncCounter counter)
 		{
-			// State can be one of: Pending, Waiting, GotResult
+			// State can be one of: Pending, Waiting, Disposed, GotResult
 			// Try to switch from Pending to Waiting
 			if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Waiting, Status.Pending) != Status.Pending)
 				return false; // Too late, we already have a result
 
-			_Registration.Dispose();
-			_TaskSource.SetResult(counter);
+			_WinningCounter = counter;
+
+			UnregisterCancellation();
 
 			return true;
 		}
@@ -127,12 +137,11 @@ namespace System.Threading
 		private bool TrySwitchToDisposed()
 		{
 			// State can be one of: Pending, Waiting, GotResult
-			// Try to switch from Pending to Waiting
-			if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Waiting, Status.Pending) != Status.Pending)
+			// Try to switch from Pending to Disposed
+			if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Disposed, Status.Pending) != Status.Pending)
 				return false; // Too late, we already have a result
 
-			_Registration.Dispose();
-			_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncCounterDecrementAny), "All counters have been disposed"));
+			UnregisterCancellation();
 
 			return true;
 		}
@@ -142,12 +151,10 @@ namespace System.Threading
 			if (_InstanceState == Status.GotResult || Interlocked.CompareExchange(ref _InstanceState, Status.Unused, Status.GotResult) != Status.GotResult)
 				return; // We're waiting on GetResult to execute
 
-			_IsStarted = 0;
-			_Registration.Dispose();
-			_TokenSource?.Dispose();
-			_TokenSource = null;
 			_TaskSource.Reset();
-			Token = default;
+			_IsStarted = 0;
+			_WinningCounter = null;
+			ResetCancellation();
 
 			_Instances.Add(this);
 		}
@@ -168,7 +175,7 @@ namespace System.Threading
 				else
 				{
 					// We failed to decrement this counter, but we're still pending, so try again
-					if (counter.TryPeekDecrement(Token, out var Decrement))
+					if (counter.TryPeekDecrement(Timeout.InfiniteTimeSpan, Token, out var Decrement))
 					{
 						var Waiter = PeekDecrementWaiter.GetOrCreate(this, Decrement);
 
@@ -180,7 +187,7 @@ namespace System.Threading
 					}
 
 					// Counter is disposed, fail
-					OnPeekFailed(counter);
+					OnPeekFailed();
 
 					return;
 				}
@@ -191,7 +198,7 @@ namespace System.Threading
 				TryRelease();
 		}
 
-		private void OnPeekFailed(AsyncCounter counter)
+		private void OnPeekFailed()
 		{
 			if (Interlocked.Decrement(ref _OutstandingCounters) > 0)
 				return; // There are other counters still waiting
@@ -205,18 +212,16 @@ namespace System.Threading
 
 		//****************************************
 
-		public CancellationToken Token { get; private set; }
-
 		public short Version => _TaskSource.Version;
 
 		//****************************************
 
-		internal static AsyncCounterDecrementAny GetOrCreate(CancellationToken token)
+		internal static AsyncCounterDecrementAny GetOrCreate(CancellationToken token, TimeSpan timeout)
 		{
 			if (!_Instances.TryTake(out var Instance))
 				Instance = new AsyncCounterDecrementAny();
 
-			Instance.Initialise(token);
+			Instance.Initialise(token, timeout);
 
 			return Instance;
 		}
@@ -268,7 +273,7 @@ namespace System.Threading
 				}
 				catch
 				{
-					_Operation!.OnPeekFailed(Owner);
+					_Operation!.OnPeekFailed();
 				}
 				finally
 				{
@@ -301,6 +306,10 @@ namespace System.Threading
 
 		private static class Status
 		{
+			/// <summary>
+			/// The decrement has been disposed, and waiting for cancellation cleanup
+			/// </summary>
+			internal const int Disposed = -1;
 			/// <summary>
 			/// A decrement-any starts in the Unused state
 			/// </summary>
