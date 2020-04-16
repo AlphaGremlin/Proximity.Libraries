@@ -8,6 +8,7 @@ using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
+using Proximity.Threading;
 //****************************************
 
 namespace System.Threading
@@ -20,7 +21,7 @@ namespace System.Threading
 		private readonly WaiterQueue<SemaphoreInstance> _Waiters = new WaiterQueue<SemaphoreInstance>();
 		private int _MaxCount, _CurrentCount;
 
-		private AsyncSemaphoreDisposer? _Disposer;
+		private LockDisposer? _Disposer;
 		//****************************************
 
 		/// <summary>
@@ -52,7 +53,7 @@ namespace System.Threading
 		/// <remarks>All tasks waiting on the lock will throw ObjectDisposedException</remarks>
 		public ValueTask DisposeAsync()
 		{
-			if (_Disposer != null || Interlocked.CompareExchange(ref _Disposer, new AsyncSemaphoreDisposer(), null) != null)
+			if (_Disposer != null || Interlocked.CompareExchange(ref _Disposer, new LockDisposer(), null) != null)
 				return default;
 
 			// Success, now close any pending waiters
@@ -88,7 +89,7 @@ namespace System.Threading
 		{
 			// Are we disposed?
 			if (_Disposer != null)
-				return Task.FromException<IDisposable>(new ObjectDisposedException(nameof(AsyncSemaphore), "Semaphore has been disposed of")).AsValueTask();
+				throw new ObjectDisposedException(nameof(AsyncSemaphore), "Semaphore has been disposed of");
 
 			// Try and add a counter as long as nobody is waiting on it
 			var Instance = SemaphoreInstance.GetOrCreate(this, _Waiters.IsEmpty && TryIncrement());
@@ -303,34 +304,6 @@ namespace System.Threading
 				if (!_Waiters.IsEmpty && TryIncrement())
 					Decrement();
 			}
-		}
-
-		//****************************************
-
-		private sealed class AsyncSemaphoreDisposer : IValueTaskSource
-		{ //****************************************
-			private ManualResetValueTaskSourceCore<VoidStruct> _TaskSource = new ManualResetValueTaskSourceCore<VoidStruct>();
-
-			private int _IsDisposed;
-			//****************************************
-
-			public void SwitchToComplete()
-			{
-				if (Interlocked.Exchange(ref _IsDisposed, 1) == 0)
-					_TaskSource.SetResult(default);
-			}
-
-			//****************************************
-
-			void IValueTaskSource.GetResult(short token) => _TaskSource.GetResult(token);
-
-			ValueTaskSourceStatus IValueTaskSource.GetStatus(short token) => _TaskSource.GetStatus(token);
-
-			void IValueTaskSource.OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
-
-			//****************************************
-
-			public short Token => _TaskSource.Version;
 		}
 	}
 }

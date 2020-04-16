@@ -78,8 +78,8 @@ namespace Proximity.Threading
 			}
 			finally
 			{
-				if (_InstanceState == Status.CancelledCompleted || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledCompleted)
-					Release(); // We're cancelled and not waiting for completion, so we can return to the pool
+				if (_InstanceState == Status.Completed || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledCompleted)
+					Release(); // Completed and not waiting for the callback to execute
 			}
 		}
 
@@ -91,7 +91,8 @@ namespace Proximity.Threading
 			}
 			finally
 			{
-				Release();
+				if (_InstanceState == Status.Completed || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledCompleted)
+					Release(); // Completed and not waiting for the callback to execute
 			}
 		}
 
@@ -109,9 +110,17 @@ namespace Proximity.Threading
 			try
 			{
 				if (_HasResult)
-					_TaskSource.SetResult(_ResultAwaiter.GetResult());
+				{
+					var Result = _ResultAwaiter.GetResult();
+
+					_TaskSource.SetResult(Result);
+				}
 				else
+				{
+					_Awaiter.GetResult();
+
 					_TaskSource.SetResult(default!);
+				}
 			}
 			catch (Exception e)
 			{

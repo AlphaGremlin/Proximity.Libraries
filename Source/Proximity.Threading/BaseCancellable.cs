@@ -81,10 +81,12 @@ namespace System.Threading
 			_Token = default;
 
 #if NETSTANDARD2_0
+			// This may block if SwitchToCancelled is running
 			_Registration.Dispose();
 
 			OnCompletedCleanup();
 #else
+			// This will not block if SwitchToCancelled is running, but may continue later
 			_Awaiter = _Registration.DisposeAsync().ConfigureAwait(false).GetAwaiter();
 
 			if (_Awaiter.IsCompleted)

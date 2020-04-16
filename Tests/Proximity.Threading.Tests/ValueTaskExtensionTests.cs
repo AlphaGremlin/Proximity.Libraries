@@ -10,26 +10,35 @@ namespace Proximity.Threading.Tests
 	/// Tests the functionality of the task extensions
 	/// </summary>
 	[TestFixture]
-	public class TaskExtensionTests
+	public class ValueTaskExtensionTests
 	{
 		[Test, MaxTime(1000)]
 		public async Task When()
 		{
 			using var CancelSource = new CancellationTokenSource();
 
-			var MyTask = Task.Delay(100);
+			var MyTask = new ValueTask(Task.Delay(100));
 
 			await MyTask.When(CancelSource.Token);
 		}
 		
 		[Test, MaxTime(1000)]
-		public void WhenCancel()
+		public async Task WhenCancel()
 		{
 			using var CancelSource = new CancellationTokenSource(50);
 
-			var MyTask = Task.Delay(100);
+			var MyTask = new ValueTask(Task.Delay(100));
 
-			Assert.ThrowsAsync<OperationCanceledException>(() => MyTask.When(CancelSource.Token));
+			try
+			{
+				await MyTask.When(CancelSource.Token);
+
+				Assert.Fail("Should not complete");
+			}
+			catch (OperationCanceledException e)
+			{
+				Assert.IsTrue(CancelSource.Token == e.CancellationToken);
+			}
 		}
 		
 		[Test, MaxTime(1000)]
@@ -39,7 +48,7 @@ namespace Proximity.Threading.Tests
 			
 			using (var CancelSource = new CancellationTokenSource())
 			{
-				var MyTask = Task.Delay(100).ContinueWith(task => 100);
+				var MyTask = new ValueTask<int>(Task.Delay(100).ContinueWith(task => 100));
 				
 				Result = await MyTask.When(CancelSource.Token);
 			}
@@ -48,13 +57,22 @@ namespace Proximity.Threading.Tests
 		}
 		
 		[Test, MaxTime(1000)]
-		public void WhenResultCancel()
+		public async Task WhenResultCancel()
 		{
 			using var CancelSource = new CancellationTokenSource(50);
 
-			var MyTask = Task.Delay(100).ContinueWith(task => 100);
+			var MyTask = new ValueTask<int>(Task.Delay(100).ContinueWith(task => 100));
 
-			Assert.ThrowsAsync<OperationCanceledException>(() => MyTask.When(CancelSource.Token));
+			try
+			{
+				_ = await MyTask.When(CancelSource.Token);
+
+				Assert.Fail("Should not complete");
+			}
+			catch (OperationCanceledException e)
+			{
+				Assert.IsTrue(CancelSource.Token == e.CancellationToken);
+			}
 		}
 		
 		[Test, MaxTime(1000)]
@@ -63,7 +81,7 @@ namespace Proximity.Threading.Tests
 			using var CancelSource1 = new CancellationTokenSource(50);
 			using var CancelSource2 = new CancellationTokenSource();
 
-			var MyTask = Task.Delay(1000, CancelSource1.Token);
+			var MyTask = new ValueTask(Task.Delay(1000, CancelSource1.Token));
 
 			try
 			{
@@ -85,7 +103,7 @@ namespace Proximity.Threading.Tests
 			using var CancelSource1 = new CancellationTokenSource(50);
 			using var CancelSource2 = new CancellationTokenSource();
 
-			var MyTask = Task.Delay(1000, CancelSource1.Token).ContinueWith(task => 100, CancelSource1.Token);
+			var MyTask = new ValueTask<int>(Task.Delay(1000, CancelSource1.Token).ContinueWith(task => 100, CancelSource1.Token));
 
 			try
 			{

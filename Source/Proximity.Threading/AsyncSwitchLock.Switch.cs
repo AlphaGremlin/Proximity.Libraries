@@ -2,24 +2,25 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks.Sources;
 
 namespace System.Threading
 {
-	public sealed partial class AsyncSemaphore
+	public sealed partial class AsyncSwitchLock
 	{
-		private sealed class SemaphoreInstance : BaseCancellable, IDisposable, IValueTaskSource<IDisposable>
-		{ //****************************************
-			private static readonly ConcurrentBag<SemaphoreInstance> Instances = new ConcurrentBag<SemaphoreInstance>();
+		private sealed class LockInstance : BaseCancellable, IDisposable, IValueTaskSource<IDisposable>
+		{	//****************************************
+			private static readonly ConcurrentBag<LockInstance> Instances = new ConcurrentBag<LockInstance>();
 			//****************************************
 			private volatile int _InstanceState;
 
 			private ManualResetValueTaskSourceCore<IDisposable> _TaskSource = new ManualResetValueTaskSourceCore<IDisposable>();
 			//****************************************
 
-			internal SemaphoreInstance() => _TaskSource.RunContinuationsAsynchronously = true;
+			internal LockInstance() => _TaskSource.RunContinuationsAsynchronously = true;
 
-			~SemaphoreInstance()
+			~LockInstance()
 			{
 				if (_InstanceState != Status.Unused)
 				{
@@ -29,9 +30,10 @@ namespace System.Threading
 
 			//****************************************
 
-			internal void Initialise(AsyncSemaphore owner, bool isHeld)
+			internal void Initialise(AsyncSwitchLock owner, bool isRight, bool isHeld)
 			{
 				Owner = owner;
+				IsRight = isRight;
 
 				GC.ReRegisterForFinalize(this);
 
@@ -65,7 +67,7 @@ namespace System.Threading
 
 			internal bool TrySwitchToCompleted()
 			{
-				// Try and assign the counter to this Instance
+				// Try and assign the lock to this Instance
 				if (Interlocked.CompareExchange(ref _InstanceState, Status.Held, Status.Pending) == Status.Pending)
 				{
 					UnregisterCancellation();
@@ -119,7 +121,7 @@ namespace System.Threading
 				switch (_InstanceState)
 				{
 				case Status.Disposed:
-					_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncSemaphore), "Semaphore has been disposed of"));
+					_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncSwitchLock), "Switch Lock has been disposed of"));
 					break;
 
 				case Status.Held:
@@ -134,7 +136,7 @@ namespace System.Threading
 					return;
 
 				// Release the counter and then return to the pool
-				Owner!.Decrement();
+				Owner!.Release(IsRight);
 				Release();
 			}
 
@@ -171,20 +173,22 @@ namespace System.Threading
 
 			//****************************************
 
-			public AsyncSemaphore? Owner { get; private set; }
+			public AsyncSwitchLock? Owner { get; private set; }
 
 			public bool IsPending => _InstanceState == Status.Pending;
+
+			public bool IsRight { get; private set; }
 
 			public short Version => _TaskSource.Version;
 
 			//****************************************
 
-			internal static SemaphoreInstance GetOrCreate(AsyncSemaphore owner, bool isTaken)
+			internal static LockInstance GetOrCreate(AsyncSwitchLock owner, bool isRight, bool isTaken)
 			{
 				if (!Instances.TryTake(out var Instance))
-					Instance = new SemaphoreInstance();
+					Instance = new LockInstance();
 
-				Instance.Initialise(owner, isTaken);
+				Instance.Initialise(owner, isRight, isTaken);
 
 				return Instance;
 			}

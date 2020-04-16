@@ -6,6 +6,7 @@ using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
+using Proximity.Threading;
 //****************************************
 
 namespace System.Threading
@@ -18,7 +19,7 @@ namespace System.Threading
 		private readonly WaiterQueue<ILockWaiter> _Writers = new WaiterQueue<ILockWaiter>();
 		private readonly WaiterQueue<ILockWaiter> _Readers = new WaiterQueue<ILockWaiter>();
 
-		private AsyncReadWriteDisposer? _Disposer;
+		private LockDisposer? _Disposer;
 
 		private volatile int _Counter = LockState.Unlocked;
 		//****************************************
@@ -59,7 +60,7 @@ namespace System.Threading
 		/// <remarks>All tasks waiting on the lock will throw ObjectDisposedException</remarks>
 		public ValueTask DisposeAsync()
 		{
-			if (_Disposer != null || Interlocked.CompareExchange(ref _Disposer, new AsyncReadWriteDisposer(), null) != null)
+			if (_Disposer != null || Interlocked.CompareExchange(ref _Disposer, new LockDisposer(), null) != null)
 				return default;
 
 			// Success, now close any pending waiters
@@ -618,36 +619,6 @@ namespace System.Threading
 			internal const int Unlocked = 0;
 			internal const int Writer = -1;
 			internal const int Disposed = -2;
-
-			internal const int UpgradingReader = unchecked((int)0x80000000);
-		}
-
-		private sealed class AsyncReadWriteDisposer : IValueTaskSource
-		{ //****************************************
-			private ManualResetValueTaskSourceCore<VoidStruct> _TaskSource = new ManualResetValueTaskSourceCore<VoidStruct>();
-
-			private int _IsDisposed;
-			//****************************************
-
-			public void SwitchToComplete()
-			{
-				if (Interlocked.Exchange(ref _IsDisposed, 1) == 0)
-					_TaskSource.SetResult(default);
-			}
-
-			//****************************************
-
-			void IValueTaskSource.GetResult(short token) => _TaskSource.GetResult(token);
-
-			ValueTaskSourceStatus IValueTaskSource.GetStatus(short token) => _TaskSource.GetStatus(token);
-
-			void IValueTaskSource.OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
-
-			//****************************************
-
-			public short Token => _TaskSource.Version;
-
-			public bool IsDisposed => _IsDisposed == 1;
 		}
 	}
 }
