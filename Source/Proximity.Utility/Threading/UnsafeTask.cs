@@ -79,13 +79,10 @@ namespace Proximity.Utility.Threading
 		/// Yields the thread in an unsafe way, breaking the execution context
 		/// </summary>
 		/// <returns>An awaitable that when awaited, continues in an unsafe context</returns>
-		public static UnsafeYieldAwaitable Yield()
-		{
-			return new UnsafeYieldAwaitable();
-		}
+		public static UnsafeYieldAwaitable Yield() => new UnsafeYieldAwaitable();
 
 		//****************************************
-		
+
 		private static void ExecuteAction(object state)
 		{	//****************************************
 			var Definition = (TaskDef)state;
@@ -167,10 +164,7 @@ namespace Proximity.Utility.Threading
 			/// Gets the awaitable
 			/// </summary>
 			/// <returns>The unsafe awaiter</returns>
-			public UnsafeYieldAwaitable GetAwaiter()
-			{
-				return this;
-			}
+			public UnsafeYieldAwaitable GetAwaiter() => this;
 
 			/// <summary>
 			/// Retrieves the result of the awaitable

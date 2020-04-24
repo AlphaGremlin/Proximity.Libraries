@@ -75,7 +75,7 @@ namespace System.Threading
 		/// <param name="token">A cancellation token that can be used to abort waiting on the lock</param>
 		/// <returns>A task that completes when a counter is taken, giving an IDisposable to release the counter</returns>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
-		public ValueTask<IDisposable> Take(CancellationToken token = default) => Take(Timeout.InfiniteTimeSpan, token);
+		public ValueTask<Instance> Take(CancellationToken token = default) => Take(Timeout.InfiniteTimeSpan, token);
 
 		/// <summary>
 		/// Attempts to take a counter
@@ -85,7 +85,7 @@ namespace System.Threading
 		/// <returns>A task that completes when a counter is taken, giving an IDisposable to release the counter</returns>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
 		/// <exception cref="TimeoutException">The timeout elapsed</exception>
-		public ValueTask<IDisposable> Take(TimeSpan timeout, CancellationToken token = default)
+		public ValueTask<Instance> Take(TimeSpan timeout, CancellationToken token = default)
 		{
 			// Are we disposed?
 			if (_Disposer != null)
@@ -94,7 +94,7 @@ namespace System.Threading
 			// Try and add a counter as long as nobody is waiting on it
 			var Instance = SemaphoreInstance.GetOrCreate(this, _Waiters.IsEmpty && TryIncrement());
 
-			var ValueTask = new ValueTask<IDisposable>(Instance, Instance.Version);
+			var ValueTask = new ValueTask<Instance>(Instance, Instance.Version);
 
 			if (!ValueTask.IsCompleted)
 			{
@@ -120,16 +120,16 @@ namespace System.Threading
 #if !NETSTANDARD2_0
 			[MaybeNullWhen(false)]
 #endif
-			out IDisposable handle)
+			out Instance handle)
 		{
 			// Are we disposed?
 			if (_Disposer == null && _Waiters.IsEmpty && TryIncrement())
 			{
-				handle = SemaphoreInstance.GetOrCreate(this, true);
+				handle = new Instance(SemaphoreInstance.GetOrCreate(this, true));
 				return true;
 			}
 
-			handle = null!;
+			handle = default!;
 
 			return false;
 		}
@@ -145,7 +145,7 @@ namespace System.Threading
 #if !NETSTANDARD2_0
 			[MaybeNullWhen(false)]
 #endif
-			out IDisposable handle, CancellationToken token) => TryTake(out handle!, Timeout.InfiniteTimeSpan, token);
+			out Instance handle, CancellationToken token) => TryTake(out handle!, Timeout.InfiniteTimeSpan, token);
 
 		/// <summary>
 		/// Blocks attempting to take a counter
@@ -160,16 +160,16 @@ namespace System.Threading
 #if !NETSTANDARD2_0
 			[MaybeNullWhen(false)]
 #endif
-			out IDisposable handle, TimeSpan timeout, CancellationToken token = default)
+			out Instance handle, TimeSpan timeout, CancellationToken token = default)
 		{
 			// First up, try and take the counter if possible
 			if (_Disposer == null && _Waiters.IsEmpty && TryIncrement())
 			{
-				handle = SemaphoreInstance.GetOrCreate(this, true);
+				handle = new Instance(SemaphoreInstance.GetOrCreate(this, true));
 				return true;
 			}
 
-			handle = null!;
+			handle = default!;
 
 			// If we're not okay with blocking, then we fail
 			if (timeout == TimeSpan.Zero && !token.CanBeCanceled)
@@ -304,6 +304,31 @@ namespace System.Threading
 				if (!_Waiters.IsEmpty && TryIncrement())
 					Decrement();
 			}
+		}
+
+		//****************************************
+
+		/// <summary>
+		/// Represents the semaphore counter currently held
+		/// </summary>
+		public readonly struct Instance : IDisposable
+		{ //****************************************
+			private readonly SemaphoreInstance _Instance;
+			private readonly short _Token;
+			//****************************************
+
+			internal Instance(SemaphoreInstance instance)
+			{
+				_Instance = instance;
+				_Token = instance.Version;
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Releases the lock currently held
+			/// </summary>
+			public void Dispose() => _Instance.Release(_Token);
 		}
 	}
 }

@@ -16,58 +16,166 @@ namespace Proximity.Threading.Tests
 		public async Task When()
 		{
 			using var CancelSource = new CancellationTokenSource();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
 
-			var MyTask = Task.Delay(100);
+			var WhenTask = ((Task)TaskSource.Task).When(CancelSource.Token);
 
-			await MyTask.When(CancelSource.Token);
+			Assert.IsFalse(WhenTask.IsCompleted);
+
+			TaskSource.SetResult(default);
+
+			await WhenTask;
 		}
 		
 		[Test, MaxTime(1000)]
-		public void WhenCancel()
+		public async Task WhenCancel()
 		{
-			using var CancelSource = new CancellationTokenSource(50);
+			using var CancelSource = new CancellationTokenSource();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
 
-			var MyTask = Task.Delay(100);
+			var WhenTask = ((Task)TaskSource.Task).When(CancelSource.Token);
 
-			Assert.ThrowsAsync<OperationCanceledException>(() => MyTask.When(CancelSource.Token));
+			Assert.IsFalse(WhenTask.IsCompleted);
+
+			try
+			{
+				CancelSource.Cancel();
+
+				await WhenTask;
+
+				Assert.Fail("Should not complete");
+			}
+			catch (OperationCanceledException e)
+			{
+				Assert.IsTrue(CancelSource.Token == e.CancellationToken);
+			}
 		}
-		
+
+		[Test, MaxTime(1000)]
+		public async Task WhenSourceCancel()
+		{
+			using var CancelSource1 = new CancellationTokenSource();
+			using var CancelSource2 = new CancellationTokenSource();
+
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+
+			var WhenTask = ((Task)TaskSource.Task).When(CancelSource2.Token);
+
+			Assert.IsFalse(WhenTask.IsCompleted);
+
+			try
+			{
+				CancelSource1.Cancel();
+
+				TaskSource.TrySetCanceled(CancelSource1.Token);
+
+				await WhenTask;
+
+				Assert.Fail("Should not complete");
+			}
+			catch (OperationCanceledException e)
+			{
+				Assert.IsTrue(CancelSource1.Token == e.CancellationToken);
+			}
+		}
+
+		[Test, MaxTime(1000)]
+		public async Task WhenThrow()
+		{
+			using var CancelSource = new CancellationTokenSource();
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+
+			var WhenTask = ((Task)TaskSource.Task).When(CancelSource.Token);
+
+			Assert.IsFalse(WhenTask.IsCompleted);
+
+			TaskSource.SetException(new SuccessException("Exception was passed through successfully"));
+
+			await WhenTask;
+
+			Assert.Fail("Should not reach this point");
+		}
+
+		[Test, MaxTime(1000)]
+		public async Task WhenTimeout()
+		{
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+
+			var WhenTask = ((Task)TaskSource.Task).When(100);
+
+			try
+			{
+				await WhenTask;
+
+				Assert.Fail("Should not complete");
+			}
+			catch (TimeoutException)
+			{
+			}
+		}
+
+		//****************************************
+
 		[Test, MaxTime(1000)]
 		public async Task WhenResult()
 		{
-			int Result;
-			
-			using (var CancelSource = new CancellationTokenSource())
-			{
-				var MyTask = Task.Delay(100).ContinueWith(task => 100);
-				
-				Result = await MyTask.When(CancelSource.Token);
-			}
-			
+			using var CancelSource = new CancellationTokenSource();
+			var TaskSource = new TaskCompletionSource<int>();
+
+			var WhenTask = TaskSource.Task.When(CancelSource.Token);
+
+			Assert.IsFalse(WhenTask.IsCompleted);
+
+			TaskSource.SetResult(100);
+
+			var Result = await WhenTask;
+
 			Assert.AreEqual(100, Result);
 		}
 		
 		[Test, MaxTime(1000)]
-		public void WhenResultCancel()
+		public async Task WhenResultCancel()
 		{
-			using var CancelSource = new CancellationTokenSource(50);
+			using var CancelSource = new CancellationTokenSource();
+			var TaskSource = new TaskCompletionSource<int>();
 
-			var MyTask = Task.Delay(100).ContinueWith(task => 100);
+			var WhenTask = TaskSource.Task.When(CancelSource.Token);
 
-			Assert.ThrowsAsync<OperationCanceledException>(() => MyTask.When(CancelSource.Token));
-		}
-		
-		[Test, MaxTime(1000)]
-		public async Task WhenSourceCancel()
-		{
-			using var CancelSource1 = new CancellationTokenSource(50);
-			using var CancelSource2 = new CancellationTokenSource();
-
-			var MyTask = Task.Delay(1000, CancelSource1.Token);
+			Assert.IsFalse(WhenTask.IsCompleted);
 
 			try
 			{
-				await MyTask.When(CancelSource2.Token);
+				CancelSource.Cancel();
+
+				_ = await WhenTask;
+
+				Assert.Fail("Should not complete");
+			}
+			catch (OperationCanceledException e)
+			{
+				Assert.IsTrue(CancelSource.Token == e.CancellationToken);
+			}
+		}
+
+		[Test, MaxTime(1000)]
+		public async Task WhenResultSourceCancel()
+		{
+			using var CancelSource1 = new CancellationTokenSource();
+			using var CancelSource2 = new CancellationTokenSource();
+
+			var TaskSource = new TaskCompletionSource<int>();
+
+			var WhenTask = TaskSource.Task.When(CancelSource2.Token);
+
+			Assert.IsFalse(WhenTask.IsCompleted);
+
+			try
+			{
+				CancelSource1.Cancel();
+
+				TaskSource.TrySetCanceled(CancelSource1.Token);
+
+				_ = await WhenTask;
 
 				Assert.Fail("Should not complete");
 			}
@@ -76,26 +184,39 @@ namespace Proximity.Threading.Tests
 				Assert.IsTrue(CancelSource1.Token == e.CancellationToken);
 			}
 		}
-		
+
 		[Test, MaxTime(1000)]
-		public async Task WhenSourceResultCancel()
+		public async Task WhenResultThrow()
 		{
-			int Result;
+			using var CancelSource = new CancellationTokenSource();
+			var TaskSource = new TaskCompletionSource<int>();
 
-			using var CancelSource1 = new CancellationTokenSource(50);
-			using var CancelSource2 = new CancellationTokenSource();
+			var WhenTask = TaskSource.Task.When(CancelSource.Token);
 
-			var MyTask = Task.Delay(1000, CancelSource1.Token).ContinueWith(task => 100, CancelSource1.Token);
+			Assert.IsFalse(WhenTask.IsCompleted);
+
+			TaskSource.SetException(new SuccessException("Exception was passed through successfully"));
+
+			_ = await WhenTask;
+
+			Assert.Fail("Should not reach this point");
+		}
+
+		[Test, MaxTime(1000)]
+		public async Task WhenResultTimeout()
+		{
+			var TaskSource = new TaskCompletionSource<int>();
+
+			var WhenTask = TaskSource.Task.When(100);
 
 			try
 			{
-				Result = await MyTask.When(CancelSource2.Token);
+				_ = await WhenTask;
 
 				Assert.Fail("Should not complete");
 			}
-			catch (OperationCanceledException e)
+			catch (TimeoutException)
 			{
-				Assert.IsTrue(CancelSource1.Token == e.CancellationToken);
 			}
 		}
 	}

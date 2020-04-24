@@ -9,13 +9,13 @@ namespace System.Threading
 {
 	public sealed partial class AsyncSwitchLock
 	{
-		private sealed class LockInstance : BaseCancellable, IDisposable, IValueTaskSource<IDisposable>
+		internal sealed class LockInstance : BaseCancellable, IValueTaskSource<Instance>
 		{	//****************************************
 			private static readonly ConcurrentBag<LockInstance> Instances = new ConcurrentBag<LockInstance>();
 			//****************************************
 			private volatile int _InstanceState;
 
-			private ManualResetValueTaskSourceCore<IDisposable> _TaskSource = new ManualResetValueTaskSourceCore<IDisposable>();
+			private ManualResetValueTaskSourceCore<Instance> _TaskSource = new ManualResetValueTaskSourceCore<Instance>();
 			//****************************************
 
 			internal LockInstance() => _TaskSource.RunContinuationsAsynchronously = true;
@@ -40,7 +40,7 @@ namespace System.Threading
 				if (isHeld)
 				{
 					_InstanceState = Status.Held;
-					_TaskSource.SetResult(this);
+					_TaskSource.SetResult(new Instance(this));
 				}
 				else
 				{
@@ -105,6 +105,16 @@ namespace System.Threading
 				return false;
 			}
 
+			internal void Release(short token)
+			{
+				if (_TaskSource.Version != token || Interlocked.CompareExchange(ref _InstanceState, Status.Unused, Status.Held) != Status.Held)
+					throw new InvalidOperationException("Lock cannot be released multiple times");
+
+				// Release the lock and then return to the pool
+				Owner!.Release(IsRight);
+				Release();
+			}
+
 			//****************************************
 
 			protected override void SwitchToCancelled()
@@ -125,26 +135,16 @@ namespace System.Threading
 					break;
 
 				case Status.Held:
-					_TaskSource.SetResult(this);
+					_TaskSource.SetResult(new Instance(this));
 					break;
 				}
 			}
 
-			void IDisposable.Dispose()
-			{
-				if (Interlocked.Exchange(ref _InstanceState, Status.Unused) != Status.Held)
-					return;
-
-				// Release the counter and then return to the pool
-				Owner!.Release(IsRight);
-				Release();
-			}
-
-			ValueTaskSourceStatus IValueTaskSource<IDisposable>.GetStatus(short token) => _TaskSource.GetStatus(token);
+			ValueTaskSourceStatus IValueTaskSource<Instance>.GetStatus(short token) => _TaskSource.GetStatus(token);
 
 			public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
 
-			public IDisposable GetResult(short token)
+			public Instance GetResult(short token)
 			{
 				try
 				{

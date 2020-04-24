@@ -124,7 +124,7 @@ namespace Proximity.Utility.Tests
 		public async Task LeftRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
-			ValueTask<IDisposable> MyRight;
+			ValueTask<AsyncSwitchLock.Instance> MyRight;
 			//****************************************
 			
 			using (await MyLock.LockLeft())
@@ -148,7 +148,7 @@ namespace Proximity.Utility.Tests
 		public async Task RightLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
-			ValueTask<IDisposable> MyLeft;
+			ValueTask<AsyncSwitchLock.Instance> MyLeft;
 			//****************************************
 			
 			using (await MyLock.LockRight())
@@ -172,7 +172,7 @@ namespace Proximity.Utility.Tests
 		public async Task LeftRightLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
-			ValueTask<IDisposable> MyLeft, MyRight;
+			ValueTask<AsyncSwitchLock.Instance> MyLeft, MyRight;
 			//****************************************
 			
 			using (await MyLock.LockLeft())
@@ -202,7 +202,7 @@ namespace Proximity.Utility.Tests
 		public async Task LeftRightLeftUnfair()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock(true);
-			ValueTask<IDisposable> MyLeft, MyRight;
+			ValueTask<AsyncSwitchLock.Instance> MyLeft, MyRight;
 			//****************************************
 
 			using (await MyLock.LockLeft())
@@ -230,7 +230,7 @@ namespace Proximity.Utility.Tests
 		public async Task RightLeftRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
-			ValueTask<IDisposable> MyLeft, MyRight;
+			ValueTask<AsyncSwitchLock.Instance> MyLeft, MyRight;
 			//****************************************
 			
 			using (await MyLock.LockRight())
@@ -260,7 +260,7 @@ namespace Proximity.Utility.Tests
 		public async Task RightLeftRightUnfair()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock(true);
-			ValueTask<IDisposable> MyLeft, MyRight;
+			ValueTask<AsyncSwitchLock.Instance> MyLeft, MyRight;
 			//****************************************
 
 			using (await MyLock.LockRight())
@@ -288,7 +288,7 @@ namespace Proximity.Utility.Tests
 		public async Task LeftRightLeftRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
-			ValueTask<IDisposable> MyLeft, MyRight1, MyRight2;
+			ValueTask<AsyncSwitchLock.Instance> MyLeft, MyRight1, MyRight2;
 			//****************************************
 			
 			using (await MyLock.LockLeft())
@@ -300,7 +300,7 @@ namespace Proximity.Utility.Tests
 				MyRight2 = MyLock.LockRight();
 			}
 			
-			var Results = await MyRight1.ThenWaitOn<IDisposable>(MyRight2);
+			var Results = await MyRight1.ThenWaitOn<AsyncSwitchLock.Instance>(MyRight2);
 
 			Results[0].Dispose();
 			Results[1].Dispose();
@@ -319,7 +319,7 @@ namespace Proximity.Utility.Tests
 		public async Task RightLeftRightLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
-			ValueTask<IDisposable> MyRight, MyLeft1, MyLeft2;
+			ValueTask<AsyncSwitchLock.Instance> MyRight, MyLeft1, MyLeft2;
 			//****************************************
 			
 			using (await MyLock.LockRight())
@@ -331,7 +331,7 @@ namespace Proximity.Utility.Tests
 				MyLeft2 = MyLock.LockLeft();
 			}
 			
-			var Results = await MyLeft1.ThenWaitOn<IDisposable>(MyLeft2);
+			var Results = await MyLeft1.ThenWaitOn<AsyncSwitchLock.Instance>(MyLeft2);
 
 			Results[0].Dispose();
 			Results[1].Dispose();
@@ -348,7 +348,7 @@ namespace Proximity.Utility.Tests
 		public async Task LeftCancelRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
-			ValueTask<IDisposable> MyRight;
+			ValueTask<AsyncSwitchLock.Instance> MyRight;
 			//****************************************
 			
 			var MyLeft = await MyLock.LockLeft();
@@ -384,7 +384,7 @@ namespace Proximity.Utility.Tests
 		public async Task RightCancelLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
-			ValueTask<IDisposable> MyLeft;
+			ValueTask<AsyncSwitchLock.Instance> MyLeft;
 			//****************************************
 			
 			var MyRight = await MyLock.LockRight();
@@ -420,7 +420,7 @@ namespace Proximity.Utility.Tests
 		public async Task LeftCancelRightRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
-			ValueTask<IDisposable> MyRight1, MyRight2;
+			ValueTask<AsyncSwitchLock.Instance> MyRight1, MyRight2;
 			//****************************************
 			
 			var MyLeft = await MyLock.LockLeft();
@@ -459,7 +459,7 @@ namespace Proximity.Utility.Tests
 		public async Task RightCancelLeftLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
-			ValueTask<IDisposable> MyLeft1, MyLeft2;
+			ValueTask<AsyncSwitchLock.Instance> MyLeft1, MyLeft2;
 			//****************************************
 			
 			var MyRight = await MyLock.LockRight();
@@ -498,7 +498,7 @@ namespace Proximity.Utility.Tests
 		public async Task LeftCancelRightLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
-			ValueTask<IDisposable> MyLeft, MyRight;
+			ValueTask<AsyncSwitchLock.Instance> MyLeft, MyRight;
 			//****************************************
 			
 			using (var MySource = new CancellationTokenSource())
@@ -527,7 +527,7 @@ namespace Proximity.Utility.Tests
 		public async Task LeftRightCancelLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
-			ValueTask<IDisposable> MyLeft, MyRight;
+			ValueTask<AsyncSwitchLock.Instance> MyLeft, MyRight;
 			//****************************************
 			
 			using (var MySource = new CancellationTokenSource())
@@ -566,7 +566,7 @@ namespace Proximity.Utility.Tests
 		public async Task RightCancelLeftRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
-			ValueTask<IDisposable> MyLeft, MyRight;
+			ValueTask<AsyncSwitchLock.Instance> MyLeft, MyRight;
 			//****************************************
 			
 			using (var MySource = new CancellationTokenSource())
@@ -595,7 +595,7 @@ namespace Proximity.Utility.Tests
 		public async Task RightLeftCancelRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
-			ValueTask<IDisposable> MyLeft, MyRight;
+			ValueTask<AsyncSwitchLock.Instance> MyLeft, MyRight;
 			//****************************************
 			
 			using (var MySource = new CancellationTokenSource())
@@ -634,7 +634,7 @@ namespace Proximity.Utility.Tests
 		public async Task LeftTimeoutRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
-			ValueTask<IDisposable> MyRight;
+			ValueTask<AsyncSwitchLock.Instance> MyRight;
 			//****************************************
 			
 			using (await MyLock.LockLeft())
@@ -664,7 +664,7 @@ namespace Proximity.Utility.Tests
 		public async Task RightTimeoutLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
-			ValueTask<IDisposable> MyLeft;
+			ValueTask<AsyncSwitchLock.Instance> MyLeft;
 			//****************************************
 			
 			using (await MyLock.LockRight())
@@ -695,7 +695,7 @@ namespace Proximity.Utility.Tests
 		public async Task NoTimeoutLeft()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
-			ValueTask<IDisposable> MyLeft;
+			ValueTask<AsyncSwitchLock.Instance> MyLeft;
 			//****************************************
 			
 			MyLeft = MyLock.LockLeft(TimeSpan.FromMilliseconds(50));
@@ -716,7 +716,7 @@ namespace Proximity.Utility.Tests
 		public async Task NoTimeoutRight()
 		{	//****************************************
 			var MyLock = new AsyncSwitchLock();
-			ValueTask<IDisposable> MyRight;
+			ValueTask<AsyncSwitchLock.Instance> MyRight;
 			//****************************************
 			
 			MyRight = MyLock.LockRight(TimeSpan.FromMilliseconds(50));

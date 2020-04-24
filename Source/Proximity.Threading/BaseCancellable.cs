@@ -119,5 +119,11 @@ namespace System.Threading
 		//****************************************
 
 		protected CancellationToken Token => _TokenSource?.Token ?? _Token;
+
+		/// <summary>
+		/// Gets whether the supplied Token has been cancelled
+		/// </summary>
+		/// <remarks>If <see cref="Token"/> is not cancelled, this can mean a timeout occurred instead</remarks>
+		protected bool IsCancelled => _Token.IsCancellationRequested;
 	}
 }

@@ -61,12 +61,12 @@ namespace System.Threading.Tasks
 		/// <remarks>Will throw any exceptions from the original task as <see cref="AggregateException" />, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
 		public static ValueTask When(this ValueTask task, TimeSpan timeout, CancellationToken token = default)
 		{
-			if (!token.CanBeCanceled || task.IsCompleted)
+			if ((!token.CanBeCanceled && timeout == Timeout.InfiniteTimeSpan) || task.IsCompleted)
 				return task;
 
-			var Instance = TaskCancelInstance<VoidStruct>.GetOrCreate(task);
+			var Instance = TaskCancelInstance<VoidStruct>.GetOrCreate(token, timeout);
 
-			Instance.ApplyCancellation(token, timeout);
+			Instance.Attach(task);
 
 			return new ValueTask(Instance, Instance.Version);
 		}
@@ -105,12 +105,12 @@ namespace System.Threading.Tasks
 		/// <exception cref="TimeoutException">The timeout elapsed</exception>
 		public static ValueTask<TResult> When<TResult>(this ValueTask<TResult> task, TimeSpan timeout, CancellationToken token = default)
 		{
-			if (!token.CanBeCanceled || task.IsCompleted)
+			if ((!token.CanBeCanceled && timeout == Timeout.InfiniteTimeSpan) || task.IsCompleted)
 				return task;
 
-			var Instance = TaskCancelInstance<TResult>.GetOrCreate(task);
+			var Instance = TaskCancelInstance<TResult>.GetOrCreate(token, timeout);
 
-			Instance.ApplyCancellation(token, timeout);
+			Instance.Attach(task);
 
 			return new ValueTask<TResult>(Instance, Instance.Version);
 		}

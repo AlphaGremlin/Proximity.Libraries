@@ -53,7 +53,7 @@ namespace Proximity.Threading.Tests
 		public async Task LockLockLock()
 		{	//****************************************
 			var MyLock = new AsyncSemaphore(2);
-			ValueTask<IDisposable> MyWaiter1, MyWaiter2;
+			ValueTask<AsyncSemaphore.Instance> MyWaiter1, MyWaiter2;
 			//****************************************
 			
 			using (await MyLock.Take())
@@ -83,7 +83,7 @@ namespace Proximity.Threading.Tests
 		{	//****************************************
 			var MyLock = new AsyncSemaphore();
 			var Resource = false;
-			ValueTask<IDisposable> MyWaiter1, MyWaiter2;
+			ValueTask<AsyncSemaphore.Instance> MyWaiter1, MyWaiter2;
 			//****************************************
 			
 			using (var MySource = new CancellationTokenSource())
@@ -120,7 +120,7 @@ namespace Proximity.Threading.Tests
 		public async Task LockTimeoutLock()
 		{	//****************************************
 			var MyLock = new AsyncSemaphore();
-			ValueTask<IDisposable> MyWait;
+			ValueTask<AsyncSemaphore.Instance> MyWait;
 			//****************************************
 			
 			using (await MyLock.Take())
@@ -152,7 +152,7 @@ namespace Proximity.Threading.Tests
 			var MyLock = new AsyncSemaphore();
 			//****************************************
 
-			Assert.True(MyLock.TryTake(out IDisposable MyHandle), "Lock not taken");
+			Assert.True(MyLock.TryTake(out var MyHandle), "Lock not taken");
 
 			MyHandle.Dispose();
 

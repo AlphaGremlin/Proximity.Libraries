@@ -24,11 +24,9 @@
 		<DebugType>full</DebugType>
 	</PropertyGroup>
 	<ItemGroup>
-		<Compile Remove="Collections\ObservableSortedSubset.cs" />
 		<Compile Remove="Diagnostics\ExceptionExtensions.cs" />
 	</ItemGroup>
 	<ItemGroup>
-		<None Include="Collections\ObservableSortedSubset.cs" />
 		<None Include="Diagnostics\ExceptionExtensions.cs" />
 	</ItemGroup>
 	<ItemGroup>

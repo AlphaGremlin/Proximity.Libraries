@@ -1,8 +1,10 @@
-﻿using System;
+using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Proximity.Utility.IO
@@ -12,25 +14,32 @@ namespace Proximity.Utility.IO
 	/// </summary>
 	public sealed class CharTextReader : TextReader
 	{ //****************************************
-		private readonly char[] _Buffer;
-		private readonly int _StartIndex;
-		private int _BufferIndex, _BufferLength;
+		private readonly ReadOnlySequence<char> _Initial;
+
+		private ReadOnlySequence<char> _Remainder;
 		//****************************************
 
 		/// <summary>
 		/// Creates a new Char Text Reader
 		/// </summary>
 		/// <param name="array">The array segment to read from</param>
-		public CharTextReader(ArraySegment<char> array) : this(array.Array, array.Offset, array.Count)
+		public CharTextReader(ArraySegment<char> array) : this(new ReadOnlySequence<char>(array))
 		{
-
 		}
 
 		/// <summary>
 		/// Creates a new Char Text Reader
 		/// </summary>
 		/// <param name="array">The array to read from</param>
-		public CharTextReader(char[] array) : this(array, 0, array.Length)
+		public CharTextReader(char[] array) : this(new ReadOnlySequence<char>(array))
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Char Text Reader
+		/// </summary>
+		/// <param name="array">The array to read from</param>
+		public CharTextReader(ReadOnlyMemory<char> array) : this(new ReadOnlySequence<char>(array))
 		{
 		}
 
@@ -40,11 +49,17 @@ namespace Proximity.Utility.IO
 		/// <param name="array">The char array to read from</param>
 		/// <param name="offset">The offset into the char array to start from</param>
 		/// <param name="length">The maximum chars to read from the array</param>
-		public CharTextReader(char[] array, int offset, int length)
+		public CharTextReader(char[] array, int offset, int length) : this(new ReadOnlySequence<char>(array, offset, length))
 		{
-			_Buffer = array;
-			_BufferIndex = _StartIndex = offset;
-			_BufferLength = length;
+		}
+
+		/// <summary>
+		/// Creates a new Char Text Reader
+		/// </summary>
+		/// <param name="sequence">The array segment to read from</param>
+		public CharTextReader(ReadOnlySequence<char> sequence)
+		{
+			_Remainder = _Initial = sequence;
 		}
 
 		//****************************************
@@ -52,67 +67,69 @@ namespace Proximity.Utility.IO
 		/// <inheritdoc />
 		public override int Peek()
 		{
-			if (_BufferLength == 0)
+			if (_Remainder.IsEmpty)
 				return -1;
 
-			return _Buffer[_BufferIndex];
+			return _Remainder.First.Span[0];
 		}
 
 		/// <inheritdoc />
 		public override int Read()
 		{
-			if (_BufferLength == 0)
+			if (_Remainder.IsEmpty)
 				return -1;
 
-			var Result = _Buffer[_BufferIndex];
+			var Result = _Remainder.First.Span[0];
 
-			_BufferIndex++;
-			_BufferLength--;
+			_Remainder = _Remainder.Slice(1);
 
 			return Result;
 		}
 
 		/// <inheritdoc />
-		public override int Read(char[] buffer, int index, int count)
+		public override int Read(char[] buffer, int index, int count) => Read(buffer.AsSpan(index, count));
+
+		/// <inheritdoc />
+		public
+#if !NETSTANDARD2_0
+			override
+#endif
+			int Read(Span<char> buffer)
 		{ //****************************************
-			int WriteLength = Math.Min(_BufferLength, count);
+			var WriteLength = (int)Math.Min(_Remainder.Length, buffer.Length);
 			//****************************************
 
-			Array.Copy(_Buffer, _BufferIndex, buffer, index, WriteLength);
+			_Remainder.Slice(0, WriteLength).CopyTo(buffer.Slice(0, WriteLength));
 
-			_BufferIndex += WriteLength;
-			_BufferLength -= WriteLength;
+			_Remainder = _Remainder.Slice(WriteLength);
 
 			return WriteLength;
 		}
 
-#if !NET40
 		/// <inheritdoc />
-		public override Task<int> ReadAsync(char[] buffer, int index, int count)
-		{
-			return Task.FromResult(Read(buffer, index, count));
-		}
+		public override Task<int> ReadAsync(char[] buffer, int index, int count) => Task.FromResult(Read(buffer.AsSpan(index, count)));
+
+#if !NETSTANDARD2_0
+		/// <inheritdoc />
+		public override ValueTask<int> ReadAsync(Memory<char> buffer, CancellationToken token = default) => new ValueTask<int>(Read(buffer.Span));
 #endif
 
 		/// <inheritdoc />
-		public override int ReadBlock(char[] buffer, int index, int count)
-		{
-			return Read(buffer, index, count);
-		}
+		public override int ReadBlock(char[] buffer, int index, int count) => Read(buffer, index, count);
 
-#if !NET40
 		/// <inheritdoc />
-		public override Task<int> ReadBlockAsync(char[] buffer, int index, int count)
-		{
-			return Task.FromResult(Read(buffer, index, count));
-		}
+		public override Task<int> ReadBlockAsync(char[] buffer, int index, int count) => Task.FromResult(Read(buffer.AsSpan(index, count)));
+
+#if !NETSTANDARD2_0
+		/// <inheritdoc />
+		public override ValueTask<int> ReadBlockAsync(Memory<char> buffer, CancellationToken token = default) => new ValueTask<int>(ReadBlock(buffer.Span));
 #endif
 
 		/// <inheritdoc />
 		public override string ReadLine()
 		{
 			// Read more data if available
-			if (_BufferLength == 0)
+			if (_Remainder.IsEmpty)
 				return string.Empty; // Nothing else to read
 
 			var CharIndex = _BufferIndex;
@@ -163,17 +180,13 @@ namespace Proximity.Utility.IO
 			return Result;
 		}
 
-#if !NET40
 		/// <inheritdoc />
-		public override Task<string> ReadLineAsync()
-		{
-			return Task.FromResult(ReadLine());
-		}
-#endif
+		public override Task<string> ReadLineAsync() => Task.FromResult(ReadLine());
 
 		/// <inheritdoc />
 		public override string ReadToEnd()
 		{
+			_Remainder.ToString();
 			var Result = new string(_Buffer, _BufferIndex, _BufferLength);
 
 			_BufferIndex += _BufferLength;
@@ -182,22 +195,13 @@ namespace Proximity.Utility.IO
 			return Result;
 		}
 
-#if !NET40
 		/// <inheritdoc />
-		public override Task<string> ReadToEndAsync()
-		{
-			return Task.FromResult(ReadToEnd());
-		}
-#endif
+		public override Task<string> ReadToEndAsync() => Task.FromResult(ReadToEnd());
 
 		/// <summary>
 		/// Resets the reader to the start
 		/// </summary>
-		public void Reset()
-		{
-			_BufferLength += _BufferIndex - _StartIndex;
-			_BufferIndex = _StartIndex;
-		}
+		public void Reset() => _Remainder = _Initial;
 
 		//****************************************
 

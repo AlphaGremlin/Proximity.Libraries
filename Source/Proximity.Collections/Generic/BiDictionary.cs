@@ -1,0 +1,1644 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using Proximity.Collections;
+//****************************************
+
+namespace System.Collections.Generic
+{
+	/// <summary>
+	/// Provides construction methods for the bi-directional Dictionary
+	/// </summary>
+	public static class BiDictionary
+	{
+		/// <summary>
+		/// Creates a new pre-filled bi-directional dictionary with the specified comparers
+		/// </summary>
+		/// <typeparam name="TLeft">The left type (Key for normal, Value for inverse)</typeparam>
+		/// <typeparam name="TRight">The right type (Value for normal, Key for inverse)</typeparam>
+		/// <param name="dictionary">The dictionary to retrieve the contents from</param>
+		/// <param name="leftComparer">The equality comparer to use for <typeparamref name="TLeft"/></param>
+		/// <param name="rightComparer">The equality comparer to use for <typeparamref name="TRight"/></param>
+		/// <returns>The new populated bi-directional dictionary</returns>
+		/// <remarks>The items are not guaranteed to be stored in the provided order</remarks>
+		public static BiDictionary<TLeft, TRight> From<TLeft, TRight>(IEnumerable<KeyValuePair<TLeft, TRight>> dictionary, IEqualityComparer<TLeft>? leftComparer = null, IEqualityComparer<TRight>? rightComparer = null)
+		{
+			return new BiDictionary<TLeft, TRight>(dictionary, leftComparer ?? EqualityComparer<TLeft>.Default, rightComparer ?? EqualityComparer<TRight>.Default);
+		}
+
+		/// <summary>
+		/// Creates a new pre-filled bi-directional dictionary with the specified comparers
+		/// </summary>
+		/// <typeparam name="TLeft">The left type (Key for normal, Value for inverse)</typeparam>
+		/// <typeparam name="TRight">The right type (Value for normal, Key for inverse)</typeparam>
+		/// <param name="dictionary">The dictionary to retrieve the contents from</param>
+		/// <param name="leftComparer">The equality comparer to use for <typeparamref name="TLeft"/></param>
+		/// <param name="rightComparer">The equality comparer to use for <typeparamref name="TRight"/></param>
+		/// <returns>The new populated bi-directional dictionary</returns>
+		/// <remarks>The items are not guaranteed to be stored in the provided order</remarks>
+		public static BiDictionary<TLeft, TRight> FromInverse<TLeft, TRight>(IEnumerable<KeyValuePair<TRight, TLeft>> dictionary, IEqualityComparer<TLeft>? leftComparer = null, IEqualityComparer<TRight>? rightComparer = null)
+		{
+			return new BiDictionary<TLeft, TRight>(dictionary.Select(pair => new KeyValuePair<TLeft, TRight>(pair.Value, pair.Key)), leftComparer ?? EqualityComparer<TLeft>.Default, rightComparer ?? EqualityComparer<TRight>.Default);
+		}
+	}
+
+	/// <summary>
+	/// Provides a bi-directional Dictionary that can perform lookups on either TFirst or TSecond
+	/// </summary>
+	/// <typeparam name="TLeft">The left type (Key for normal, Value for inverse)</typeparam>
+	/// <typeparam name="TRight">The right type (Value for normal, Key for inverse)</typeparam>
+	public class BiDictionary<TLeft, TRight> : IDictionary<TLeft, TRight>, IReadOnlyDictionary<TLeft, TRight>
+	{	//****************************************
+		private const int HashCodeMask = 0x7FFFFFFF;
+		//****************************************
+		private int[] _LeftBuckets;
+		private int[] _RightBuckets;
+		private Entry[] _Entries;
+
+		private int _Size;
+		//****************************************
+
+		/// <summary>
+		/// Creates a new, empty bi-directional dictionary
+		/// </summary>
+		public BiDictionary() : this(0, EqualityComparer<TLeft>.Default, EqualityComparer<TRight>.Default)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new empty bi-directional dictionary with the specified default capacity
+		/// </summary>
+		/// <param name="capacity">The default capacity of the dictionary</param>
+		public BiDictionary(int capacity) : this(capacity, EqualityComparer<TLeft>.Default, EqualityComparer<TRight>.Default)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new empty bi-directional dictionary with the specified Left comparer
+		/// </summary>
+		/// <param name="leftComparer">The equality comparer to use for <typeparamref name="TLeft"/></param>
+		public BiDictionary(IEqualityComparer<TLeft> leftComparer) : this(0, leftComparer, EqualityComparer<TRight>.Default)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new empty bi-directional dictionary with the specified Right comparer
+		/// </summary>
+		/// <param name="rightComparer">The equality comparer to use for <typeparamref name="TRight"/></param>
+		public BiDictionary(IEqualityComparer<TRight> rightComparer) : this(0, EqualityComparer<TLeft>.Default, rightComparer)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new empty observable dictionary with the specified comparers
+		/// </summary>
+		/// <param name="capacity">The default capacity of the dictionary</param>
+		/// <param name="leftComparer">The equality comparer to use for <typeparamref name="TLeft"/></param>
+		/// <param name="rightComparer">The equality comparer to use for <typeparamref name="TRight"/></param>
+		public BiDictionary(int capacity, IEqualityComparer<TLeft> leftComparer, IEqualityComparer<TRight> rightComparer)
+		{
+			capacity = HashUtil.GetPrime(capacity);
+
+			_LeftBuckets = new int[capacity];
+			_RightBuckets = new int[capacity];
+			_Entries = new Entry[capacity];
+			LeftComparer = leftComparer;
+			RightComparer = rightComparer;
+
+			Lefts = new LeftCollection(this);
+			Rights = new RightCollection(this);
+			Inverse = new InverseDictionary(this);
+		}
+
+		/// <summary>
+		/// Creates a new pre-filled bi-directional dictionary
+		/// </summary>
+		/// <param name="dictionary">The dictionary to retrieve the contents from</param>
+		/// <remarks>The items are not guaranteed to be stored in the provided index order</remarks>
+		public BiDictionary(IEnumerable<KeyValuePair<TLeft, TRight>> dictionary) : this(dictionary, EqualityComparer<TLeft>.Default, EqualityComparer<TRight>.Default)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new pre-filled bi-directional dictionary with the specified Left comparer
+		/// </summary>
+		/// <param name="dictionary">The dictionary to retrieve the contents from</param>
+		/// <param name="leftComparer">The equality comparer to use for <typeparamref name="TLeft"/></param>
+		/// <remarks>The items are not guaranteed to be stored in the provided index order</remarks>
+		public BiDictionary(IEnumerable<KeyValuePair<TLeft, TRight>> dictionary, IEqualityComparer<TLeft> leftComparer) : this(dictionary, leftComparer, EqualityComparer<TRight>.Default)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new pre-filled bi-directional dictionary with the specified Right comparer
+		/// </summary>
+		/// <param name="dictionary">The dictionary to retrieve the contents from</param>
+		/// <param name="rightComparer">The equality comparer to use for <typeparamref name="TRight"/></param>
+		/// <remarks>The items are not guaranteed to be stored in the provided index order</remarks>
+		public BiDictionary(IEnumerable<KeyValuePair<TLeft, TRight>> dictionary, IEqualityComparer<TRight> rightComparer) : this(dictionary, EqualityComparer<TLeft>.Default, rightComparer)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new pre-filled bi-directional dictionary with the specified comparers
+		/// </summary>
+		/// <param name="dictionary">The dictionary to retrieve the contents from</param>
+		/// <param name="leftComparer">The equality comparer to use for <typeparamref name="TLeft"/></param>
+		/// <param name="rightComparer">The equality comparer to use for <typeparamref name="TRight"/></param>
+		/// <remarks>The items are not guaranteed to be stored in the provided index order</remarks>
+		public BiDictionary(IEnumerable<KeyValuePair<TLeft, TRight>> dictionary, IEqualityComparer<TLeft> leftComparer, IEqualityComparer<TRight> rightComparer)
+		{
+			LeftComparer = leftComparer;
+			RightComparer = rightComparer;
+
+			_Size = dictionary.Count();
+			var Capacity = HashUtil.GetPrime(_Size);
+
+			_LeftBuckets = new int[Capacity];
+			_RightBuckets = new int[Capacity];
+			_Entries = new Entry[Capacity];
+
+			{
+				var Index = 0;
+
+				foreach (var MyPair in dictionary)
+				{
+					ref var Entry = ref _Entries[Index++];
+
+					Entry.Item = MyPair;
+					Entry.LeftHashCode = leftComparer.GetHashCode(MyPair.Key) & HashCodeMask;
+					Entry.RightHashCode = rightComparer.GetHashCode(MyPair.Value) & HashCodeMask;
+				}
+			}
+
+			// Get everything into HashCode order
+			Array.Sort(_Entries, 0, _Size);
+
+			// Check the new items don't have any duplicates
+			VerifyDistinct(_Entries, _Size, leftComparer, rightComparer);
+
+			Reindex(_LeftBuckets, _RightBuckets, _Entries, 0, _Size);
+
+			Lefts = new LeftCollection(this);
+			Rights = new RightCollection(this);
+			Inverse = new InverseDictionary(this);
+		}
+
+		//****************************************
+
+		/// <summary>
+		/// Adds a new element to the Dictionary
+		/// </summary>
+		/// <param name="left">The key of the item to add</param>
+		/// <param name="right">The value of the item to add</param>
+		public void Add(TLeft left, TRight right)
+		{
+			if (!TryAdd(new KeyValuePair<TLeft, TRight>(left, right)))
+				throw new ArgumentException("An item with the same key has already been added.");
+		}
+
+		/// <summary>
+		/// Adds a new element to the Dictionary
+		/// </summary>
+		/// <param name="item">The element to add</param>
+		public void Add(KeyValuePair<TLeft, TRight> item)
+		{
+			if (!TryAdd(item))
+				throw new ArgumentException("An item with the same key has already been added.");
+		}
+
+		/// <summary>
+		/// Adds a range of elements to the dictionary
+		/// </summary>
+		/// <param name="items">The elements to add</param>
+		/// <exception cref="ArgumentException">The input elements have duplicated keys, or the key already exists in the dictionary</exception>
+		public void AddRange(IEnumerable<KeyValuePair<TLeft, TRight>> items)
+		{
+			if (items == null)
+				throw new ArgumentNullException("items");
+
+			// Gather all the items to add, calculating their keys as we go
+			var NewItems = items.Select(pair => new Entry { LeftHashCode = LeftComparer.GetHashCode(pair.Key) & HashCodeMask, Item = pair }).ToArray();
+
+			if (NewItems.Length == 0)
+				return;
+
+			//****************************************
+
+			var InsertIndex = _Size;
+			var Entries = _Entries;
+
+			// Check the new items don't have any duplicates
+			VerifyDistinct(NewItems, NewItems.Length, LeftComparer, RightComparer);
+
+			// No duplicates in the new items. Check the keys aren't already in the Dictionary
+			if (_Size > 0)
+			{
+				for (var Index = 0; Index < NewItems.Length; Index++)
+				{
+					var TotalCollisions = 0;
+					var Item = NewItems[Index];
+
+					ref var Bucket = ref _LeftBuckets[Item.LeftHashCode % _LeftBuckets.Length];
+					var EntryIndex = Bucket - 1;
+
+					// Check for collisions on the left
+					while (EntryIndex >= 0)
+					{
+						if (Entries[EntryIndex].LeftHashCode == Item.LeftHashCode && LeftComparer.Equals(Entries[EntryIndex].Left, Item.Left))
+							throw new ArgumentException("An item with the same left value has already been added.");
+
+						EntryIndex = Entries[EntryIndex].NextLeftIndex;
+
+						if (TotalCollisions++ >= InsertIndex)
+							throw new InvalidOperationException("State invalid");
+					}
+
+					TotalCollisions = 0;
+					Bucket = ref _RightBuckets[Item.RightHashCode % _RightBuckets.Length];
+					EntryIndex = Bucket - 1;
+
+					// Check for collisions on the right
+					while (EntryIndex >= 0)
+					{
+						if (Entries[EntryIndex].RightHashCode == Item.RightHashCode && RightComparer.Equals(Entries[EntryIndex].Right, Item.Right))
+							throw new ArgumentException("An item with the same right value has already been added.");
+
+						EntryIndex = Entries[EntryIndex].NextRightIndex;
+
+						if (TotalCollisions++ >= InsertIndex)
+							throw new InvalidOperationException("State invalid");
+					}
+				}
+			}
+
+			//****************************************
+
+			// Ensure we have enough space for the new items
+			EnsureCapacity(_Size + NewItems.Length);
+			Entries = _Entries;
+
+			// Add the new items
+			for (var Index = 0; Index < NewItems.Length; Index++)
+			{
+				Entries[_Size++] = NewItems[Index];
+			}
+
+			Reindex(_LeftBuckets, _RightBuckets, Entries, InsertIndex, InsertIndex + NewItems.Length);
+		}
+
+		/// <summary>
+		/// Clears all elements from the Dictionary
+		/// </summary>
+		public void Clear()
+		{
+			if (_Size > 0)
+			{
+				Array.Clear(_LeftBuckets, 0, _LeftBuckets.Length);
+				Array.Clear(_RightBuckets, 0, _RightBuckets.Length);
+				Array.Clear(_Entries, 0, _Size);
+
+				_Size = 0;
+			}
+		}
+
+		/// <summary>
+		/// Determines if the Dictionary contains a specific Left and Right pair
+		/// </summary>
+		/// <param name="item">The element to check for</param>
+		/// <returns>True if the pair exists, otherwise False</returns>
+		public bool Contains(KeyValuePair<TLeft, TRight> item)
+		{
+			if (_Size == 0)
+				return false;
+
+			var HashCode = LeftComparer.GetHashCode(item.Key) & HashCodeMask;
+			var Entries = _Entries;
+			var TotalCollisions = 0;
+
+			// Find the bucket we belong to
+			ref var Bucket = ref _LeftBuckets[HashCode % _LeftBuckets.Length];
+			var Index = Bucket - 1;
+
+			// Check for collisions
+			while (Index >= 0)
+			{
+				if (Entries[Index].LeftHashCode == HashCode && LeftComparer.Equals(Entries[Index].Left, item.Key))
+					return RightComparer.Equals(Entries[Index].Right, item.Value); // Matched on Key, check the Value as well
+
+				Index = Entries[Index].NextLeftIndex;
+
+				if (TotalCollisions++ >= _Size)
+					throw new InvalidOperationException("State invalid");
+			}
+
+			return false;
+		}
+
+		/// <summary>
+		/// Determines whether the dictionary contains an element with the specified Left
+		/// </summary>
+		/// <param name="left">The Left to search for</param>
+		/// <returns>True if there is an element with this Left, otherwise false</returns>
+		public bool ContainsLeft(TLeft left) => IndexOfLeft(left) >= 0;
+
+		/// <summary>
+		/// Determines whether the dictionary contains an element with the specified Right
+		/// </summary>
+		/// <param name="right">The Right to search for</param>
+		/// <returns>True if there is an element with this Right, otherwise false</returns>
+		public bool ContainsRight(TRight right) => IndexOfRight(right) >= 0;
+
+		/// <summary>
+		/// Copies the contents of the Dictionary to an array
+		/// </summary>
+		/// <param name="array">The destination array</param>
+		/// <param name="arrayIndex">The offset to start copying to</param>
+		public void CopyTo(KeyValuePair<TLeft, TRight>[] array, int arrayIndex)
+		{
+			if (arrayIndex + _Size > array.Length)
+				throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+
+			for (var Index = 0; Index < _Size; Index++)
+			{
+				array[arrayIndex + Index] = _Entries[Index].Item;
+			}
+		}
+
+		/// <summary>
+		/// Returns an enumerator that iterates through the collection
+		/// </summary>
+		/// <returns>An enumerator that can be used to iterate through the collection</returns>
+		public Enumerator GetEnumerator() => new Enumerator(this);
+
+		/// <summary>
+		/// Removes an element from the dictionary
+		/// </summary>
+		/// <param name="left">The Left of the element to remove</param>
+		public bool Remove(TLeft left)
+		{
+			if (left == null) throw new ArgumentNullException(nameof(left));
+
+			var Index = IndexOfLeft(left);
+
+			if (Index == -1)
+				return false;
+
+			RemoveAt(Index);
+
+			return true;
+		}
+
+		/// <summary>
+		/// Removes a specific Left and Right pair from the dictionary
+		/// </summary>
+		/// <param name="item">The element to remove</param>
+		public bool Remove(KeyValuePair<TLeft, TRight> item)
+		{
+			if (item.Key == null || item.Value == null) throw new ArgumentNullException("The left or right values are null", nameof(item));
+
+			var Index = IndexOf(item);
+
+			if (Index == -1)
+				return false;
+
+			RemoveAt(Index);
+
+			return true;
+		}
+
+		/// <summary>
+		/// Removes all elements that match a predicate
+		/// </summary>
+		/// <param name="predicate">A predicate that returns true for each item to remove</param>
+		/// <returns>The total number of items removed</returns>
+		public int RemoveAll(Predicate<KeyValuePair<TLeft, TRight>> predicate)
+		{
+			var Entries = _Entries;
+			var LeftBuckets = _LeftBuckets;
+			var RightBuckets = _RightBuckets;
+			var Index = 0;
+
+			// Find the Left item we need to remove
+			while (Index < _Size && !predicate(Entries[Index].Item))
+				Index++;
+
+			// Did we find anything?
+			if (Index >= _Size)
+				return 0;
+
+			var RemovedItems = new List<KeyValuePair<TLeft, TRight>>() { Entries[Index].Item };
+
+			var InnerIndex = Index + 1;
+
+			while (InnerIndex < _Size)
+			{
+				// Skip the items we need to remove
+				while (InnerIndex < _Size && predicate(Entries[InnerIndex].Item))
+				{
+					RemovedItems.Add(Entries[InnerIndex].Item);
+
+					InnerIndex++;
+				}
+
+				// If we reached the end, abort
+				if (InnerIndex >= _Size)
+					break;
+
+				// We found one we're not removing, so move it up
+				ref var Entry = ref Entries[Index];
+
+				Entry = Entries[InnerIndex];
+
+				// Reindex it
+				ref var LeftBucket = ref LeftBuckets[Entry.LeftHashCode % LeftBuckets.Length];
+				ref var RightBucket = ref RightBuckets[Entry.RightHashCode % RightBuckets.Length];
+				var NextLeftIndex = LeftBucket - 1;
+				var NextRightIndex = RightBucket - 1;
+
+				Entry.NextLeftIndex = NextLeftIndex;
+				Entry.NextRightIndex = NextRightIndex;
+				Entry.PreviousLeftIndex = -1;
+				Entry.PreviousRightIndex = -1;
+
+				if (NextLeftIndex >= 0)
+					Entries[NextLeftIndex].PreviousLeftIndex = Index;
+
+				if (NextRightIndex >= 0)
+					Entries[NextRightIndex].PreviousRightIndex = Index;
+
+				LeftBucket = RightBucket = Index + 1;
+
+				Index++;
+				InnerIndex++;
+			}
+
+			// Clear the removed item(s)
+			Array.Clear(_Entries, Index, _Size - Index);
+			_Size = Index;
+
+			return InnerIndex - Index;
+		}
+
+		/// <summary>
+		/// Converts the contents of the Dictionary to an array
+		/// </summary>
+		/// <returns>The resulting array</returns>
+		public KeyValuePair<TLeft, TRight>[] ToArray()
+		{
+			var Copy = new KeyValuePair<TLeft, TRight>[_Size];
+
+			CopyTo(Copy, 0);
+
+			return Copy;
+		}
+
+		/// <summary>
+		/// Tries to add an item to the Dictionary
+		/// </summary>
+		/// <param name="left">The key of the item</param>
+		/// <param name="right">The value to associate with the key</param>
+		/// <returns>True if the item was added, otherwise False</returns>
+		public bool TryAdd(TLeft left, TRight right) => TryAdd(new KeyValuePair<TLeft, TRight>(left, right));
+
+		/// <summary>
+		/// Tries to add an item to the Dictionary
+		/// </summary>
+		/// <param name="item">The key/value pair to add</param>
+		/// <returns>True if the item was added, otherwise False</returns>
+		public bool TryAdd(KeyValuePair<TLeft, TRight> item)
+		{
+			if (item.Key == null || item.Value == null)
+				throw new ArgumentNullException("The key or value are null", nameof(item));
+
+			if (_LeftBuckets.Length == 0)
+				EnsureCapacity(0);
+
+			var FirstHashCode = LeftComparer.GetHashCode(item.Key) & HashCodeMask;
+			var SecondHashCode = RightComparer.GetHashCode(item.Value) & HashCodeMask;
+			var Entries = _Entries;
+			var TotalCollisions = 0;
+
+			// Find the bucket we belong to
+			ref var FirstBucket = ref _LeftBuckets[FirstHashCode % _LeftBuckets.Length];
+			ref var SecondBucket = ref _RightBuckets[SecondHashCode % _RightBuckets.Length];
+			var Index = FirstBucket - 1;
+
+			// Check for Left collisions
+			while (Index >= 0)
+			{
+				if (Entries[Index].LeftHashCode == FirstHashCode && LeftComparer.Equals(Entries[Index].Left, item.Key))
+					return false;
+
+				Index = Entries[Index].NextLeftIndex;
+
+				if (TotalCollisions++ >= _Size)
+					throw new InvalidOperationException("State invalid");
+			}
+
+			TotalCollisions = 0;
+
+			// Check for Right collisions
+			while (Index >= 0)
+			{
+				if (Entries[Index].RightHashCode == SecondHashCode && RightComparer.Equals(Entries[Index].Right, item.Value))
+					return false;
+
+				Index = Entries[Index].NextRightIndex;
+
+				if (TotalCollisions++ >= _Size)
+					throw new InvalidOperationException("State invalid");
+			}
+
+			// No collisions found, are there enough slots for this item?
+			if (_Size >= Entries.Length)
+			{
+				// No, so resize our entries table
+				EnsureCapacity(_Size + 1);
+				FirstBucket = ref _LeftBuckets[FirstHashCode % _LeftBuckets.Length];
+				SecondBucket = ref _LeftBuckets[FirstHashCode % _LeftBuckets.Length];
+				Entries = _Entries;
+			}
+
+			// Store our item at the end
+			Index = _Size++;
+
+			ref var Entry = ref Entries[Index];
+			var NextFirstIndex = FirstBucket - 1;
+			var NextSecondIndex = SecondBucket - 1;
+
+			Entry.LeftHashCode = FirstHashCode;
+			Entry.RightHashCode = SecondHashCode;
+			Entry.Item = item;
+
+			Entry.NextLeftIndex = NextFirstIndex; // We take over as the tail of the linked list
+			Entry.PreviousLeftIndex = -1; // We're the tail, so there's nobody behind us
+
+			Entry.NextRightIndex = NextSecondIndex; // We take over as the tail of the linked list
+			Entry.PreviousRightIndex = -1; // We're the tail, so there's nobody behind us
+
+			// Double-link the list, so we can quickly resort
+			if (NextFirstIndex >= 0)
+				Entries[NextFirstIndex].PreviousLeftIndex = Index;
+			if (NextSecondIndex >= 0)
+				Entries[NextSecondIndex].PreviousRightIndex = Index;
+
+			FirstBucket = SecondBucket = Index + 1;
+
+			return true;
+		}
+
+		/// <summary>
+		/// Gets the Left associated with the specified Right
+		/// </summary>
+		/// <param name="right">The Right whose Left to get</param>
+		/// <param name="left">When complete, contains the Left associated with the given Right, otherwise the default value for the type</param>
+		/// <returns>True if the Right was found, otherwise false</returns>
+		public bool TryGetLeft(TRight right,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+			out TLeft left)
+		{
+			if (right == null)
+				throw new ArgumentNullException(nameof(right));
+
+			var Index = IndexOfRight(right);
+
+			if (Index == -1)
+			{
+				left = default!;
+				return false;
+			}
+
+			left = _Entries[Index].Left;
+
+			return true;
+		}
+
+		/// <summary>
+		/// Gets the Right associated with the specified Left
+		/// </summary>
+		/// <param name="left">The Left whose Right to get</param>
+		/// <param name="right">When complete, contains the Right associated with the given Left, otherwise the default value for the type</param>
+		/// <returns>True if the Left was found, otherwise false</returns>
+		public bool TryGetRight(TLeft left,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+			out TRight right)
+		{
+			if (left == null) throw new ArgumentNullException(nameof(left));
+
+			var Index = IndexOfLeft(left);
+
+			if (Index == -1)
+			{
+				right = default!;
+				return false;
+			}
+
+			right = _Entries[Index].Right;
+
+			return true;
+		}
+
+		/// <summary>
+		/// Tries to remove an item from the dictionary
+		/// </summary>
+		/// <param name="left">The key of the item to remove</param>
+		/// <param name="right">Receives the value of the removed item</param>
+		/// <returns>True if the item was removed, otherwise False</returns>
+		public bool TryRemove(TLeft left,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+			out TRight right)
+		{
+			var Index = IndexOfLeft(left);
+
+			if (Index == -1)
+			{
+				right = default!;
+				return false;
+			}
+
+			right = _Entries[Index].Right;
+
+			RemoveAt(Index);
+
+			return true;
+		}
+
+		//****************************************
+
+		private void EnsureCapacity(int capacity)
+		{
+			var NewSize = (_Entries.Length == 0 ? 4 : _Entries.Length * 2);
+
+			if (NewSize < capacity)
+				NewSize = capacity;
+
+			NewSize = HashUtil.GetPrime(NewSize);
+
+			SetCapacity(NewSize);
+		}
+
+		private void SetCapacity(int size)
+		{
+			var NewFirstBuckets = new int[size];
+			var NewSecondBuckets = new int[size];
+			var NewEntries = new Entry[size];
+
+			Array.Copy(_Entries, 0, NewEntries, 0, _Size);
+
+			Reindex(NewFirstBuckets, NewSecondBuckets, NewEntries, 0 ,_Size);
+
+			_LeftBuckets = NewFirstBuckets;
+			_RightBuckets = NewSecondBuckets;
+			_Entries = NewEntries;
+		}
+
+		private int IndexOf(KeyValuePair<TLeft, TRight> item)
+		{
+			if (_Size == 0)
+				return -1;
+
+			var HashCode = LeftComparer.GetHashCode(item.Key) & HashCodeMask;
+			var Entries = _Entries;
+			var TotalCollisions = 0;
+
+			// Find the bucket we belong to
+			ref var Bucket = ref _LeftBuckets[HashCode % _LeftBuckets.Length];
+			var Index = Bucket - 1;
+
+			// Check for collisions
+			while (Index >= 0)
+			{
+				if (Entries[Index].LeftHashCode == HashCode && LeftComparer.Equals(Entries[Index].Left, item.Key))
+				{
+					// Matched on First, check Second as well
+					if (RightComparer.Equals(Entries[Index].Right, item.Value))
+						break;
+
+					return -1; // Second doesn't match
+				}
+
+				Index = Entries[Index].NextLeftIndex;
+
+				if (TotalCollisions++ >= _Size)
+					throw new InvalidOperationException("State invalid");
+			}
+
+			return Index;
+		}
+
+		private int IndexOfLeft(TLeft left)
+		{
+			if (left == null)
+				throw new ArgumentNullException(nameof(left));
+
+			if (_Size == 0)
+				return -1;
+
+			var HashCode = LeftComparer.GetHashCode(left) & HashCodeMask;
+			var Entries = _Entries;
+			var TotalCollisions = 0;
+
+			// Find the bucket we belong to
+			ref var Bucket = ref _LeftBuckets[HashCode % _LeftBuckets.Length];
+			var Index = Bucket - 1;
+
+			// Check for collisions
+			while (Index >= 0)
+			{
+				if (Entries[Index].LeftHashCode == HashCode && LeftComparer.Equals(Entries[Index].Left, left))
+					break;
+
+				Index = Entries[Index].NextLeftIndex;
+
+				if (TotalCollisions++ >= _Size)
+					throw new InvalidOperationException("State invalid");
+			}
+
+			return Index;
+		}
+
+		private int IndexOfRight(TRight right)
+		{
+			if (right == null)
+				throw new ArgumentNullException(nameof(right));
+
+			if (_Size == 0)
+				return -1;
+
+			var HashCode = RightComparer.GetHashCode(right) & HashCodeMask;
+			var Entries = _Entries;
+			var TotalCollisions = 0;
+
+			// Find the bucket we belong to
+			ref var Bucket = ref _RightBuckets[HashCode % _RightBuckets.Length];
+			var Index = Bucket - 1;
+
+			// Check for collisions
+			while (Index >= 0)
+			{
+				if (Entries[Index].RightHashCode == HashCode && RightComparer.Equals(Entries[Index].Right, right))
+					return Index;
+
+				Index = Entries[Index].NextRightIndex;
+
+				if (TotalCollisions++ >= _Size)
+					throw new InvalidOperationException("State invalid");
+			}
+
+			return Index;
+		}
+
+		private void RemoveAt(int index)
+		{
+			if (index >= _Size || index < 0)
+				throw new ArgumentOutOfRangeException(nameof(index));
+
+			// So with our Left Remove, we reduce the Count and (if it's the last item in the list) we can just notify and be done with it
+			// Otherwise, we Left set ShiftIndex to the Entry we just removed. This allows the event handler to view us as if there's no gap in the Entry list
+
+			// Once that's done, we can then clear the ShiftIndex, relocate the end item to the gap, and raise a Move event
+			// The list is thus consistent at every notification. The only restriction is that you cannot (currently) edit the dictionary in the event handler
+
+			var Entries = _Entries;
+
+			ref var Entry = ref Entries[index];
+
+			var NextIndex = Entry.NextLeftIndex;
+			var PreviousIndex = Entry.PreviousLeftIndex;
+
+			// We're removing an entry, so fix up the linked list
+			if (PreviousIndex >= 0)
+			{
+				if (NextIndex >= 0)
+				{
+					// We're neither the head or tail, so we can remove ourselves easily
+					Entries[NextIndex].PreviousLeftIndex = PreviousIndex;
+					Entries[PreviousIndex].NextLeftIndex = NextIndex;
+				}
+				else
+				{
+					// We're the head, so we can just update the entry before us
+					Entries[PreviousIndex].NextLeftIndex = NextIndex;
+				}
+			}
+			else
+			{
+				if (NextIndex >= 0)
+				{
+					// We're the tail, so we need to update the entry after us
+					Entries[NextIndex].PreviousLeftIndex = -1;
+				}
+
+				// We're either the tail or a solitary entry (with no one before or after us)
+				// Either way, we need to update the index stored in the Bucket
+				_LeftBuckets[Entry.LeftHashCode % _LeftBuckets.Length] = NextIndex + 1;
+			}
+
+			if (index == _Size - 1)
+			{
+				// We're removing the last entry
+				// Clear it, then raise the event, and we're done
+				Entries[--_Size].Item = default;
+
+				return;
+			}
+
+			// We're not the last item in the list, so raising a Remove needs to look like a list-style shift down
+			// ShiftIndex emulates this, altering all indexed operations to seek one higher when equal or above
+			_Size--;
+			Entry.Item = default;
+			Entry = Entries[_Size];
+			NextIndex = Entry.NextLeftIndex;
+			PreviousIndex = Entry.PreviousLeftIndex;
+
+			// Since this entry has been relocated, we need to fix up the linked list here too
+			if (NextIndex >= 0)
+			{
+				// There's at least one entry ahead of us, correct it to point to our new location
+				Entries[NextIndex].PreviousLeftIndex = index;
+			}
+
+			if (PreviousIndex >= 0)
+			{
+				// There's at least one entry behind us, correct it to point to us
+				Entries[PreviousIndex].NextLeftIndex = index;
+			}
+			else
+			{
+				// There's no entry behind us, so we're the tail or a solitary item
+				// Correct the bucket index
+				_LeftBuckets[Entry.LeftHashCode % _LeftBuckets.Length] = index + 1;
+			}
+
+			// Clear the final entry
+			Entries[_Size].Item = default;
+		}
+
+		//****************************************
+
+		bool IDictionary<TLeft, TRight>.ContainsKey(TLeft key) => ContainsLeft(key);
+
+		bool IReadOnlyDictionary<TLeft, TRight>.ContainsKey(TLeft key) => ContainsLeft(key);
+
+		IEnumerator<KeyValuePair<TLeft, TRight>> IEnumerable<KeyValuePair<TLeft, TRight>>.GetEnumerator() => new Enumerator(this);
+
+		IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this);
+
+		bool IDictionary<TLeft, TRight>.TryGetValue(TLeft key, out TRight value) => TryGetRight(key, out value);
+
+		bool IReadOnlyDictionary<TLeft, TRight>.TryGetValue(TLeft key, out TRight value) => TryGetRight(key, out value);
+
+		//****************************************
+
+		/// <summary>
+		/// Gets the number of items in the collection
+		/// </summary>
+		public int Count => _Size;
+
+		/// <summary>
+		/// Gets a read-only collection of the dictionary Left values
+		/// </summary>
+		public LeftCollection Lefts { get; }
+
+		/// <summary>
+		/// Gets a read-only collection of the dictionary Right values
+		/// </summary>
+		public RightCollection Rights { get; }
+
+		/// <summary>
+		/// Gets an inverse wrapper around this Dictionary
+		/// </summary>
+		public InverseDictionary Inverse { get; }
+
+		/// <summary>
+		/// Gets/Sets the value corresponding to the provided key
+		/// </summary>
+		[System.Runtime.CompilerServices.IndexerName("Item")]
+		public TRight this[TLeft key]
+		{
+			get
+			{
+				if (TryGetRight(key, out var ResultValue))
+					return ResultValue;
+
+				throw new KeyNotFoundException();
+			}
+			set
+			{
+				var Item = new KeyValuePair<TLeft, TRight>(key, value);
+
+				if (!TryAdd(Item))
+					throw new ArgumentException("Left or Right already exist in the dictionary");
+			}
+		}
+
+		/// <summary>
+		/// Gets/Sets the number of elements that the Observable Dictionary can contain.
+		/// </summary>
+		public int Capacity
+		{
+			get => _Entries.Length;
+			set
+			{
+				value = HashUtil.GetPrime(value);
+
+				if (value < _Size)
+					throw new ArgumentOutOfRangeException(nameof(value));
+
+				SetCapacity(value);
+			}
+		}
+
+		/// <summary>
+		/// Gets the equality comparer being used for the First
+		/// </summary>
+		public IEqualityComparer<TLeft> LeftComparer { get; }
+
+		/// <summary>
+		/// Gets the equality comparer being used for the First
+		/// </summary>
+		public IEqualityComparer<TRight> RightComparer { get; }
+
+		ICollection<TLeft> IDictionary<TLeft, TRight>.Keys => Lefts;
+
+		ICollection<TRight> IDictionary<TLeft, TRight>.Values => Rights;
+
+		IEnumerable<TLeft> IReadOnlyDictionary<TLeft, TRight>.Keys => Lefts;
+
+		IEnumerable<TRight> IReadOnlyDictionary<TLeft, TRight>.Values => Rights;
+
+		bool ICollection<KeyValuePair<TLeft, TRight>>.IsReadOnly => false;
+
+		//****************************************
+
+		private static void Reindex(int[] leftBuckets, int[] rightBuckets, Entry[] entries, int startIndex, int size)
+		{
+			// Reindex a range of entries
+			for (var Index = startIndex; Index < size; Index++)
+			{
+				ref var Entry = ref entries[Index];
+
+				var FirstBucket = Entry.LeftHashCode % leftBuckets.Length;
+				var NextFirstIndex = leftBuckets[FirstBucket] - 1;
+
+				Entry.NextLeftIndex = NextFirstIndex;
+				Entry.PreviousLeftIndex = -1;
+
+				if (NextFirstIndex >= 0)
+					entries[NextFirstIndex].PreviousLeftIndex = Index;
+
+				leftBuckets[FirstBucket] = Index + 1;
+
+				var SecondBucket = Entry.RightHashCode % rightBuckets.Length;
+				var NextSecondIndex = rightBuckets[SecondBucket] - 1;
+
+				Entry.NextRightIndex = NextSecondIndex;
+				Entry.PreviousRightIndex = -1;
+
+				if (NextSecondIndex >= 0)
+					entries[NextSecondIndex].PreviousRightIndex = Index;
+
+				rightBuckets[SecondBucket] = Index + 1;
+			}
+		}
+
+		private static void VerifyDistinct(Entry[] entries, int size, IEqualityComparer<TLeft> leftComparer, IEqualityComparer<TRight> rightComparer)
+		{
+			static int LeftCompare(Entry left, Entry right) => left.LeftHashCode - right.LeftHashCode;
+
+			static int RightCompare(Entry left, Entry right) => left.RightHashCode - right.RightHashCode;
+
+			// Get everything into Left HashCode order
+			Array.Sort(entries, LeftCompare);
+
+			var Index = 0;
+
+			while (Index < size)
+			{
+				var StartIndex = Index;
+				var CurrentItem = entries[Index];
+
+				// Find all the items that have the same Hash
+				do
+				{
+					Index++;
+				}
+				while (Index < size && entries[Index].LeftHashCode == CurrentItem.LeftHashCode);
+
+				// Is there more than one item with the same Hash?
+				while (Index - StartIndex > 1)
+				{
+					// Compare the Left item to the others
+					for (var SubIndex = StartIndex + 1; SubIndex < Index; SubIndex++)
+					{
+						if (leftComparer.Equals(CurrentItem.Left, entries[SubIndex].Left))
+							throw new ArgumentException("Input collection has duplicates");
+					}
+
+					// Move up the Left item
+					StartIndex++;
+				}
+			}
+
+			// Now repeat in Right HashCode order
+			Array.Sort(entries, RightCompare);
+
+			Index = 0;
+
+			while (Index < size)
+			{
+				var StartIndex = Index;
+				var CurrentItem = entries[Index];
+
+				// Find all the items that have the same Hash
+				do
+				{
+					Index++;
+				}
+				while (Index < size && entries[Index].RightHashCode == CurrentItem.RightHashCode);
+
+				// Is there more than one item with the same Hash?
+				while (Index - StartIndex > 1)
+				{
+					// Compare the Left item to the others
+					for (var SubIndex = StartIndex + 1; SubIndex < Index; SubIndex++)
+					{
+						if (rightComparer.Equals(CurrentItem.Right, entries[SubIndex].Right))
+							throw new ArgumentException("Input collection has duplicates");
+					}
+
+					// Move up the Left item
+					StartIndex++;
+				}
+			}
+		}
+
+		//****************************************
+
+		private struct Entry
+		{
+			public int NextLeftIndex, NextRightIndex;
+			public int PreviousLeftIndex, PreviousRightIndex;
+			public int LeftHashCode, RightHashCode;
+			public KeyValuePair<TLeft, TRight> Item;
+			public KeyValuePair<TRight, TLeft> InverseItem => new KeyValuePair<TRight, TLeft>(Right, Left);
+			public TLeft Left => Item.Key;
+			public TRight Right => Item.Value;
+		}
+
+		/// <summary>
+		/// Represents the common implementation for the bi-directional Dictionary collections
+		/// </summary>
+		public abstract class Collection<T> : IReadOnlyCollection<T>, ICollection<T>
+		{
+			internal Collection(BiDictionary<TLeft, TRight> dictionary) => Dictionary = dictionary;
+
+			//****************************************
+
+			void ICollection<T>.Add(T item) => throw new NotSupportedException("Collection is read-only");
+
+			void ICollection<T>.Clear() => throw new NotSupportedException("Collection is read-only");
+
+			/// <inheritdoc/>
+			public abstract bool Contains(T item);
+
+			/// <inheritdoc/>
+			public abstract void CopyTo(T[] array, int arrayIndex);
+
+			bool ICollection<T>.Remove(T item) => throw new NotSupportedException("Collection is read-only");
+
+			/// <inheritdoc/>
+			public IEnumerator<T> GetEnumerator() => InternalGetEnumerator();
+
+			//****************************************
+
+			IEnumerator IEnumerable.GetEnumerator() => InternalGetEnumerator();
+
+			private protected abstract IEnumerator<T> InternalGetEnumerator();
+
+			//****************************************
+
+			/// <inheritdoc/>
+			public int Count => Dictionary.Count;
+
+			bool ICollection<T>.IsReadOnly => true;
+
+			internal BiDictionary<TLeft, TRight> Dictionary { get; }
+		}
+
+		/// <summary>
+		/// Provides access to the bi-directional dictionary with the left/right reversed
+		/// </summary>
+		public sealed class InverseDictionary : IDictionary<TRight, TLeft>, IReadOnlyDictionary<TRight, TLeft>
+		{
+			internal InverseDictionary(BiDictionary<TLeft, TRight> dictionary)
+			{
+				Dictionary = dictionary;
+			}
+
+			//****************************************
+
+			/// <inheritdoc/>
+			public void Add(TRight right, TLeft left)
+			{
+				if (!Dictionary.TryAdd(new KeyValuePair<TLeft, TRight>(left, right)))
+					throw new ArgumentException("An item with the same key has already been added.");
+			}
+
+			/// <summary>
+			/// Adds a new element to the Dictionary
+			/// </summary>
+			/// <param name="item">The element to add</param>
+			public void Add(KeyValuePair<TRight, TLeft> item)
+			{
+				if (!Dictionary.TryAdd(new KeyValuePair<TLeft, TRight>(item.Value, item.Key)))
+					throw new ArgumentException("An item with the same key has already been added.");
+			}
+
+			/// <inheritdoc/>
+			public bool Contains(KeyValuePair<TRight, TLeft> item) => Dictionary.Contains(new KeyValuePair<TLeft, TRight>(item.Value, item.Key));
+
+			/// <summary>
+			/// Copies the contents of the Dictionary to an array
+			/// </summary>
+			/// <param name="array">The destination array</param>
+			/// <param name="arrayIndex">The offset to start copying to</param>
+			public void CopyTo(KeyValuePair<TRight, TLeft>[] array, int arrayIndex)
+			{
+				var Size = Dictionary._Size;
+				var Entries = Dictionary._Entries;
+
+				if (arrayIndex + Size > array.Length)
+					throw new ArgumentOutOfRangeException(nameof(arrayIndex));
+
+				for (var Index = 0; Index < Size; Index++)
+				{
+					array[arrayIndex + Index] = Entries[Index].InverseItem;
+				}
+			}
+
+			/// <inheritdoc/>
+			public InverseEnumerator GetEnumerator() => new InverseEnumerator(Dictionary);
+
+			/// <summary>
+			/// Removes an element from the dictionary
+			/// </summary>
+			/// <param name="right">The right of the element to remove</param>
+			public bool Remove(TRight right)
+			{
+				if (right == null)
+					throw new ArgumentNullException(nameof(right));
+
+				var Index = Dictionary.IndexOfRight(right);
+
+				if (Index == -1)
+					return false;
+
+				Dictionary.RemoveAt(Index);
+
+				return true;
+			}
+
+			/// <summary>
+			/// Removes a specific Left and Right pair from the dictionary
+			/// </summary>
+			/// <param name="item">The element to remove</param>
+			public bool Remove(KeyValuePair<TRight, TLeft> item) => Dictionary.Remove(new KeyValuePair<TLeft, TRight>(item.Value, item.Key));
+
+			/// <summary>
+			/// Converts the contents of the Dictionary to an array
+			/// </summary>
+			/// <returns>The resulting array</returns>
+			public KeyValuePair<TRight, TLeft>[] ToArray()
+			{
+				var Copy = new KeyValuePair<TRight, TLeft>[Count];
+
+				CopyTo(Copy, 0);
+
+				return Copy;
+			}
+
+			/// <summary>
+			/// Tries to add an item to the Dictionary
+			/// </summary>
+			/// <param name="left">The key of the item</param>
+			/// <param name="right">The value to associate with the key</param>
+			/// <returns>True if the item was added, otherwise False</returns>
+			public bool TryAdd(TRight right, TLeft left) => Dictionary.TryAdd(new KeyValuePair<TLeft, TRight>(left, right));
+
+			/// <summary>
+			/// Tries to add an item to the Dictionary
+			/// </summary>
+			/// <param name="item">The key/value pair to add</param>
+			/// <returns>True if the item was added, otherwise False</returns>
+			public bool TryAdd(KeyValuePair<TRight, TLeft> item) => Dictionary.TryAdd(new KeyValuePair<TLeft, TRight>(item.Value, item.Key));
+
+			/// <summary>
+			/// Tries to remove an item from the dictionary
+			/// </summary>
+			/// <param name="right">The Right of the item to remove</param>
+			/// <param name="left">Receives the Left of the removed item</param>
+			/// <returns>True if the item was removed, otherwise False</returns>
+			public bool TryRemove(TRight right,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+			out TLeft left)
+			{
+				var Index = Dictionary.IndexOfRight(right);
+
+				if (Index == -1)
+				{
+					left = default!;
+					return false;
+				}
+
+				left = Dictionary._Entries[Index].Left;
+
+				Dictionary.RemoveAt(Index);
+
+				return true;
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Gets the number of items in the collection
+			/// </summary>
+			public int Count => Dictionary.Count;
+
+			/// <summary>
+			/// Gets/Sets the value corresponding to the provided key
+			/// </summary>
+			[System.Runtime.CompilerServices.IndexerName("Item")]
+			public TLeft this[TRight key]
+			{
+				get
+				{
+					if (Dictionary.TryGetLeft(key, out var ResultValue))
+						return ResultValue;
+
+					throw new KeyNotFoundException();
+				}
+				set
+				{
+					var Item = new KeyValuePair<TLeft, TRight>(value, key);
+
+					if (!Dictionary.TryAdd(Item))
+						throw new ArgumentException("Left or Right already exist in the dictionary");
+				}
+			}
+
+			void ICollection<KeyValuePair<TRight, TLeft>>.Clear() => Dictionary.Clear();
+
+			bool IDictionary<TRight, TLeft>.ContainsKey(TRight key) => Dictionary.ContainsRight(key);
+
+			bool IReadOnlyDictionary<TRight, TLeft>.ContainsKey(TRight key) => Dictionary.ContainsRight(key);
+
+			IEnumerator<KeyValuePair<TRight, TLeft>> IEnumerable<KeyValuePair<TRight, TLeft>>.GetEnumerator() => new InverseEnumerator(Dictionary);
+
+			IEnumerator IEnumerable.GetEnumerator() => new InverseEnumerator(Dictionary);
+
+			bool IDictionary<TRight, TLeft>.TryGetValue(TRight key, out TLeft value) => Dictionary.TryGetLeft(key, out value);
+
+			bool IReadOnlyDictionary<TRight, TLeft>.TryGetValue(TRight key, out TLeft value) => Dictionary.TryGetLeft(key, out value);
+
+			ICollection<TRight> IDictionary<TRight, TLeft>.Keys => Dictionary.Rights;
+
+			ICollection<TLeft> IDictionary<TRight, TLeft>.Values => Dictionary.Lefts;
+
+			IEnumerable<TRight> IReadOnlyDictionary<TRight, TLeft>.Keys => Dictionary.Rights;
+
+			IEnumerable<TLeft> IReadOnlyDictionary<TRight, TLeft>.Values => Dictionary.Lefts;
+
+			bool ICollection<KeyValuePair<TRight, TLeft>>.IsReadOnly => false;
+
+			private BiDictionary<TLeft, TRight> Dictionary { get; }
+		}
+
+		/// <summary>
+		/// Provides a read-only keys wrapper
+		/// </summary>
+		public sealed class LeftCollection : Collection<TLeft>
+		{
+			internal LeftCollection(BiDictionary<TLeft, TRight> dictionary) : base(dictionary)
+			{
+			}
+
+			//****************************************
+
+			/// <inheritdoc/>
+			public override bool Contains(TLeft item) => Dictionary.ContainsLeft(item);
+
+			/// <inheritdoc/>
+			public override void CopyTo(TLeft[] array, int arrayIndex)
+			{ //****************************************
+				var MyValues = Dictionary._Entries;
+				var MySize = Dictionary._Size;
+				//****************************************
+
+				for (var Index = 0; Index < MySize; Index++)
+					array[arrayIndex++] = MyValues[Index].Left;
+			}
+
+			/// <inheritdoc/>
+			public new FirstEnumerator GetEnumerator() => new FirstEnumerator(Dictionary);
+
+			//****************************************
+
+			private protected override IEnumerator<TLeft> InternalGetEnumerator() => GetEnumerator();
+		}
+
+		/// <summary>
+		/// Provides a read-only values wrapper
+		/// </summary>
+		public sealed class RightCollection : Collection<TRight>
+		{
+			internal RightCollection(BiDictionary<TLeft, TRight> dictionary) : base(dictionary)
+			{
+			}
+
+			//****************************************
+
+			/// <inheritdoc/>
+			public override bool Contains(TRight item) => Dictionary.ContainsRight(item);
+
+			/// <inheritdoc/>
+			public override void CopyTo(TRight[] array, int arrayIndex)
+			{ //****************************************
+				var MyValues = Dictionary._Entries;
+				var MySize = Dictionary._Size;
+				//****************************************
+
+				for (var Index = 0; Index < MySize; Index++)
+					array[arrayIndex++] = MyValues[Index].Right;
+			}
+
+			/// <inheritdoc/>
+			public new SecondEnumerator GetEnumerator() => new SecondEnumerator(Dictionary);
+
+			//****************************************
+
+			private protected override IEnumerator<TRight> InternalGetEnumerator() => GetEnumerator();
+		}
+
+		/// <summary>
+		/// Enumerates the dictionary with First as the Key while avoiding memory allocations
+		/// </summary>
+		public struct Enumerator : IEnumerator<KeyValuePair<TLeft, TRight>>, IEnumerator
+		{	//****************************************
+			private readonly BiDictionary<TLeft, TRight> _Parent;
+
+			private int _Index;
+			//****************************************
+
+			internal Enumerator(BiDictionary<TLeft, TRight> parent)
+			{
+				_Parent = parent;
+				_Index = 0;
+				Current = default;
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Disposes of the enumerator
+			/// </summary>
+			public void Dispose()
+			{
+				Current = default;
+			}
+
+			/// <summary>
+			/// Tries to move to the next item
+			/// </summary>
+			/// <returns>True if there's another item to enumerate, otherwise False</returns>
+			public bool MoveNext()
+			{
+				if (_Index >= _Parent._Size)
+				{
+					_Index = _Parent._Size + 1;
+					Current = default;
+
+					return false;
+				}
+
+				Current = _Parent._Entries[_Index++].Item;
+
+				return true;
+			}
+
+			void IEnumerator.Reset()
+			{
+				_Index = 0;
+				Current = default;
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Gets the current item being enumerated
+			/// </summary>
+			public KeyValuePair<TLeft, TRight> Current { get; private set; }
+
+			object IEnumerator.Current => Current;
+		}
+
+		/// <summary>
+		/// Enumerates the dictionary with Second as the Key while avoiding memory allocations
+		/// </summary>
+		public struct InverseEnumerator : IEnumerator<KeyValuePair<TRight, TLeft>>, IEnumerator
+		{ //****************************************
+			private readonly BiDictionary<TLeft, TRight> _Parent;
+
+			private int _Index;
+			//****************************************
+
+			internal InverseEnumerator(BiDictionary<TLeft, TRight> parent)
+			{
+				_Parent = parent;
+				_Index = 0;
+				Current = default;
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Disposes of the enumerator
+			/// </summary>
+			public void Dispose()
+			{
+				Current = default;
+			}
+
+			/// <summary>
+			/// Tries to move to the next item
+			/// </summary>
+			/// <returns>True if there's another item to enumerate, otherwise False</returns>
+			public bool MoveNext()
+			{
+				if (_Index >= _Parent._Size)
+				{
+					_Index = _Parent._Size + 1;
+					Current = default;
+
+					return false;
+				}
+
+				Current = _Parent._Entries[_Index++].InverseItem;
+
+				return true;
+			}
+
+			void IEnumerator.Reset()
+			{
+				_Index = 0;
+				Current = default;
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Gets the current item being enumerated
+			/// </summary>
+			public KeyValuePair<TRight, TLeft> Current { get; private set; }
+
+			object IEnumerator.Current => Current;
+		}
+
+		/// <summary>
+		/// Enumerates the dictionary Lefts while avoiding memory allocations
+		/// </summary>
+		public struct FirstEnumerator : IEnumerator<TLeft>, IEnumerator
+		{	//****************************************
+			private readonly BiDictionary<TLeft, TRight> _Parent;
+
+			private int _Index;
+			//****************************************
+
+			internal FirstEnumerator(BiDictionary<TLeft, TRight> parent)
+			{
+				_Parent = parent;
+				_Index = 0;
+				Current = default!;
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Disposes of the enumerator
+			/// </summary>
+			public void Dispose()
+			{
+				Current = default!;
+			}
+
+			/// <summary>
+			/// Tries to move to the next item
+			/// </summary>
+			/// <returns>True if there's another item to enumerate, otherwise False</returns>
+			public bool MoveNext()
+			{
+				if (_Index >= _Parent._Size)
+				{
+					_Index = _Parent._Size + 1;
+					Current = default!;
+
+					return false;
+				}
+
+				Current = _Parent._Entries[_Index++].Left;
+
+				return true;
+			}
+
+			void IEnumerator.Reset()
+			{
+				_Index = 0;
+				Current = default!;
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Gets the current item being enumerated
+			/// </summary>
+			public TLeft Current { get; private set; }
+
+			object IEnumerator.Current => Current!;
+		}
+
+		/// <summary>
+		/// Enumerates the dictionary Rights while avoiding memory allocations
+		/// </summary>
+		public struct SecondEnumerator : IEnumerator<TRight>, IEnumerator
+		{	//****************************************
+			private readonly BiDictionary<TLeft, TRight> _Parent;
+
+			private int _Index;
+			//****************************************
+
+			internal SecondEnumerator(BiDictionary<TLeft, TRight> parent)
+			{
+				_Parent = parent;
+				_Index = 0;
+				Current = default!;
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Disposes of the enumerator
+			/// </summary>
+			public void Dispose()
+			{
+				Current = default!;
+			}
+
+			/// <summary>
+			/// Tries to move to the next item
+			/// </summary>
+			/// <returns>True if there's another item to enumerate, otherwise False</returns>
+			public bool MoveNext()
+			{
+				if (_Index >= _Parent._Size)
+				{
+					_Index = _Parent._Size + 1;
+					Current = default!;
+
+					return false;
+				}
+
+				Current = _Parent._Entries[_Index++].Right;
+
+				return true;
+			}
+
+			void IEnumerator.Reset()
+			{
+				_Index = 0;
+				Current = default!;
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Gets the current item being enumerated
+			/// </summary>
+			public TRight Current { get; private set; }
+
+			object IEnumerator.Current => Current!;
+		}
+	}
+}

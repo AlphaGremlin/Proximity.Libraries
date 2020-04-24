@@ -1,7 +1,3 @@
-﻿/****************************************\
- BinaryTextReader.cs
- Created: 2016-02-26
-\****************************************/
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -24,8 +20,6 @@ namespace Proximity.Utility.IO
 		private readonly byte[] _Array;
 		private readonly int _StartIndex;
 		private int _Index, _Length;
-
-		private Encoding _Encoding;
 		private Decoder _Decoder;
 		private char[] _Buffer;
 		private int _BufferIndex, _BufferLength;
@@ -161,7 +155,7 @@ namespace Proximity.Utility.IO
 			_Array = array;
 			_StartIndex = _Index = offset;
 			_Length = length;
-			_Encoding = encoding;
+			Encoding = encoding;
 			_Decoder = encoding.GetDecoder();
 
 			_DetectEncoding = detectEncoding;
@@ -200,8 +194,8 @@ namespace Proximity.Utility.IO
 		/// <inheritdoc />
 		public override int Read(char[] buffer, int index, int count)
 		{	//****************************************
-			int CharsWritten = 0;
-			int WriteLength = 0, TempLength = 0;
+			var CharsWritten = 0;
+			int WriteLength, TempLength;
 			//****************************************
 
 			// Empty the buffer if there's anything in it
@@ -372,7 +366,7 @@ namespace Proximity.Utility.IO
 		/// <inheritdoc />
 		public override string ReadToEnd()
 		{
-			var MyBuilder = new StringBuilder(_Encoding.GetMaxCharCount(_Length));
+			var MyBuilder = new StringBuilder(Encoding.GetMaxCharCount(_Length));
 
 			if (_BufferLength != 0)
 			{
@@ -404,7 +398,7 @@ namespace Proximity.Utility.IO
 			_Index = _StartIndex;
 			_BufferIndex = 0;
 			_BufferLength = 0;
-			_Decoder = _Encoding.GetDecoder();
+			_Decoder = Encoding.GetDecoder();
 			_CheckPreamble = true;
 		}
 
@@ -449,7 +443,7 @@ namespace Proximity.Utility.IO
 			}
 
 			// Match the bytes in our input against the Preamble
-			for (int Index = 0; Index < _Preamble.Length; Index++)
+			for (var Index = 0; Index < _Preamble.Length; Index++)
 			{
 				if (_Preamble[Index] != _Array[_Index + Index])
 				{
@@ -470,11 +464,11 @@ namespace Proximity.Utility.IO
 
 		private void DetectEncoding()
 		{	//****************************************
-			int PreambleLength = 0;
-			byte FirstByte = _Array[_Index];
-			byte SecondByte = _Array[_Index + 1];
-			byte ThirdByte = _Length >= 3 ? _Array[_Index + 2] : (byte)0;
-			byte FourthByte = _Length >= 4 ? _Array[_Index + 3] : (byte)0;
+			var PreambleLength = 0;
+			var FirstByte = _Array[_Index];
+			var SecondByte = _Array[_Index + 1];
+			var ThirdByte = _Length >= 3 ? _Array[_Index + 2] : (byte)0;
+			var FourthByte = _Length >= 4 ? _Array[_Index + 3] : (byte)0;
 			//****************************************
 
 			_DetectEncoding = false;
@@ -482,7 +476,7 @@ namespace Proximity.Utility.IO
 			// Detect big-endian Unicode
 			if (FirstByte == 0xFE && SecondByte == 0xFF)
 			{
-				_Encoding = new UnicodeEncoding(true, true);
+				Encoding = new UnicodeEncoding(true, true);
 
 				PreambleLength  = 2;
 			}
@@ -491,43 +485,39 @@ namespace Proximity.Utility.IO
 			{
 				if (_Length < 4 || ThirdByte != 0 || FourthByte != 0)
 				{
-					_Encoding = new UnicodeEncoding(false, true);
+					Encoding = new UnicodeEncoding(false, true);
 
 					PreambleLength = 2;
 				}
-#if !NETSTANDARD1_3
 				else
 				{
-					_Encoding = new UTF32Encoding(false, true);
+					Encoding = new UTF32Encoding(false, true);
 
 					PreambleLength = 4;
 				}
-#endif
 			}
 			// Detect plain UTF8
 			else if (_Length >= 3 && FirstByte == 0xEF && SecondByte == 0xBB && ThirdByte == 0xBF)
 			{
-				_Encoding = Encoding.UTF8;
+				Encoding = Encoding.UTF8;
 
 				PreambleLength = 3;
 			}
-#if !NETSTANDARD1_3
 			// Detect big-endian UTF32
 			else if (_Length >= 4 && FirstByte == 0 && SecondByte == 0 && ThirdByte == 0xFE && FourthByte == 0xFF)
 			{
-				_Encoding = new UTF32Encoding(true, true);
+				Encoding = new UTF32Encoding(true, true);
 
 				PreambleLength = 4;
 			}
-#endif
 
 			//****************************************
 
 			if (PreambleLength != 0)
 			{
-				_Decoder = _Encoding.GetDecoder();
-				_Preamble = _Encoding.GetPreamble();
-				_Buffer = new char[_Encoding.GetMaxCharCount(_BufferSize)];
+				_Decoder = Encoding.GetDecoder();
+				_Preamble = Encoding.GetPreamble();
+				_Buffer = new char[Encoding.GetMaxCharCount(_BufferSize)];
 
 				// Skip over the Preamble
 				_Index += PreambleLength;
@@ -540,25 +530,16 @@ namespace Proximity.Utility.IO
 		/// <summary>
 		/// Gets the position we're reading from in the source Array
 		/// </summary>
-		public int Position
-		{
-			get { return _Index - _StartIndex; }
-		}
+		public int Position => _Index - _StartIndex;
 
 		/// <summary>
 		/// Gets the number of remaining bytes to read from the source Array
 		/// </summary>
-		public int BytesLeft
-		{
-			get { return _Length; }
-		}
+		public int BytesLeft => _Length;
 
 		/// <summary>
 		/// Gets the Encoding being used to decode the source Array
 		/// </summary>
-		public Encoding Encoding
-		{
-			get { return _Encoding; }
-		}
+		public Encoding Encoding { get; private set; }
 	}
 }

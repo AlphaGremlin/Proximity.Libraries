@@ -71,7 +71,7 @@ namespace System.Threading
 		/// <param name="token">A cancellation token that can be used to abort waiting on the lock</param>
 		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
-		public ValueTask<IDisposable> LockLeft(CancellationToken token = default) => LockLeft(Timeout.InfiniteTimeSpan, token);
+		public ValueTask<Instance> LockLeft(CancellationToken token = default) => LockLeft(Timeout.InfiniteTimeSpan, token);
 
 		/// <summary>
 		/// Take a left lock, running concurrently with other left locks, cancelling after a given timeout
@@ -81,7 +81,7 @@ namespace System.Threading
 		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
 		/// <exception cref="TimeoutException">The timeout elapsed</exception>
-		public ValueTask<IDisposable> LockLeft(TimeSpan timeout, CancellationToken token = default)
+		public ValueTask<Instance> LockLeft(TimeSpan timeout, CancellationToken token = default)
 		{
 			// Are we disposed?
 			if (_Disposer != null)
@@ -90,7 +90,7 @@ namespace System.Threading
 			// Try and take the lock
 			var NewInstance = LockInstance.GetOrCreate(this, false, TryTakeLeft());
 
-			var ValueTask = new ValueTask<IDisposable>(NewInstance, NewInstance.Version);
+			var ValueTask = new ValueTask<Instance>(NewInstance, NewInstance.Version);
 
 			if (!ValueTask.IsCompleted)
 			{
@@ -118,7 +118,7 @@ namespace System.Threading
 		/// <param name="token">A cancellation token that can be used to abort waiting on the lock</param>
 		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
-		public ValueTask<IDisposable> LockRight(CancellationToken token = default) => LockRight(Timeout.InfiniteTimeSpan, token);
+		public ValueTask<Instance> LockRight(CancellationToken token = default) => LockRight(Timeout.InfiniteTimeSpan, token);
 
 		/// <summary>
 		/// Take a right lock, running concurrently with other right locks, cancelling after a given timeout
@@ -128,7 +128,7 @@ namespace System.Threading
 		/// <returns>A task that completes when the lock is taken, resulting in a disposable to release the lock</returns>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
 		/// <exception cref="TimeoutException">The timeout elapsed</exception>
-		public ValueTask<IDisposable> LockRight(TimeSpan timeout, CancellationToken token = default)
+		public ValueTask<Instance> LockRight(TimeSpan timeout, CancellationToken token = default)
 		{
 			// Are we disposed?
 			if (_Disposer != null)
@@ -137,7 +137,7 @@ namespace System.Threading
 			// Try and take the lock
 			var NewInstance = LockInstance.GetOrCreate(this, true, TryTakeRight());
 
-			var ValueTask = new ValueTask<IDisposable>(NewInstance, NewInstance.Version);
+			var ValueTask = new ValueTask<Instance>(NewInstance, NewInstance.Version);
 
 			if (!ValueTask.IsCompleted)
 			{
@@ -440,6 +440,29 @@ namespace System.Threading
 		public bool IsUnfair { get; } = false;
 
 		//****************************************
+
+		/// <summary>
+		/// Represents the switch lock currently held
+		/// </summary>
+		public readonly struct Instance : IDisposable
+		{ //****************************************
+			private readonly LockInstance _Instance;
+			private readonly short _Token;
+			//****************************************
+
+			internal Instance(LockInstance instance)
+			{
+				_Instance = instance;
+				_Token = instance.Version;
+			}
+
+			//****************************************
+
+			/// <summary>
+			/// Releases the lock currently held
+			/// </summary>
+			public void Dispose() => _Instance.Release(_Token);
+		}
 
 		private static class LockState
 		{
