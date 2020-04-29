@@ -13,7 +13,7 @@ namespace System.Collections.Generic
 	/// <summary>
 	/// Represents a set that holds only weak references to its contents
 	/// </summary>
-	public sealed class WeakHashSet<TItem> : IEnumerable<TItem>, IDisposable where TItem : class
+	public sealed class WeakHashSet<T> : IEnumerable<T>, IDisposable where T : class
 	{ //****************************************
 		private readonly GCHandleType _HandleType;
 		
@@ -25,7 +25,7 @@ namespace System.Collections.Generic
 		/// <summary>
 		/// Creates a new WeakHashSet
 		/// </summary>
-		public WeakHashSet() : this(EqualityComparer<TItem>.Default, GCHandleType.Weak)
+		public WeakHashSet() : this(EqualityComparer<T>.Default, GCHandleType.Weak)
 		{
 		}
 
@@ -33,7 +33,7 @@ namespace System.Collections.Generic
 		/// Creates a new WeakHashSet
 		/// </summary>
 		/// <param name="comparer">The comparer to use for items</param>
-		public WeakHashSet(IEqualityComparer<TItem> comparer) : this(comparer, GCHandleType.Weak)
+		public WeakHashSet(IEqualityComparer<T> comparer) : this(comparer, GCHandleType.Weak)
 		{
 		}
 
@@ -42,7 +42,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <param name="comparer">The comparer to use for items</param>
 		/// <param name="handleType">The type of GCHandle to use</param>
-		public WeakHashSet(IEqualityComparer<TItem> comparer, GCHandleType handleType)
+		public WeakHashSet(IEqualityComparer<T> comparer, GCHandleType handleType)
 		{
 			Comparer = comparer;
 			_HandleType = handleType;
@@ -54,7 +54,7 @@ namespace System.Collections.Generic
 		/// Creates a new WeakHashSet of references to the contents of the collection
 		/// </summary>
 		/// <param name="collection">The collection holding the items to weakly reference</param>
-		public WeakHashSet(IEnumerable<TItem> collection) : this(collection, EqualityComparer<TItem>.Default, GCHandleType.Weak)
+		public WeakHashSet(IEnumerable<T> collection) : this(collection, EqualityComparer<T>.Default, GCHandleType.Weak)
 		{
 		}
 
@@ -63,7 +63,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <param name="collection">The collection holding the items to weakly reference</param>
 		/// <param name="comparer">The comparer to use for items</param>
-		public WeakHashSet(IEnumerable<TItem> collection, IEqualityComparer<TItem> comparer) : this(collection, comparer, GCHandleType.Weak)
+		public WeakHashSet(IEnumerable<T> collection, IEqualityComparer<T> comparer) : this(collection, comparer, GCHandleType.Weak)
 		{
 		}
 
@@ -73,7 +73,7 @@ namespace System.Collections.Generic
 		/// <param name="collection">The collection holding the items to reference</param>
 		/// <param name="comparer">The comparer to use for items</param>
 		/// <param name="handleType">The type of GCHandle to use</param>
-		public WeakHashSet(IEnumerable<TItem> collection, IEqualityComparer<TItem> comparer, GCHandleType handleType)
+		public WeakHashSet(IEnumerable<T> collection, IEqualityComparer<T> comparer, GCHandleType handleType)
 		{
 			if (collection == null)
 				throw new ArgumentNullException("collection", "Collection cannot be null");
@@ -95,10 +95,10 @@ namespace System.Collections.Generic
 		/// <param name="item">The element to add</param>
 		/// <returns>True if the element was added, False if it was already in the set</returns>
 		/// <exception cref="ArgumentNullException">Item was null</exception>
-		public bool Add(TItem item)
+		public bool Add(T item)
 		{ //****************************************
 			int Key, Index;
-			TItem Current;
+			T Current;
 			//****************************************
 
 			if (item == null)
@@ -118,7 +118,7 @@ namespace System.Collections.Generic
 				{
 					try
 					{
-						Current = (TItem)_Values[Index].Item.Target;
+						Current = (T)_Values[Index].Item.Target;
 
 						// Do we match this item?
 						if (Current != null && Comparer.Equals(Current, item))
@@ -157,7 +157,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <param name="item">The item to locate</param>
 		/// <returns>True if the item is in the collection, otherwise false</returns>
-		public bool Contains(TItem item)
+		public bool Contains(T item)
 		{
 			return IndexOf(item) != -1;
 		}
@@ -192,7 +192,7 @@ namespace System.Collections.Generic
 		/// Removes all items that are in the given collection from the current set
 		/// </summary>
 		/// <param name="other">The collection of items to remove</param>
-		public void ExceptWith(IEnumerable<TItem> other)
+		public void ExceptWith(IEnumerable<T> other)
 		{
 			if (other == null)
 				throw new ArgumentException("other");
@@ -217,7 +217,7 @@ namespace System.Collections.Generic
 		/// Modifies the current set so it only contains items present in the given collection
 		/// </summary>
 		/// <param name="other">The collection to compare against</param>
-		public void IntersectWith(IEnumerable<TItem> other)
+		public void IntersectWith(IEnumerable<T> other)
 		{
 			if (other == null)
 				throw new ArgumentException("other");
@@ -254,7 +254,7 @@ namespace System.Collections.Generic
 		/// <param name="item">The element to remove</param>
 		/// <returns>True if the item was removed, false if it was not in the collection</returns>
 		/// <remarks>Will perform a partial compaction, up to the point the target item is found</remarks>
-		public bool Remove(TItem item)
+		public bool Remove(T item)
 		{ //****************************************
 			var Index = IndexOf(item);
 			//****************************************
@@ -271,13 +271,13 @@ namespace System.Collections.Generic
 		/// Modifies the set so it only contains items that are present in the set, or in the given collection, but not both
 		/// </summary>
 		/// <param name="other">The collection to compare against</param>
-		public void SymmetricExceptWith(IEnumerable<TItem> other)
+		public void SymmetricExceptWith(IEnumerable<T> other)
 		{
 			if (other == null)
 				throw new ArgumentException("other");
 			
 			var BitMask = new BitArray(_Size);
-			var NewItems = new List<TItem>();
+			var NewItems = new List<T>();
 
 			foreach (var MyItem in other)
 			{
@@ -304,9 +304,9 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <returns>A set of strong references to the collection</returns>
 		/// <remarks>Will perform a compaction.</remarks>
-		public ISet<TItem> ToStrongSet()
+		public ISet<T> ToStrongSet()
 		{ //****************************************
-			var MyList = new HashSet<TItem>();
+			var MyList = new HashSet<T>();
 			//****************************************
 
 			foreach (var MyItem in this)
@@ -323,7 +323,7 @@ namespace System.Collections.Generic
 		/// <param name="equalValue">The value to search for</param>
 		/// <param name="actualValue">The value already in the set, or the given value if not found</param>
 		/// <returns>True if an equal value was found, otherwise False</returns>
-		public bool TryGetValue(TItem equalValue, out TItem actualValue)
+		public bool TryGetValue(T equalValue, out T actualValue)
 		{
 			var Index = IndexOf(equalValue);
 
@@ -331,7 +331,7 @@ namespace System.Collections.Generic
 			{
 				try
 				{
-					var CurrentValue = (TItem)_Values[Index].Item.Target;
+					var CurrentValue = (T)_Values[Index].Item.Target;
 
 					if (CurrentValue != null)
 					{
@@ -358,7 +358,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <param name="items">The elements to add</param>
 		/// <remarks>Ignores any null items, rather than throwing an exception</remarks>
-		public void UnionWith(IEnumerable<TItem> items)
+		public void UnionWith(IEnumerable<T> items)
 		{
 			if (items == null)
 				throw new ArgumentNullException("items");
@@ -377,7 +377,7 @@ namespace System.Collections.Generic
 			return new Enumerator(this);
 		}
 
-		IEnumerator<TItem> IEnumerable<TItem>.GetEnumerator()
+		IEnumerator<T> IEnumerable<T>.GetEnumerator()
 		{
 			return new Enumerator(this);
 		}
@@ -397,7 +397,7 @@ namespace System.Collections.Generic
 			Capacity = num;
 		}
 
-		private void Insert(int index, int key, TItem value)
+		private void Insert(int index, int key, T value)
 		{
 			if (_Size == _Values.Length)
 				EnsureCapacity(_Size + 1);
@@ -414,11 +414,11 @@ namespace System.Collections.Generic
 			_Size++;
 		}
 
-		private int IndexOf(TItem item)
+		private int IndexOf(T item)
 		{ //****************************************
 			var Key = Comparer.GetHashCode(item);
 			var Index = Array.BinarySearch(_Values, 0, _Size, new SetItem(Key));
-			TItem Current;
+			T Current;
 			//****************************************
 
 			// Is there a matching hash code?
@@ -433,7 +433,7 @@ namespace System.Collections.Generic
 			{
 				try
 				{
-					Current = (TItem)_Values[Index].Item.Target;
+					Current = (T)_Values[Index].Item.Target;
 
 					// Do we match this item?
 					if (Current != null && Comparer.Equals(Current, item))
@@ -520,7 +520,7 @@ namespace System.Collections.Generic
 		/// <summary>
 		/// Gets the IEqualityComparer{TItem} that is used to compare items in the set
 		/// </summary>
-		public IEqualityComparer<TItem> Comparer { get; }
+		public IEqualityComparer<T> Comparer { get; }
 
 		/// <summary>
 		/// Gets or Sets the number of elements that the Hash Set can contain.
@@ -557,15 +557,15 @@ namespace System.Collections.Generic
 		/// <summary>
 		/// Enumerates the dictionary while avoiding memory allocations
 		/// </summary>
-		public struct Enumerator : IEnumerator<TItem>
+		public struct Enumerator : IEnumerator<T>
 		{ //****************************************
-			private readonly WeakHashSet<TItem> _Set;
+			private readonly WeakHashSet<T> _Set;
 
 			private int _Index;
 
 			//****************************************
 
-			internal Enumerator(WeakHashSet<TItem> parent)
+			internal Enumerator(WeakHashSet<T> parent)
 			{
 				_Set = parent;
 				_Index = 0;
@@ -602,7 +602,7 @@ namespace System.Collections.Generic
 
 					try
 					{
-						Current = (TItem)Handle.Item.Target;
+						Current = (T)Handle.Item.Target;
 
 						if (Current != null)
 						{
@@ -633,7 +633,7 @@ namespace System.Collections.Generic
 			/// <summary>
 			/// Gets the current item being enumerated
 			/// </summary>
-			public TItem Current { get; private set; }
+			public T Current { get; private set; }
 
 			object IEnumerator.Current => Current;
 		}
@@ -656,7 +656,7 @@ namespace System.Collections.Generic
 				Item = item;
 			}
 
-			internal SetItem(TItem item, WeakHashSet<TItem> hashSet)
+			internal SetItem(T item, WeakHashSet<T> hashSet)
 			{
 				Item = new GCReference(item, hashSet._HandleType);
 				HashCode = hashSet.Comparer.GetHashCode(item);

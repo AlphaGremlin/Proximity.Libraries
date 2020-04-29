@@ -6,7 +6,7 @@ using System.Security;
 using System.Threading;
 //****************************************
 
-namespace Proximity.Utility.Collections
+namespace System.Collections.Immutable
 {
 	/// <summary>
 	/// Provides extra methods for manipulating immutable collections in a thread-safe manner

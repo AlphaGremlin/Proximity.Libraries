@@ -20,6 +20,75 @@ namespace System.Linq
 	public static class LinqExtensions
 	{
 		/// <summary>
+		/// Splits an enumeration into chunks of equal or lesser size
+		/// </summary>
+		/// <typeparam name="T">The enumeration element type</typeparam>
+		/// <param name="source">The source enumeration</param>
+		/// <param name="size">The size of each chunk</param>
+		/// <returns>An enumeration of lists where each chunk is at most <paramref name="size"/> length</returns>
+		/// <remarks>If <paramref name="source"/> yields no results, no chunks are returned</remarks>
+		public static IEnumerable<IReadOnlyList<T>> Chunk<T>(this IEnumerable<T> source, int size)
+		{
+			List<T>? CurrentChunk = null;
+
+			foreach (var Item in source)
+			{
+				if (CurrentChunk == null)
+					// Creating a new List after each yield prevents unexpected behaviour when saving the results of Chunk() (such as calling .ToArray())
+					CurrentChunk = new List<T>(size);
+
+				CurrentChunk.Add(Item);
+
+				if (CurrentChunk.Count == size)
+				{
+					yield return CurrentChunk;
+
+					CurrentChunk = null;
+				}
+			}
+
+			// Return any partial chunk
+			if (CurrentChunk != null)
+				yield return CurrentChunk;
+		}
+
+		/// <summary>
+		/// Splits an enumeration into chunks of equal or lesser size
+		/// </summary>
+		/// <typeparam name="T">The enumeration element type</typeparam>
+		/// <param name="source">The source enumeration</param>
+		/// <param name="size">The size of each chunk</param>
+		/// <returns>An enumeration of lists where each chunk is at most <paramref name="size"/> length</returns>
+		/// <remarks>If <paramref name="source"/> yields no results, a single empty chunk is returned</remarks>
+		public static IEnumerable<IReadOnlyList<T>> ChunkOrDefault<T>(this IEnumerable<T> source, int size)
+		{
+			var HasYielded = false;
+			List<T>? CurrentChunk = null;
+
+			foreach (var Item in source)
+			{
+				if (CurrentChunk == null)
+					// Creating a new List after each yield prevents unexpected behaviour when saving the results of Chunk() (such as calling .ToArray())
+					CurrentChunk = new List<T>(size);
+
+				CurrentChunk.Add(Item);
+
+				if (CurrentChunk.Count == size)
+				{
+					HasYielded = true;
+
+					yield return CurrentChunk;
+
+					CurrentChunk = null;
+				}
+			}
+
+			// If we haven't returned a single chunk, return an empty one
+			if (!HasYielded)
+				yield return Array.Empty<T>();
+		}
+
+		/// <summary>
 		/// Performs a Select-Where operation
 		/// </summary>
 		/// <typeparam name="TInput">The type of input to the select</typeparam>
@@ -53,6 +122,23 @@ namespace System.Linq
 				if (predicate(InRecord, out var OutRecord))
 					yield return resultSelector(InRecord, OutRecord);
 			}
+		}
+
+		/// <summary>
+		/// Converts an enumerable to a read-only list
+		/// </summary>
+		/// <typeparam name="T">The type of element</typeparam>
+		/// <param name="source">The enumeration to convert</param>
+		/// <returns>A read-only list</returns>
+		public static IReadOnlyList<T> ToReadOnlyList<T>(this IEnumerable<T> source)
+		{
+			if (source is null)
+				throw new ArgumentNullException(nameof(source));
+
+			if (source is IReadOnlyList<T> ReadOnlyList)
+				return ReadOnlyList;
+
+			return source.ToArray();
 		}
 	}
 }

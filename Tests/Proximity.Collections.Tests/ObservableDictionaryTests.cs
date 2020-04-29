@@ -9,7 +9,7 @@ using NUnit.Framework;
 
 #pragma warning disable IDE0028 // Simplify collection initialization
 
-namespace Proximity.Utility.Tests
+namespace Proximity.Collections.Tests
 {
 	[TestFixture]
 	public class ObservableDictionaryTests

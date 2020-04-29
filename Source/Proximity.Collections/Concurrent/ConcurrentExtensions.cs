@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 //****************************************
 
 namespace System.Collections.Concurrent
@@ -192,7 +193,53 @@ namespace System.Collections.Concurrent
 				}
 			}
 		}
-		
+
+		/// <summary>
+		/// Adds or updates a key/value pair in the dictionary
+		/// </summary>
+		/// <typeparam name="TKey">The type of the dictionary key</typeparam>
+		/// <typeparam name="TValue">The type of the dictionary value</typeparam>
+		/// <typeparam name="TArg">The type of factory argument</typeparam>
+		/// <param name="target">The target concurrent dictionary</param>
+		/// <param name="key">The key of the item to be added or updated</param>
+		/// <param name="addValue">The function to generate a new value if the key is absent</param>
+		/// <param name="updateValue">The function to generate a new value if the key exists</param>
+		/// <param name="factoryArgument">An argument to pass into <paramref name="addValue"/> and <paramref name="updateValue"/>.</param>
+		/// <param name="wasAdded">Receives whether the value was added or updated</param>
+		/// <returns>The value stored in the dictionary</returns>
+		/// <remarks>Implements a loop around TryGetValue, TryUpdate and TryAdd</remarks>
+		public static TValue AddOrUpdate<TKey, TValue, TArg>(this ConcurrentDictionary<TKey, TValue> target, TKey key, Func<TKey, TArg, TValue> addValue, Func<TKey, TValue, TArg, TValue> updateValue, TArg factoryArgument, out bool wasAdded)
+		{ //****************************************
+			TValue NewValue;
+			//****************************************
+
+			for (; ; )
+			{
+				if (target.TryGetValue(key, out var OutValue))
+				{
+					NewValue = updateValue(key, OutValue, factoryArgument);
+
+					if (target.TryUpdate(key, NewValue, OutValue))
+					{
+						wasAdded = false;
+
+						return NewValue;
+					}
+				}
+				else
+				{
+					NewValue = addValue(key, factoryArgument);
+
+					if (target.TryAdd(key, NewValue))
+					{
+						wasAdded = true;
+
+						return NewValue;
+					}
+				}
+			}
+		}
+
 		/// <summary>
 		/// Updates an item if it exists in the dictionary
 		/// </summary>
@@ -224,7 +271,43 @@ namespace System.Collections.Concurrent
 			
 			return false;
 		}
-		
+
+		/// <summary>
+		/// Updates an item if it exists in the dictionary
+		/// </summary>
+		/// <typeparam name="TKey">The type of the dictionary key</typeparam>
+		/// <typeparam name="TValue">The type of the dictionary value</typeparam>
+		/// <typeparam name="TArg">The type of factory argument</typeparam>
+		/// <param name="target">The target concurrent dictionary</param>
+		/// <param name="key">The key of the item to the update</param>
+		/// <param name="updateValue">A callback that performs the update</param>
+		/// <param name="factoryArgument">An argument to pass into <paramref name="updateValue"/>.</param>
+		/// <param name="newValue">Receives the new value if the dictionary was updated</param>
+		/// <returns>True if the item was updated, False if it does not exist</returns>
+		/// <remarks>Implements a loop around TryGetValue and TryUpdate</remarks>
+		public static bool TryUpdate<TKey, TValue, TArg>(this ConcurrentDictionary<TKey, TValue> target, TKey key, Func<TKey, TValue, TArg, TValue> updateValue, TArg factoryArgument,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+			out TValue newValue)
+		{
+			while (target.TryGetValue(key, out var OldValue))
+			{
+				var NewValue = updateValue(key, OldValue, factoryArgument);
+
+				if (target.TryUpdate(key, NewValue, OldValue))
+				{
+					newValue = NewValue;
+
+					return true;
+				}
+			}
+
+			newValue = default!;
+
+			return false;
+		}
+
 		/// <summary>
 		/// Removes a value from the dictionary if the key and value both match
 		/// </summary>
@@ -233,6 +316,7 @@ namespace System.Collections.Concurrent
 		/// <param name="expectedValue">The expected item in the dictionary</param>
 		/// <returns>True if the item was removed, False if key was not found, or the value was not as expected</returns>
 		/// <remarks>Wraps calling IDictionary.Remove(KeyValuePair)</remarks>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool TryRemovePair<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, TValue expectedValue)
 		{
 			return ((IDictionary<TKey, TValue>)target).Remove(new KeyValuePair<TKey, TValue>(key, expectedValue));
@@ -271,8 +355,8 @@ namespace System.Collections.Concurrent
 		/// <param name="key">The key whose value should be updated or removed.</param>
 		/// <param name="updateValueFactory">The function used to generate a new value for the existing key.</param>
 		/// <param name="removeWhen">The function used to determine if the newly generated value meets the criteria for deletion</param>
-		/// <param name="value">When this method returns, <paramref name="value"/> contains the updated value or the default value of <typeparamref name="TValue"/> if the key was removed or not found.</param>
-		/// <returns>True if the key/value pair was updated, False if it was removed or not found.</returns>
+		/// <param name="value">When this method returns, <paramref name="value"/> contains the updated value if updated, the value that matched <paramref name="removeWhen"/> if removed, or the default value of <typeparamref name="TValue"/> if the key was not found.</param>
+		/// <returns>True if the key/value pair was updated or removed, False if it could not be found</returns>
 		/// <exception cref="System.ArgumentNullException"><paramref name="key"/> is a null reference (Nothing in Visual Basic).</exception>
 		public static bool UpdateOrRemove<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> dictionary, TKey key, Func<TKey, TValue, TValue> updateValueFactory, Func<TKey, TValue, bool> removeWhen,
 #if !NETSTANDARD2_0
@@ -299,7 +383,10 @@ namespace System.Collections.Concurrent
 				if (removeWhen(key, NewValue))
 				{
 					if (((IDictionary<TKey, TValue>)dictionary).Remove(new KeyValuePair<TKey, TValue>(key, OldValue)))
-						break;
+					{
+						value = NewValue;
+						return true;
+					}
 				}
 				else
 				{
@@ -327,8 +414,8 @@ namespace System.Collections.Concurrent
 		/// <param name="updateValueFactory">The function used to generate a new value for the existing key.</param>
 		/// <param name="removeWhen">The function used to determine if the newly generated value meets the criteria for deletion.</param>
 		/// <param name="factoryArgument">An argument to pass into <paramref name="updateValueFactory"/>.</param>
-		/// <param name="value">When this method returns, <paramref name="value"/> contains the updated value or the default value of <typeparamref name="TValue"/> if the key was removed or not found.</param>
-		/// <returns>True if the key/value pair was updated, False if it was removed or could not be found</returns>
+		/// <param name="value">When this method returns, <paramref name="value"/> contains the updated value if updated, the value that matched <paramref name="removeWhen"/> if removed, or the default value of <typeparamref name="TValue"/> if the key was not found.</param>
+		/// <returns>True if the key/value pair was updated or removed, False if it could not be found</returns>
 		/// <exception cref="System.ArgumentNullException"><paramref name="key"/> is a null reference (Nothing in Visual Basic).</exception>
 		public static bool UpdateOrRemove<TKey, TValue, TArg>(this ConcurrentDictionary<TKey, TValue> dictionary, TKey key, Func<TKey, TValue, TArg, TValue> updateValueFactory, Func<TKey, TValue, bool> removeWhen, TArg factoryArgument,
 #if !NETSTANDARD2_0
@@ -355,7 +442,10 @@ namespace System.Collections.Concurrent
 				if (removeWhen(key, NewValue))
 				{
 					if (((IDictionary<TKey, TValue>)dictionary).Remove(new KeyValuePair<TKey, TValue>(key, OldValue)))
-						break;
+					{
+						value = NewValue;
+						return true;
+					}
 				}
 				else
 				{

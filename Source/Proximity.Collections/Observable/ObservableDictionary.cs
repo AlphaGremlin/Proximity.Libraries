@@ -11,7 +11,7 @@ using Proximity.Collections;
 namespace System.Collections.Observable
 {
 	/// <summary>
-	/// Implements an Observable Dictionary for WPF binding
+	/// Implements an Observable Dictionary supporting WPF binding
 	/// </summary>
 	public class ObservableDictionary<TKey, TValue> : ObservableBase<KeyValuePair<TKey, TValue>>, IDictionary<TKey, TValue>, IList<KeyValuePair<TKey, TValue>>, IReadOnlyDictionary<TKey, TValue>
 	{	//****************************************

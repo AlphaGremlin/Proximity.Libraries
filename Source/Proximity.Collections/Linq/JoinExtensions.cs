@@ -10,6 +10,56 @@ namespace System.Linq
 	public static class JoinExtensions
 	{
 		/// <summary>
+		/// Joins an enumeration with a dictionary
+		/// </summary>
+		/// <typeparam name="TInput">The input value type</typeparam>
+		/// <typeparam name="TKey">The key type to join on</typeparam>
+		/// <typeparam name="TValue">The value type that results from the join</typeparam>
+		/// <typeparam name="TResult">The final result of the join</typeparam>
+		/// <param name="input">The input enumeration</param>
+		/// <param name="inner">The dictionary to join</param>
+		/// <param name="keySelector">A selector to determine the key from the input</param>
+		/// <param name="resultSelector">A selector to generate the final result</param>
+		/// <returns>An enumeration of join matches</returns>
+		public static IEnumerable<TResult> Join<TInput, TKey, TValue, TResult>(this IEnumerable<TInput> input, IDictionary<TKey, TValue> inner, Func<TInput, TKey> keySelector, Func<TInput, TKey, TValue, TResult> resultSelector)
+		{
+			foreach (var MyInput in input)
+			{
+				var MyKey = keySelector(MyInput);
+
+				if (!inner.TryGetValue(MyKey, out var MyValue))
+					continue;
+
+				yield return resultSelector(MyInput, MyKey, MyValue);
+			}
+		}
+
+		/// <summary>
+		/// Joins an enumeration with a dictionary
+		/// </summary>
+		/// <typeparam name="TInput">The input value type</typeparam>
+		/// <typeparam name="TKey">The key type to join on</typeparam>
+		/// <typeparam name="TValue">The value type that results from the join</typeparam>
+		/// <typeparam name="TResult">The final result of the join</typeparam>
+		/// <param name="input">The input enumeration</param>
+		/// <param name="inner">The dictionary to join</param>
+		/// <param name="keySelector">A selector to determine the key from the input</param>
+		/// <param name="resultSelector">A selector to generate the final result</param>
+		/// <returns>An enumeration of join matches</returns>
+		public static IEnumerable<TResult> Join<TInput, TKey, TValue, TResult>(this IEnumerable<TInput> input, IReadOnlyDictionary<TKey, TValue> inner, Func<TInput, TKey> keySelector, Func<TInput, TKey, TValue, TResult> resultSelector)
+		{
+			foreach (var MyInput in input)
+			{
+				var MyKey = keySelector(MyInput);
+
+				if (!inner.TryGetValue(MyKey, out var MyValue))
+					continue;
+
+				yield return resultSelector(MyInput, MyKey, MyValue);
+			}
+		}
+
+		/// <summary>
 		/// Performs a full outer join on two collections
 		/// </summary>
 		/// <param name="left">The left collection to join</param>

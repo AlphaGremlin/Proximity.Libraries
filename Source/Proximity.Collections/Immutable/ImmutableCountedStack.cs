@@ -8,7 +8,7 @@ using System.Security;
 using System.Threading;
 //****************************************
 
-namespace Proximity.Utility.Collections
+namespace System.Collections.Immutable
 {
 	/// <summary>
 	/// Provides methods for creating an ImmutableCountedStack
@@ -37,7 +37,7 @@ namespace Proximity.Utility.Collections
 		{
 			var NewStack = ImmutableCountedStack<T>.Empty;
 			
-			for(int Index = 0; Index < items.Length; Index++)
+			for(var Index = 0; Index < items.Length; Index++)
 			{
 				NewStack = NewStack.Push(items[Index]);
 			}
@@ -121,7 +121,7 @@ namespace Proximity.Utility.Collections
 		/// An empty immutable counted stack
 		/// </summary>
 		public static readonly ImmutableCountedStack<T> Empty = new ImmutableCountedStack<T>(default!, null, 0);
-		
+
 		//****************************************
 		private readonly T _Head;
 		private readonly ImmutableCountedStack<T>? _Tail;

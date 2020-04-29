@@ -9,7 +9,7 @@ using System.Threading;
 using NUnit.Framework;
 //****************************************
 
-namespace Proximity.Utility.Tests
+namespace Proximity.Collections.Tests
 {
 	[TestFixture]
 	public class ObservableListViewDynamicTests

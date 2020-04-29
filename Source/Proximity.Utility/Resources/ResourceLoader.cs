@@ -1,4 +1,4 @@
-﻿/****************************************\
+/****************************************\
  ResourceLoader.cs
  Created: 25-05-2010
 \****************************************/
@@ -16,22 +16,14 @@ namespace Proximity.Utility.Resources
 	/// Provides methods for loading resources, with override support from a local folder
 	/// </summary>
 	public static class ResourceLoader
-	{	//****************************************
-		private static string _ResourcePath = "Resources";
-		//****************************************
-		
-#if !NETSTANDARD1_3
+	{
 		/// <summary>
 		/// Retrieves a resource data stream for the calling assembly
 		/// </summary>
 		/// <param name="fullName">The full name of the resource to find (eg: 'Setup.xml')</param>
 		/// <returns>The requested stream if found, otherwise null</returns>
 		/// <remarks>The directory containing the assembly will be searched first, and if no file is found, the assembly resources will be searched</remarks>
-		public static Stream Load(string fullName)
-		{
-			return Load(Assembly.GetCallingAssembly(), fullName);
-		}
-#endif
+		public static Stream Load(string fullName) => Load(Assembly.GetCallingAssembly(), fullName);
 
 		/// <summary>
 		/// Retrieve a resource data stream
@@ -42,16 +34,9 @@ namespace Proximity.Utility.Resources
 		/// <remarks>The directory containing the assembly will be searched first, and if no file is found, the assembly resources will be searched</remarks>
 		public static Stream Load(Assembly source, string fullName)
 		{
-#if !NETSTANDARD1_3
-			//****************************************
-			string FileName;
-			//****************************************
-
 			try
 			{
-				FileName = Path.GetDirectoryName(source.Location);
-				FileName = Path.Combine(FileName, _ResourcePath);
-				FileName = Path.Combine(FileName, fullName);
+				var FileName = Path.Combine(Path.GetDirectoryName(source.Location), ResourcePath, fullName);
 
 				if (File.Exists(FileName))
 					return File.OpenRead(FileName);
@@ -59,11 +44,10 @@ namespace Proximity.Utility.Resources
 			catch (SecurityException) // No File IO permission, so just load from the assembly
 			{
 			}
-#endif
 
 			//****************************************
 
-			foreach (string ResourceName in source.GetManifestResourceNames())
+			foreach (var ResourceName in source.GetManifestResourceNames())
 			{
 				if (ResourceName.EndsWith(fullName, StringComparison.OrdinalIgnoreCase))
 					return source.GetManifestResourceStream(ResourceName);
@@ -73,8 +57,7 @@ namespace Proximity.Utility.Resources
 
 			return null;
 		}
-		
-#if !NETSTANDARD1_3
+
 		/// <summary>
 		/// Retrieves a resource data stream localised to the current thread culture
 		/// </summary>
@@ -87,11 +70,8 @@ namespace Proximity.Utility.Resources
 		/// <para>If not found, searches for the culture specifified using <see cref="NeutralResourcesLanguageAttribute" /> (eg: 'Setup.en-US.xml'), and finally the invariant culture (eg: 'Setup.xml').</para>
 		/// <para>At each step, searches the <see cref="ResourcePath" /> folder, then the <paramref name="source" /> assembly.</para>
 		/// </remarks>
-		public static Stream Load(Assembly source, string name, string type)
-		{
-			return Load(source, name, CultureInfo.CurrentCulture, type);
-		}
-		
+		public static Stream Load(Assembly source, string name, string type) => Load(source, name, CultureInfo.CurrentCulture, type);
+
 		/// <summary>
 		/// Retrieves a resource data stream localised to the provided culture
 		/// </summary>
@@ -114,7 +94,7 @@ namespace Proximity.Utility.Resources
 			if (culture != null && culture != CultureInfo.InvariantCulture)
 			{
 				// Not the Invariant culture, search on the given culture
-				MyStream = Load(source, string.Format("{0}.{1}.{2}", name, culture.Name, type));
+				MyStream = Load(source, $"{name}.{culture.Name}.{type}");
 				
 				if (MyStream != null)
 					return MyStream;
@@ -122,7 +102,7 @@ namespace Proximity.Utility.Resources
 				// If we weren't given a neutral culture, search on its parent
 				if (!culture.IsNeutralCulture)
 				{
-					MyStream = Load(source, string.Format("{0}.{1}.{2}", name, culture.Parent.Name, type));
+					MyStream = Load(source, $"{name}.{culture.Parent.Name}.{type}");
 				
 					if (MyStream != null)
 						return MyStream;
@@ -133,7 +113,7 @@ namespace Proximity.Utility.Resources
 				
 				if (Attributes.Length != 0)
 				{
-					MyStream = Load(source, string.Format("{0}.{1}.{2}", name, ((NeutralResourcesLanguageAttribute)Attributes[0]).CultureName, type));
+					MyStream = Load(source, $"{name}.{((NeutralResourcesLanguageAttribute)Attributes[0]).CultureName}.{type}");
 					
 					if (MyStream != null)
 						return MyStream;
@@ -141,20 +121,15 @@ namespace Proximity.Utility.Resources
 			}
 			
 			// Attempt to search on the Invariant Culture
-			return Load(source, string.Format("{0}.{1}", name, type));
+			return Load(source, $"{name}.{type}");
 		}
-#endif
-		
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Gets/Sets the path used to locate file-based resources
 		/// </summary>
 		/// <remarks>Defaults to 'Resources'</remarks>
-		public static string ResourcePath
-		{
-			get { return _ResourcePath; }
-			set { _ResourcePath = value; }
-		}
+		public static string ResourcePath { get; set; } = "Resources";
 	}
 }

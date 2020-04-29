@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace System.Buffers
@@ -863,13 +864,24 @@ namespace System.Buffers
 		}
 
 		/// <summary>
-		/// Splits a sequence based on a separator
+		/// Splits a sequence based on a separator without allocations
 		/// </summary>
 		/// <typeparam name="T">The element type in the sequence</typeparam>
 		/// <param name="sequence">The sequence to split</param>
 		/// <param name="separator">The separator to split on</param>
+		/// <param name="omitEmpty">Whether to omit empty items</param>
 		/// <returns>An enumerable that returns multiple sequences based on the split</returns>
-		public static SplitEnumerable<T> Split<T>(this ReadOnlySequence<T> sequence, ReadOnlyMemory<T> separator) where T : IEquatable<T> => new SplitEnumerable<T>(sequence, separator);
+		public static SplitSingleEnumerator<T> Split<T>(this ReadOnlySpan<T> sequence, T separator, bool omitEmpty = false) where T : IEquatable<T> => new SplitSingleEnumerator<T>(sequence, separator, omitEmpty);
+
+		/// <summary>
+		/// Splits a sequence based on a separator without allocations
+		/// </summary>
+		/// <typeparam name="T">The element type in the sequence</typeparam>
+		/// <param name="sequence">The sequence to split</param>
+		/// <param name="separator">The separator to split on</param>
+		/// <param name="omitEmpty">Whether to omit empty items</param>
+		/// <returns>An enumerable that returns multiple sequences based on the split</returns>
+		public static SplitEnumerator<T> Split<T>(this ReadOnlySpan<T> sequence, ReadOnlySpan<T> separator, bool omitEmpty = false) where T : IEquatable<T> => new SplitEnumerator<T>(sequence, separator, omitEmpty);
 
 		//****************************************
 
@@ -877,56 +889,64 @@ namespace System.Buffers
 		/// Splits a sequence based on a separator
 		/// </summary>
 		/// <typeparam name="T">The element type in the sequence</typeparam>
-		public readonly struct SplitEnumerable<T> : IEnumerable<ReadOnlySequence<T>> where T : IEquatable<T>
+		public ref struct SplitSingleEnumerator<T> where T : IEquatable<T>
 		{ //****************************************
-			private readonly ReadOnlySequence<T> _Sequence;
-			private readonly ReadOnlyMemory<T> _Separator;
+			private SplitEnumerator<T> _Enumerator;
+
+			private T _Separator;
 			//****************************************
 
-			/// <summary>
-			/// Creates a new sequence split enumerable
-			/// </summary>
-			/// <param name="sequence">The sequence to split</param>
-			/// <param name="separator">The separator to split on</param>
-			public SplitEnumerable(ReadOnlySequence<T> sequence, ReadOnlyMemory<T> separator)
+			internal SplitSingleEnumerator(ReadOnlySpan<T> sequence, T separator, bool omitEmpty)
 			{
-				_Sequence = sequence;
 				_Separator = separator;
+
+				// We can create a Span from an internal field safely here, since this is a Ref struct
+				_Enumerator = new SplitEnumerator<T>(sequence, default, omitEmpty);
 			}
 
 			//****************************************
 
 			/// <inheritdoc />
-			public SplitEnumerator<T> GetEnumerator() => new SplitEnumerator<T>(_Sequence, _Separator);
+			public SplitSingleEnumerator<T> GetEnumerator()
+			{
+				_Enumerator = new SplitEnumerator<T>(_Enumerator.Sequence, MemoryMarshal.CreateSpan(ref _Separator, 1), _Enumerator.OmitEmpty);
+
+				return this;
+			}
+
+			/// <inheritdoc />
+			public bool MoveNext() => _Enumerator.MoveNext();
+
+			/// <inheritdoc />
+			public void Reset() => _Enumerator.Reset();
+
+			/// <inheritdoc />
+			public void Dispose() => _Enumerator.Dispose();
 
 			//****************************************
 
-			IEnumerator<ReadOnlySequence<T>> IEnumerable<ReadOnlySequence<T>>.GetEnumerator() => new SplitEnumerator<T>(_Sequence, _Separator);
-
-			IEnumerator IEnumerable.GetEnumerator() => new SplitEnumerator<T>(_Sequence, _Separator);
+			/// <inheritdoc />
+			public ReadOnlySpan<T> Current => _Enumerator.Current;
 		}
 
 		/// <summary>
-		/// An enumerator that splits a sequence based on a separator
+		/// Splits a sequence based on a separator
 		/// </summary>
 		/// <typeparam name="T">The element type in the sequence</typeparam>
-		public struct SplitEnumerator<T> : IEnumerator<ReadOnlySequence<T>> where T : IEquatable<T>
+		public ref struct SplitEnumerator<T> where T : IEquatable<T>
 		{ //****************************************
-			private readonly ReadOnlySequence<T> _Sequence;
-			private readonly ReadOnlyMemory<T> _Separator;
+			private readonly ReadOnlySpan<T> _Sequence;
+			private readonly ReadOnlySpan<T> _Separator;
+			private readonly bool _OmitEmpty;
 
-			private ReadOnlySequence<T> _Position;
+			private ReadOnlySpan<T> _Position;
 			//****************************************
 
-			/// <summary>
-			/// Creates a new sequence split enumerator
-			/// </summary>
-			/// <param name="sequence">The sequence to split</param>
-			/// <param name="separator">The separator to split on</param>
-			public SplitEnumerator(ReadOnlySequence<T> sequence, ReadOnlyMemory<T> separator)
+			internal SplitEnumerator(ReadOnlySpan<T> sequence, ReadOnlySpan<T> separator, bool omitEmpty)
 			{
 				_Sequence = sequence;
 				_Separator = separator;
+				_OmitEmpty = omitEmpty;
 
 				_Position = _Sequence;
 				Current = default;
@@ -935,9 +955,12 @@ namespace System.Buffers
 			//****************************************
 
 			/// <inheritdoc />
+			public SplitEnumerator<T> GetEnumerator() => this;
+
+			/// <inheritdoc />
 			public bool MoveNext()
 			{
-				long NextSplit;
+				int NextSplit;
 
 				for (; ; )
 				{
@@ -950,7 +973,10 @@ namespace System.Buffers
 					}
 
 					// Can we find another split?
-					NextSplit = _Position.IndexOf(_Separator.Span);
+					NextSplit = _Position.IndexOf(_Separator);
+
+					if (!_OmitEmpty)
+						break;
 
 					if (NextSplit != 0)
 						break;
@@ -966,30 +992,28 @@ namespace System.Buffers
 				Current = _Position.Slice(0, NextSplit);
 
 				// Trim off this segment
-				_Position = _Position.Slice(Math.Max(NextSplit + _Separator.Length, _Position.Length));
+				_Position = _Position.Slice(Math.Min(NextSplit + _Separator.Length, _Position.Length));
 
 				return true;
 			}
 
-			//****************************************
+			/// <inheritdoc />
+			public void Reset() => _Position = _Sequence;
 
-			void IEnumerator.Reset()
-			{
-				_Position = _Sequence;
-			}
-
-			void IDisposable.Dispose()
+			/// <inheritdoc />
+			public void Dispose()
 			{
 			}
 
 			//****************************************
 
 			/// <inheritdoc />
-			public ReadOnlySequence<T> Current { get; private set; }
+			public ReadOnlySpan<T> Current { get; private set; }
 
-			object IEnumerator.Current => Current;
+			internal ReadOnlySpan<T> Sequence => _Sequence;
+
+			internal bool OmitEmpty => _OmitEmpty;
 		}
-
 		private sealed class CombinedSegment<T> : ReadOnlySequenceSegment<T>
 		{
 			internal CombinedSegment(ReadOnlyMemory<T> memory)

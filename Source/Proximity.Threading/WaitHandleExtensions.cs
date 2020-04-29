@@ -54,8 +54,8 @@ namespace System.Threading
 			if (timeout == TimeSpan.Zero)
 				throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout must be infinite, or positive");
 
-			// We need to guarantee that only one waiter is created per WaitHandle.
-			var Handle = _AsyncWaiters.GetValue(waitObject, AsyncWaitHandle.GetOrCreate);
+			// We want to guarantee that only one waiter is associated per WaitHandle.
+			var Handle = _AsyncWaiters.GetValue(waitObject, AsyncWaitHandle.Create);
 
 			// GetValue may call GetOrCreate multiple times, so we only register the waiter once we have the final result
 			Handle.RegisterWait();
@@ -72,59 +72,59 @@ namespace System.Threading
 
 		private sealed class AsyncWaitHandle
 		{ //****************************************
-			private static readonly ConcurrentBag<AsyncWaitHandle> Instances = new ConcurrentBag<AsyncWaitHandle>();
-			//****************************************
+			private readonly WaiterQueue<AsyncHandleWaiter> _Waiters = new WaiterQueue<AsyncHandleWaiter>();
+
 			private RegisteredWaitHandle? _Registration;
 
-			private readonly WaiterQueue<AsyncHandleWaiter> _Waiters
+			private volatile int _HandleState;
 			//****************************************
 
-			internal void Initialise(WaitHandle waitObject)
+			private AsyncWaitHandle(WaitHandle waitObject)
 			{
 				WaitObject = waitObject;
 			}
 
+			//****************************************
+
 			internal void RegisterWait()
 			{
+				// Ensure the callback is only registered once
+				if (_HandleState != Status.Unregistered || Interlocked.CompareExchange(ref _HandleState, Status.Registered, Status.Unregistered) != Status.Unregistered)
+					return;
+
 				_Registration = ThreadPool.RegisterWaitForSingleObject(WaitObject, OnWaitForSingleObject, this, Timeout.Infinite, false);
 			}
 
-			internal void Attach(AsyncHandleWaiter waiter)
-			{
+			internal void Attach(AsyncHandleWaiter waiter) => _Waiters.Enqueue(waiter);
 
-			}
-
-			internal bool Detach(
+			internal bool Detach(AsyncHandleWaiter waiter) => _Waiters.Erase(waiter);
 
 			//****************************************
 
-			private void Release()
+			private void CompleteWaiters()
 			{
-				WaitObject = null;
-				_Registration = null;
-
-				Instances.Add(this);
+				while (_Waiters.TryDequeue(out var Waiter))
+					Waiter.SwitchToCompleted();
 			}
 
 			//****************************************
 
-			public WaitHandle? WaitObject { get; private set; }
+			public WaitHandle WaitObject { get; }
 
 			//****************************************
 
-			internal static AsyncWaitHandle GetOrCreate(WaitHandle waitObject)
+			internal static AsyncWaitHandle Create(WaitHandle waitObject) => new AsyncWaitHandle(waitObject);
+
+			//****************************************
+
+			private static void OnWaitForSingleObject(object state, bool timedOut) => ((AsyncWaitHandle)state).CompleteWaiters();
+
+			//****************************************
+
+			private static class Status
 			{
-				if (!Instances.TryTake(out var Instance))
-					Instance = new AsyncWaitHandle();
-
-				Instance.Initialise(waitObject);
-
-				return Instance;
-			}
-
-			private static void OnWaitForSingleObject(object state, bool timedOut)
-			{
-
+				internal const int Unregistered = 0;
+				internal const int Registered = 1;
 			}
 		}
 
@@ -132,6 +132,7 @@ namespace System.Threading
 		{ //****************************************
 			private static readonly ConcurrentBag<AsyncHandleWaiter> Instances = new ConcurrentBag<AsyncHandleWaiter>();
 			//****************************************
+			private volatile int _InstanceState;
 
 			private ManualResetValueTaskSourceCore<bool> _TaskSource = new ManualResetValueTaskSourceCore<bool>();
 
@@ -147,11 +148,15 @@ namespace System.Threading
 				RegisterCancellation(token, timeout);
 			}
 
+			internal void SwitchToCompleted()
+			{
+
+			}
 
 
 			internal ValueTask ToTask() => new ValueTask(this, _TaskSource.Version);
 
-			internal ValueTask<bool> ToTimeoutTask() => new ValueTask(this, _TaskSource.Version);
+			internal ValueTask<bool> ToTimeoutTask() => new ValueTask<bool>(this, _TaskSource.Version);
 
 			//****************************************
 
@@ -170,6 +175,19 @@ namespace System.Threading
 					if (_InstanceState == Status.Completed || !_WaitForCompletion || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledCompleted)
 						Release(); // Completed and not waiting for the callback to execute (or we don't care because it should be unregistered)
 				}
+			}
+
+			protected override void SwitchToCancelled()
+			{
+				// TODO: Instance State
+
+				if (!Handle!.Detach(this))
+					return; // Couldn't dequeue, so the handle has already activated
+			}
+
+			protected override void UnregisteredCancellation()
+			{
+				throw new NotImplementedException();
 			}
 
 			//****************************************

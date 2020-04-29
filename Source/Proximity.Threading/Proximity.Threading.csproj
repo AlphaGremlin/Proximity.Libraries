@@ -25,9 +25,12 @@
 	</ItemGroup>
 	<ItemGroup>
 	  <Compile Remove="AsyncKeyedLock.cs" />
+	  <Compile Remove="Sync\AsyncKeyedLock.cs" />
+	  <Compile Remove="WaitHandleExtensions.cs" />
 	</ItemGroup>
 	<ItemGroup>
-	  <None Include="AsyncKeyedLock.cs" />
+	  <None Include="Sync\AsyncKeyedLock.cs" />
+	  <None Include="WaitHandleExtensions.cs" />
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="System.Memory" Version="4.5.4" />

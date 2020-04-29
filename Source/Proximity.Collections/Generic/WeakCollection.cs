@@ -13,7 +13,7 @@ namespace System.Collections.Generic
 	/// <summary>
 	/// Represents a collection that holds only weak references to its contents
 	/// </summary>
-	public sealed class WeakCollection<TItem> : IEnumerable<TItem>, IDisposable where TItem : class
+	public sealed class WeakCollection<T> : IEnumerable<T>, IDisposable where T : class
 	{	//****************************************
 		private readonly List<GCReference> _Values;
 		private readonly GCHandleType _HandleType;
@@ -40,7 +40,7 @@ namespace System.Collections.Generic
 		/// Creates a new WeakCollection of references to the contents of the collection
 		/// </summary>
 		/// <param name="collection">The collection holding the items to weakly reference</param>
-		public WeakCollection(IEnumerable<TItem> collection) : this(collection, GCHandleType.Weak)
+		public WeakCollection(IEnumerable<T> collection) : this(collection, GCHandleType.Weak)
 		{
 		}
 
@@ -49,7 +49,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <param name="collection">The collection holding the items to reference</param>
 		/// <param name="handleType">The type of GCHandle to use</param>
-		public WeakCollection(IEnumerable<TItem> collection, GCHandleType handleType)
+		public WeakCollection(IEnumerable<T> collection, GCHandleType handleType)
 		{
 			if (collection == null)
 				throw new ArgumentNullException("collection", "Collection cannot be null");
@@ -72,7 +72,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <param name="item">The element to add</param>
 		/// <exception cref="ArgumentNullException">Item was null</exception>
-		public void Add(TItem item)
+		public void Add(T item)
 		{
 			if (item == null)
 				throw new ArgumentNullException("Cannot add null to a Weak Collection");
@@ -85,7 +85,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <param name="collection">The elements to add</param>
 		/// <remarks>Ignores any null items, rather than throwing an exception</remarks>
-		public void AddRange(IEnumerable<TItem> collection)
+		public void AddRange(IEnumerable<T> collection)
 		{
 			foreach (var MyItem in collection)
 			{
@@ -99,11 +99,11 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <param name="item">The item to locate</param>
 		/// <returns>True if the item is in the collection, otherwise false</returns>
-		public bool Contains(TItem item)
+		public bool Contains(T item)
 		{
 			for (var Index = 0; Index < _Values.Count; Index++)
 			{
-				if ((TItem)_Values[Index].Target == item)
+				if ((T)_Values[Index].Target == item)
 					return true;
 			}
 
@@ -145,14 +145,14 @@ namespace System.Collections.Generic
 		/// <param name="item">The element to remove</param>
 		/// <returns>True if the item was removed, false if it was not in the collection</returns>
 		/// <remarks>Will perform a partial compaction, up to the point the target item is found</remarks>
-		public bool Remove(TItem item)
+		public bool Remove(T item)
 		{
 			var Index = 0;
 
 			while (Index < _Values.Count)
 			{
 				var Handle = _Values[Index];
-				var TargetItem = (TItem)Handle.Target;
+				var TargetItem = (T)Handle.Target;
 
 				if (TargetItem == null)
 				{
@@ -182,9 +182,9 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <returns>A list of strong references to the collection</returns>
 		/// <remarks>Will perform a compaction.</remarks>
-		public IList<TItem> ToStrongList()
+		public IList<T> ToStrongList()
 		{	//****************************************
-			var MyList = new List<TItem>(_Values.Count);
+			var MyList = new List<T>(_Values.Count);
 			//****************************************
 
 			foreach (var MyItem in this)
@@ -199,14 +199,14 @@ namespace System.Collections.Generic
 
 		IEnumerator IEnumerable.GetEnumerator() => new Enumerator(_Values);
 
-		IEnumerator<TItem> IEnumerable<TItem>.GetEnumerator() => new Enumerator(_Values);
+		IEnumerator<T> IEnumerable<T>.GetEnumerator() => new Enumerator(_Values);
 
 		//****************************************
 
 		/// <summary>
 		/// Enumerates the dictionary while avoiding memory allocations
 		/// </summary>
-		public struct Enumerator : IEnumerator<TItem>
+		public struct Enumerator : IEnumerator<T>
 		{	//****************************************
 			private readonly List<GCReference> _List;
 
@@ -249,7 +249,7 @@ namespace System.Collections.Generic
 
 					try
 					{
-						Current = (TItem)Handle.Target;
+						Current = (T)Handle.Target;
 
 						if (Current != null)
 						{
@@ -280,7 +280,7 @@ namespace System.Collections.Generic
 			/// <summary>
 			/// Gets the current item being enumerated
 			/// </summary>
-			public TItem Current { get; private set; }
+			public T Current { get; private set; }
 
 			object IEnumerator.Current => Current;
 		}

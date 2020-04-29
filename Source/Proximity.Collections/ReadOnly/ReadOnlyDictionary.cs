@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 //****************************************
 
@@ -68,7 +69,11 @@ namespace System.Collections.ReadOnly
 		/// <param name="key">The key whose value to get</param>
 		/// <param name="value">When complete, contains the value associed with the given key, otherwise the default value for the type</param>
 		/// <returns>True if the key was found, otherwise false</returns>
-		public bool TryGetValue(TKey key, out TValue value) => _Dictionary.TryGetValue(key, out value);
+		public bool TryGetValue(TKey key,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+			out TValue value) => _Dictionary.TryGetValue(key, out value);
 
 		//****************************************
 

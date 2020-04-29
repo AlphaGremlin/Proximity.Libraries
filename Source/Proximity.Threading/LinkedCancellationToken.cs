@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -83,7 +83,7 @@ namespace System.Threading
 			if (tokens == null || tokens.Length == 0)
 				return new LinkedCancellationToken(null, CancellationToken.None);
 			
-			for (int Index = 0; Index < tokens.Length; Index++)
+			for (var Index = 0; Index < tokens.Length; Index++)
 			{
 				if (tokens[Index].CanBeCanceled)
 				{
