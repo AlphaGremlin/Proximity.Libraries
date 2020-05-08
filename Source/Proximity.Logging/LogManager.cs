@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -8,8 +9,6 @@ using System.Security;
 using System.Security.Permissions;
 using System.Threading;
 using Proximity.Logging.Config;
-using Proximity.Utility;
-using Proximity.Utility.Collections;
 //****************************************
 
 namespace Proximity.Logging
@@ -21,8 +20,15 @@ namespace Proximity.Logging
 	{ //****************************************
 		private readonly static LogTarget _Default = new LogTarget();
 
-		private readonly static PrecisionTimer _Timer = new PrecisionTimer();
+		private readonly static Stopwatch _Timer = new Stopwatch();
+		private readonly static DateTime _StartTime;
 		//****************************************
+
+		static LogManager()
+		{
+			_StartTime = DateTime.Now;
+			_Timer.Start();
+		}
 
 		/// <summary>
 		/// Starts the logging framework
@@ -73,7 +79,7 @@ namespace Proximity.Logging
 
 		//****************************************
 
-		internal static DateTime GetTimestamp() => _Timer == null ? DateTime.Now : _Timer.GetTime();
+		internal static DateTime GetTimestamp() => _StartTime + _Timer.Elapsed;
 
 		//****************************************
 

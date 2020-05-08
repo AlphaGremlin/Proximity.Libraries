@@ -228,7 +228,7 @@ namespace System.Threading
 
 			for (; ; )
 			{
-				int OldCount = _CurrentCount;
+				var OldCount = _CurrentCount;
 
 				// Are there any free counters?
 				if (OldCount >= _MaxCount)

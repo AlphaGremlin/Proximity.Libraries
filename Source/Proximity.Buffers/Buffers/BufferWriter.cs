@@ -35,7 +35,7 @@ namespace System.Buffers
 		/// </summary>
 		/// <param name="pool">The ArrayPool to use</param>
 		/// <remarks>If <paramref name="pool"/> is null, does not use pooled arrays. Useful when the Sequence will exist outside the lifetime of the writer and cannot be disposed</remarks>
-		public BufferWriter(ArrayPool<T> pool) : this(pool, 1024)
+		public BufferWriter(ArrayPool<T>? pool) : this(pool, 1024)
 		{
 		}
 
@@ -45,13 +45,15 @@ namespace System.Buffers
 		/// <param name="pool">The ArrayPool to use</param>
 		/// <param name="minBlockSize">The minimum block size</param>
 		/// <remarks>If <paramref name="pool"/> is null, does not use pooled arrays. Useful when the Sequence will exist outside the lifetime of the writer and cannot be disposed</remarks>
-		public BufferWriter(ArrayPool<T> pool, int minBlockSize)
+		public BufferWriter(ArrayPool<T>? pool, int minBlockSize)
 		{
 			_Pool = pool ?? DummyPool<T>.Shared;
 			_MinimumBlockSize = minBlockSize;
 		}
 
 		//****************************************
+
+		void IDisposable.Dispose() => Reset(false);
 
 		/// <summary>
 		/// Advances the Buffer Writer
@@ -69,13 +71,13 @@ namespace System.Buffers
 		/// Resets the Buffer Writer, returning its buffers to the pool
 		/// </summary>
 		/// <remarks>The Buffer Writer can be reused after disposal</remarks>
-		public void Dispose() => Dispose(false);
+		public void Reset() => Reset(false);
 
 		/// <summary>
 		/// Resets the Buffer Writer, returning its buffers to the pool
 		/// </summary>
 		/// <remarks>The Buffer Writer can be reused after disposal</remarks>
-		public void Dispose(bool clearBuffers)
+		public void Reset(bool clearBuffers)
 		{
 			ReadOnlySequenceSegment<T>? Segment = _HeadSegment;
 

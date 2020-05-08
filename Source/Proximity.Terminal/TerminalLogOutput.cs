@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading;
 using System.Text;
-using Proximity.Logging;
+using Microsoft.Extensions.Logging;
 //****************************************
 
 namespace Proximity.Terminal
@@ -11,7 +11,7 @@ namespace Proximity.Terminal
 	/// <summary>
 	/// Captures logging output and sends it to the Terminal
 	/// </summary>
-	public sealed class TerminalLogOutput : LogOutput
+	public sealed class TerminalLogOutput : Microsoft.Extensions.Logging.
 	{	//****************************************
 		private readonly List<ConsoleRecord> _History;
 		private int _MaxHistoryRecords = 1024 * 4;

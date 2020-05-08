@@ -178,6 +178,79 @@ namespace System.Buffers
 		}
 
 		/// <summary>
+		/// Compares the sequence to a span using string comparison rules
+		/// </summary>
+		/// <param name="left">The left char sequence</param>
+		/// <param name="right">The right char sequence</param>
+		/// <param name="comparisonType">The string comparison to perform</param>
+		/// <returns>Positive if left is greater than right, negative if left is less than right, zero if left is equal to right</returns>
+		public static int CompareTo(this ReadOnlySequence<char> left, ReadOnlySpan<char> right, StringComparison comparisonType)
+		{
+			if (left.IsSingleSegment)
+				return left.First.Span.CompareTo(right, comparisonType);
+
+			var HasPartial = false;
+			Span<char> PartLeft = stackalloc char[2];
+			int Result;
+
+			foreach (var Segment in left)
+			{
+				if (Segment.IsEmpty)
+					continue;
+
+				var Left = Segment.Span;
+
+				if (HasPartial)
+				{
+					// We're comparing a surrogate pair split across segments. If the pair is invalid, ignore it
+					if (char.IsLowSurrogate(Left[0]))
+					{
+						PartLeft[1] = Left[0];
+
+						Result = ((ReadOnlySpan<char>)PartLeft).CompareTo(right.Slice(0, 2), comparisonType);
+
+						if (Result != 0)
+							return Result;
+
+						Left = Left.Slice(1);
+						right = right.Slice(2);
+					}
+
+					HasPartial = false;
+				}
+
+				var CompareLength = Math.Min(Segment.Length, right.Length);
+
+				// If the source ends on a high surrogate pair, save it for the next segment
+				if (char.IsHighSurrogate(Left[CompareLength - 1]))
+				{
+					PartLeft[0] = Left[CompareLength - 1];
+
+					HasPartial = true;
+
+					if (--CompareLength == 0)
+						continue;
+				}
+
+				Result = Left.CompareTo(right.Slice(0, CompareLength), comparisonType);
+				
+				if (Result != 0)
+					return Result;
+
+				right = right.Slice(CompareLength);
+			}
+
+			// If the left has a high surrogate left over, treat it as higher even though it's an invalid string
+			if (HasPartial || left.Length > right.Length)
+				return 1;
+
+			if (left.Length < right.Length)
+				return -1;
+
+			return 0;
+		}
+
+		/// <summary>
 		/// Decodes a byte sequence into a char sequence
 		/// </summary>
 		/// <param name="sequence">The byte sequence to encode</param>
@@ -619,7 +692,58 @@ namespace System.Buffers
 		}
 
 		/// <summary>
-		/// Compares the sequence to a span
+		/// Compares the sequence to a span for sorting
+		/// </summary>
+		/// <typeparam name="T">The element type in the sequence</typeparam>
+		/// <param name="sequence">The sequence to compare</param>
+		/// <param name="value">The span to compare to</param>
+		/// <returns>The result of the comparison</returns>
+		public static int SequenceCompareTo<T>(this ReadOnlySequence<T> sequence, ReadOnlySpan<T> value) where T : IComparable<T>
+		{
+			if (sequence.IsSingleSegment)
+				return sequence.First.Span.SequenceCompareTo(value);
+
+			foreach (var Segment in sequence)
+			{
+				var Comparison = Segment.Span.SequenceCompareTo(value.Slice(0, Segment.Length));
+
+				if (Comparison != 0)
+					return Comparison;
+
+				value = value.Slice(Segment.Length);
+			}
+
+			return 0;
+		}
+
+		/// <summary>
+		/// Compares the sequence to a span for sorting
+		/// </summary>
+		/// <typeparam name="T">The element type in the sequence</typeparam>
+		/// <param name="sequence">The sequence to compare</param>
+		/// <param name="value">The span to compare to</param>
+		/// <param name="comparer">A comparer to use</param>
+		/// <returns>The result of the comparison</returns>
+		public static int SequenceCompareTo<T>(this ReadOnlySequence<T> sequence, ReadOnlySpan<T> value, IComparer<T> comparer)
+		{
+			if (sequence.IsSingleSegment)
+				return sequence.First.Span.SequenceCompareTo(value, comparer);
+
+			foreach (var Segment in sequence)
+			{
+				var Comparison = Segment.Span.SequenceCompareTo(value.Slice(0, Segment.Length), comparer);
+
+				if (Comparison != 0)
+					return Comparison;
+
+				value = value.Slice(Segment.Length);
+			}
+
+			return 0;
+		}
+
+		/// <summary>
+		/// Compares the sequence to a span for equality
 		/// </summary>
 		/// <typeparam name="T">The element type in the sequence</typeparam>
 		/// <param name="sequence">The sequence to compare</param>
@@ -639,6 +763,33 @@ namespace System.Buffers
 					return false;
 
 				value = value.Slice(MySegment.Length);
+			}
+
+			return true;
+		}
+
+		/// <summary>
+		/// Compares the sequence to a span for equality
+		/// </summary>
+		/// <typeparam name="T">The element type in the sequence</typeparam>
+		/// <param name="sequence">The sequence to compare</param>
+		/// <param name="value">The span to compare to</param>
+		/// <param name="comparer">The comparer to use</param>
+		/// <returns>True if the two sequences match, otherwise false</returns>
+		public static bool SequenceEqual<T>(this ReadOnlySequence<T> sequence, ReadOnlySpan<T> value, IEqualityComparer<T> comparer)
+		{
+			if (sequence.Length != value.Length)
+				return false;
+
+			if (sequence.IsSingleSegment)
+				return sequence.First.Span.SequenceEqual(value, comparer);
+
+			foreach (var Segment in sequence)
+			{
+				if (!Segment.Span.SequenceEqual(value.Slice(0, Segment.Length), comparer))
+					return false;
+
+				value = value.Slice(Segment.Length);
 			}
 
 			return true;
@@ -909,7 +1060,16 @@ namespace System.Buffers
 			/// <inheritdoc />
 			public SplitSingleEnumerator<T> GetEnumerator()
 			{
+#if NETSTANDARD2_0
+				unsafe
+				{
+					// This should theoretically be safe, since we're a ref struct and can only exist on the stack (and thus won't be relocated by the GC), so the intermediary pointer is okay
+					_Enumerator = new SplitEnumerator<T>(_Enumerator.Sequence, new Span<T>(System.Runtime.CompilerServices.Unsafe.AsPointer(ref _Separator), 1), _Enumerator.OmitEmpty);
+				}
+#else
+				// Safe, since we're a ref struct, so creating a span over our own separator is okay
 				_Enumerator = new SplitEnumerator<T>(_Enumerator.Sequence, MemoryMarshal.CreateSpan(ref _Separator, 1), _Enumerator.OmitEmpty);
+#endif
 
 				return this;
 			}

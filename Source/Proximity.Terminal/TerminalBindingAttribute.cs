@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 //****************************************
 
 namespace Proximity.Terminal
 {
 	/// <summary>
-	/// Describes a terminal binding
+	/// Describes the binding of a property or method to a terminal command
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Method | AttributeTargets.Property, Inherited = false, AllowMultiple = true)]
 	public sealed class TerminalBindingAttribute : Attribute

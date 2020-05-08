@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -9,7 +10,6 @@ using System.Security.Permissions;
 using System.Threading;
 using Proximity.Logging.Config;
 using Proximity.Logging.Outputs;
-using Proximity.Utility.Collections;
 //****************************************
 
 namespace Proximity.Logging
@@ -157,7 +157,7 @@ namespace Proximity.Logging
 
 			Context = MyContext.Pop();
 
-			foreach (var MyOutput in _Outputs)
+			foreach (var MyOutput in MyOutputs)
 				MyOutput.FinishSection(oldSection);
 		}
 

@@ -3,8 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Security;
+using Proximity.Configuration;
 using Proximity.Logging.Outputs;
-using Proximity.Utility.Configuration;
 //****************************************
 
 namespace Proximity.Logging.Config

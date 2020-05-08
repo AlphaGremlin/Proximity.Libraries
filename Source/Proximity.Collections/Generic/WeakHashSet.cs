@@ -562,7 +562,6 @@ namespace System.Collections.Generic
 			private readonly WeakHashSet<T> _Set;
 
 			private int _Index;
-
 			//****************************************
 
 			internal Enumerator(WeakHashSet<T> parent)

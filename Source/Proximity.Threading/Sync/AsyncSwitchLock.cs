@@ -442,7 +442,7 @@ namespace System.Threading
 		//****************************************
 
 		/// <summary>
-		/// Represents the switch lock currently held
+		/// Represents the Switch Lock currently held
 		/// </summary>
 		public readonly struct Instance : IDisposable
 		{ //****************************************
@@ -462,6 +462,16 @@ namespace System.Threading
 			/// Releases the lock currently held
 			/// </summary>
 			public void Dispose() => _Instance.Release(_Token);
+
+			/// <summary>
+			/// Gets whether the Switch Lock is in Left mode
+			/// </summary>
+			public bool IsLeft => !_Instance.IsRight;
+
+			/// <summary>
+			/// Gets whether the Switch Lock is in Right mode
+			/// </summary>
+			public bool IsRight => _Instance.IsRight;
 		}
 
 		private static class LockState

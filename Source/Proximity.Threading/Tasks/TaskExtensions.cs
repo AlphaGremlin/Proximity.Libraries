@@ -77,7 +77,7 @@ namespace System.Threading.Tasks
 		/// <remarks>Will throw any exceptions from the original task, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
 		/// <exception cref="TimeoutException">The timeout elapsed</exception>
-		public static Task<TResult> When<TResult>(this Task<TResult> task, int milliseconds, CancellationToken token = default) => task.When(TimeSpan.FromMilliseconds(milliseconds), token);
+		public static Task<TResult> When<TResult>(this Task<TResult> task, int milliseconds, CancellationToken token = default) => task.When(new TimeSpan(milliseconds * TimeSpan.TicksPerMillisecond), token);
 
 		/// <summary>
 		/// Wraps the given task, waiting for it to complete or the given token to cancel

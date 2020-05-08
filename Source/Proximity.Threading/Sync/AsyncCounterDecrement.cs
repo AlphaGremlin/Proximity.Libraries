@@ -10,7 +10,7 @@ namespace System.Threading
 {
 	internal sealed class AsyncCounterDecrement : BaseCancellable, IValueTaskSource
 	{ //****************************************
-		private static readonly ConcurrentBag<AsyncCounterDecrement> _Instances = new ConcurrentBag<AsyncCounterDecrement>();
+		private static readonly ConcurrentBag<AsyncCounterDecrement> Instances = new ConcurrentBag<AsyncCounterDecrement>();
 		//****************************************
 		private volatile int _InstanceState;
 
@@ -154,7 +154,7 @@ namespace System.Threading
 			_InstanceState = Status.Unused;
 			ResetCancellation();
 
-			_Instances.Add(this);
+			Instances.Add(this);
 		}
 
 		//****************************************
@@ -171,7 +171,7 @@ namespace System.Threading
 
 		internal static AsyncCounterDecrement GetOrCreateFor(AsyncCounter counter, bool isPeek, bool isTaken)
 		{
-			if (!_Instances.TryTake(out var Instance))
+			if (!Instances.TryTake(out var Instance))
 				Instance = new AsyncCounterDecrement();
 
 			Instance.Initialise(counter, isPeek, isTaken);

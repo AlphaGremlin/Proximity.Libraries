@@ -91,7 +91,7 @@ namespace System.Threading.Tasks
 		/// <remarks>Will throw any exceptions from the original task, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
 		/// <exception cref="TimeoutException">The timeout elapsed</exception>
-		public static ValueTask<TResult> When<TResult>(this ValueTask<TResult> task, int milliseconds, CancellationToken token = default) => task.When(TimeSpan.FromMilliseconds(milliseconds), token);
+		public static ValueTask<TResult> When<TResult>(this ValueTask<TResult> task, int milliseconds, CancellationToken token = default) => task.When(new TimeSpan(milliseconds * TimeSpan.TicksPerMillisecond), token);
 
 		/// <summary>
 		/// Wraps the given task, waiting for it to complete or the given token to cancel
@@ -238,6 +238,19 @@ namespace System.Threading.Tasks
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
 		public static ValueTaskWaiter<T1,T2> ThenWaitOn<T1,T2>(this ValueTask<T1> task1, ValueTask<T2> task2) => new ValueTaskWaiter<T1, T2>(task1, task2);
 
+		/*
+		public static void Wait(this ValueTask task, CancellationToken token = default)
+		{
+			var Task = task.AsTask();
+
+			Task.Wait(token);
+			Task.GetAwaiter().GetResult();
+		}
+
+		public static bool Wait(this ValueTask task, int milliseconds, CancellationToken token = default) => task.AsTask().Wait(milliseconds, token);
+
+		public static void Wait(this ValueTask task, TimeSpan timeout, CancellationToken token = default) => task.AsTask().Wait((int)(timeout.Ticks / TimeSpan.TicksPerMillisecond), token);
+		*/
 		//****************************************
 
 		/// <summary>

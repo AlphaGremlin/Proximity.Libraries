@@ -1,4 +1,4 @@
-﻿/****************************************\
+/****************************************\
  StatisticManager.cs
  Created: 2014-04-09
 \****************************************/
@@ -17,17 +17,15 @@ namespace Proximity.Utility.Diagnostics
 		private readonly Dictionary<string, Statistic> _Statistics = new Dictionary<string, Statistic>();
 		
 		private readonly PrecisionTimer _Timer = new PrecisionTimer();
-		
-		private readonly TimeSpan _ShortInterval, _LongInterval;
 		//****************************************
-		
+
 		/// <summary>
 		/// Creates a new Statistics manager with the default Short and Long intervals
 		/// </summary>
 		public StatisticManager()
 		{
-			_ShortInterval = new TimeSpan(0, 0, 1);
-			_LongInterval = new TimeSpan(0, 1, 0);
+			ShortInterval = new TimeSpan(0, 0, 1);
+			LongInterval = new TimeSpan(0, 1, 0);
 		}
 		
 		/// <summary>
@@ -37,8 +35,8 @@ namespace Proximity.Utility.Diagnostics
 		/// <param name="longInterval"></param>
 		public StatisticManager(TimeSpan shortInterval, TimeSpan longInterval)
 		{
-			_ShortInterval = shortInterval;
-			_LongInterval = longInterval;
+			ShortInterval = shortInterval;
+			LongInterval = longInterval;
 		}
 		
 		//****************************************
@@ -78,12 +76,11 @@ namespace Proximity.Utility.Diagnostics
 		public void Add(string name, int count)
 		{	//****************************************
 			var CurrentTime = _Timer.GetTime();
-			Statistic MyStatistic;
 			//****************************************
 			
-			if (_Statistics.TryGetValue(name, out MyStatistic))
+			if (_Statistics.TryGetValue(name, out var Statistic))
 			{
-				MyStatistic.Add(CurrentTime, count);
+				Statistic.Add(CurrentTime, count);
 			}
 		}
 		
@@ -95,14 +92,13 @@ namespace Proximity.Utility.Diagnostics
 		public void Add(int count, params string[] names)
 		{	//****************************************
 			var CurrentTime = _Timer.GetTime();
-			Statistic MyStatistic;
 			//****************************************
 			
 			foreach(var MyName in names)
 			{
-				if (_Statistics.TryGetValue(MyName, out MyStatistic))
+				if (_Statistics.TryGetValue(MyName, out var Statistic))
 				{
-					MyStatistic.Add(CurrentTime, count);
+					Statistic.Add(CurrentTime, count);
 				}
 			}
 		}
@@ -114,12 +110,11 @@ namespace Proximity.Utility.Diagnostics
 		public void Increment(string name)
 		{	//****************************************
 			var CurrentTime = _Timer.GetTime();
-			Statistic MyStatistic;
 			//****************************************
 			
-			if (_Statistics.TryGetValue(name, out MyStatistic))
+			if (_Statistics.TryGetValue(name, out var Statistic))
 			{
-				MyStatistic.Add(CurrentTime, 1);
+				Statistic.Add(CurrentTime, 1);
 			}
 		}
 		
@@ -130,14 +125,13 @@ namespace Proximity.Utility.Diagnostics
 		public void Increment(params string[] names)
 		{	//****************************************
 			var CurrentTime = _Timer.GetTime();
-			Statistic MyStatistic;
 			//****************************************
 			
 			foreach(var MyName in names)
 			{
-				if (_Statistics.TryGetValue(MyName, out MyStatistic))
+				if (_Statistics.TryGetValue(MyName, out var Statistic))
 				{
-					MyStatistic.Add(CurrentTime, 1);
+					Statistic.Add(CurrentTime, 1);
 				}
 			}
 		}
@@ -160,45 +154,31 @@ namespace Proximity.Utility.Diagnostics
 		{
 			get
 			{
-				Statistic MyStatistic;
-				
-				if (_Statistics.TryGetValue(name, out MyStatistic))
-					return MyStatistic;
+				if (_Statistics.TryGetValue(name, out var Statistic))
+					return Statistic;
 				
 				return null;
 			}
 		}
-		
+
 		/// <summary>
 		/// Gets the exact time, down to the tick
 		/// </summary>
-		public DateTime NowExact
-		{
-			get { return _Timer.GetTime(); }
-		}
-		
+		public DateTime NowExact => _Timer.GetTime();
+
 		/// <summary>
 		/// Gets the short time between statistics intervals
 		/// </summary>
-		public TimeSpan ShortInterval
-		{
-			get { return _ShortInterval; }
-		}
-		
+		public TimeSpan ShortInterval { get; }
+
 		/// <summary>
 		/// Gets the long time between statistics intervals
 		/// </summary>
-		public TimeSpan LongInterval
-		{
-			get { return _LongInterval; }
-		}
-		
+		public TimeSpan LongInterval { get; }
+
 		/// <summary>
 		/// Gets a collection of all statistics
 		/// </summary>
-		public ICollection<Statistic> Statistics
-		{
-			get { return _Statistics.Values; }
-		}
+		public IReadOnlyCollection<Statistic> Statistics => _Statistics.Values;
 	}
 }

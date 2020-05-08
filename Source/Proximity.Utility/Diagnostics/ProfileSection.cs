@@ -1,7 +1,3 @@
-﻿/****************************************\
- ProfileSection.cs
- Created: 2014-04-09
-\****************************************/
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -16,33 +12,26 @@ namespace Proximity.Utility.Diagnostics
 	/// </summary>
 	public sealed class ProfileSection
 	{	//****************************************
-		private Profiler _Owner;
-		private string _Name;
-		
+		private readonly Profiler _Owner;
 		private long _Elapsed;
 		private long _ShortRecent, _ShortLast;
 		private long _LongRecent, _LongLast;
-		
-		private DateTime _ResetTime;
 		private long _NextShortUpdate, _NextLongUpdate;
 		//****************************************
 		
 		internal ProfileSection(Profiler owner, string name)
 		{
 			_Owner = owner;
-			_Name = name;
-			_ResetTime = _Owner.NowExact;
+			Name = name;
+			ResetTime = _Owner.NowExact;
 			
-			_NextShortUpdate = _NextLongUpdate = _ResetTime.Ticks;
+			_NextShortUpdate = _NextLongUpdate = ResetTime.Ticks;
 		}
-		
+
 		//****************************************
-		
-		internal Profiler.SectionInstance Start()
-		{
-			return new Profiler.SectionInstance(this, _Owner.NowExact);
-		}
-		
+
+		internal Profiler.SectionInstance Start() => new Profiler.SectionInstance(this, _Owner.NowExact);
+
 		internal void Finish(DateTime startTime)
 		{	//****************************************
 			var Now = _Owner.NowExact;
@@ -74,22 +63,19 @@ namespace Proximity.Utility.Diagnostics
 		/// </summary>
 		public void Reset()
 		{
-			_ResetTime = _Owner.NowExact;
+			ResetTime = _Owner.NowExact;
 			
 			Interlocked.Exchange(ref _Elapsed, 0L);
 		}
-		
+
 		/// <summary>
 		/// Provides a text representation of this Section
 		/// </summary>
 		/// <returns>A string describing the section</returns>
-		public override string ToString()
-		{
-			return string.Format("{0}: {1,4:F1}", _Name, new TimeSpan(_Elapsed).TotalMilliseconds);
-		}
-		
+		public override string ToString() => $"{Name}: {new TimeSpan(_Elapsed).TotalMilliseconds,4:F1}";
+
 		//****************************************
-		
+
 		private void Synchronise(DateTime currentTime)
 		{	//****************************************
 			long MyUpdateTime;
@@ -132,121 +118,88 @@ namespace Proximity.Utility.Diagnostics
 				}
 			}
 		}
-		
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Gets the name of this Section
 		/// </summary>
-		public string Name
-		{
-			get { return _Name; }
-		}
-		
+		public string Name { get; }
+
+		//****************************************
+
 		/// <summary>
 		/// Represents a record of profiler statistics as at a point in time
 		/// </summary>
 		public sealed class Record
 		{	//****************************************
 			private readonly Profiler _Owner;
-			private readonly DateTime _CurrentTime, _ResetLast;
-			
-			private readonly TimeSpan _Elapsed, _ElapsedShort, _ElapsedLong;
+
 			//****************************************
-			
+
 			internal Record(ProfileSection section)
 			{
 				_Owner = section._Owner;
-				_CurrentTime = _Owner.NowExact;
+				CurrentTime = _Owner.NowExact;
 				
-				_ResetLast = section._ResetTime;
-				_Elapsed = new TimeSpan(section._Elapsed);
-				_ElapsedShort = new TimeSpan(section._ShortLast);
-				_ElapsedLong = new TimeSpan(section._LongLast);
+				ResetLast = section.ResetTime;
+				Elapsed = new TimeSpan(section._Elapsed);
+				ElapsedShort = new TimeSpan(section._ShortLast);
+				ElapsedLong = new TimeSpan(section._LongLast);
 			}
-			
+
 			//****************************************
-			
+
 			/// <summary>
 			/// Gets the time at which these statistics were last reset
 			/// </summary>
-			public DateTime ResetLast
-			{
-				get { return _ResetLast; }
-			}
-			
+			public DateTime ResetLast { get; }
+
 			/// <summary>
 			/// Gets the time at which these statistics are current
 			/// </summary>
-			public DateTime CurrentTime
-			{
-				get { return _CurrentTime; }
-			}
-			
+			public DateTime CurrentTime { get; }
+
 			/// <summary>
 			/// Gets the amount of time elapsed since the last reset
 			/// </summary>
-			public TimeSpan ElapsedSinceReset
-			{
-				get { return _CurrentTime.Subtract(_ResetLast); }
-			}
-			
+			public TimeSpan ElapsedSinceReset => CurrentTime.Subtract(ResetLast);
+
 			/// <summary>
 			/// Gets the total events since the last reset
 			/// </summary>
-			public TimeSpan Elapsed
-			{
-				get { return _Elapsed; }
-			}
-			
+			public TimeSpan Elapsed { get; }
+
 			/// <summary>
 			/// Gets the total time elapsed during the last short interval
 			/// </summary>
-			public TimeSpan ElapsedShort
-			{
-				get { return _ElapsedShort; }
-			}
-			
+			public TimeSpan ElapsedShort { get; }
+
 			/// <summary>
 			/// Gets the total time elapsed during the last long interval
 			/// </summary>
-			public TimeSpan ElapsedLong
-			{
-				get { return _ElapsedLong; }
-			}
-			
+			public TimeSpan ElapsedLong { get; }
+
 			/// <summary>
 			/// Gets the average time spent per second since the last reset
 			/// </summary>
-			public TimeSpan Average
-			{
-				get { return TimeSpan.FromSeconds(_Elapsed.TotalSeconds / _CurrentTime.Subtract(_ResetLast).TotalSeconds); }
-			}
-			
+			public TimeSpan Average => new TimeSpan(Elapsed.Ticks / CurrentTime.Subtract(ResetLast).Ticks);
+
 			/// <summary>
 			/// Gets the average time spent per second in the last short interval
 			/// </summary>
-			public TimeSpan AverageShort
-			{
-				get { return TimeSpan.FromSeconds(_ElapsedShort.TotalSeconds / _Owner.ShortInterval.TotalSeconds); }
-			}
-			
+			public TimeSpan AverageShort => new TimeSpan(ElapsedShort.Ticks / _Owner.ShortInterval.Ticks);
+
 			/// <summary>
 			/// Gets the average time spent per second in the last long interval
 			/// </summary>
-			public TimeSpan AverageLong
-			{
-				get { return TimeSpan.FromSeconds(_ElapsedLong.TotalSeconds / _Owner.LongInterval.TotalSeconds); }
-			}
+			public TimeSpan AverageLong => new TimeSpan(ElapsedLong.Ticks / _Owner.LongInterval.Ticks);
 		}
-		
+
 		/// <summary>
 		/// Gets the last time this Section was reset
 		/// </summary>
-		public DateTime ResetTime
-		{
-			get { return _ResetTime; }
-		}
+		public DateTime ResetTime { get; private set; }
 	}
 	
 }

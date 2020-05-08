@@ -1,11 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Emit;
-using System.Security;
-using Proximity.Logging;
+using Proximity.Terminal.Metadata;
 //****************************************
 
 namespace Proximity.Terminal
@@ -128,9 +126,9 @@ namespace Proximity.Terminal
 		/// <param name="name">The unique name to assign this Instance</param>
 		/// <param name="instance">The instance itself</param>
 		/// <returns>A new Terminal Instance describing this Instance</returns>
-		public TerminalInstance Add(string name, object instance)
+		public TerminalTypeInstance Add(string name, object instance)
 		{	//****************************************
-			TerminalInstance MyInstance;
+			TerminalTypeInstance MyInstance;
 			//****************************************
 			
 			if (!_IsLoaded)
@@ -144,7 +142,7 @@ namespace Proximity.Terminal
 			
 			//****************************************
 			
-			MyInstance = new TerminalInstance(name, MyType, instance);
+			MyInstance = new TerminalTypeInstance(name, MyType, instance);
 			
 			if (MyType.IsDefault)
 				MyTypeSet.Default = MyInstance;
@@ -284,13 +282,13 @@ namespace Proximity.Terminal
 				}
 			}
 		}
-		
+
 		//****************************************
-		
+
 		/// <summary>
-		/// Gets a list of all global commands
+		/// Gets a collection of all global commands
 		/// </summary>
-		public IEnumerable<TerminalCommandSet> Commands
+		public IReadOnlyCollection<TerminalCommandSet> Commands
 		{
 			get
 			{
@@ -298,11 +296,11 @@ namespace Proximity.Terminal
 					return _Commands.Values.ToArray();
 			}
 		}
-		
+
 		/// <summary>
-		/// Gets a list of all global variables
+		/// Gets a collection of all global variables
 		/// </summary>
-		public IEnumerable<TerminalVariable> Variables
+		public IReadOnlyCollection<TerminalVariable> Variables
 		{
 			get
 			{
@@ -310,15 +308,14 @@ namespace Proximity.Terminal
 					return _Variables.Values.ToArray();
 			}
 		}
-		
+
 		/// <summary>
-		/// Gets a list of all type sets
+		/// Gets a collection of all type sets
 		/// </summary>
-		public IEnumerable<TerminalTypeSet> TypeSets
-		{
-			get { return _TypeSets.Values; }
-		}
-		
+		public ICollection<TerminalTypeSet> TypeSets => _TypeSets.Values;
+
+		//****************************************
+
 		/// <summary>
 		/// A global registry of terminal provider instances
 		/// </summary>

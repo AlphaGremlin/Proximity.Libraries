@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Diagnostics;
 using System.Configuration;
 using System.Collections.Generic;
-using Proximity.Utility.Configuration;
+using Proximity.Configuration;
 using System.Security;
 //****************************************
 

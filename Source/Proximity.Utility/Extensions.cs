@@ -1,4 +1,4 @@
-﻿/****************************************\
+/****************************************\
  Extensions.cs
  Created: 2013-04-30
 \****************************************/
@@ -24,7 +24,17 @@ namespace Proximity.Utility
 		/// <param name="comparison">The comparison method to use</param>
 		/// <returns>The percentage match from 0.0 to 1.0 where 1.0 is 100%</returns>
 		/// <remarks>Based on http://www.catalysoft.com/articles/StrikeAMatch.html, essentially Dice's Coefficient, extended with support for 1-character fragments and empty strings</remarks>
-		public static double SimilarTo(this string left, string right, StringComparison comparison)
+		public static double SimilarTo(this string left, string right, StringComparison comparison) => SimilarTo(left.AsSpan(), right.AsSpan(), comparison);
+
+		/// <summary>
+		/// Calculates the similarity between two strings
+		/// </summary>
+		/// <param name="left">The first string to compare</param>
+		/// <param name="right">The second string to compare</param>
+		/// <param name="comparison">The comparison method to use</param>
+		/// <returns>The percentage match from 0.0 to 1.0 where 1.0 is 100%</returns>
+		/// <remarks>Based on http://www.catalysoft.com/articles/StrikeAMatch.html, essentially Dice's Coefficient, extended with support for 1-character fragments and empty strings</remarks>
+		public static double SimilarTo(this ReadOnlySpan<char> left, ReadOnlySpan<char> right, StringComparison comparison)
 		{	//****************************************
 			var Intersection = 0;
 			//****************************************
@@ -38,11 +48,11 @@ namespace Proximity.Utility
 
 			//****************************************
 
-			for (int LeftIndex = 0; LeftIndex < Left.Count; LeftIndex++)
+			for (var LeftIndex = 0; LeftIndex < Left.Count; LeftIndex++)
 			{
 				var LeftChar = Left[LeftIndex];
 
-				for (int RightIndex = 0; RightIndex < Right.Count; RightIndex++)
+				for (var RightIndex = 0; RightIndex < Right.Count; RightIndex++)
 				{
 					var RightChar = Right[RightIndex];
 
@@ -51,7 +61,7 @@ namespace Proximity.Utility
 						continue;
 
 					// Compare the fragments
-					if (string.Compare(left, LeftChar.Index, right, RightChar.Index, LeftChar.Count, comparison) == 0)
+					if (left.Slice(LeftChar.Index, LeftChar.Count).CompareTo(right.Slice(RightChar.Index, RightChar.Count), comparison) == 0)
 					{
 						Intersection += LeftChar.Count;
 
@@ -69,7 +79,7 @@ namespace Proximity.Utility
 
 		//****************************************
 
-		private static List<CharIndexCount> GetWordFragments(string source, out int count)
+		private static List<CharIndexCount> GetWordFragments(ReadOnlySpan<char> source, out int count)
 		{	//****************************************
 			var Pairs = new List<CharIndexCount>(source.Length);
 			var PreviousWhitespace = true;

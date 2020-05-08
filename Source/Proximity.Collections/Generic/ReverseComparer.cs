@@ -2,11 +2,14 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
-using Proximity.Collections.Reverse;
 //****************************************
 
 namespace System.Collections.Generic
 {
+	/// <summary>
+	/// Provides a comparer that sorts in reversed order to default
+	/// </summary>
+	/// <remarks>Note that the reversal also includes null values, which will also be sorted in reverse of normal</remarks>
 	public abstract class ReverseComparer
 	{
 		/// <summary>
@@ -73,9 +76,9 @@ namespace System.Collections.Generic
 	}
 
 	/// <summary>
-	/// Represents an IComparer that sorts in reversed order to default
+	/// Provides a comparer that sorts in reversed order to default
 	/// </summary>
-	/// <remarks>Note that the reversal also includes null values, which will be sorted first</remarks>
+	/// <remarks>Note that the reversal also includes null values, which will also be sorted in reverse of normal</remarks>
 	public abstract class ReverseComparer<T> : ReverseComparer, IComparer<T>, IComparer
 	{	//****************************************
 		private static ReverseComparer<T>? _DefaultComparer;

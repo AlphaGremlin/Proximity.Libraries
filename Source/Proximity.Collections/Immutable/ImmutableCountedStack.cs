@@ -114,8 +114,7 @@ namespace System.Collections.Immutable
 	/// <summary>
 	/// Provides an Immutable Stack that also maintains a counter
 	/// </summary>
-	[Serializable]
-	public sealed class ImmutableCountedStack<T> : /*ISerializable,*/ IEnumerable<T>, IImmutableStack<T>, IReadOnlyCollection<T>
+	public sealed class ImmutableCountedStack<T> : IEnumerable<T>, IImmutableStack<T>, IReadOnlyCollection<T>
 	{
 		/// <summary>
 		/// An empty immutable counted stack
@@ -217,6 +216,29 @@ namespace System.Collections.Immutable
 		/// <param name="item">The item to push</param>
 		/// <returns>The stack with the new top item</returns>
 		public ImmutableCountedStack<T> Push(T item) => new ImmutableCountedStack<T>(item, this, Count + 1);
+
+		/// <summary>
+		/// Retrieves the top item on the stack, if able
+		/// </summary>
+		/// <param name="item">A reference that receives the top item</param>
+		/// <returns>True if an item was found on the top of the stack, otherwise False</returns>
+		public bool TryPeek(
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+			out T item)
+		{
+			if (_Tail == null)
+			{
+				item = default!;
+
+				return false;
+			}
+
+			item = _Head;
+
+			return true;
+		}
 
 		//****************************************
 
