@@ -870,7 +870,6 @@ namespace System.Collections.Observable
 			private readonly ObservableSortedList<TKey, TValue> _Parent;
 
 			private int _Index;
-
 			//****************************************
 
 			internal KeyValueEnumerator(ObservableSortedList<TKey, TValue> parent)
@@ -899,7 +898,7 @@ namespace System.Collections.Observable
 				if (_Index >= _Parent._Size)
 				{
 					_Index = _Parent._Size + 1;
-					Current = default(KeyValuePair<TKey, TValue>);
+					Current = default;
 
 					return false;
 				}
@@ -914,7 +913,7 @@ namespace System.Collections.Observable
 			void IEnumerator.Reset()
 			{
 				_Index = 0;
-				Current = default(KeyValuePair<TKey, TValue>);
+				Current = default;
 			}
 
 			//****************************************
@@ -994,7 +993,6 @@ namespace System.Collections.Observable
 			private readonly ObservableSortedList<TKey, TValue> _Parent;
 
 			private int _Index;
-
 			//****************************************
 
 			internal ValueEnumerator(ObservableSortedList<TKey, TValue> parent)

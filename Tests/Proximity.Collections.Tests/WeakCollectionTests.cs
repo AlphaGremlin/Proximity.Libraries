@@ -199,7 +199,7 @@ namespace Proximity.Collections.Tests
 		[Test()]
 		public void WeakEnum()
 		{	//****************************************
-			bool Found = false;
+			var Found = false;
 			//****************************************
 			
 			AllocateWithSingle<object>(out var MyCollection, out var MyObject, 1);

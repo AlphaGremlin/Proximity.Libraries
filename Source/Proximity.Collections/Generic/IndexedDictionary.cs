@@ -371,6 +371,66 @@ namespace System.Collections.Generic
 		}
 
 		/// <inheritdoc />
+		public int RemoveAll(Predicate<KeyValuePair<TKey, TValue>> predicate)
+		{
+			var Entries = _Entries;
+			var Buckets = _Buckets;
+			var Index = 0;
+
+			// Find the first item we need to remove
+			while (Index < _Size && !predicate(Entries[Index].Item))
+				Index++;
+
+			// Did we find anything?
+			if (Index >= _Size)
+				return 0;
+
+			Array.Clear(Buckets, 0, Buckets.Length);
+
+			if (Index > 0)
+				Reindex(Buckets, Entries, 0, Index);
+
+			var LeadIndex = Index + 1;
+
+			while (LeadIndex < _Size)
+			{
+				// Skip the items we need to remove
+				while (LeadIndex < _Size && predicate(Entries[LeadIndex].Item))
+					LeadIndex++;
+
+				// If we reached the end, abort
+				if (LeadIndex >= _Size)
+					break;
+
+				// We found one we're not removing, so move it up
+				ref var Entry = ref Entries[Index];
+
+				Entry = Entries[LeadIndex];
+
+				// Reindex it
+				ref var Bucket = ref Buckets[Entry.HashCode % Buckets.Length];
+				var NextIndex = Bucket - 1;
+
+				Entry.NextIndex = NextIndex;
+				Entry.PreviousIndex = -1;
+
+				if (NextIndex >= 0)
+					Entries[NextIndex].PreviousIndex = Index;
+
+				Bucket = Index + 1;
+
+				Index++;
+				LeadIndex++;
+			}
+
+			// Clear the removed items
+			Array.Clear(_Entries, Index, _Size - Index);
+			_Size = Index;
+
+			return LeadIndex - Index;
+		}
+
+		/// <inheritdoc />
 		public void RemoveAt(int index)
 		{
 			if (index >= _Size || index < 0)
@@ -384,28 +444,19 @@ namespace System.Collections.Generic
 			var PreviousIndex = Entry.PreviousIndex;
 
 			// We're removing an entry, so fix up the linked list
+			if (NextIndex >= 0)
+			{
+				// There's someone after us. Adjust them to point to the entry before us. If there's nobody, they will become the new tail
+				Entries[NextIndex].PreviousIndex = PreviousIndex;
+			}
+
 			if (PreviousIndex >= 0)
 			{
-				if (NextIndex >= 0)
-				{
-					// We're neither the head or tail, so we can remove ourselves easily
-					Entries[NextIndex].PreviousIndex = PreviousIndex;
-					Entries[PreviousIndex].NextIndex = NextIndex;
-				}
-				else
-				{
-					// We're the head, so we can just update the entry before us
-					Entries[PreviousIndex].NextIndex = NextIndex;
-				}
+				// There's someone before us. Adjust them to point to the entry after us. If there's nobody, they will become the new head
+				Entries[PreviousIndex].NextIndex = NextIndex;
 			}
 			else
 			{
-				if (NextIndex >= 0)
-				{
-					// We're the tail, so we need to update the entry after us
-					Entries[NextIndex].PreviousIndex = -1;
-				}
-
 				// We're either the tail or a solitary entry (with no one before or after us)
 				// Either way, we need to update the index stored in the Bucket
 				_Buckets[Entry.HashCode % _Buckets.Length] = NextIndex + 1;
@@ -414,7 +465,7 @@ namespace System.Collections.Generic
 			if (index < _Size - 1)
 			{
 				// We're not removing the last entry, so we need to copy that entry to our previous position
-				// This ensures there are no gaps in the Entry table, allowing us to use direct array indexing
+				// This ensures there are no gaps in the Entry table, allowing us to use direct array indexing at the cost of items moving around after a remove
 				Entry = Entries[_Size - 1];
 				NextIndex = Entry.NextIndex;
 				PreviousIndex = Entry.PreviousIndex;
@@ -440,8 +491,7 @@ namespace System.Collections.Generic
 			}
 
 			// Clear the final entry
-			Entry = ref Entries[--_Size];
-			Entry.Item = default;
+			Entries[--_Size] = default;
 		}
 
 		/// <summary>
