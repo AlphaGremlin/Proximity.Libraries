@@ -1,6 +1,8 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace System.Text
@@ -44,6 +46,15 @@ namespace System.Text
 
 			return builder;
 		}
+#else
+		/// <summary>
+		/// Appends a character span to a StringBuilder
+		/// </summary>
+		/// <param name="builder">The StringBuilder to write to</param>
+		/// <param name="content">The char sequence to append</param>
+		/// <returns>The target StringBuilder</returns>
+		[EditorBrowsable(EditorBrowsableState.Never), MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static StringBuilder Append(StringBuilder builder, ReadOnlySpan<char> content) => builder.Append(content);
 #endif
 
 		/// <summary>

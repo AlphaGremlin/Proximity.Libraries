@@ -335,41 +335,41 @@ namespace System.Linq
 
 		//****************************************
 
-		private sealed class JoinItem<TItem>
+		private sealed class JoinItem<T>
 		{ //****************************************
-			public readonly TItem Item;
-			public readonly JoinItem<TItem>? Next;
+			public readonly T Item;
+			public readonly JoinItem<T>? Next;
 			//****************************************
 
-			public JoinItem(TItem item)
+			public JoinItem(T item)
 			{
 				Item = item;
 				Next = null;
 			}
 
-			public JoinItem(TItem item, JoinItem<TItem> next)
+			public JoinItem(T item, JoinItem<T> next)
 			{
 				Item = item;
 				Next = next;
 			}
 		}
 
-		private sealed class JoinRoot<TItem>
+		private sealed class JoinRoot<T>
 		{ //****************************************
-			public JoinItem<TItem> Root;
+			public JoinItem<T> Root;
 			public bool IsRemoved;
 			//****************************************
 
-			public JoinRoot(TItem item)
+			public JoinRoot(T item)
 			{
-				Root = new JoinItem<TItem>(item);
+				Root = new JoinItem<T>(item);
 			}
 
 			//****************************************
 
-			public IEnumerable<TItem> Enumerate()
+			public IEnumerable<T> Enumerate()
 			{
-				JoinItem<TItem>? MyItem = Root;
+				JoinItem<T>? MyItem = Root;
 
 				do
 				{

@@ -21,9 +21,9 @@ namespace Proximity.Terminal
 		/// <summary>
 		/// Gets the colour associated with a particular logging level
 		/// </summary>
-		/// <param name="level">The relevant logging level</param>
+		/// <param name="level">The relevant logging level, or null if this is a reported console command </param>
 		/// <returns>The associated colour</returns>
-		public abstract ConsoleColor GetColour(LogLevel level);
+		public abstract ConsoleColor GetColour(LogLevel? level);
 
 		//****************************************
 
@@ -37,11 +37,16 @@ namespace Proximity.Terminal
 		/// </summary>
 		public abstract ConsoleColor PromptColour { get; }
 
+		/// <summary>
+		/// Gets whether to echo entered console commands back to the terminal
+		/// </summary>
+		public abstract bool EchoCommands { get; }
+
 		//****************************************
 
 		private sealed class DefaultTheme : TerminalTheme
 		{
-			public override ConsoleColor GetColour(LogLevel level)
+			public override ConsoleColor GetColour(LogLevel? level)
 			{
 				return level switch
 				{
@@ -51,6 +56,7 @@ namespace Proximity.Terminal
 					LogLevel.None => ConsoleColor.Cyan,
 					LogLevel.Information => ConsoleColor.White,
 					LogLevel.Debug => ConsoleColor.Blue,
+					null => PromptColour,
 					_ => ConsoleColor.Gray,
 				};
 			}
@@ -58,6 +64,8 @@ namespace Proximity.Terminal
 			public override string Prompt => "> ";
 
 			public override ConsoleColor PromptColour => ConsoleColor.Green;
+
+			public override bool EchoCommands => true;
 		}
 	}
 }

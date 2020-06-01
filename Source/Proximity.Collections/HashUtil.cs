@@ -32,7 +32,7 @@ namespace Proximity.Collections
 			// you're already eating ~224mb of data just in the data structures alone, so performance probably isn't your target anyway
 			var Prime = Primes[Primes.Length - 1];
 
-			return Math.DivRem(minimum, Prime, out var Remainder) * Prime + Prime;
+			return Math.DivRem(minimum, Prime, out _) * Prime + Prime;
 		}
 	}
 }

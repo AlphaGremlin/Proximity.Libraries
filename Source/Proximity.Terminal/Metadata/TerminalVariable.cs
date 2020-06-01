@@ -28,7 +28,7 @@ namespace Proximity.Terminal.Metadata
 		/// </summary>
 		/// <param name="instance">The instance object in question</param>
 		/// <returns>The variable value</returns>
-		public object GetValue(object instance) => _Property.GetValue(instance);
+		public object GetValue(object? instance) => _Property.GetValue(instance);
 
 		/// <summary>
 		/// Attempts to set the value of a variable
@@ -36,7 +36,7 @@ namespace Proximity.Terminal.Metadata
 		/// <param name="instance">The instance object in question</param>
 		/// <param name="argumentText">The value entered on the terminal</param>
 		/// <returns>True if the property was set correctly, otherwise false</returns>
-		public bool SetValue(object instance, string argumentText)
+		public bool SetValue(object? instance, ReadOnlySpan<char> argumentText)
 		{	//****************************************
 			TypeConverter MyConverter;
 			object MyValue;
@@ -52,7 +52,7 @@ namespace Proximity.Terminal.Metadata
 			
 			try
 			{
-				MyValue = MyConverter.ConvertFromString(argumentText);
+				MyValue = MyConverter.ConvertFromString(argumentText.AsString());
 				
 				_Property.SetValue(instance, MyValue);
 				

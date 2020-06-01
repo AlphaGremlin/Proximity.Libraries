@@ -317,33 +317,9 @@ namespace System.Collections.Concurrent
 		/// <returns>True if the item was removed, False if key was not found, or the value was not as expected</returns>
 		/// <remarks>Wraps calling IDictionary.Remove(KeyValuePair)</remarks>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static bool TryRemovePair<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, TValue expectedValue)
+		public static bool Remove<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, TValue expectedValue)
 		{
 			return ((IDictionary<TKey, TValue>)target).Remove(new KeyValuePair<TKey, TValue>(key, expectedValue));
-		}
-		
-		/// <summary>
-		/// Removes all items from the concurrent dictionary
-		/// </summary>
-		/// <param name="target">The target concurrent dictionary</param>
-		/// <returns>An array of all the key/value pairs removed</returns>
-		public static KeyValuePair<TKey, TValue>[] RemoveAll<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target)
-		{	//****************************************
-			var MyValues = new List<KeyValuePair<TKey, TValue>>(target.Count);
-			//****************************************
-
-			while (target.Count > 0)
-			{
-				foreach (var MyKey in target.Keys)
-				{
-					if (target.TryRemove(MyKey, out var MyValue))
-						MyValues.Add(new KeyValuePair<TKey, TValue>(MyKey, MyValue));
-				}
-			}
-
-			//****************************************
-
-			return MyValues.ToArray();
 		}
 
 		/// <summary>

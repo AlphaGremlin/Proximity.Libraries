@@ -1,24 +1,30 @@
 using System;
+using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
-using Proximity.Collections;
+using Proximity.Buffers.Collections;
 
 namespace System.Collections.Generic
 {
 	/// <summary>
-	/// Provides a Dictionary implementation with efficient index-based and key-based access
+	/// Provides a Dictionary implementation with character key supporting <see cref="ReadOnlyMemory{Char}"/> and <see cref="ReadOnlySpan{Char}"/>
 	/// </summary>
-	/// <typeparam name="TKey">The type of key</typeparam>
 	/// <typeparam name="TValue">The type of value</typeparam>
 	/// <remarks>Note that index locations can change in response to Remove operations</remarks>
-	public class IndexedDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IList<KeyValuePair<TKey, TValue>>, IReadOnlyList<KeyValuePair<TKey, TValue>>, IList, IDictionary
+	public class StringKeyDictionary<TValue> :
+		IDictionary<string, TValue>, IDictionary, // We don't implement IDictionary<ReadOnlyMemory<char>>, since it would require copying the key values
+		IList<KeyValuePair<string, TValue>>, IList,
+		IReadOnlyDictionary<string, TValue>, IReadOnlyDictionary<ReadOnlyMemory<char>, TValue>,
+		IReadOnlyList<KeyValuePair<string, TValue>>, IReadOnlyList<KeyValuePair<ReadOnlyMemory<char>, TValue>>
 	{ //****************************************
 		private const int HashCodeMask = 0x7FFFFFFF;
 		//****************************************
+		private readonly BlockEqualityComparer<char> _Comparer;
+
 		private int[] _Buckets;
 		private Entry[] _Entries;
 
@@ -26,9 +32,9 @@ namespace System.Collections.Generic
 		//****************************************
 
 		/// <summary>
-			/// Creates a default Indexed Dictionary
-			/// </summary>
-		public IndexedDictionary() : this(0, null)
+		/// Creates a default Indexed Dictionary
+		/// </summary>
+		public StringKeyDictionary() : this(0, StringComparison.Ordinal)
 		{
 		}
 
@@ -36,15 +42,15 @@ namespace System.Collections.Generic
 		/// Creates an Indexed Dictionary
 		/// </summary>
 		/// <param name="capacity">The starting capacity</param>
-		public IndexedDictionary(int capacity) : this(capacity, null)
+		public StringKeyDictionary(int capacity) : this(capacity, StringComparison.Ordinal)
 		{
 		}
 
 		/// <summary>
 		/// Creates an Indexed Dictionary
 		/// </summary>
-		/// <param name="comparer">The equality comparer to use for keys</param>
-		public IndexedDictionary(IEqualityComparer<TKey>? comparer) : this(0, comparer)
+		/// <param name="comparison">The string comparer to use for keys</param>
+		public StringKeyDictionary(StringComparison comparison) : this(0, comparison)
 		{
 		}
 
@@ -52,13 +58,14 @@ namespace System.Collections.Generic
 		/// Creates an Indexed Dictionary
 		/// </summary>
 		/// <param name="capacity">The starting capacity</param>
-		/// <param name="comparer">The equality comparer to use for keys</param>
-		public IndexedDictionary(int capacity, IEqualityComparer<TKey>? comparer)
+		/// <param name="comparison">The string comparer to use for keys</param>
+		public StringKeyDictionary(int capacity, StringComparison comparison)
 		{
 			if (capacity < 0)
 				throw new ArgumentOutOfRangeException(nameof(capacity));
 
-			Comparer = comparer ?? EqualityComparer<TKey>.Default;
+			Comparison = comparison;
+			_Comparer = BlockEqualityComparer.ForChar(comparison);
 
 			if (capacity == 0)
 			{
@@ -71,8 +78,8 @@ namespace System.Collections.Generic
 				_Entries = new Entry[capacity];
 			}
 
-			Keys = new IndexedKeys(this);
-			Values = new IndexedValues(this);
+			Keys = new DictionaryKeys(this);
+			Values = new DictionaryValues(this);
 		}
 
 		/// <summary>
@@ -80,7 +87,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <param name="collection">The starting contents of the dictionary</param>
 		/// <remarks>The items are not guaranteed to be stored in the provided index order</remarks>
-		public IndexedDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection) : this(collection, null)
+		public StringKeyDictionary(IEnumerable<KeyValuePair<string, TValue>> collection) : this(collection, StringComparison.Ordinal)
 		{
 		}
 
@@ -88,14 +95,15 @@ namespace System.Collections.Generic
 		/// Creates an Indexed Dictionary
 		/// </summary>
 		/// <param name="collection">The starting contents of the dictionary</param>
-		/// <param name="comparer">The equality comparer to use for keys</param>
+		/// <param name="comparison">The string comparer to use for keys</param>
 		/// <remarks>The items are not guaranteed to be stored in the provided index order</remarks>
-		public IndexedDictionary(IEnumerable<KeyValuePair<TKey, TValue>> collection, IEqualityComparer<TKey>? comparer)
+		public StringKeyDictionary(IEnumerable<KeyValuePair<string, TValue>> collection, StringComparison comparison)
 		{
 			if (collection == null)
 				throw new ArgumentNullException(nameof(collection));
 
-			Comparer = comparer ?? EqualityComparer<TKey>.Default;
+			Comparison = comparison;
+			_Comparer = BlockEqualityComparer.ForChar(comparison);
 
 			_Size = collection.Count();
 			var Capacity = HashUtil.GetPrime(_Size);
@@ -110,19 +118,19 @@ namespace System.Collections.Generic
 				ref var Entry = ref _Entries[Index++];
 
 				Entry.Item = MyPair;
-				Entry.HashCode = Comparer.GetHashCode(MyPair.Key) & HashCodeMask;
+				Entry.HashCode = _Comparer.GetHashCode(MyPair.Key.AsSpan()) & HashCodeMask;
 			}
 
 			// Get everything into HashCode order
 			Array.Sort(_Entries, 0, _Size);
 
 			// Check the new items don't have any duplicates
-			VerifyDistinct(_Entries, _Size, Comparer);
+			VerifyDistinct(_Entries, _Size, _Comparer);
 
 			Reindex(_Buckets, _Entries, 0, _Size);
 
-			Keys = new IndexedKeys(this);
-			Values = new IndexedValues(this);
+			Keys = new DictionaryKeys(this);
+			Values = new DictionaryValues(this);
 		}
 
 		//****************************************
@@ -133,14 +141,14 @@ namespace System.Collections.Generic
 		/// <param name="key">The key of the item</param>
 		/// <param name="value">The value to associate with the key</param>
 		/// <returns>The index of the added key/value pair</returns>
-		public int Add(TKey key, TValue value) => Add(new KeyValuePair<TKey, TValue>(key, value));
+		public int Add(string key, TValue value) => Add(new KeyValuePair<string, TValue>(key, value));
 
 		/// <summary>
 		/// Adds an item to the dictionary
 		/// </summary>
 		/// <param name="item">The key/value pair to add</param>
 		/// <returns>The index of the added key/value pair</returns>
-		public int Add(KeyValuePair<TKey, TValue> item)
+		public int Add(KeyValuePair<string, TValue> item)
 		{
 			if (!TryAdd(item, false, out var Index))
 				throw new ArgumentException(nameof(item));
@@ -154,27 +162,27 @@ namespace System.Collections.Generic
 		/// <param name="key">The key of the item to add</param>
 		/// <param name="value">The value of the item to add</param>
 		/// <param name="index">Receives the index of the key/value pair</param>
-		public void AddOrUpdate(TKey key, TValue value, out int index) => AddOrUpdate(new KeyValuePair<TKey, TValue>(key, value), out index);
+		public void AddOrUpdate(string key, TValue value, out int index) => AddOrUpdate(new KeyValuePair<string, TValue>(key, value), out index);
 
 		/// <summary>
 		/// Adds or updates an item in the Dictionary
 		/// </summary>
 		/// <param name="item">The key/value pair to add</param>
 		/// <param name="index">Receives the index of the key/value pair</param>
-		public void AddOrUpdate(KeyValuePair<TKey, TValue> item, out int index) => TryAdd(item, true, out index);
+		public void AddOrUpdate(KeyValuePair<string, TValue> item, out int index) => TryAdd(item, true, out index);
 
 		/// <summary>
 		/// Adds a range of elements to the dictionary
 		/// </summary>
 		/// <param name="items">The elements to add</param>
 		/// <exception cref="ArgumentException">The input elements have duplicated keys, or the key already exists in the dictionary</exception>
-		public void AddRange(IEnumerable<KeyValuePair<TKey, TValue>> items)
+		public void AddRange(IEnumerable<KeyValuePair<string, TValue>> items)
 		{
 			if (items == null)
 				throw new ArgumentNullException(nameof(items));
 
 			// Gather all the items to add, calculating their keys as we go
-			var NewItems = items.Select(pair => new Entry { HashCode = Comparer.GetHashCode(pair.Key) & HashCodeMask, Item = pair }).ToArray();
+			var NewItems = items.Select(pair => new Entry { HashCode = _Comparer.GetHashCode(pair.Key.AsSpan()) & HashCodeMask, Item = pair }).ToArray();
 
 			if (NewItems.Length == 0)
 				return;
@@ -188,7 +196,7 @@ namespace System.Collections.Generic
 			var Entries = _Entries;
 
 			// Check the new items don't have any duplicates
-			VerifyDistinct(NewItems, NewItems.Length, Comparer);
+			VerifyDistinct(NewItems, NewItems.Length, _Comparer);
 
 			// No duplicates in the new items. Check the keys aren't already in the Dictionary
 			if (_Size > 0)
@@ -202,10 +210,12 @@ namespace System.Collections.Generic
 					var Bucket = _Buckets[Item.HashCode % _Buckets.Length];
 					var EntryIndex = Bucket - 1;
 
+					var ItemSpan = Item.Key.AsSpan();
+
 					// Check for collisions
 					while (EntryIndex >= 0)
 					{
-						if (Entries[EntryIndex].HashCode == Item.HashCode && Comparer.Equals(Entries[EntryIndex].Key, Item.Key))
+						if (Entries[EntryIndex].HashCode == Item.HashCode && _Comparer.Equals(Entries[EntryIndex].Key.AsSpan(), ItemSpan))
 							throw new ArgumentException("An item with the same key has already been added.");
 
 						EntryIndex = Entries[EntryIndex].NextIndex;
@@ -245,16 +255,22 @@ namespace System.Collections.Generic
 		}
 
 		/// <inheritdoc />
-		public bool Contains(KeyValuePair<TKey, TValue> item) => IndexOf(item) != -1;
+		public bool Contains(KeyValuePair<string, TValue> item) => IndexOf(item) != -1;
 
 		/// <inheritdoc />
-		public bool ContainsKey(TKey key) => IndexOfKey(key) != -1;
+		public bool ContainsKey(string key) => IndexOfKey(key.AsSpan()) != -1;
+
+		/// <inheritdoc />
+		public bool ContainsKey(ReadOnlyMemory<char> key) => IndexOfKey(key.Span) != -1;
+
+		/// <inheritdoc />
+		public bool ContainsKey(ReadOnlySpan<char> key) => IndexOfKey(key) != -1;
 
 		/// <inheritdoc />
 		public bool ContainsValue(TValue value) => IndexOfValue(value) != -1;
 
 		/// <inheritdoc />
-		public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
+		public void CopyTo(KeyValuePair<string, TValue>[] array, int arrayIndex)
 		{
 			if (arrayIndex + _Size > array.Length)
 				throw new ArgumentOutOfRangeException(nameof(arrayIndex));
@@ -270,7 +286,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <param name="index">The index to retrieve</param>
 		/// <returns>They key/value pair at the requested index</returns>
-		public KeyValuePair<TKey, TValue> Get(int index) => GetByIndex(index);
+		public KeyValuePair<string, TValue> Get(int index) => GetByIndex(index);
 
 		/// <summary>
 		/// Gets an enumerator for this Dictionary
@@ -283,11 +299,27 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <param name="item">The item to locate</param>
 		/// <returns>The index of the item if found, otherwise -1</returns>
-		public int IndexOf(KeyValuePair<TKey, TValue> item)
+		public int IndexOf(KeyValuePair<string, TValue> item)
 		{
-			var Index = IndexOfKey(item.Key);
+			var Index = IndexOfKey(item.Key.AsSpan());
 
 			if (Index == -1 || !EqualityComparer<TValue>.Default.Equals(_Entries[Index].Value, item.Value))
+				return -1;
+
+			return Index;
+		}
+
+		/// <summary>
+		/// Determines the index of a specific item in the list
+		/// </summary>
+		/// <param name="key">The key to lookup</param>
+		/// <param name="value">The value to match</param>
+		/// <returns>The index of the item if found and the value matches, otherwise -1</returns>
+		public int IndexOf(ReadOnlySpan<char> key, TValue value)
+		{
+			var Index = IndexOfKey(key);
+
+			if (Index == -1 || !EqualityComparer<TValue>.Default.Equals(_Entries[Index].Value, value))
 				return -1;
 
 			return Index;
@@ -298,7 +330,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <param name="key">The key to lookup</param>
 		/// <returns>The index of the key, if found, otherwise -1</returns>
-		public int IndexOfKey(TKey key)
+		public int IndexOfKey(ReadOnlySpan<char> key)
 		{
 			if (key == null)
 				throw new ArgumentNullException(nameof(key));
@@ -306,7 +338,7 @@ namespace System.Collections.Generic
 			if (_Buckets.Length == 0)
 				return -1;
 
-			var HashCode = Comparer.GetHashCode(key) & HashCodeMask;
+			var HashCode = _Comparer.GetHashCode(key) & HashCodeMask;
 			var Entries = _Entries;
 			var TotalCollisions = 0;
 
@@ -317,7 +349,7 @@ namespace System.Collections.Generic
 			// Check for collisions
 			while (Index >= 0)
 			{
-				if (Entries[Index].HashCode == HashCode && Comparer.Equals(Entries[Index].Key, key))
+				if (Entries[Index].HashCode == HashCode && _Comparer.Equals(Entries[Index].Key.AsSpan(), key))
 					break;
 
 				Index = Entries[Index].NextIndex;
@@ -328,6 +360,13 @@ namespace System.Collections.Generic
 
 			return Index;
 		}
+
+		/// <summary>
+		/// Finds the index of a particular key
+		/// </summary>
+		/// <param name="key">The key to lookup</param>
+		/// <returns>The index of the key, if found, otherwise -1</returns>
+		public int IndexOfKey(string key) => IndexOfKey(key.AsSpan());
 
 		/// <summary>
 		/// Finds the index of a particular value
@@ -349,7 +388,7 @@ namespace System.Collections.Generic
 		}
 
 		/// <inheritdoc />
-		public bool Remove(TKey key)
+		public bool Remove(ReadOnlySpan<char> key)
 		{
 			var Index = IndexOfKey(key);
 
@@ -361,15 +400,37 @@ namespace System.Collections.Generic
 			return true;
 		}
 
+		/// <inheritdoc />
+		public bool Remove(string key) => Remove(key.AsSpan());
+
 		/// <summary>
 		/// Removes an element from the collection
 		/// </summary>
 		/// <param name="item">The element to remove</param>
-		public bool Remove(KeyValuePair<TKey, TValue> item)
+		/// <returns>True if the item was found and removed, otherwise False</returns>
+		public bool Remove(KeyValuePair<string, TValue> item)
 		{
-			var Index = IndexOfKey(item.Key);
+			var Index = IndexOfKey(item.Key.AsSpan());
 
 			if (Index == -1 || !EqualityComparer<TValue>.Default.Equals(_Entries[Index].Value, item.Value))
+				return false;
+
+			RemoveAt(Index);
+
+			return true;
+		}
+
+		/// <summary>
+		/// Removes an element from the collection
+		/// </summary>
+		/// <param name="key">The element to remove</param>
+		/// <param name="value">The value to remove</param>
+		/// <returns>True if the item was found and removed, otherwise False</returns>
+		public bool Remove(ReadOnlySpan<char> key, TValue value)
+		{
+			var Index = IndexOfKey(key);
+
+			if (Index == -1 || !EqualityComparer<TValue>.Default.Equals(_Entries[Index].Value, value))
 				return false;
 
 			RemoveAt(Index);
@@ -382,7 +443,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <param name="predicate">A predicate that returns True for items to remove</param>
 		/// <returns>The number of items removed</returns>
-		public int RemoveAll(Predicate<KeyValuePair<TKey, TValue>> predicate)
+		public int RemoveAll(Predicate<KeyValuePair<string, TValue>> predicate)
 		{
 			var Entries = _Entries;
 			var Buckets = _Buckets;
@@ -532,14 +593,14 @@ namespace System.Collections.Generic
 		/// <param name="key">The key of the item</param>
 		/// <param name="value">The value to associate with the key</param>
 		/// <returns>True if the item was added, otherwise False</returns>
-		public bool TryAdd(TKey key, TValue value) => TryAdd(new KeyValuePair<TKey, TValue>(key, value), out _);
+		public bool TryAdd(string key, TValue value) => TryAdd(new KeyValuePair<string, TValue>(key, value), out _);
 
 		/// <summary>
 		/// Tries to add an item to the Dictionary
 		/// </summary>
 		/// <param name="item">The key/value pair to add</param>
 		/// <returns>True if the item was added, otherwise False</returns>
-		public bool TryAdd(KeyValuePair<TKey, TValue> item) => TryAdd(item, out _);
+		public bool TryAdd(KeyValuePair<string, TValue> item) => TryAdd(item, out _);
 
 		/// <summary>
 		/// Tries to add an item to the Dictionary
@@ -548,7 +609,7 @@ namespace System.Collections.Generic
 		/// <param name="value">The value to associate with the key</param>
 		/// <param name="index">Receives the index of the new key/value pair, if added</param>
 		/// <returns>True if the item was added, otherwise False</returns>
-		public bool TryAdd(TKey key, TValue value, out int index) => TryAdd(new KeyValuePair<TKey, TValue>(key, value), out index);
+		public bool TryAdd(string key, TValue value, out int index) => TryAdd(new KeyValuePair<string, TValue>(key, value), out index);
 
 		/// <summary>
 		/// Tries to add an item to the Dictionary
@@ -556,10 +617,24 @@ namespace System.Collections.Generic
 		/// <param name="item">The key/value pair to add</param>
 		/// <param name="index">Receives the index of the new key/value pair, if added</param>
 		/// <returns>True if the item was added, otherwise False</returns>
-		public bool TryAdd(KeyValuePair<TKey, TValue> item, out int index) => TryAdd(item, false, out index);
+		public bool TryAdd(KeyValuePair<string, TValue> item, out int index) => TryAdd(item, false, out index);
 
 		/// <inheritdoc />
-		public bool TryGetValue(TKey key,
+		public bool TryGetValue(string key,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+			out TValue value) => TryGetValue(key.AsSpan(), out value);
+
+		/// <inheritdoc />
+		public bool TryGetValue(ReadOnlyMemory<char> key,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+			out TValue value) => TryGetValue(key.Span, out value);
+
+		/// <inheritdoc />
+		public bool TryGetValue(ReadOnlySpan<char> key,
 #if !NETSTANDARD2_0
 			[MaybeNullWhen(false)]
 #endif
@@ -583,7 +658,19 @@ namespace System.Collections.Generic
 		/// <param name="key">The key of the item to remove</param>
 		/// <param name="value">Receives the value of the removed item</param>
 		/// <returns>True if the item was removed, otherwise False</returns>
-		public bool TryRemove(TKey key,
+		public bool TryRemove(string key,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+			out TValue value) => TryRemove(key.AsSpan(), out value);
+
+		/// <summary>
+		/// Tries to remove an item from the dictionary
+		/// </summary>
+		/// <param name="key">The key of the item to remove</param>
+		/// <param name="value">Receives the value of the removed item</param>
+		/// <returns>True if the item was removed, otherwise False</returns>
+		public bool TryRemove(ReadOnlySpan<char> key,
 #if !NETSTANDARD2_0
 			[MaybeNullWhen(false)]
 #endif
@@ -604,54 +691,58 @@ namespace System.Collections.Generic
 			return true;
 		}
 
-		void IDictionary<TKey, TValue>.Add(TKey key, TValue value)
+		//****************************************
+
+		void IDictionary<string, TValue>.Add(string key, TValue value)
 		{
-			if (!TryAdd(new KeyValuePair<TKey, TValue>(key, value), false, out _))
+			if (!TryAdd(new KeyValuePair<string, TValue>(key, value), false, out _))
 				throw new ArgumentException(nameof(key));
 		}
 
-		void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> item) => Add(item);
+		void ICollection<KeyValuePair<string, TValue>>.Add(KeyValuePair<string, TValue> item) => Add(item);
 
-		void IDictionary.Add(object key, object value)
+		bool IDictionary<string, TValue>.Remove(string key) => Remove(key.AsSpan());
+
+		void IDictionary.Add(object key, object? value)
 		{
-			if (!(key is TKey MyKey))
+			if (!(key is string MyKey))
 				throw new ArgumentException("Not a supported key", nameof(key));
 
 			if (!(value is TValue MyValue))
 				throw new ArgumentException("Not a supported value", nameof(value));
 
-			Add(new KeyValuePair<TKey, TValue>(MyKey, MyValue));
+			Add(new KeyValuePair<string, TValue>(MyKey, MyValue));
 		}
 
 		bool IDictionary.Contains(object value)
 		{
-			if (value is KeyValuePair<TKey, TValue> MyPair)
+			if (value is KeyValuePair<string, TValue> MyPair)
 				return Contains(MyPair);
 
-			if (value is DictionaryEntry MyEntry && MyEntry.Key is TKey MyKey && MyEntry.Value is TValue MyValue)
-				return Contains(new KeyValuePair<TKey, TValue>(MyKey, MyValue));
+			if (value is DictionaryEntry MyEntry && MyEntry.Key is string MyKey && MyEntry.Value is TValue MyValue)
+				return Contains(new KeyValuePair<string, TValue>(MyKey, MyValue));
 
 			return false;
 		}
 
 		void IDictionary.Remove(object value)
 		{
-			if (value is KeyValuePair<TKey, TValue> MyPair)
+			if (value is KeyValuePair<string, TValue> MyPair)
 			{
 				Remove(MyPair);
 				return;
 			}
 
-			if (value is DictionaryEntry MyEntry && MyEntry.Key is TKey MyKey && MyEntry.Value is TValue MyValue)
+			if (value is DictionaryEntry MyEntry && MyEntry.Key is string MyKey && MyEntry.Value is TValue MyValue)
 			{
-				Remove(new KeyValuePair<TKey, TValue>(MyKey, MyValue));
+				Remove(new KeyValuePair<string, TValue>(MyKey, MyValue));
 				return;
 			}
 		}
 
-		int IList.Add(object value)
+		int IList.Add(object? value)
 		{
-			if (value is KeyValuePair<TKey, TValue> MyPair)
+			if (value is KeyValuePair<string, TValue> MyPair)
 			{
 				if (TryAdd(MyPair, false, out var Index))
 					return Index;
@@ -659,9 +750,9 @@ namespace System.Collections.Generic
 				return -1;
 			}
 
-			if (value is DictionaryEntry MyEntry && MyEntry.Key is TKey MyKey && MyEntry.Value is TValue MyValue)
+			if (value is DictionaryEntry MyEntry && MyEntry.Key is string MyKey && MyEntry.Value is TValue MyValue)
 			{
-				if (TryAdd(new KeyValuePair<TKey, TValue>(MyKey, MyValue), false, out var Index))
+				if (TryAdd(new KeyValuePair<string, TValue>(MyKey, MyValue), false, out var Index))
 					return Index;
 
 				return -1;
@@ -670,63 +761,62 @@ namespace System.Collections.Generic
 			throw new ArgumentException("Not a supported value", nameof(value));
 		}
 
-		bool IList.Contains(object value)
+		bool IList.Contains(object? value)
 		{
-			if (value is KeyValuePair<TKey, TValue> MyPair)
+			if (value is KeyValuePair<string, TValue> MyPair)
 				return Contains(MyPair);
 
-			if (value is DictionaryEntry MyEntry && MyEntry.Key is TKey MyKey && MyEntry.Value is TValue MyValue)
-				return Contains(new KeyValuePair<TKey, TValue>(MyKey, MyValue));
+			if (value is DictionaryEntry MyEntry && MyEntry.Key is string MyKey && MyEntry.Value is TValue MyValue)
+				return Contains(new KeyValuePair<string, TValue>(MyKey, MyValue));
 
 			return false;
 		}
 
-		int IList.IndexOf(object value)
+		int IList.IndexOf(object? value)
 		{
-			if (value is KeyValuePair<TKey, TValue> MyPair)
+			if (value is KeyValuePair<string, TValue> MyPair)
 				return IndexOf(MyPair);
 
-			if (value is DictionaryEntry MyEntry && MyEntry.Key is TKey MyKey && MyEntry.Value is TValue MyValue)
-				return IndexOf(new KeyValuePair<TKey, TValue>(MyKey, MyValue));
+			if (value is DictionaryEntry MyEntry && MyEntry.Key is string MyKey && MyEntry.Value is TValue MyValue)
+				return IndexOf(new KeyValuePair<string, TValue>(MyKey, MyValue));
 
 			return -1;
 		}
 
-		void IList.Remove(object value)
+		void IList.Remove(object? value)
 		{
-			if (value is KeyValuePair<TKey, TValue> MyPair)
+			if (value is KeyValuePair<string, TValue> MyPair)
 			{
 				Remove(MyPair);
 				return;
 			}
 
-			if (value is DictionaryEntry MyEntry && MyEntry.Key is TKey MyKey && MyEntry.Value is TValue MyValue)
+			if (value is DictionaryEntry MyEntry && MyEntry.Key is string MyKey && MyEntry.Value is TValue MyValue)
 			{
-				Remove(new KeyValuePair<TKey, TValue>(MyKey, MyValue));
+				Remove(new KeyValuePair<string, TValue>(MyKey, MyValue));
 				return;
 			}
 		}
 
-		void ICollection.CopyTo(Array array, int index) => CopyTo((KeyValuePair<TKey, TValue>[])array, index);
+		void ICollection.CopyTo(Array array, int index) => CopyTo((KeyValuePair<string, TValue>[])array, index);
 
-		IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator() => new Enumerator(this);
+		IEnumerator<KeyValuePair<string, TValue>> IEnumerable<KeyValuePair<string, TValue>>.GetEnumerator() => new Enumerator(this);
+
+		IEnumerator<KeyValuePair<ReadOnlyMemory<char>, TValue>> IEnumerable<KeyValuePair<ReadOnlyMemory<char>, TValue>>.GetEnumerator() => new Enumerator(this);
 
 		IDictionaryEnumerator IDictionary.GetEnumerator() => new DictionaryEnumerator(this);
 
 		IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this);
 
-		void IList.Insert(int index, object value) => throw new NotSupportedException();
+		void IList.Insert(int index, object? value) => throw new NotSupportedException();
 
-		void IList<KeyValuePair<TKey, TValue>>.Insert(int index, KeyValuePair<TKey, TValue> item) => throw new NotSupportedException();
+		void IList<KeyValuePair<string, TValue>>.Insert(int index, KeyValuePair<string, TValue> item) => throw new NotSupportedException();
 
 		//****************************************
 
-		private bool TryAdd(KeyValuePair<TKey, TValue> item, bool replace, out int index)
+		private bool TryAdd(KeyValuePair<string, TValue> item, bool replace, out int index)
 		{
-			if (item.Key == null)
-				throw new ArgumentNullException(nameof(item));
-
-			var HashCode = Comparer.GetHashCode(item.Key) & HashCodeMask;
+			var HashCode = _Comparer.GetHashCode(item.Key.AsSpan()) & HashCodeMask;
 			var Entries = _Entries;
 			var TotalCollisions = 0;
 
@@ -740,7 +830,7 @@ namespace System.Collections.Generic
 			// Check for collisions
 			while (Index >= 0)
 			{
-				if (Entries[Index].HashCode == HashCode && Comparer.Equals(Entries[Index].Key, item.Key))
+				if (Entries[Index].HashCode == HashCode && _Comparer.Equals(Entries[Index].Key.AsSpan(), item.Key.AsSpan()))
 				{
 					// Key is the same
 					if (replace)
@@ -811,7 +901,7 @@ namespace System.Collections.Generic
 			_Entries = NewEntries;
 		}
 
-		private ref KeyValuePair<TKey, TValue> GetByIndex(int index)
+		private ref readonly KeyValuePair<string, TValue> GetByIndex(int index)
 		{
 			if (index >= _Size || index < 0)
 				throw new ArgumentOutOfRangeException(nameof(index));
@@ -839,7 +929,7 @@ namespace System.Collections.Generic
 			}
 		}
 
-		private static void VerifyDistinct(Entry[] entries, int size, IEqualityComparer<TKey> comparer)
+		private static void VerifyDistinct(Entry[] entries, int size, BlockEqualityComparer<char> comparer)
 		{
 			var Index = 0;
 
@@ -855,13 +945,15 @@ namespace System.Collections.Generic
 				}
 				while (Index < size && entries[Index].HashCode == CurrentItem.HashCode);
 
+				var CurrentSpan = CurrentItem.Key.AsSpan();
+
 				// Is there more than one item with the same Hash?
 				while (Index - StartIndex > 1)
 				{
 					// Compare the first item to the others
 					for (var SubIndex = StartIndex + 1; SubIndex < Index; SubIndex++)
 					{
-						if (comparer.Equals(CurrentItem.Key, entries[SubIndex].Key))
+						if (comparer.Equals(CurrentSpan, entries[SubIndex].Key.AsSpan()))
 							throw new ArgumentException("Input collection has duplicates");
 					}
 
@@ -874,7 +966,7 @@ namespace System.Collections.Generic
 		//****************************************
 
 		/// <inheritdoc />
-		public TValue this[TKey key]
+		public TValue this[ReadOnlySpan<char> key]
 		{
 			get
 			{
@@ -885,7 +977,16 @@ namespace System.Collections.Generic
 
 				return _Entries[Index].Value;
 			}
-			set => TryAdd(new KeyValuePair<TKey, TValue>(key, value), true, out _);
+		}
+
+		/// <inheritdoc />
+		public TValue this[ReadOnlyMemory<char> key] => this[key.Span];
+
+		/// <inheritdoc />
+		public TValue this[string key]
+		{
+			get => this[key.AsSpan()];
+			set => TryAdd(new KeyValuePair<string, TValue>(key, value), true, out _);
 		}
 
 		/// <inheritdoc />
@@ -894,15 +995,15 @@ namespace System.Collections.Generic
 		/// <summary>
 		/// Gets a collection of keys
 		/// </summary>
-		public IndexedKeys Keys { get; }
+		public DictionaryKeys Keys { get; }
 
 		/// <summary>
 		/// Gets a collection of values
 		/// </summary>
-		public IndexedValues Values { get; }
+		public DictionaryValues Values { get; }
 
 		/// <summary>
-		/// Gets/Sets the number of elements that the Indexed Dictionary can contain.
+		/// Gets/Sets the number of elements that the String Key Dictionary can contain.
 		/// </summary>
 		public int Capacity
 		{
@@ -917,23 +1018,27 @@ namespace System.Collections.Generic
 		}
 
 		/// <summary>
-		/// Gets the equality comparer being used for the Key
+		/// Gets the string comparison being used for the Key
 		/// </summary>
-		public IEqualityComparer<TKey> Comparer { get; }
+		public StringComparison Comparison { get; }
 
 		ICollection IDictionary.Keys => Keys;
 
 		ICollection IDictionary.Values => Values;
 
-		ICollection<TKey> IDictionary<TKey, TValue>.Keys => Keys;
+		ICollection<string> IDictionary<string, TValue>.Keys => Keys;
 
-		ICollection<TValue> IDictionary<TKey, TValue>.Values => Values;
+		ICollection<TValue> IDictionary<string, TValue>.Values => Values;
 
-		IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys => Keys;
+		IEnumerable<ReadOnlyMemory<char>> IReadOnlyDictionary<ReadOnlyMemory<char>, TValue>.Keys => Keys;
 
-		IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => Values;
+		IEnumerable<string> IReadOnlyDictionary<string, TValue>.Keys => Keys;
 
-		bool ICollection<KeyValuePair<TKey, TValue>>.IsReadOnly => false;
+		IEnumerable<TValue> IReadOnlyDictionary<ReadOnlyMemory<char>, TValue>.Values => Values;
+
+		IEnumerable<TValue> IReadOnlyDictionary<string, TValue>.Values => Values;
+
+		bool ICollection<KeyValuePair<string, TValue>>.IsReadOnly => false;
 
 		bool IDictionary.IsFixedSize => false;
 
@@ -947,10 +1052,20 @@ namespace System.Collections.Generic
 		{
 			get
 			{
-				if (!(key is TKey MyKey))
+				ReadOnlySpan<char> Key;
+
+				if (key is string StringKey)
+					Key = StringKey.AsSpan();
+				else if (key is ReadOnlyMemory<char> ROMKey)
+					Key = ROMKey.Span;
+				else if (key is char[] ArrayKey)
+					Key = ArrayKey;
+				else if (key is ArraySegment<char> SegmentKey)
+					Key = SegmentKey;
+				else
 					throw new KeyNotFoundException();
 
-				var Index = IndexOfKey(MyKey);
+				var Index = IndexOfKey(Key);
 
 				if (Index == -1)
 					throw new KeyNotFoundException();
@@ -959,25 +1074,35 @@ namespace System.Collections.Generic
 			}
 			set
 			{
-				if (!(key is TKey MyKey))
+				if (!(key is string MyKey))
 					throw new ArgumentException("Not a supported key", nameof(key));
 
 				if (!(value is TValue MyValue))
 					throw new ArgumentException("Not a supported value", nameof(value));
 
-				TryAdd(new KeyValuePair<TKey, TValue>(MyKey, MyValue), true, out _);
+				TryAdd(new KeyValuePair<string, TValue>(MyKey, MyValue), true, out _);
 			}
 		}
 
-		KeyValuePair<TKey, TValue> IReadOnlyList<KeyValuePair<TKey, TValue>>.this[int index] => GetByIndex(index);
+		KeyValuePair<string, TValue> IReadOnlyList<KeyValuePair<string, TValue>>.this[int index] => GetByIndex(index);
 
-		KeyValuePair<TKey, TValue> IList<KeyValuePair<TKey, TValue>>.this[int index]
+		KeyValuePair<ReadOnlyMemory<char>, TValue> IReadOnlyList<KeyValuePair<ReadOnlyMemory<char>, TValue>>.this[int index]
+		{
+			get
+			{
+				ref readonly var Entry = ref GetByIndex(index);
+
+				return new KeyValuePair<ReadOnlyMemory<char>, TValue>(Entry.Key.AsMemory(), Entry.Value);
+			}
+		}
+
+		KeyValuePair<string, TValue> IList<KeyValuePair<string, TValue>>.this[int index]
 		{
 			get => GetByIndex(index);
 			set => throw new NotSupportedException();
 		}
 
-		object IList.this[int index]
+		object? IList.this[int index]
 		{
 			get => GetByIndex(index);
 			set => throw new NotSupportedException();
@@ -994,8 +1119,8 @@ namespace System.Collections.Generic
 			public int NextIndex;
 			public int PreviousIndex;
 			public int HashCode;
-			public KeyValuePair<TKey, TValue> Item;
-			public TKey Key => Item.Key;
+			public KeyValuePair<string, TValue> Item;
+			public string Key => Item.Key;
 			public TValue Value => Item.Value;
 
 			int IComparable<Entry>.CompareTo(Entry other) => HashCode - other.HashCode;
@@ -1004,15 +1129,15 @@ namespace System.Collections.Generic
 		/// <summary>
 		/// Provides a key/value pair enumerator
 		/// </summary>
-		public struct Enumerator : IEnumerator<KeyValuePair<TKey, TValue>>
+		public struct Enumerator : IEnumerator<KeyValuePair<string, TValue>>, IEnumerator<KeyValuePair<ReadOnlyMemory<char>, TValue>>
 		{ //****************************************
-			private readonly IndexedDictionary<TKey, TValue> _Parent;
+			private readonly StringKeyDictionary<TValue> _Parent;
 
 			private int _Index;
-			private KeyValuePair<TKey, TValue> _Current;
+			private KeyValuePair<string, TValue> _Current;
 			//****************************************
 
-			internal Enumerator(IndexedDictionary<TKey, TValue> parent)
+			internal Enumerator(StringKeyDictionary<TValue> parent)
 			{
 				_Parent = parent;
 				_Index = 0;
@@ -1045,7 +1170,9 @@ namespace System.Collections.Generic
 			//****************************************
 
 			/// <inheritdoc />
-			public KeyValuePair<TKey, TValue> Current => _Current;
+			public KeyValuePair<string, TValue> Current => _Current;
+
+			KeyValuePair<ReadOnlyMemory<char>, TValue> IEnumerator<KeyValuePair<ReadOnlyMemory<char>, TValue>>.Current => new KeyValuePair<ReadOnlyMemory<char>, TValue>(_Current.Key.AsMemory(), _Current.Value);
 
 			object IEnumerator.Current => Current;
 		}
@@ -1058,7 +1185,7 @@ namespace System.Collections.Generic
 			private Enumerator _Parent;
 			//****************************************
 
-			internal DictionaryEnumerator(IndexedDictionary<TKey, TValue> parent)
+			internal DictionaryEnumerator(StringKeyDictionary<TValue> parent)
 			{
 				_Parent = new Enumerator(parent);
 			}
@@ -1088,7 +1215,7 @@ namespace System.Collections.Generic
 
 			DictionaryEntry IDictionaryEnumerator.Entry => Current;
 
-			object? IDictionaryEnumerator.Key => _Parent.Current.Key;
+			object IDictionaryEnumerator.Key => _Parent.Current.Key;
 
 			object? IDictionaryEnumerator.Value => _Parent.Current.Value;
 		}
@@ -1096,12 +1223,12 @@ namespace System.Collections.Generic
 		/// <summary>
 		/// Provides a key enumerator
 		/// </summary>
-		public struct KeyEnumerator : IEnumerator<TKey>
+		public struct KeyEnumerator : IEnumerator<string>, IEnumerator<ReadOnlyMemory<char>>
 		{ //****************************************
 			private readonly Enumerator _Parent;
 			//****************************************
 
-			internal KeyEnumerator(IndexedDictionary<TKey, TValue> parent)
+			internal KeyEnumerator(StringKeyDictionary<TValue> parent)
 			{
 				_Parent = new Enumerator(parent);
 			}
@@ -1121,7 +1248,9 @@ namespace System.Collections.Generic
 			//****************************************
 
 			/// <inheritdoc />
-			public TKey Current => _Parent.Current.Key;
+			public string Current => _Parent.Current.Key;
+
+			ReadOnlyMemory<char> IEnumerator<ReadOnlyMemory<char>>.Current => _Parent.Current.Key.AsMemory();
 
 			object? IEnumerator.Current => Current;
 		}
@@ -1134,7 +1263,7 @@ namespace System.Collections.Generic
 			private readonly Enumerator _Parent;
 			//****************************************
 
-			internal ValueEnumerator(IndexedDictionary<TKey, TValue> parent)
+			internal ValueEnumerator(StringKeyDictionary<TValue> parent)
 			{
 				_Parent = new Enumerator(parent);
 			}
@@ -1165,7 +1294,7 @@ namespace System.Collections.Generic
 		/// <typeparam name="T">The type of item</typeparam>
 		public abstract class Collection<T> : IList<T>, IReadOnlyList<T>, IList
 		{
-			internal Collection(IndexedDictionary<TKey, TValue> parent)
+			internal Collection(StringKeyDictionary<TValue> parent)
 			{
 				Parent = parent;
 			}
@@ -1186,6 +1315,12 @@ namespace System.Collections.Generic
 
 			private protected abstract IEnumerator<T> InternalGetEnumerator();
 
+			/// <summary>
+			/// Gets an array that represents this collection
+			/// </summary>
+			/// <returns>A new array containing the elements of this collection</returns>
+			public abstract T[] ToArray();
+
 			void ICollection.CopyTo(Array array, int index)
 			{
 				if (array is T[] MyArray)
@@ -1198,7 +1333,7 @@ namespace System.Collections.Generic
 				throw new ArgumentException("Cannot copy to target array");
 			}
 
-			bool IList.Contains(object value)
+			bool IList.Contains(object? value)
 			{
 				if (value is T Item)
 					return Contains(Item);
@@ -1206,7 +1341,7 @@ namespace System.Collections.Generic
 				return false;
 			}
 
-			int IList.IndexOf(object value)
+			int IList.IndexOf(object? value)
 			{
 				if (value is T Item)
 					return IndexOf(Item);
@@ -1218,19 +1353,19 @@ namespace System.Collections.Generic
 
 			void ICollection<T>.Add(T item) => throw new NotSupportedException();
 
-			int IList.Add(object item) => throw new NotSupportedException();
+			int IList.Add(object? item) => throw new NotSupportedException();
 
 			void ICollection<T>.Clear() => throw new NotSupportedException();
 
 			void IList.Clear() => throw new NotSupportedException();
 
-			void IList.Insert(int index, object value) => throw new NotSupportedException();
+			void IList.Insert(int index, object? value) => throw new NotSupportedException();
 
 			void IList<T>.Insert(int index, T item) => throw new NotSupportedException();
 
 			bool ICollection<T>.Remove(T item) => throw new NotSupportedException();
 
-			void IList.Remove(object item) => throw new NotSupportedException();
+			void IList.Remove(object? item) => throw new NotSupportedException();
 
 			void IList.RemoveAt(int index) => throw new NotSupportedException();
 
@@ -1249,7 +1384,7 @@ namespace System.Collections.Generic
 			bool IList.IsFixedSize => false;
 
 			bool IList.IsReadOnly => true;
-			
+
 			T IList<T>.this[int index]
 			{
 				get => this[index];
@@ -1269,25 +1404,28 @@ namespace System.Collections.Generic
 			/// <summary>
 			/// Gets the parent Dictionary
 			/// </summary>
-			protected IndexedDictionary<TKey, TValue> Parent { get; }
+			protected StringKeyDictionary<TValue> Parent { get; }
 		}
 
 		/// <summary>
 		/// Provides a read-only keys wrapper
 		/// </summary>
-		public sealed class IndexedKeys : Collection<TKey>
+		public sealed class DictionaryKeys : Collection<string>, IEnumerable<ReadOnlyMemory<char>>
 		{
-			internal IndexedKeys(IndexedDictionary<TKey, TValue> parent) : base(parent)
+			internal DictionaryKeys(StringKeyDictionary<TValue> parent) : base(parent)
 			{
 			}
 
 			//****************************************
 
 			/// <inheritdoc />
-			public override bool Contains(TKey item) => Parent.ContainsKey(item);
+			public override bool Contains(string item) => Parent.ContainsKey(item.AsSpan());
 
 			/// <inheritdoc />
-			public override void CopyTo(TKey[] array, int arrayIndex)
+			public bool Contains(ReadOnlySpan<char> item) => Parent.ContainsKey(item);
+
+			/// <inheritdoc />
+			public override void CopyTo(string[] array, int arrayIndex)
 			{
 				var Count = Parent._Size;
 
@@ -1306,22 +1444,37 @@ namespace System.Collections.Generic
 			public new KeyEnumerator GetEnumerator() => new KeyEnumerator(Parent);
 
 			/// <inheritdoc />
-			public override int IndexOf(TKey item) => Parent.IndexOfKey(item);
+			public override int IndexOf(string item) => Parent.IndexOfKey(item.AsSpan());
 
 			/// <inheritdoc />
-			public override TKey this[int index] => Parent.GetByIndex(index).Key;
+			public int IndexOf(ReadOnlySpan<char> item) => Parent.IndexOfKey(item);
+
+			/// <inheritdoc />
+			public override string this[int index] => Parent.GetByIndex(index).Key;
+
+			/// <inheritdoc />
+			public override string[] ToArray()
+			{
+				var Result = new string[Parent.Count];
+
+				CopyTo(Result, 0);
+
+				return Result;
+			}
 
 			//****************************************
 
-			private protected override IEnumerator<TKey> InternalGetEnumerator() => GetEnumerator();
+			private protected override IEnumerator<string> InternalGetEnumerator() => GetEnumerator();
+
+			IEnumerator<ReadOnlyMemory<char>> IEnumerable<ReadOnlyMemory<char>>.GetEnumerator() => GetEnumerator();
 		}
 
 		/// <summary>
 		/// Provides a read-only values wrapper
 		/// </summary>
-		public sealed class IndexedValues: Collection<TValue>
+		public sealed class DictionaryValues : Collection<TValue>
 		{
-			internal IndexedValues(IndexedDictionary<TKey, TValue> parent) : base(parent)
+			internal DictionaryValues(StringKeyDictionary<TValue> parent) : base(parent)
 			{
 			}
 
@@ -1354,6 +1507,16 @@ namespace System.Collections.Generic
 
 			/// <inheritdoc />
 			public override TValue this[int index] => Parent.GetByIndex(index).Value;
+
+			/// <inheritdoc />
+			public override TValue[] ToArray()
+			{
+				var Result = new TValue[Parent.Count];
+
+				CopyTo(Result, 0);
+
+				return Result;
+			}
 
 			//****************************************
 

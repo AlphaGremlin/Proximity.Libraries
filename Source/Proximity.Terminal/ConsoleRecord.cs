@@ -10,7 +10,7 @@ namespace Proximity.Terminal
 	/// </summary>
 	public sealed class ConsoleRecord
 	{
-		internal ConsoleRecord(DateTimeOffset timestamp, LogLevel severity, string text)
+		internal ConsoleRecord(DateTimeOffset timestamp, LogLevel? severity, string text)
 		{
 			Timestamp = timestamp;
 			Severity = severity;
@@ -32,6 +32,7 @@ namespace Proximity.Terminal
 		/// <summary>
 		/// Gets the severity of this entry
 		/// </summary>
-		public LogLevel Severity { get; }
+		[CLSCompliant(false)]
+		public LogLevel? Severity { get; }
 	}
 }

@@ -99,19 +99,19 @@ namespace Proximity.Collections.Tests
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
-			var MyRecords = new IndexedDictionary<CollideStruct, int>();
+			var MyRecords = new IndexedDictionary<Collider, int>();
 
-			var MyDictionary = new Dictionary<CollideStruct, int>(64);
+			var MyDictionary = new Dictionary<Collider, int>(64);
 			//****************************************
 
 			for (var Index = 0; Index < 64; Index++)
 			{
-				CollideStruct Key;
+				Collider Key;
 				int Value;
 
 				do
 				{
-					Key = new CollideStruct(MyRandom.Next());
+					Key = new Collider(MyRandom.Next());
 				} while (MyDictionary.ContainsKey(Key));
 
 				Value = MyRandom.Next();
@@ -202,19 +202,19 @@ namespace Proximity.Collections.Tests
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
-			var MyRecords = new IndexedDictionary<CollideStruct, int>(64);
+			var MyRecords = new IndexedDictionary<Collider, int>(64);
 
-			var MyDictionary = new Dictionary<CollideStruct, int>(64);
+			var MyDictionary = new Dictionary<Collider, int>(64);
 			//****************************************
 
 			for (var Index = 0; Index < 64; Index++)
 			{
-				CollideStruct Key;
+				Collider Key;
 				int Value;
 
 				do
 				{
-					Key = new CollideStruct(MyRandom.Next());
+					Key = new Collider(MyRandom.Next());
 				} while (MyDictionary.ContainsKey(Key));
 
 				Value = MyRandom.Next();
@@ -349,20 +349,20 @@ namespace Proximity.Collections.Tests
 		{	//****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
-			var MyRecords = new IndexedDictionary<CollideStruct, int>(64);
+			var MyRecords = new IndexedDictionary<Collider, int>(64);
 
-			var MyDictionary = new Dictionary<CollideStruct, int>(64);
-			var MySecondSet = new List<KeyValuePair<CollideStruct, int>>(32);
+			var MyDictionary = new Dictionary<Collider, int>(64);
+			var MySecondSet = new List<KeyValuePair<Collider, int>>(32);
 			//****************************************
 
 			for (var Index = 0; Index < 32; Index++)
 			{
-				CollideStruct Key;
+				Collider Key;
 				int Value;
 
 				do
 				{
-					Key = new CollideStruct(MyRandom.Next());
+					Key = new Collider(MyRandom.Next());
 				} while (MyDictionary.ContainsKey(Key));
 
 				Value = MyRandom.Next();
@@ -373,18 +373,18 @@ namespace Proximity.Collections.Tests
 
 			for (var Index = 0; Index < 32; Index++)
 			{
-				CollideStruct Key;
+				Collider Key;
 				int Value;
 
 				do
 				{
-					Key = new CollideStruct(MyRandom.Next());
+					Key = new Collider(MyRandom.Next());
 				} while (MyDictionary.ContainsKey(Key));
 
 				Value = MyRandom.Next();
 
 				MyDictionary.Add(Key, Value);
-				MySecondSet.Add(new KeyValuePair<CollideStruct, int>(Key, Value));
+				MySecondSet.Add(new KeyValuePair<Collider, int>(Key, Value));
 			}
 
 			MyRecords.AddRange(MySecondSet);
@@ -419,7 +419,7 @@ namespace Proximity.Collections.Tests
 			{
 				if (Index % 10 >= 5 && MyRecords.Count > 0)
 				{
-					var Key = ((IList<KeyValuePair<int, int>>)MyRecords)[MyRandom.Next(0, MyRecords.Count)].Key;
+					var Key = MyRecords.Get(MyRandom.Next(0, MyRecords.Count)).Key;
 
 					MyRecords.Remove(Key);
 				}
@@ -435,29 +435,29 @@ namespace Proximity.Collections.Tests
 		{ //****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
-			var MyRecords = new IndexedDictionary<CollideStruct, int>();
+			var MyRecords = new IndexedDictionary<Collider, int>();
 			//****************************************
 
 			for (var Index = 0; Index < 16; Index++)
-				MyRecords.Add(new CollideStruct(MyRandom.Next()), MyRandom.Next());
+				MyRecords.Add(new Collider(MyRandom.Next()), MyRandom.Next());
 
 			for (var Index = 0; Index < 1024; Index++)
 			{
 				if (Index % 10 >= 5 && MyRecords.Count > 0)
 				{
-					var Key = ((IList<KeyValuePair<CollideStruct, int>>)MyRecords)[MyRandom.Next(0, MyRecords.Count)].Key;
+					var Key = MyRecords.Get(MyRandom.Next(0, MyRecords.Count)).Key;
 
 					MyRecords.Remove(Key);
 				}
 				else
 				{
-					MyRecords[new CollideStruct(MyRandom.Next())] = MyRandom.Next();
+					MyRecords[new Collider(MyRandom.Next())] = MyRandom.Next();
 				}
 			}
 		}
 
 		[Test()]//, Repeat(2)]
-		public void AddRemoveAll()
+		public void AddRemoveAllAdd()
 		{ //****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
@@ -469,7 +469,7 @@ namespace Proximity.Collections.Tests
 
 			while (MyRecords.Count > 0)
 			{
-				var Key = ((IList<KeyValuePair<int, int>>)MyRecords)[MyRandom.Next(0, MyRecords.Count)].Key;
+				var Key = MyRecords.Get(MyRandom.Next(0, MyRecords.Count)).Key;
 
 				MyRecords.Remove(Key);
 			}
@@ -479,25 +479,25 @@ namespace Proximity.Collections.Tests
 		}
 
 		[Test()]//, Repeat(2)]
-		public void AddRemoveAllCollide()
+		public void AddRemoveAllAddCollide()
 		{ //****************************************
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
-			var MyRecords = new IndexedDictionary<CollideStruct, int>();
+			var MyRecords = new IndexedDictionary<Collider, int>();
 			//****************************************
 
 			for (var Index = 0; Index < 16; Index++)
-				MyRecords[new CollideStruct(MyRandom.Next(0, 128))] = MyRandom.Next(0, 128);
+				MyRecords[new Collider(MyRandom.Next(0, 128))] = MyRandom.Next(0, 128);
 
 			while (MyRecords.Count > 0)
 			{
-				var Key = ((IList<KeyValuePair<CollideStruct, int>>)MyRecords)[MyRandom.Next(0, MyRecords.Count)].Key;
+				var Key = MyRecords.Get(MyRandom.Next(0, MyRecords.Count)).Key;
 
 				MyRecords.Remove(Key);
 			}
 
 			for (var Index = 0; Index < 16; Index++)
-				MyRecords[new CollideStruct(MyRandom.Next(0, 128))] = MyRandom.Next(0, 128);
+				MyRecords[new Collider(MyRandom.Next(0, 128))] = MyRandom.Next(0, 128);
 		}
 
 		[Test]
@@ -659,28 +659,28 @@ namespace Proximity.Collections.Tests
 		[Test()]
 		public void IndexOfKeyCollideMissing()
 		{	//****************************************
-			var MyRecords = new IndexedDictionary<CollideStruct, int>();
+			var MyRecords = new IndexedDictionary<Collider, int>();
 			//****************************************
 
-			MyRecords[new CollideStruct(10)] = 42;
+			MyRecords[new Collider(10)] = 42;
 
 			//****************************************
 
-			Assert.AreEqual(-1, MyRecords.IndexOfKey(new CollideStruct(11)));
+			Assert.AreEqual(-1, MyRecords.IndexOfKey(new Collider(11)));
 		}
 
 		[Test()]
 		public void IndexOfKeyCollideMissing2()
 		{ //****************************************
-			var MyRecords = new IndexedDictionary<CollideStruct, int>();
+			var MyRecords = new IndexedDictionary<Collider, int>();
 			//****************************************
 
-			MyRecords[new CollideStruct(10)] = 42;
-			MyRecords[new CollideStruct(int.MaxValue)] = 42;
+			MyRecords[new Collider(10)] = 42;
+			MyRecords[new Collider(int.MaxValue)] = 42;
 
 			//****************************************
 
-			Assert.AreEqual(-1, MyRecords.IndexOfKey(new CollideStruct(11)));
+			Assert.AreEqual(-1, MyRecords.IndexOfKey(new Collider(11)));
 		}
 
 		[Test()]
@@ -1021,14 +1021,14 @@ namespace Proximity.Collections.Tests
 		[Test()]
 		public void ReplaceCollide()
 		{	//****************************************
-			var MyRecords = new IndexedDictionary<CollideStruct, int>();
-			var MyKey = new CollideStruct(10);
+			var MyRecords = new IndexedDictionary<Collider, int>();
+			var MyKey = new Collider(10);
 			//****************************************
 
-			MyRecords.Add(new CollideStruct(9), 1);
-			MyRecords.Add(new CollideStruct(12), 2);
-			MyRecords.Add(new CollideStruct(10), 3);
-			MyRecords.Add(new CollideStruct(11), 4);
+			MyRecords.Add(new Collider(9), 1);
+			MyRecords.Add(new Collider(12), 2);
+			MyRecords.Add(new Collider(10), 3);
+			MyRecords.Add(new Collider(11), 4);
 
 			MyRecords[MyKey] = 84;
 
@@ -1058,52 +1058,20 @@ namespace Proximity.Collections.Tests
 		[Test()]
 		public void SetKeyCollide()
 		{	//****************************************
-			var MyRecords = new IndexedDictionary<CollideStruct, int>();
-			var MyKey = new CollideStruct(10);
+			var MyRecords = new IndexedDictionary<Collider, int>();
+			var MyKey = new Collider(10);
 			//****************************************
 
-			MyRecords[new CollideStruct(9)] = 1;
-			MyRecords[new CollideStruct(12)] = 2;
-			MyRecords[new CollideStruct(10)] = 3;
-			MyRecords[new CollideStruct(11)] = 4;
+			MyRecords[new Collider(9)] = 1;
+			MyRecords[new Collider(12)] = 2;
+			MyRecords[new Collider(10)] = 3;
+			MyRecords[new Collider(11)] = 4;
 
 			MyRecords[MyKey] = 84;
 
 			//****************************************
 
 			Assert.AreEqual(84, MyRecords[MyKey]);
-		}
-
-		//****************************************
-
-		private struct CollideStruct : IEquatable<CollideStruct>
-		{	//****************************************
-			private readonly int _Value;
-			//****************************************
-
-			public CollideStruct(int value)
-			{
-				_Value = value;
-			}
-
-			//****************************************
-
-			public bool Equals(CollideStruct other)
-			{
-				return _Value == other._Value;
-			}
-
-			public override int GetHashCode()
-			{
-				return _Value > int.MaxValue / 2 ? 1 : 0;
-			}
-
-			//****************************************
-
-			public int Value
-			{
-				get { return _Value; }
-			}
 		}
 	}
 }

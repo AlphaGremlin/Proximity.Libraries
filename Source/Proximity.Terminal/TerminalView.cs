@@ -9,6 +9,8 @@ namespace Proximity.Terminal
 	public sealed class TerminalView : ITerminal, ITerminalListener
 	{ //****************************************
 		private readonly WeakHashSet<ITerminalListener> _Listeners = new WeakHashSet<ITerminalListener>();
+
+		private readonly HashSet<LogLevel> _IsEnabled = new HashSet<LogLevel>(6);
 		//****************************************
 
 		public TerminalView(TerminalRegistry registry) : this((IEnumerable<TerminalRegistry>)new[] { registry })
@@ -24,21 +26,58 @@ namespace Proximity.Terminal
 			Registries = registries.ToArray();
 		}
 
-
-
 		//****************************************
 
 		IDisposable ILogger.BeginScope<TState>(TState state) => NullScope.Default;
 
+		/// <summary>
+		/// Resets the minimum enabled log level
+		/// </summary>
+		/// <param name="minimum">The minimum log level</param>
 		[CLSCompliant(false)]
-		public bool IsEnabled(LogLevel logLevel)
+		public void SetMinimum(LogLevel minimum)
 		{
-			throw new NotImplementedException();
+			_IsEnabled.Clear();
+
+			if (minimum != LogLevel.None)
+			{
+				foreach (LogLevel Value in Enum.GetValues(typeof(LogLevel)))
+					if (Value >= minimum && Value != LogLevel.None)
+						_IsEnabled.Add(Value);
+			}
 		}
 
+		/// <summary>
+		/// Sets the enabled state of a particular logging level
+		/// </summary>
+		/// <param name="logLevel">The target log level</param>
+		/// <param name="enabled">Whether to enable or disable this level</param>
+		[CLSCompliant(false)]
+		public void IsEnabled(LogLevel logLevel, bool enabled)
+		{
+			if (logLevel == LogLevel.None)
+				throw new ArgumentOutOfRangeException(nameof(logLevel));
+
+			if (enabled)
+				_IsEnabled.Add(logLevel);
+			else
+				_IsEnabled.Remove(logLevel);
+		}
+
+		/// <inheritdoc />
+		[CLSCompliant(false)] public bool IsEnabled(LogLevel logLevel) => _IsEnabled.Contains(logLevel);
+
+		/// <inheritdoc />
 		[CLSCompliant(false)]
 		public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
 		{
+			if (state is ConsoleRecord StateRecord)
+			{
+				((ITerminalListener)this).Log(StateRecord);
+
+				return;
+			}
+
 			if (!IsEnabled(logLevel))
 				return;
 
@@ -64,10 +103,9 @@ namespace Proximity.Terminal
 				Listener.Clear();
 		}
 
-		public void Attach(ITerminalListener listener)
-		{
-			_Listeners.Add(listener);
-		}
+		public void Attach(ITerminalListener listener) => _Listeners.Add(listener);
+
+		public bool Detach(ITerminalListener listener) => _Listeners.Remove(listener);
 
 		//****************************************
 

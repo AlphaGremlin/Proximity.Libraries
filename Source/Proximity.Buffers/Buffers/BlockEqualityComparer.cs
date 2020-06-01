@@ -19,6 +19,29 @@ namespace System.Buffers
 		/// <returns></returns>
 		public static BlockEqualityComparer<T> From<T>(IEqualityComparer<T> comparer) => new WrappedEqualityComparer<T>(comparer ?? throw new ArgumentNullException(nameof(comparer)));
 
+		/// <summary>
+		/// Gets a block comparer using string comparison rules
+		/// </summary>
+		/// <param name="comparisonType">The string comparison to perform</param>
+		/// <returns>The requested comparer</returns>
+		public static BlockEqualityComparer<char> ForChar(StringComparison comparisonType = StringComparison.Ordinal)
+		{
+			return comparisonType switch
+			{
+#if NETSTANDARD
+				StringComparison.Ordinal => BlockEqualityComparer<char>.Default,
+#else
+				StringComparison.Ordinal => StringOrdinalComparer.Ordinal,
+#endif
+				StringComparison.OrdinalIgnoreCase => StringEqualityComparer.OrdinalIgnoreCase,
+				StringComparison.CurrentCulture => StringEqualityComparer.CurrentCulture,
+				StringComparison.CurrentCultureIgnoreCase => StringEqualityComparer.CurrentCultureIgnoreCase,
+				StringComparison.InvariantCulture => StringEqualityComparer.InvariantCulture,
+				StringComparison.InvariantCultureIgnoreCase => StringEqualityComparer.InvariantCultureIgnoreCase,
+				_ => throw new ArgumentOutOfRangeException(nameof(comparisonType)),
+			};
+		}
+
 		//****************************************
 
 		private protected sealed class ByteEqualityComparer : BlockEqualityComparer<byte>
@@ -84,6 +107,44 @@ namespace System.Buffers
 
 				return HashCode.ToHashCode();
 			}
+		}
+
+#if !NETSTANDARD
+		private protected sealed class StringOrdinalComparer : BlockEqualityComparer<char>
+		{ //****************************************
+			internal static readonly StringOrdinalComparer Ordinal = new StringOrdinalComparer();
+			//****************************************
+
+			private StringOrdinalComparer()
+			{
+			}
+
+			//****************************************
+
+			public override bool Equals(ReadOnlySpan<char> left, ReadOnlySpan<char> right) => left.SequenceEqual(right);
+
+			public override int GetHashCode(ReadOnlySpan<char> value) => string.GetHashCode(value);
+		}
+#endif
+
+		private protected sealed class StringEqualityComparer : BlockEqualityComparer<char>
+		{ //****************************************
+			internal static readonly StringEqualityComparer OrdinalIgnoreCase = new StringEqualityComparer(StringComparison.OrdinalIgnoreCase);
+			internal static readonly StringEqualityComparer CurrentCulture = new StringEqualityComparer(StringComparison.CurrentCulture);
+			internal static readonly StringEqualityComparer CurrentCultureIgnoreCase = new StringEqualityComparer(StringComparison.CurrentCultureIgnoreCase);
+			internal static readonly StringEqualityComparer InvariantCulture = new StringEqualityComparer(StringComparison.InvariantCulture);
+			internal static readonly StringEqualityComparer InvariantCultureIgnoreCase = new StringEqualityComparer(StringComparison.InvariantCultureIgnoreCase);
+			//****************************************
+			private readonly StringComparison _Comparison;
+			//****************************************
+
+			private StringEqualityComparer(StringComparison comparison) => _Comparison = comparison;
+
+			//****************************************
+
+			public override bool Equals(ReadOnlySpan<char> left, ReadOnlySpan<char> right) => left.Equals(right, _Comparison);
+
+			public override int GetHashCode(ReadOnlySpan<char> value) => value.GetHashCode(_Comparison);
 		}
 
 		private protected sealed class WrappedEqualityComparer<T> : BlockEqualityComparer<T>
@@ -237,7 +298,7 @@ namespace System.Buffers
 
 			// Does TValue implement the generic IEquatable?
 			if (typeof(IEquatable<T>).IsAssignableFrom(MyType))
-				return (BlockEqualityComparer<T>)Activator.CreateInstance(typeof(GenericEqualityComparer<>).MakeGenericType(MyType));
+				return (BlockEqualityComparer<T>)Activator.CreateInstance(typeof(GenericEqualityComparer<>).MakeGenericType(MyType))!;
 
 			// Nope, just use the default object comparer then
 			return new ObjectEqualityComparer<T>();

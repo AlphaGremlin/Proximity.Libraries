@@ -140,5 +140,13 @@ namespace System.Linq
 
 			return source.ToArray();
 		}
+
+		/// <summary>
+		/// Converts an enumerable to a queue
+		/// </summary>
+		/// <typeparam name="T">The type of element</typeparam>
+		/// <param name="source">The enumeration to convert</param>
+		/// <returns>A queue with the contents of the enumerable</returns>
+		public static Queue<T> ToQueue<T>(this IEnumerable<T> source) => new Queue<T>(source);
 	}
 }

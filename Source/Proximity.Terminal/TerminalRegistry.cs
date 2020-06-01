@@ -18,14 +18,14 @@ namespace Proximity.Terminal
 		private readonly object _LockObject = new object();
 		
 		// Global Commands and Variables
-		private readonly Dictionary<string, TerminalCommandSet> _Commands = new Dictionary<string, TerminalCommandSet>(StringComparer.InvariantCultureIgnoreCase);
-		private readonly Dictionary<string, TerminalVariable> _Variables = new Dictionary<string, TerminalVariable>(StringComparer.InvariantCultureIgnoreCase);
+		private readonly StringKeyDictionary<TerminalCommandSet> _Commands = new StringKeyDictionary<TerminalCommandSet>(StringComparison.OrdinalIgnoreCase);
+		private readonly StringKeyDictionary<TerminalVariable> _Variables = new StringKeyDictionary<TerminalVariable>(StringComparison.OrdinalIgnoreCase);
 		
 		// Maps Types to Terminal Types
 		private readonly ConcurrentDictionary<Type, TerminalType> _Types = new ConcurrentDictionary<Type, TerminalType>();
 		
 		// Maps Type Names to Terminal Type Sets
-		private readonly ConcurrentDictionary<string, TerminalTypeSet> _TypeSets = new ConcurrentDictionary<string, TerminalTypeSet>(StringComparer.InvariantCultureIgnoreCase);
+		private readonly StringKeyDictionary<TerminalTypeSet> _TypeSets = new StringKeyDictionary<TerminalTypeSet>(StringComparison.OrdinalIgnoreCase);
 		//****************************************
 		
 		internal TerminalRegistry()
@@ -183,15 +183,12 @@ namespace Proximity.Terminal
 		/// </summary>
 		/// <param name="commandName">The global command set to find</param>
 		/// <returns>The named command set, or null if it doesn't exist</returns>
-		public TerminalCommandSet FindCommand(string commandName)
+		public bool TryGetCommandSet(ReadOnlySpan<char> commandName, out TerminalCommandSet commandSet)
 		{
 			lock (_LockObject)
 			{
-				if (_Commands.TryGetValue(commandName, out var MyCommand))
-					return MyCommand;
+				return _Commands.TryGetValue(commandName, out commandSet);
 			}
-			
-			return null;
 		}
 		
 		/// <summary>
@@ -199,15 +196,12 @@ namespace Proximity.Terminal
 		/// </summary>
 		/// <param name="variableName">The global variable to find</param>
 		/// <returns>The named variable, or null if it doesn't exist</returns>
-		public TerminalVariable FindVariable(string variableName)
+		public bool TryGetVariable(ReadOnlySpan<char> variableName, out TerminalVariable variable)
 		{
 			lock (_LockObject)
 			{
-				if (_Variables.TryGetValue(variableName, out var MyVariable))
-					return MyVariable;
+				return _Variables.TryGetValue(variableName, out variable);
 			}
-			
-			return null;
 		}
 		
 		/// <summary>
@@ -215,15 +209,12 @@ namespace Proximity.Terminal
 		/// </summary>
 		/// <param name="typeName">The type set to find</param>
 		/// <returns>The named type set, or null if it doesn't exist</returns>
-		public TerminalTypeSet FindTypeSet(string typeName)
+		public bool TryGetTypeSet(ReadOnlySpan<char> typeName, out TerminalTypeSet typeSet)
 		{
 			lock (_LockObject)
 			{
-				if (_TypeSets.TryGetValue(typeName, out var MyType))
-					return MyType;
+				return _TypeSets.TryGetValue(typeName, out typeSet);
 			}
-			
-			return null;
 		}
 		
 		//****************************************

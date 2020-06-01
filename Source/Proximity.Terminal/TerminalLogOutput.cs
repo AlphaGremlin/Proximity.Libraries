@@ -32,8 +32,7 @@ namespace Proximity.Terminal
 		/// Creates a new terminal log outputter
 		/// </summary>
 		/// <param name="maxHistoryRecords">Determines how many records are kept as history</param>
-		public TerminalLogOutput(int maxHistoryRecords)
-			: this()
+		public TerminalLogOutput(int maxHistoryRecords) : this()
 		{
 			_MaxHistoryRecords = maxHistoryRecords;
 		}

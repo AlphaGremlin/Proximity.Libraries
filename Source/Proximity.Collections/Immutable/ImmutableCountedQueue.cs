@@ -9,6 +9,9 @@ using System.Threading;
 
 namespace Proximity.Collections.Immutable
 {
+	/// <summary>
+	/// Provides utility methods for creating <see cref="ImmutableCountedQueue{T}"/>
+	/// </summary>
 	public static class ImmutableCountedQueue
 	{
 		/// <summary>
@@ -181,9 +184,13 @@ namespace Proximity.Collections.Immutable
 		/// <summary>
 		/// Retrieves the first item in the queue
 		/// </summary>
-		/// <returns></returns>
+		/// <returns>The first item in the queue</returns>
 		public T Peek() => _Forwards.Peek();
 
+		/// <summary>
+		/// Retrieves a read-only reference to the first item in the queue
+		/// </summary>
+		/// <returns>The first item in the queue</returns>
 		public ref readonly T PeekRef() => ref _Forwards.PeekRef();
 
 		/// <summary>

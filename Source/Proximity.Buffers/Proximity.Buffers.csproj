@@ -1,9 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+		<TargetFrameworks>netstandard2.0;netstandard2.1;netcoreapp3.1</TargetFrameworks>
 		<Authors>Daniel Chandler</Authors>
 		<Company>Proximity Interactive</Company>
-		<Copyright>Copyright © Daniel Chandler 2019</Copyright>
+		<Copyright>Copyright © Daniel Chandler 2020</Copyright>
 		<Product>Proximity Buffers Utility Library</Product>
 		<Version>1.0.0</Version>
 		<AssemblyVersion>1.0.0.0</AssemblyVersion>

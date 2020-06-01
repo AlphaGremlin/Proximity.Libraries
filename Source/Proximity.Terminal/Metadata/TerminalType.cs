@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 //****************************************
 
@@ -11,15 +12,15 @@ namespace Proximity.Terminal.Metadata
 	public sealed class TerminalType
 	{//****************************************
 		private readonly Type _Type;
-		private readonly Dictionary<string, TerminalCommandSet> _Commands = new Dictionary<string, TerminalCommandSet>(StringComparer.InvariantCultureIgnoreCase);
-		private readonly Dictionary<string, TerminalVariable> _Variables = new Dictionary<string, TerminalVariable>(StringComparer.InvariantCultureIgnoreCase);
+		private readonly StringKeyDictionary<TerminalCommandSet> _Commands = new StringKeyDictionary<TerminalCommandSet>(StringComparison.OrdinalIgnoreCase);
+		private readonly StringKeyDictionary<TerminalVariable> _Variables = new StringKeyDictionary<TerminalVariable>(StringComparison.OrdinalIgnoreCase);
 		//****************************************
 		
 		internal TerminalType(TerminalRegistry registry, Type type, TerminalProviderAttribute provider)
 		{
 			_Type = type;
 			
-			Name = provider.InstanceType;
+			Name = provider.TypeName;
 			IsDefault = provider.IsDefault;
 			
 			//****************************************
@@ -57,9 +58,7 @@ namespace Proximity.Terminal.Metadata
 					
 					var MyName = MyBinding.Name ?? MyProperty.Name;
 					
-					if (_Variables.ContainsKey(MyName))
-						Log.Warning("Ignoring duplicate property {0} in provider {1}", MyProperty.Name, type.FullName);
-					else
+					if (!_Variables.ContainsKey(MyName))
 						_Variables.Add(MyName, new TerminalVariable(MyProperty, MyBinding));
 				}
 			}
@@ -71,26 +70,30 @@ namespace Proximity.Terminal.Metadata
 		/// Looks up a command by name
 		/// </summary>
 		/// <param name="commandName">The name to lookup</param>
-		/// <returns>The command set matching this name</returns>
-		public TerminalCommandSet FindCommand(string commandName)
+		/// <param name="commandSet">The command set matching this name</param>
+		/// <returns>True if the command set was found, otherwise False</returns>
+		public bool TryGetCommand(ReadOnlySpan<char> commandName,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+		out TerminalCommandSet commandSet)
 		{
-			if (_Commands.TryGetValue(commandName, out var MyCommand))
-				return MyCommand;
-			
-			return null;
+			return _Commands.TryGetValue(commandName, out commandSet!);
 		}
 		
 		/// <summary>
 		/// Looks up a variable by name
 		/// </summary>
 		/// <param name="variableName">The name to lookup</param>
-		/// <returns>The variable matching this name</returns>
-		public TerminalVariable FindVariable(string variableName)
+		/// <param name="variable">Receives the variable matching this name</param>
+		/// <returns>True if the variable was found, otherwise False</returns>
+		public bool TryGetVariable(ReadOnlySpan<char> variableName,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+		out TerminalVariable variable)
 		{
-			if (_Variables.TryGetValue(variableName, out var MyVariable))
-				return MyVariable;
-			
-			return null;
+			return _Variables.TryGetValue(variableName, out variable!);
 		}
 
 		//****************************************

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Security;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 //****************************************
 
 namespace Proximity.Terminal.Metadata
@@ -12,10 +13,7 @@ namespace Proximity.Terminal.Metadata
 	/// Represents a Terminal Command
 	/// </summary>
 	public sealed class TerminalCommand
-	{ //****************************************
-		private readonly bool _IsTask;
-		//****************************************
-
+	{
 		internal TerminalCommand(MethodInfo method, TerminalBindingAttribute binding)
 		{
 			Name = binding.Name ?? method.Name;
@@ -23,10 +21,8 @@ namespace Proximity.Terminal.Metadata
 			
 			Description = binding.Description;
 			
-			if (method.ReturnType == typeof(Task))
-				_IsTask = true;
-			else if (method.ReturnType != typeof(void))
-				throw new FormatException("Return type must be Void or Task");
+			if (method.ReturnType != typeof(Task) && method.ReturnType != typeof(void) && method.ReturnType != typeof(ValueTask))
+				throw new FormatException($"Command Return Type for {method.DeclaringType.FullName}.{method.Name} must be Void or Task/ValueTask");
 		}
 
 		//****************************************
@@ -36,16 +32,17 @@ namespace Proximity.Terminal.Metadata
 		/// </summary>
 		/// <param name="instance">The instance this command should be called on, if any</param>
 		/// <param name="arguments">The arguments to pass to the command</param>
-		[SecurityCritical]
-		public void Invoke(object instance, object[] arguments)
+		public void Invoke(ITerminal terminal, object instance, object[] arguments)
 		{
 			if (instance != null && !Method.DeclaringType.IsInstanceOfType(instance))
 				throw new ArgumentException("Instance is invalid for this Command");
 			
 			if (Debugger.IsAttached)
 			{
-				if (_IsTask)
+				if (Method.ReturnType == typeof(Task))
 					((Task)Method.Invoke(instance, arguments)).Wait();
+				else if (Method.ReturnType == typeof(ValueTask))
+					((ValueTask)Method.Invoke(instance, arguments)).AsTask().Wait();
 				else
 					Method.Invoke(instance, arguments);
 			}
@@ -53,14 +50,16 @@ namespace Proximity.Terminal.Metadata
 			{
 				try
 				{
-					if (_IsTask)
+					if (Method.ReturnType == typeof(Task))
 						((Task)Method.Invoke(instance, arguments)).Wait();
+					else if (Method.ReturnType == typeof(ValueTask))
+						((ValueTask)Method.Invoke(instance, arguments)).AsTask().Wait();
 					else
 						Method.Invoke(instance, arguments);
 				}
 				catch (TargetInvocationException x)
 				{
-					Log.Exception(x.InnerException, "Failure running command");
+					terminal.LogError(x.InnerException, "Failure running command");
 				}
 			}
 		}
@@ -71,45 +70,42 @@ namespace Proximity.Terminal.Metadata
 		/// <param name="instance">The instance this command should be called on, if any</param>
 		/// <param name="arguments">The arguments to pass to the command</param>
 		/// <returns>A task that completes with the result of the command</returns>
-		public ValueTask InvokeAsync(object instance, object[] arguments)
-		{
-			return InternalInvokeAsync(instance, arguments);
-		}
-
-		//****************************************
-
-		internal async ValueTask InternalInvokeAsync(object instance, object[] arguments)
+		public async ValueTask InvokeAsync(ITerminal terminal, object instance, object[] arguments)
 		{
 			if (instance != null && !Method.DeclaringType.IsInstanceOfType(instance))
 				throw new ArgumentException("Instance is invalid for this Command");
-			
+
 			if (Debugger.IsAttached)
 			{
-				if (_IsTask)
-					await (Task)Method.Invoke(instance, arguments);
+				if (Method.ReturnType == typeof(Task))
+					await(Task)Method.Invoke(instance, arguments);
+				else if (Method.ReturnType == typeof(ValueTask))
+					await(ValueTask)Method.Invoke(instance, arguments);
 				else
-					await Task.Run(() => Method.Invoke(instance, arguments));
+					Method.Invoke(instance, arguments);
 			}
 			else
 			{
 				try
 				{
-					if (_IsTask)
-						await (Task)Method.Invoke(instance, arguments);
+					if (Method.ReturnType == typeof(Task))
+						await(Task)Method.Invoke(instance, arguments);
+					else if (Method.ReturnType == typeof(ValueTask))
+						await(ValueTask)Method.Invoke(instance, arguments);
 					else
-						await Task.Run(() => Method.Invoke(instance, arguments));
+						Method.Invoke(instance, arguments);
 				}
 				catch (TargetInvocationException e)
 				{
-					Log.Exception(e.InnerException, "Failure running command");
+					terminal.LogError(e.InnerException, "Failure running command");
 				}
 				catch (AggregateException e)
 				{
-					Log.Exception(e.InnerException, "Failure running command");
+					terminal.LogError(e.InnerException, "Failure running command");
 				}
 				catch (Exception e)
 				{
-					Log.Exception(e, "Internal failure running command");
+					terminal.LogError(e, "Internal failure running command");
 				}
 			}
 		}

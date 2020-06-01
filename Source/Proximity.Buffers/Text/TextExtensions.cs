@@ -1,5 +1,8 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Text;
@@ -197,6 +200,72 @@ namespace System.Text
 		}
 #else
 		/// <summary>
+		/// Encodes a block of input characters to bytes
+		/// </summary>
+		/// <param name="encoder">The encoder performing the encoding operation</param>
+		/// <param name="input">The input characters</param>
+		/// <param name="output">The span that receives the output</param>
+		/// <param name="flush">True to flush the encoder, otherwise False</param>
+		/// <param name="charsRead">Receives the number of characters read</param>
+		/// <param name="bytesWritten">Receives the number of bytes written</param>
+		/// <param name="isCompleted">Receives whether all output bytes have been written</param>
+		[EditorBrowsable(EditorBrowsableState.Never), MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static void Convert(Encoder encoder, ReadOnlySpan<char> input, Span<byte> output, bool flush, out int charsRead, out int bytesWritten, out bool isCompleted) => encoder.Convert(input, output, flush, out charsRead, out bytesWritten, out isCompleted);
+
+		/// <summary>
+		/// Decodes a block of input bytes into characters
+		/// </summary>
+		/// <param name="decoder">The decoder performing the decoding operation</param>
+		/// <param name="input">The input bytes</param>
+		/// <param name="output">The span that receives the output</param>
+		/// <param name="flush">True to flush the decoder, otherwise False</param>
+		/// <param name="bytesRead">Receives the number of bytes read</param>
+		/// <param name="charsWritten">Receives the number of characters written</param>
+		/// <param name="isCompleted">Receives whether all output characters have been written</param>
+		[EditorBrowsable(EditorBrowsableState.Never), MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static void Convert(Decoder decoder, ReadOnlySpan<byte> input, Span<char> output, bool flush, out int bytesRead, out int charsWritten, out bool isCompleted) => decoder.Convert(input, output, flush, out bytesRead, out charsWritten, out isCompleted);
+
+		/// <summary>
+		/// Determines the number of bytes that result from an encoding operation
+		/// </summary>
+		/// <param name="encoder">The encoder performing the encoding operation</param>
+		/// <param name="span">The input characters</param>
+		/// <param name="flush">True to flush the encoder, otherwise False</param>
+		/// <returns>The number of bytes that would be output</returns>
+		[EditorBrowsable(EditorBrowsableState.Never), MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static int GetByteCount(Encoder encoder, ReadOnlySpan<char> span, bool flush) => encoder.GetByteCount(span, flush);
+
+		/// <summary>
+		/// Determines the number of bytes that result from an encoding operation
+		/// </summary>
+		/// <param name="encoding">The encoding to use</param>
+		/// <param name="span">The input characters</param>
+		/// <returns>The number of bytes that would be output</returns>
+		[EditorBrowsable(EditorBrowsableState.Never), MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static int GetByteCount(Encoding encoding, ReadOnlySpan<char> span) => encoding.GetByteCount(span);
+
+		/// <summary>
+		/// Gets the encoded bytes as a Memory from a character Span
+		/// </summary>
+		/// <param name="encoder">The encoder performing the encoding operation</param>
+		/// <param name="input">The input characters</param>
+		/// <param name="output">The span that receives the output</param>
+		/// <param name="flush">True to flush the encoder, otherwise False</param>
+		/// <returns>The number of bytes written</returns>
+		[EditorBrowsable(EditorBrowsableState.Never), MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static int GetBytes(Encoder encoder, ReadOnlySpan<char> input, Span<byte> output, bool flush) => encoder.GetBytes(input, output, flush);
+
+		/// <summary>
+		/// Gets the encoded bytes as a Memory from a character Span
+		/// </summary>
+		/// <param name="encoding">The encoding to use</param>
+		/// <param name="input">The input characters</param>
+		/// <param name="output">The span that receives the output</param>
+		/// <returns>The number of bytes written</returns>
+		[EditorBrowsable(EditorBrowsableState.Never), MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static int GetBytes(Encoding encoding, ReadOnlySpan<char> input, Span<byte> output) => encoding.GetBytes(input, output);
+
+		/// <summary>
 		/// Gets the encoded bytes as a Memory from a character Span
 		/// </summary>
 		/// <param name="encoding">The encoding to use</param>
@@ -210,6 +279,35 @@ namespace System.Text
 		}
 
 		/// <summary>
+		/// Determines the number of characters that result from a decoding operation
+		/// </summary>
+		/// <param name="decoder">The decoder performing the decoding operation</param>
+		/// <param name="span">The input bytes</param>
+		/// <param name="flush">True to flush the decoder, otherwise False</param>
+		/// <returns>The number of characters that would be output</returns>
+		[EditorBrowsable(EditorBrowsableState.Never), MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static int GetCharCount(Decoder decoder, ReadOnlySpan<byte> span, bool flush) => decoder.GetCharCount(span, flush);
+
+		/// <summary>
+		/// Determines the number of characters that result from a decoding operation
+		/// </summary>
+		/// <param name="encoding">The encoding to use</param>
+		/// <param name="span">The input bytes</param>
+		/// <returns>The number of characters that would be output</returns>
+		[EditorBrowsable(EditorBrowsableState.Never), MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static int GetCharCount(Encoding encoding, ReadOnlySpan<byte> span) => encoding.GetCharCount(span);
+
+		/// <summary>
+		/// Decodes a byte span into a char span
+		/// </summary>
+		/// <param name="encoding">The encoding to use</param>
+		/// <param name="input">The input bytes</param>
+		/// <param name="output">The span that receives the output</param>
+		/// <returns>The number of chars written</returns>
+		[EditorBrowsable(EditorBrowsableState.Never), MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static int GetChars(Encoding encoding, ReadOnlySpan<byte> input, Span<char> output) => encoding.GetChars(input, output);
+
+		/// <summary>
 		/// Gets the encoded characters as a Memory from a byte Span
 		/// </summary>
 		/// <param name="encoding">The encoding to use</param>
@@ -221,6 +319,73 @@ namespace System.Text
 
 			return new Memory<char>(Output, 0, encoding.GetChars(input, Output));
 		}
+
+		/// <summary>
+		/// Decodes a byte span into a char span
+		/// </summary>
+		/// <param name="decoder">The decoder performing the decoding operation</param>
+		/// <param name="input">The input bytes</param>
+		/// <param name="output">The span that receives the output</param>
+		/// <param name="flush">True to flush the decoder, otherwise False</param>
+		/// <returns>The number of chars written</returns>
+		[EditorBrowsable(EditorBrowsableState.Never), MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static int GetChars(Decoder decoder, ReadOnlySpan<byte> input, Span<char> output, bool flush) => decoder.GetChars(input, output, flush);
+
+		/// <summary>
+		/// Decodes a byte span into a string
+		/// </summary>
+		/// <param name="encoding">The encoding to use</param>
+		/// <param name="span">The source byte span</param>
+		/// <returns>The decoded string</returns>
+		[EditorBrowsable(EditorBrowsableState.Never), MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static string GetString(Encoding encoding, ReadOnlySpan<byte> span) => encoding.GetString(span);
 #endif
+
+		/// <summary>
+		/// Decodes a byte sequence and appends it to a <see cref="StringBuilder"/>
+		/// </summary>
+		/// <param name="encoding">The encoding to use</param>
+		/// <param name="input">The ReadOnlySequence to read from</param>
+		/// <param name="output">The span to write to</param>
+		/// <returns>The number of characters written to <paramref name="output"/></returns>
+		public static int GetChars(this Encoding encoding, ReadOnlySequence<byte> input, Span<char> output)
+		{
+			var RemainingBytes = input.Length;
+			var CharsUsed = 0;
+
+			var Decoder = encoding.GetDecoder();
+
+			foreach (var MySegment in input)
+			{
+				var InBuffer = MySegment.Span;
+				bool IsCompleted;
+
+				do
+				{
+					// Decode the bytes into our char array
+					Decoder.Convert(
+						InBuffer,
+						output,
+						RemainingBytes == InBuffer.Length,
+						out var BytesRead, out var WrittenChars, out IsCompleted
+						);
+
+					CharsUsed += WrittenChars;
+					output = output.Slice(WrittenChars);
+
+					if (output.IsEmpty)
+						return CharsUsed;
+
+					RemainingBytes -= BytesRead;
+
+					InBuffer = InBuffer.Slice(BytesRead);
+
+					// Loop while there are more bytes unread, or there are no bytes left but there's still data to flush
+				}
+				while (!InBuffer.IsEmpty || (RemainingBytes == 0 && !IsCompleted));
+			}
+
+			return CharsUsed;
+		}
 	}
 }

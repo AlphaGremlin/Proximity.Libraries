@@ -9,9 +9,9 @@ namespace Proximity.Terminal.Metadata
 	/// <summary>
 	/// Represents a set of types grouped by a type name
 	/// </summary>
-	public sealed class TerminalTypeSet : IComparable<TerminalTypeSet>
+	public sealed class TerminalTypeSet : ICommandTarget, IComparable<TerminalTypeSet>
 	{ //****************************************
-		private readonly Dictionary<string, TerminalTypeInstance> _Instances = new Dictionary<string, TerminalTypeInstance>(StringComparer.InvariantCultureIgnoreCase);
+		private readonly StringKeyDictionary<TerminalTypeInstance> _Instances = new StringKeyDictionary<TerminalTypeInstance>(StringComparison.OrdinalIgnoreCase);
 		//****************************************
 		
 		internal TerminalTypeSet(string typeName)
@@ -25,16 +25,14 @@ namespace Proximity.Terminal.Metadata
 		/// Retrieves a registered Instance by name
 		/// </summary>
 		/// <param name="instanceName">The name of the Instance</param>
-		/// <returns>The Terminal Instance registered with this name, or null if it doesn't exist</returns>
-		public TerminalTypeInstance GetNamedInstance(string instanceName)
+		/// <param name="instance">Receives the Terminal Instance registered with this name, or null if it doesn't exist</param>
+		/// <returns>True if the instance was found, otherwise False</returns>
+		public bool TryGetNamedInstance(ReadOnlySpan<char> instanceName, out TerminalTypeInstance instance)
 		{
 			lock (_Instances)
 			{
-				if (_Instances.TryGetValue(instanceName, out var MyInstance))
-					return MyInstance;
+				return _Instances.TryGetValue(instanceName, out instance!);
 			}
-			
-			return null;
 		}
 
 		/// <inheritdoc />
@@ -99,7 +97,7 @@ namespace Proximity.Terminal.Metadata
 		/// <summary>
 		/// Gets the default instance for this type set
 		/// </summary>
-		public TerminalTypeInstance Default { get; set; }
+		public TerminalTypeInstance? Default { get; set; }
 
 		/// <summary>
 		/// Gets a list of currently known instance names

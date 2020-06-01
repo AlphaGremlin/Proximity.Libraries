@@ -17,8 +17,7 @@ namespace System.Linq
 		/// <returns>The index of the nearest value, or -1 if not found</returns>
 		public static int NearestAboveAscending<T>(this IList<T> list, T targetValue) where T : IComparable<T>
 		{ //****************************************
-			int StartIndex = 0, EndIndex = list.Count - 1;
-			int MiddleIndex = 0, CompareResult = -1;
+			int StartIndex = 0, EndIndex = list.Count - 1, CompareResult;
 			//****************************************
 
 			if (list.Count == 0)
@@ -26,7 +25,7 @@ namespace System.Linq
 
 			while (StartIndex < EndIndex)
 			{
-				MiddleIndex = StartIndex + ((EndIndex - StartIndex) >> 1);
+				var MiddleIndex = StartIndex + ((EndIndex - StartIndex) >> 1);
 				CompareResult = list[MiddleIndex].CompareTo(targetValue);
 
 				//Log.Debug("Check {0}: {1} ({2})", MiddleIndex, Dates[MiddleIndex].Ticks, CompareResult);
@@ -47,7 +46,7 @@ namespace System.Linq
 				return StartIndex;
 
 			// Start location is less than our target, move one up
-			StartIndex = StartIndex + 1;
+			StartIndex++;
 
 			// Ensure we're still within range
 			if (StartIndex < list.Count)
@@ -64,8 +63,7 @@ namespace System.Linq
 		/// <returns>The index of the nearest value, or -1 if not found</returns>
 		public static int NearestAboveDescending<T>(this IList<T> list, T targetValue) where T : IComparable<T>
 		{ //****************************************
-			int StartIndex = 0, EndIndex = list.Count - 1;
-			int MiddleIndex = 0, CompareResult = -1;
+			int StartIndex = 0, EndIndex = list.Count - 1, CompareResult;
 			//****************************************
 
 			if (list.Count == 0)
@@ -73,7 +71,7 @@ namespace System.Linq
 
 			while (StartIndex < EndIndex)
 			{
-				MiddleIndex = StartIndex + ((EndIndex - StartIndex) >> 1);
+				var MiddleIndex = StartIndex + ((EndIndex - StartIndex) >> 1);
 				CompareResult = list[MiddleIndex].CompareTo(targetValue);
 
 				//Log.Debug("Check {0}: {1} ({2})", MiddleIndex, Dates[MiddleIndex].Ticks, CompareResult);
@@ -94,7 +92,7 @@ namespace System.Linq
 				return StartIndex;
 
 			// Start location is greater than our target, move one down
-			StartIndex = StartIndex - 1;
+			StartIndex++;
 
 			// Ensure we're still within range
 			if (StartIndex >= 0)
@@ -111,8 +109,7 @@ namespace System.Linq
 		/// <returns>The index of the nearest value, or -1 if not found</returns>
 		public static int NearestBelowAscending<T>(this IList<T> list, T targetValue) where T : IComparable<T>
 		{ //****************************************
-			int StartIndex = 0, EndIndex = list.Count - 1;
-			int MiddleIndex = 0, CompareResult = -1;
+			int StartIndex = 0, EndIndex = list.Count - 1, CompareResult;
 			//****************************************
 
 			if (list.Count == 0)
@@ -120,7 +117,7 @@ namespace System.Linq
 
 			while (StartIndex < EndIndex)
 			{
-				MiddleIndex = StartIndex + ((EndIndex - StartIndex) >> 1);
+				var MiddleIndex = StartIndex + ((EndIndex - StartIndex) >> 1);
 				CompareResult = list[MiddleIndex].CompareTo(targetValue);
 
 				//Log.Debug("Check {0}: {1} ({2})", MiddleIndex, Dates[MiddleIndex].Ticks, CompareResult);
@@ -141,7 +138,7 @@ namespace System.Linq
 				return StartIndex;
 
 			// Start location is greater than our target, move one down
-			StartIndex = StartIndex - 1;
+			StartIndex++;
 
 			// Ensure we're still within range
 			if (StartIndex >= 0)
@@ -158,8 +155,7 @@ namespace System.Linq
 		/// <returns>The index of the nearest value, or -1 if not found</returns>
 		public static int NearestBelowDescending<T>(this IList<T> list, T targetValue) where T : IComparable<T>
 		{ //****************************************
-			int StartIndex = 0, EndIndex = list.Count - 1;
-			int MiddleIndex = 0, CompareResult = -1;
+			int StartIndex = 0, EndIndex = list.Count - 1, CompareResult;
 			//****************************************
 
 			if (list.Count == 0)
@@ -167,7 +163,7 @@ namespace System.Linq
 
 			while (StartIndex < EndIndex)
 			{
-				MiddleIndex = StartIndex + ((EndIndex - StartIndex) >> 1);
+				var MiddleIndex = StartIndex + ((EndIndex - StartIndex) >> 1);
 				CompareResult = list[MiddleIndex].CompareTo(targetValue);
 
 				//Log.Debug("Check {0}: {1} ({2})", MiddleIndex, Dates[MiddleIndex].Ticks, CompareResult);
@@ -188,7 +184,7 @@ namespace System.Linq
 				return StartIndex;
 
 			// Start location is greater than our target, move one up
-			StartIndex = StartIndex + 1;
+			StartIndex++;
 
 			// Ensure we're still within range
 			if (StartIndex < list.Count)

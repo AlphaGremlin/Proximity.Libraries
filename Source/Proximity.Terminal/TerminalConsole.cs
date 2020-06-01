@@ -17,8 +17,18 @@ namespace Proximity.Terminal
 		private static TerminalInstance? _Instance;
 		//****************************************
 
+		/// <summary>
+		/// Initialises the console to act as a Terminal
+		/// </summary>
+		/// <param name="hasCommandLine">Whether to offer an interactive command line</param>
 		public static void Initialise(bool hasCommandLine) => Initialise(hasCommandLine, new TerminalView(), TerminalTheme.Default);
 
+		/// <summary>
+		/// Initialises the system console to act as a Terminal
+		/// </summary>
+		/// <param name="hasCommandLine">Whether to offer an interactive command line</param>
+		/// <param name="view">The Terminal View to bind to</param>
+		/// <param name="theme">The Terminal Theme to use for the output</param>
 		[CLSCompliant(false)]
 		public static void Initialise(bool hasCommandLine, TerminalView view, TerminalTheme theme)
 		{
@@ -30,6 +40,9 @@ namespace Proximity.Terminal
 			Instance.Initialise();
 		}
 
+		/// <summary>
+		/// Releases and restores the console
+		/// </summary>
 		public static void Terminate()
 		{
 			var Instance = Interlocked.Exchange(ref _Instance, null);
@@ -59,10 +72,11 @@ namespace Proximity.Terminal
 			private readonly AsyncCollection<ConsoleRecord?> _ConsoleOutput = new AsyncCollection<ConsoleRecord?>(128);
 
 			private readonly CancellationTokenSource _TokenSource = new CancellationTokenSource();
-			private Thread? _ConsoleThread;
+			private readonly ConsoleColor _InitialColour;
+			private Thread? _TerminalThread;
 
-			private StringBuilder? _InputLine;
-			private List<string>? _CommandHistory;
+			private readonly StringBuilder? _InputLine;
+			private readonly List<string>? _CommandHistory;
 			private int _CommandHistoryIndex, _InputIndex, _InputTop;
 			private string? _PartialCommand;
 			//****************************************
@@ -74,6 +88,9 @@ namespace Proximity.Terminal
 
 				IsRedirected = Console.IsInputRedirected || Console.IsOutputRedirected || Console.BufferWidth == 0;
 				HasCommandLine = hasCommandLine && !IsRedirected;
+
+				if (!IsRedirected)
+					_InitialColour = Console.ForegroundColor;
 
 				if (HasCommandLine)
 				{
@@ -90,7 +107,7 @@ namespace Proximity.Terminal
 				// If the process exits unexpectedly, we need to restore the cursor visibility and colour
 				AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
 
-				var Thread = _ConsoleThread = new Thread(TerminalConsoleLoop)
+				var Thread = _TerminalThread = new Thread(TerminalIOLoop)
 				{
 					Name = "Terminal I/O",
 					IsBackground = true
@@ -103,10 +120,9 @@ namespace Proximity.Terminal
 			{
 				_TokenSource.Cancel();
 
-				var ConsoleThread = Interlocked.Exchange(ref _ConsoleThread, null);
+				Interlocked.Exchange(ref _TerminalThread, null)?.Join();
 
-				if (ConsoleThread != null)
-					ConsoleThread.Join();
+				Cleanup();
 
 				AppDomain.CurrentDomain.ProcessExit -= OnProcessExit;
 			}
@@ -119,12 +135,25 @@ namespace Proximity.Terminal
 
 			//****************************************
 
-			private void OnProcessExit(object sender, EventArgs e)
+			private void Cleanup()
 			{
-				throw new NotImplementedException();
+				if (!IsRedirected)
+				{
+					try
+					{
+						Console.ResetColor();
+					}
+					catch
+					{
+						// Fallback, just set it to what we saw initially
+						Console.ForegroundColor = _InitialColour;
+					}
+				}
 			}
 
-			private void TerminalConsoleLoop()
+			private void OnProcessExit(object sender, EventArgs e) => Cleanup();
+
+			private void TerminalIOLoop()
 			{ //****************************************
 				var InputVisible = false;
 				int CountSinceKeyPress = 0, CountSinceOutput = 0;
@@ -132,7 +161,7 @@ namespace Proximity.Terminal
 
 				while (!_TokenSource.IsCancellationRequested || _ConsoleOutput.Count != 0)
 				{
-					while (_ConsoleOutput.TryTake(out var MyRecord))
+					while (_ConsoleOutput.TryTake(out var Record))
 					{
 						if (InputVisible)
 						{
@@ -144,16 +173,24 @@ namespace Proximity.Terminal
 						}
 
 						// Write the output
-						if (MyRecord == null)
+						if (Record == null)
 						{
 							Console.Clear();
 						}
 						else
 						{
-							if (!IsRedirected)
-								Console.ForegroundColor = Theme.GetColour(MyRecord.Severity);
+							// If we're echoing a command, ignore it if this is disabled
+							if (Record.Severity == null && !Theme.EchoCommands)
+								continue;
 
-							Console.WriteLine(MyRecord.Text);
+							if (!IsRedirected)
+								Console.ForegroundColor = Theme.GetColour(Record.Severity);
+
+							// If we're echoing a command, put the prompt before it
+							if (Record.Severity == null)
+								Console.WriteLine("{0}{1}", Theme.Prompt, Record.Text);
+							else
+								Console.WriteLine(Record.Text);
 						}
 
 						// Handle any input
@@ -204,8 +241,6 @@ namespace Proximity.Terminal
 				if (InputVisible)
 					// Clear the input line
 					HideInputArea();
-
-				Console.ResetColor();
 			}
 
 			private void HandleConsoleKey(ConsoleKeyInfo keyData, ref bool inputVisible)

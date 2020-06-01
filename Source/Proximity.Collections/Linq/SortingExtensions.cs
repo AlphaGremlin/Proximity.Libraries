@@ -157,7 +157,7 @@ namespace System.Linq
 			while (Min < Max)
 			{
 				// Select the middle item as our pivot
-				int PivotIndex = Min + ((Max - Min) >> 1);
+				var PivotIndex = Min + ((Max - Min) >> 1);
 
 				// Sort our first and last items, plus the pivot
 				list.SwapIfGreater(Min, PivotIndex, comparer);
@@ -173,15 +173,11 @@ namespace System.Linq
 				{
 					// Move the left boundary up as long as we're less than the pivot
 					while (comparer.Compare(list[Left], Pivot) < 0)
-					{
 						Left++;
-					}
 
 					// Move the right boundary down as long as we're greater than the pivot
 					while (comparer.Compare(Pivot, list[Right]) < 0)
-					{
 						Right--;
-					}
 
 					if (Left >= Right)
 						break;

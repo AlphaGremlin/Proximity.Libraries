@@ -191,11 +191,11 @@ namespace System.Buffers
 
 			// Does TValue implement the generic IComparable?
 			if (typeof(IComparable<T>).IsAssignableFrom(Type))
-				return (BlockComparer<T>)Activator.CreateInstance(typeof(GenericComparer<>).MakeGenericType(Type));
+				return (BlockComparer<T>)Activator.CreateInstance(typeof(GenericComparer<>).MakeGenericType(Type))!;
 
 			// The object IComparable?
 			if (typeof(IComparable).IsAssignableFrom(Type))
-				return (BlockComparer<T>)Activator.CreateInstance(typeof(ObjectComparer<>).MakeGenericType(Type));
+				return (BlockComparer<T>)Activator.CreateInstance(typeof(ObjectComparer<>).MakeGenericType(Type))!;
 
 			// Nope, so we can't compare them
 			throw new InvalidOperationException("Cannot compare this type");

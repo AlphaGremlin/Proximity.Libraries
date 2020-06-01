@@ -9,7 +9,7 @@ namespace Proximity.Terminal.Metadata
 	/// <summary>
 	/// Describes a set of commands grouped by name
 	/// </summary>
-	public sealed class TerminalCommandSet : IComparable<TerminalCommandSet>
+	public sealed class TerminalCommandSet : ICommandTarget, IComparable<TerminalCommandSet>
 	{ //****************************************
 		private readonly List<TerminalCommand> _Commands = new List<TerminalCommand>();
 		//****************************************

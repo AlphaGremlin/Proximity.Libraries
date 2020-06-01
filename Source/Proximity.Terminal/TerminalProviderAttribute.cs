@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 //****************************************
 
 namespace Proximity.Terminal
@@ -19,33 +19,34 @@ namespace Proximity.Terminal
 		/// <summary>
 		/// Identifies a reference class that provides terminal commands
 		/// </summary>
-		/// <param name="instanceType">The name to identify instances of this class registered with the Terminal</param>
-		public TerminalProviderAttribute(string instanceType)
+		/// <param name="typeName">The name to group instances of this class registered with the Terminal</param>
+		public TerminalProviderAttribute(string typeName)
 		{
-			InstanceType = instanceType;
+			TypeName = typeName;
 		}
-		
+
 		/// <summary>
 		/// Identifies a reference class that provides terminal commands
 		/// </summary>
-		/// <param name="instanceType">The name to identify instances of this class registered with the Terminal</param>
+		/// <param name="typeName">The name to group instances of this class registered with the Terminal</param>
 		/// <param name="isDefault">Whether this instance acts as the default target for this instance type</param>
-		public TerminalProviderAttribute(string instanceType, bool isDefault)
+		public TerminalProviderAttribute(string typeName, bool isDefault)
 		{
-			InstanceType = instanceType;
+			TypeName = typeName;
 			IsDefault = isDefault;
 		}
 
 		//****************************************
 
 		/// <summary>
-		/// Gets/Sets the name to identify instances of this class registered with the Terminal
+		/// Gets/Sets the name to group instances of this class registered with the Terminal
 		/// </summary>
-		public string InstanceType { get; set; }
+		public string TypeName { get; set; }
 
 		/// <summary>
 		/// Gets/Sets whether this instance acts as the default target for this instance type
 		/// </summary>
+		/// <remarks>Only one class can be registered as the default at any one time</remarks>
 		public bool IsDefault { get; set; }
 	}
 }
