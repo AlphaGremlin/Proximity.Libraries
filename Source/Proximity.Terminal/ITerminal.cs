@@ -7,6 +7,10 @@ namespace Proximity.Terminal
 {
 	public interface ITerminal : ILogger
 	{
+		void Clear();
+
+		//****************************************
+
 		IReadOnlyList<TerminalRegistry> Registries { get; }
 	}
 }

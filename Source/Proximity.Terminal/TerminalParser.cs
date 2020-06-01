@@ -283,7 +283,7 @@ namespace Proximity.Terminal
 			int CharIndex;
 			
 			TerminalTypeSet? TypeSet = null;
-			TerminalTypeInstance? TypeInstance = null;
+			TerminalTypeInstance? TypeInstance;
 			
 			var PartialMatches = new List<string>();
 			//****************************************
@@ -328,14 +328,14 @@ namespace Proximity.Terminal
 				if (InstanceName == null)
 				{
 					TypeInstance = TypeSet.Default;
-					CommandText = TypeSet.TypeName;
+					CommandText = TypeSet.TypeName.AsSpan();
 				}
 				else
 				{
 					if (!TypeSet.TryGetNamedInstance(InstanceName, out TypeInstance))
 						return Prefix.Concat(partialCommand);
 
-					CommandText = $"{TypeSet.TypeName}.{TypeInstance.Name}";
+					CommandText = $"{TypeSet.TypeName}.{TypeInstance.Name}".AsSpan();
 				}
 				
 				// If the instance doesn't exist, return as is
@@ -693,7 +693,7 @@ namespace Proximity.Terminal
 		{
 			terminal.Log(LogLevel.Information, default, new ConsoleRecord(DateTimeOffset.Now, null, command), null, (record, exception) => record.Text);
 
-			if (!TryParse(command, terminal.Registries, out var ParseResult))
+			if (!TryParse(command.AsSpan(), terminal.Registries, out var ParseResult))
 			{
 				if (ParseResult.TypeSet != null)
 				{
@@ -841,7 +841,7 @@ namespace Proximity.Terminal
 		private static bool ParseType(TerminalTypeSet typeSet, TerminalType type, TerminalTypeInstance? instance, ReadOnlySpan<char> command, out TerminalParseResult result)
 		{
 			ReadOnlySpan<char> Command, Arguments;
-			TerminalVariable Variable;
+			TerminalVariable? Variable;
 
 			// Star command lists all variables
 			if (command.Length == 1 && command[0] == '*')
@@ -916,7 +916,7 @@ namespace Proximity.Terminal
 			return false;
 		}
 
-		private static ValueTask<bool> ExecuteCommand(ITerminal terminal, string path, object? instance, TerminalCommandSet commandSet, string arguments)
+		private static async ValueTask<bool> ExecuteCommand(ITerminal terminal, string path, object? instance, TerminalCommandSet commandSet, string arguments)
 		{	//****************************************
 			var RawParams = new List<string>();
 			var AlteredText = arguments;
@@ -999,19 +999,21 @@ namespace Proximity.Terminal
 			Command = commandSet.FindCommand(RawParams.ToArray(), out var OutParams);
 			
 			// If that fails, try and pass the whole argument text as the first argument, no quoting
-			if (Command == null)
+			if (Command == null && RawParams.Count > 1)
 				Command = commandSet.FindCommand(new [] { arguments }, out OutParams);
 				
 			if (Command == null)
 			{
 				terminal.LogInformation("{0}{1} does not accept the given arguments", path, commandSet.Name);
 				
-				return new ValueTask<bool>(false);
+				return false;
 			}
 			
 			//****************************************
 			
-			return Command.InternalInvokeAsync(terminal, instance, OutParams);
+			await Command.InvokeAsync(terminal, instance, OutParams);
+
+			return true;
 		}
 	}
 }

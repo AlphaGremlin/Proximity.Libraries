@@ -342,7 +342,54 @@ namespace System.Text
 #endif
 
 		/// <summary>
-		/// Decodes a byte sequence and appends it to a <see cref="StringBuilder"/>
+		/// Encodes a char sequence and writes it to a span
+		/// </summary>
+		/// <param name="encoding">The encoding to use</param>
+		/// <param name="input">The ReadOnlySequence to read from</param>
+		/// <param name="output">The span to write to</param>
+		/// <returns>The number of bytes written to <paramref name="output"/></returns>
+		public static int GetBytes(this Encoding encoding, ReadOnlySequence<char> input, Span<byte> output)
+		{
+			var RemainingChars = input.Length;
+			var BytesUsed = 0;
+
+			var Encoder = encoding.GetEncoder();
+
+			foreach (var MySegment in input)
+			{
+				var InBuffer = MySegment.Span;
+				bool IsCompleted;
+
+				do
+				{
+					// Encode the chars into our byte array
+					Encoder.Convert(
+						InBuffer,
+						output,
+						RemainingChars == InBuffer.Length,
+						out var CharsRead, out var WrittenBytes, out IsCompleted
+						);
+
+					BytesUsed += WrittenBytes;
+					output = output.Slice(WrittenBytes);
+
+					if (output.IsEmpty)
+						return BytesUsed;
+
+					RemainingChars -= CharsRead;
+
+					InBuffer = InBuffer.Slice(CharsRead);
+
+					// Loop while there are more chars unread, or there are no chars left but there's still data to flush
+				}
+				while (!InBuffer.IsEmpty || (RemainingChars == 0 && !IsCompleted));
+			}
+
+			return BytesUsed;
+		}
+
+		/// <summary>
+		/// Decodes a byte sequence and writes it to a span
 		/// </summary>
 		/// <param name="encoding">The encoding to use</param>
 		/// <param name="input">The ReadOnlySequence to read from</param>

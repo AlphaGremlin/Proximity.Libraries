@@ -10,7 +10,7 @@ namespace Proximity.Terminal
 	{ //****************************************
 		private readonly WeakHashSet<ITerminalListener> _Listeners = new WeakHashSet<ITerminalListener>();
 
-		private readonly HashSet<LogLevel> _IsEnabled = new HashSet<LogLevel>(6);
+		private readonly HashSet<LogLevel> _IsEnabled = new HashSet<LogLevel>();
 		//****************************************
 
 		public TerminalView(TerminalRegistry registry) : this((IEnumerable<TerminalRegistry>)new[] { registry })
@@ -103,6 +103,10 @@ namespace Proximity.Terminal
 				Listener.Clear();
 		}
 
+		/// <summary>
+		/// Attach a listener to this Terminal
+		/// </summary>
+		/// <param name="listener"></param>
 		public void Attach(ITerminalListener listener) => _Listeners.Add(listener);
 
 		public bool Detach(ITerminalListener listener) => _Listeners.Remove(listener);
@@ -121,11 +125,6 @@ namespace Proximity.Terminal
 		}
 
 		//****************************************
-
-		/// <summary>
-		/// Gets/Sets the maximum history to record for this View
-		/// </summary>
-		public int? MaxHistory { get; set; }
 
 		/// <summary>
 		/// Gets the command registries used by this view, in order of processing

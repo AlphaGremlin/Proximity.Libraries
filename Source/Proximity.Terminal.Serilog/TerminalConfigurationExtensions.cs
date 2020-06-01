@@ -18,7 +18,7 @@ namespace Proximity.Terminal.Serilog
 		/// Attaches a Serilog event sink that writes to a Terminal View
 		/// </summary>
 		/// <param name="sinkConfiguration"></param>
-		/// <param name="view"></param>
+		/// <param name="terminal">The Terminal View to write to</param>
 		/// <param name="restrictedToMinimumLevel"></param>
 		/// <param name="outputTemplate"></param>
 		/// <param name="formatProvider"></param>
@@ -35,7 +35,7 @@ namespace Proximity.Terminal.Serilog
 		{
 			var Formatter = new MessageTemplateTextFormatter(outputTemplate, formatProvider);
 
-			return sinkConfiguration.Sink(new TerminalSink(view, Formatter), restrictedToMinimumLevel, levelSwitch);
+			return sinkConfiguration.Sink(new TerminalSink(terminal, Formatter), restrictedToMinimumLevel, levelSwitch);
 		}
 	}
 }

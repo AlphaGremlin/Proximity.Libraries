@@ -178,7 +178,7 @@ namespace Proximity.Terminal
 		}
 
 		//****************************************
-		
+
 		/// <summary>
 		/// Throws an exception to be immediately caught by the parser
 		/// </summary>
@@ -192,9 +192,9 @@ namespace Proximity.Terminal
 		/// Clears the local terminal
 		/// </summary>
 		[TerminalBinding("Clears the local terminal")]
-		public static void Clear()
+		public static void Clear(ITerminal terminal)
 		{
-			TerminalManager.Clear();
+			terminal.Clear();
 		}
 	}
 }

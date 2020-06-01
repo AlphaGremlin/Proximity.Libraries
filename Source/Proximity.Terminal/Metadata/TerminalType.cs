@@ -11,55 +11,52 @@ namespace Proximity.Terminal.Metadata
 	/// </summary>
 	public sealed class TerminalType
 	{//****************************************
-		private readonly Type _Type;
 		private readonly StringKeyDictionary<TerminalCommandSet> _Commands = new StringKeyDictionary<TerminalCommandSet>(StringComparison.OrdinalIgnoreCase);
 		private readonly StringKeyDictionary<TerminalVariable> _Variables = new StringKeyDictionary<TerminalVariable>(StringComparison.OrdinalIgnoreCase);
 		//****************************************
 		
 		internal TerminalType(TerminalRegistry registry, Type type, TerminalProviderAttribute provider)
 		{
-			_Type = type;
-			
-			Name = provider.TypeName;
+			Name = provider.TypeSet;
 			IsDefault = provider.IsDefault;
 			
 			//****************************************
 			
-			foreach(var MyMethod in type.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+			foreach(var Method in type.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
 			{
-				foreach(TerminalBindingAttribute MyBinding in MyMethod.GetCustomAttributes(typeof(TerminalBindingAttribute), true))
+				foreach(TerminalBindingAttribute Binding in Method.GetCustomAttributes(typeof(TerminalBindingAttribute), true))
 				{
-					if (MyMethod.IsStatic)
+					if (Method.IsStatic)
 					{
-						registry.RegisterCommand(MyMethod, MyBinding);
+						registry.RegisterCommand(Method, Binding);
 						
 						continue;
 					}
 					
-					var MyName = MyBinding.Name ?? MyMethod.Name;
+					var Name = Binding.Name ?? Method.Name;
 					
-					if (!_Commands.TryGetValue(MyName, out var MyCommands))
-						_Commands.Add(MyName, MyCommands = new TerminalCommandSet(MyName));
+					if (!_Commands.TryGetValue(Name, out var MyCommands))
+						_Commands.Add(Name, MyCommands = new TerminalCommandSet(Name));
 					
-					MyCommands.AddOverload(MyMethod, MyBinding);
+					MyCommands.AddOverload(Method, Binding);
 				}
 			}
 			
-			foreach(var MyProperty in type.GetProperties(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+			foreach(var Property in type.GetProperties(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
 			{
-				foreach(TerminalBindingAttribute MyBinding in MyProperty.GetCustomAttributes(typeof(TerminalBindingAttribute), true))
+				foreach(TerminalBindingAttribute Binding in Property.GetCustomAttributes(typeof(TerminalBindingAttribute), true))
 				{
-					if (MyProperty.GetMethod.IsStatic)
+					if (Property.GetMethod.IsStatic)
 					{
-						registry.RegisterVariable(MyProperty, MyBinding);
+						registry.RegisterVariable(Property, Binding);
 						
 						continue;
 					}
 					
-					var MyName = MyBinding.Name ?? MyProperty.Name;
+					var Name = Binding.Name ?? Property.Name;
 					
-					if (!_Variables.ContainsKey(MyName))
-						_Variables.Add(MyName, new TerminalVariable(MyProperty, MyBinding));
+					if (!_Variables.ContainsKey(Name))
+						_Variables.Add(Name, new TerminalVariable(Property, Binding));
 				}
 			}
 		}
@@ -101,7 +98,7 @@ namespace Proximity.Terminal.Metadata
 		/// <summary>
 		/// Gets the name to identify instances of this class registered with the Terminal
 		/// </summary>
-		public string Name { get; }
+		public string? Name { get; }
 
 		/// <summary>
 		/// Gets whether this Type is the default for this Name

@@ -2,7 +2,8 @@ using NUnit.Framework;
 
 namespace Proximity.Terminal.Tests
 {
-	public class Tests
+	[TestFixture]
+	public class TerminalViewTests
 	{
 		[SetUp]
 		public void Setup()

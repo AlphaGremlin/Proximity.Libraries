@@ -20,6 +20,15 @@ namespace System
 		public static string Concat(this string source, ReadOnlySpan<char> arg1) => source.AsSpan().Concat(arg1);
 
 		/// <summary>
+		/// Concatenates a string and a character span, returning a new string
+		/// </summary>
+		/// <param name="source">The string to start with</param>
+		/// <param name="arg1">The character span to append</param>
+		/// <returns>The combined string</returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static string Concat(this ReadOnlySpan<char> source, string arg1) => source.Concat(arg1.AsSpan());
+
+		/// <summary>
 		/// Concatenates two character spans, returning a new string
 		/// </summary>
 		/// <param name="source">The character span to start with</param>
@@ -46,6 +55,36 @@ namespace System
 		/// <returns>The combined string</returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static string Concat(this string source, ReadOnlySpan<char> arg1, ReadOnlySpan<char> arg2) => source.AsSpan().Concat(arg1, arg2);
+
+		/// <summary>
+		/// Concatenates a string and two character spans, returning a new string
+		/// </summary>
+		/// <param name="source">The string to start with</param>
+		/// <param name="arg1">The character span to append first</param>
+		/// <param name="arg2">The character span to append second</param>
+		/// <returns>The combined string</returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static string Concat(this string source, string arg1, ReadOnlySpan<char> arg2) => source.AsSpan().Concat(arg1.AsSpan(), arg2);
+
+		/// <summary>
+		/// Concatenates a string and two character spans, returning a new string
+		/// </summary>
+		/// <param name="source">The string to start with</param>
+		/// <param name="arg1">The character span to append first</param>
+		/// <param name="arg2">The character span to append second</param>
+		/// <returns>The combined string</returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static string Concat(this string source, ReadOnlySpan<char> arg1, string arg2) => source.AsSpan().Concat(arg1, arg2.AsSpan());
+
+		/// <summary>
+		/// Concatenates a string and two character spans, returning a new string
+		/// </summary>
+		/// <param name="source">The string to start with</param>
+		/// <param name="arg1">The character span to append first</param>
+		/// <param name="arg2">The character span to append second</param>
+		/// <returns>The combined string</returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static string Concat(this ReadOnlySpan<char> source, string arg1, string arg2) => source.Concat(arg1.AsSpan(), arg2.AsSpan());
 
 		/// <summary>
 		/// Concatenates three character spans, returning a new string

@@ -19,20 +19,20 @@ namespace Proximity.Terminal
 		/// <summary>
 		/// Identifies a reference class that provides terminal commands
 		/// </summary>
-		/// <param name="typeName">The name to group instances of this class registered with the Terminal</param>
-		public TerminalProviderAttribute(string typeName)
+		/// <param name="typeSet">The name to group instances of this class registered with the Terminal</param>
+		public TerminalProviderAttribute(string typeSet)
 		{
-			TypeName = typeName;
+			TypeSet = typeSet;
 		}
 
 		/// <summary>
 		/// Identifies a reference class that provides terminal commands
 		/// </summary>
-		/// <param name="typeName">The name to group instances of this class registered with the Terminal</param>
+		/// <param name="typeSet">The name to group instances of this class registered with the Terminal</param>
 		/// <param name="isDefault">Whether this instance acts as the default target for this instance type</param>
-		public TerminalProviderAttribute(string typeName, bool isDefault)
+		public TerminalProviderAttribute(string typeSet, bool isDefault)
 		{
-			TypeName = typeName;
+			TypeSet = typeSet;
 			IsDefault = isDefault;
 		}
 
@@ -41,12 +41,12 @@ namespace Proximity.Terminal
 		/// <summary>
 		/// Gets/Sets the name to group instances of this class registered with the Terminal
 		/// </summary>
-		public string TypeName { get; set; }
+		public string? TypeSet { get; set; }
 
 		/// <summary>
-		/// Gets/Sets whether this instance acts as the default target for this instance type
+		/// Gets/Sets whether an instance of this type acts as the default target for this type set
 		/// </summary>
-		/// <remarks>Only one class can be registered as the default at any one time</remarks>
+		/// <remarks>Only one instance can be registered as the default at any one time</remarks>
 		public bool IsDefault { get; set; }
 	}
 }

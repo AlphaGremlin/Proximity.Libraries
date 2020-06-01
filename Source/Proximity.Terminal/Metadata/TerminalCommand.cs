@@ -30,6 +30,7 @@ namespace Proximity.Terminal.Metadata
 		/// <summary>
 		/// Synchronously invokes a command
 		/// </summary>
+		/// <param name="terminal">The terminal to log any failures to</param>
 		/// <param name="instance">The instance this command should be called on, if any</param>
 		/// <param name="arguments">The arguments to pass to the command</param>
 		public void Invoke(ITerminal terminal, object instance, object[] arguments)
@@ -67,10 +68,11 @@ namespace Proximity.Terminal.Metadata
 		/// <summary>
 		/// Asynchronously invokes a command
 		/// </summary>
+		/// <param name="terminal">The terminal to log any failures to</param>
 		/// <param name="instance">The instance this command should be called on, if any</param>
 		/// <param name="arguments">The arguments to pass to the command</param>
 		/// <returns>A task that completes with the result of the command</returns>
-		public async ValueTask InvokeAsync(ITerminal terminal, object instance, object[] arguments)
+		public async ValueTask InvokeAsync(ITerminal terminal, object? instance, object[] arguments)
 		{
 			if (instance != null && !Method.DeclaringType.IsInstanceOfType(instance))
 				throw new ArgumentException("Instance is invalid for this Command");
