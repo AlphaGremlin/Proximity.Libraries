@@ -4,6 +4,9 @@ using System.Text;
 
 namespace Proximity.Terminal
 {
+	/// <summary>
+	/// Provides historical recording when attached to a Terminal
+	/// </summary>
 	public sealed class TerminalHistory : ITerminalListener
 	{ //****************************************
 		private readonly List<ConsoleRecord> _History = new List<ConsoleRecord>();

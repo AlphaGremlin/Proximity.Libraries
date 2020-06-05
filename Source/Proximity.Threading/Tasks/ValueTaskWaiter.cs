@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -11,13 +11,47 @@ namespace System.Threading.Tasks
 	/// <summary>
 	/// Allows a fluent syntax for awaiting multiple <see cref="ValueTask"/> instances
 	/// </summary>
-	public readonly struct ValueTaskWaiter
+	public static class ValueTaskWaiter
 	{
-		internal ValueTaskWaiter(ValueTask task) => Tasks = ImmutableStack<ValueTask>.Empty.Push(task);
+		/// <summary>
+		/// Waits on two or more <see cref="ValueTask"/> instances
+		/// </summary>
+		/// <param name="task1">The first task to wait on</param>
+		/// <param name="task2">The second task to wait on</param>
+		/// <returns>A new waiter that waits on all the supplied tasks</returns>
+		public static ValueTaskWaiter2 ThenWaitOn(this ValueTask task1, ValueTask task2) => new ValueTaskWaiter2(task1, task2);
 
-		internal ValueTaskWaiter(ValueTask task1, ValueTask task2) => Tasks = ImmutableStack<ValueTask>.Empty.Push(task1).Push(task2);
+		/// <summary>
+		/// Waits on two or more <see cref="ValueTask"/> instances
+		/// </summary>
+		/// <param name="task1">The first task to wait on</param>
+		/// <param name="task2">The second task to wait on</param>
+		/// <returns>A new waiter that waits on all the supplied tasks</returns>
+		public static ValueTaskWaiter2<T1> ThenWaitOn<T1>(this ValueTask<T1> task1, ValueTask task2) => new ValueTaskWaiter2<T1>(task1, task2);
 
-		internal ValueTaskWaiter(ImmutableStack<ValueTask> tasks) => Tasks = tasks;
+		/// <summary>
+		/// Waits on two or more <see cref="ValueTask"/> instances
+		/// </summary>
+		/// <param name="task1">The first task to wait on</param>
+		/// <param name="task2">The second task to wait on</param>
+		/// <returns>A new waiter that waits on all the supplied tasks</returns>
+		public static ValueTaskWaiter2B<T2> ThenWaitOn<T2>(this ValueTask task1, ValueTask<T2> task2) => new ValueTaskWaiter2B<T2>(task1, task2);
+
+		/// <summary>
+		/// Waits on two or more <see cref="ValueTask"/> instances
+		/// </summary>
+		/// <param name="task1">The first task to wait on</param>
+		/// <param name="task2">The second task to wait on</param>
+		/// <returns>A new waiter that waits on all the supplied tasks</returns>
+		public static ValueTaskWaiter2<T1, T2> ThenWaitOn<T1, T2>(this ValueTask<T1> task1, ValueTask<T2> task2) => new ValueTaskWaiter2<T1, T2>(task1, task2);
+	}
+
+	/// <summary>
+	/// Allows a fluent syntax for awaiting multiple <see cref="ValueTask"/> instances
+	/// </summary>
+	public readonly struct ValueTaskWaiter2
+	{
+		internal ValueTaskWaiter2(ValueTask task1, ValueTask task2) => (Task1, Task2) = (task1, task2);
 
 		//****************************************
 
@@ -26,68 +60,68 @@ namespace System.Threading.Tasks
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter Then(ValueTask task) => new ValueTaskWaiter((Tasks ?? ImmutableStack<ValueTask>.Empty).Push(task));
+		public ValueTaskWaiter3 Then(ValueTask task) => new ValueTaskWaiter3(Task1, Task2, task);
 
 		/// <summary>
 		/// Adds a <see cref="ValueTask{T}"/> to the waiter
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T> Then<T>(ValueTask<T> task) => new ValueTaskWaiter<T>(this, task);
+		public ValueTaskWaiter3C<T3> Then<T3>(ValueTask<T3> task) => new ValueTaskWaiter3C<T3>(Task1, Task2, task);
 
 		/// <summary>
 		/// Gets an awaiter for the supplied tasks
 		/// </summary>
 		/// <returns>An awaiter that waits on all the supplied tasks</returns>
-		public ValueTaskAwaiter GetAwaiter() => ValueTaskExtensions.WhenAll(Tasks ?? ImmutableStack<ValueTask>.Empty).GetAwaiter();
+		public ValueTaskAwaiter GetAwaiter() => WhenAll().GetAwaiter();
 
 		//****************************************
 
-		internal ImmutableStack<ValueTask> Tasks { get; }
+		private async ValueTask WhenAll()
+		{
+			List<Exception>? Exceptions = null;
+
+			try
+			{
+				await Task1;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			try
+			{
+				await Task2;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			if (Exceptions != null)
+				throw new AggregateException(Exceptions);
+		}
+
+		//****************************************
+
+		internal ValueTask Task1 { get; }
+
+		internal ValueTask Task2 { get; }
 	}
 
 	/// <summary>
 	/// Allows a fluent syntax for awaiting multiple <see cref="ValueTask"/> and <see cref="ValueTask{TResult}"/> instances
 	/// </summary>
-	public readonly struct ValueTaskWaiter<T1>
-	{ //****************************************
-		private readonly ValueTaskWaiter _Waiter;
-		//****************************************
-
-		internal ValueTaskWaiter(ValueTask<T1> task)
-		{
-			_Waiter = default;
-			Tasks1 = ImmutableStack<ValueTask<T1>>.Empty.Push(task);
-			Count1 = 1;
-		}
-
-		internal ValueTaskWaiter(ValueTask<T1> task1, ValueTask<T1> task2)
-		{
-			_Waiter = default;
-			Tasks1 = ImmutableStack<ValueTask<T1>>.Empty.Push(task1).Push(task2);
-			Count1 = 2;
-		}
-
-		internal ValueTaskWaiter(ValueTask task1, ValueTask<T1> task2)
-		{
-			_Waiter = new ValueTaskWaiter(task1);
-			Tasks1 = ImmutableStack<ValueTask<T1>>.Empty.Push(task2);
-			Count1 = 1;
-		}
-
-		internal ValueTaskWaiter(ValueTaskWaiter waiter, ValueTask<T1> task)
-		{
-			_Waiter = waiter;
-			Tasks1 = ImmutableStack<ValueTask<T1>>.Empty.Push(task);
-			Count1 = 1;
-		}
-
-		internal ValueTaskWaiter(ValueTaskWaiter waiter, ImmutableStack<ValueTask<T1>> tasks, int count)
-		{
-			_Waiter = waiter;
-			Tasks1 = tasks;
-			Count1 = count;
-		}
+	public readonly struct ValueTaskWaiter2<T1>
+	{
+		internal ValueTaskWaiter2(ValueTask<T1> task1, ValueTask task2) => (Task1, Task2) = (task1, task2);
 
 		//****************************************
 
@@ -96,112 +130,71 @@ namespace System.Threading.Tasks
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1> Then(ValueTask task) => new ValueTaskWaiter<T1>(_Waiter.Then(task), Tasks1, Count1);
-
-		/// <summary>
-		/// Adds another <see cref="ValueTask{T1}"/> to the waiter
-		/// </summary>
-		/// <param name="task">The task to wait on</param>
-		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1> Then(ValueTask<T1> task) => new ValueTaskWaiter<T1>(_Waiter, (Tasks1 ?? ImmutableStack<ValueTask<T1>>.Empty).Push(task), Count1 + 1);
+		public ValueTaskWaiter3<T1> Then(ValueTask task) => new ValueTaskWaiter3<T1>(Task1, Task2, task);
 
 		/// <summary>
 		/// Adds a <see cref="ValueTask{T2}"/> to the waiter
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1, T2> Then<T2>(ValueTask<T2> task) => new ValueTaskWaiter<T1, T2>(this, task);
+		public ValueTaskWaiter3A<T1, T3> Then<T3>(ValueTask<T3> task) => new ValueTaskWaiter3A<T1, T3>(Task1, Task2, task);
 
 		/// <summary>
 		/// Gets an awaiter for the supplied tasks
 		/// </summary>
 		/// <returns>An awaiter that waits on all the supplied tasks</returns>
-		public ValueTaskAwaiter<T1[]> GetAwaiter() => WhenAll().GetAwaiter();
+		public ValueTaskAwaiter<T1> GetAwaiter() => WhenAll().GetAwaiter();
 
 		//****************************************
 
-		private async ValueTask<T1[]> WhenAll()
+		private async ValueTask<T1> WhenAll()
 		{
 			List<Exception>? Exceptions = null;
-			var Results = new T1[Count1];
+			T1 Result = default!;
 
-			foreach (var Task in _Waiter.Tasks ?? ImmutableStack<ValueTask>.Empty)
+			try
 			{
-				try
-				{
-					await Task;
-				}
-				catch (Exception e)
-				{
-					if (Exceptions == null)
-						Exceptions = new List<Exception>();
+				Result = await Task1;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
 
-					Exceptions.Add(e);
-				}
+				Exceptions.Add(e);
 			}
 
-			var Index = 0;
-
-			foreach (var Task in Tasks1 ?? ImmutableStack<ValueTask<T1>>.Empty)
+			try
 			{
-				try
-				{
-					Results[Index] = await Task;
-				}
-				catch (Exception e)
-				{
-					if (Exceptions == null)
-						Exceptions = new List<Exception>();
+				await Task2;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
 
-					Exceptions.Add(e);
-				}
-
-				Index++;
+				Exceptions.Add(e);
 			}
 
 			if (Exceptions != null)
 				throw new AggregateException(Exceptions);
 
-			return Results;
+			return Result;
 		}
 
 		//****************************************
 
-		internal ImmutableStack<ValueTask> Tasks => _Waiter.Tasks;
+		internal ValueTask<T1> Task1 { get; }
 
-		internal ImmutableStack<ValueTask<T1>> Tasks1 { get; }
-
-		internal int Count1 { get; }
+		internal ValueTask Task2 { get; }
 	}
 
 	/// <summary>
 	/// Allows a fluent syntax for awaiting multiple <see cref="ValueTask"/> and <see cref="ValueTask{TResult}"/> instances
 	/// </summary>
-	public readonly struct ValueTaskWaiter<T1, T2>
-	{ //****************************************
-		private readonly ValueTaskWaiter<T1> _Waiter;
-		//****************************************
-
-		internal ValueTaskWaiter(ValueTask<T1> task1, ValueTask<T2> task2)
-		{
-			_Waiter = new ValueTaskWaiter<T1>(task1);
-			Tasks2 = ImmutableStack<ValueTask<T2>>.Empty.Push(task2);
-			Count2 = 1;
-		}
-
-		internal ValueTaskWaiter(ValueTaskWaiter<T1> waiter, ValueTask<T2> task)
-		{
-			_Waiter = waiter;
-			Tasks2 = ImmutableStack<ValueTask<T2>>.Empty.Push(task);
-			Count2 = 1;
-		}
-
-		internal ValueTaskWaiter(ValueTaskWaiter<T1> waiter, ImmutableStack<ValueTask<T2>> tasks, int count)
-		{
-			_Waiter = waiter;
-			Tasks2 = tasks;
-			Count2 = count;
-		}
+	public readonly struct ValueTaskWaiter2B<T2>
+	{
+		internal ValueTaskWaiter2B(ValueTask task1, ValueTask<T2> task2) => (Task1, Task2) = (task1, task2);
 
 		//****************************************
 
@@ -210,136 +203,145 @@ namespace System.Threading.Tasks
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1,T2> Then(ValueTask task) => new ValueTaskWaiter<T1, T2>(_Waiter.Then(task), Tasks2, Count2);
+		public ValueTaskWaiter3B<T2> Then(ValueTask task) => new ValueTaskWaiter3B<T2>(Task1, Task2, task);
 
 		/// <summary>
-		/// Adds another <see cref="ValueTask{T1}"/> to the waiter
+		/// Adds a <see cref="ValueTask{T2}"/> to the waiter
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1,T2> Then(ValueTask<T1> task) => new ValueTaskWaiter<T1, T2>(_Waiter.Then(task), Tasks2, Count2);
+		public ValueTaskWaiter3B<T2, T3> Then<T3>(ValueTask<T3> task) => new ValueTaskWaiter3B<T2, T3>(Task1, Task2, task);
 
 		/// <summary>
-		/// Adds another <see cref="ValueTask{T2}"/> to the waiter
+		/// Gets an awaiter for the supplied tasks
+		/// </summary>
+		/// <returns>An awaiter that waits on all the supplied tasks</returns>
+		public ValueTaskAwaiter<T2> GetAwaiter() => WhenAll().GetAwaiter();
+
+		//****************************************
+
+		private async ValueTask<T2> WhenAll()
+		{
+			List<Exception>? Exceptions = null;
+			T2 Result = default!;
+
+			try
+			{
+				await Task1;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			try
+			{
+				Result = await Task2;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			if (Exceptions != null)
+				throw new AggregateException(Exceptions);
+
+			return Result;
+		}
+
+		//****************************************
+
+		internal ValueTask Task1 { get; }
+
+		internal ValueTask<T2> Task2 { get; }
+	}
+
+	/// <summary>
+	/// Allows a fluent syntax for awaiting multiple <see cref="ValueTask"/> and <see cref="ValueTask{TResult}"/> instances
+	/// </summary>
+	public readonly struct ValueTaskWaiter2<T1, T2>
+	{
+		internal ValueTaskWaiter2(ValueTask<T1> task1, ValueTask<T2> task2) => (Task1, Task2) = (task1, task2);
+
+		//****************************************
+
+		/// <summary>
+		/// Adds another <see cref="ValueTask"/> to the waiter
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1, T2> Then(ValueTask<T2> task) => new ValueTaskWaiter<T1, T2>(_Waiter, (Tasks2 ?? ImmutableStack<ValueTask<T2>>.Empty).Push(task), Count2 + 1);
+		public ValueTaskWaiter3<T1,T2> Then(ValueTask task) => new ValueTaskWaiter3<T1, T2>(Task1, Task2, task);
 
 		/// <summary>
 		/// Adds a <see cref="ValueTask{T3}"/> to the waiter
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1, T2, T3> Then<T3>(ValueTask<T3> task) => new ValueTaskWaiter<T1, T2, T3>(this, task);
+		public ValueTaskWaiter3<T1, T2, T3> Then<T3>(ValueTask<T3> task) => new ValueTaskWaiter3<T1, T2, T3>(Task1, Task2, task);
 
 		/// <summary>
 		/// Gets an awaiter for the supplied tasks
 		/// </summary>
 		/// <returns>An awaiter that waits on all the supplied tasks</returns>
-		public ValueTaskAwaiter<(T1[], T2[])> GetAwaiter() => WhenAll().GetAwaiter();
+		public ValueTaskAwaiter<(T1, T2)> GetAwaiter() => WhenAll().GetAwaiter();
 
 		//****************************************
 
-		private async ValueTask<(T1[], T2[])> WhenAll()
+		private async ValueTask<(T1, T2)> WhenAll()
 		{
 			List<Exception>? Exceptions = null;
-			var Results1 = new T1[_Waiter.Count1];
-			var Results2 = new T2[Count2];
+			T1 Result1 = default!;
+			T2 Result2 = default!;
 
-			foreach (var Task in _Waiter.Tasks ?? ImmutableStack<ValueTask>.Empty)
+			try
 			{
-				try
-				{
-					await Task;
-				}
-				catch (Exception e)
-				{
-					if (Exceptions == null)
-						Exceptions = new List<Exception>();
+				Result1 = await Task1;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
 
-					Exceptions.Add(e);
-				}
+				Exceptions.Add(e);
 			}
 
-			var Index = 0;
-
-			foreach (var Task in _Waiter.Tasks1 ?? ImmutableStack<ValueTask<T1>>.Empty)
+			try
 			{
-				try
-				{
-					Results1[Index] = await Task;
-				}
-				catch (Exception e)
-				{
-					if (Exceptions == null)
-						Exceptions = new List<Exception>();
-
-					Exceptions.Add(e);
-				}
-
-				Index++;
+				Result2 = await Task2;
 			}
-
-			Index = 0;
-
-			foreach (var Task in Tasks2 ?? ImmutableStack<ValueTask<T2>>.Empty)
+			catch (Exception e)
 			{
-				try
-				{
-					Results2[Index] = await Task;
-				}
-				catch (Exception e)
-				{
-					if (Exceptions == null)
-						Exceptions = new List<Exception>();
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
 
-					Exceptions.Add(e);
-				}
-
-				Index++;
+				Exceptions.Add(e);
 			}
 
 			if (Exceptions != null)
 				throw new AggregateException(Exceptions);
 
-			return (Results1, Results2);
+			return (Result1, Result2);
 		}
 
 		//****************************************
 
-		internal ImmutableStack<ValueTask> Tasks => _Waiter.Tasks;
+		internal ValueTask<T1> Task1 { get; }
 
-		internal ImmutableStack<ValueTask<T1>> Tasks1 => _Waiter.Tasks1;
-
-		internal ImmutableStack<ValueTask<T2>> Tasks2 { get; }
-
-		internal int Count1 => _Waiter.Count1;
-
-		internal int Count2 { get; }
+		internal ValueTask<T2> Task2 { get; }
 	}
 
 	/// <summary>
-	/// Allows a fluent syntax for awaiting multiple <see cref="ValueTask"/> and <see cref="ValueTask{TResult}"/> instances
+	/// Allows a fluent syntax for awaiting multiple <see cref="ValueTask"/> instances
 	/// </summary>
-	public readonly struct ValueTaskWaiter<T1, T2, T3>
-	{ //****************************************
-		private readonly ValueTaskWaiter<T1, T2> _Waiter;
-		//****************************************
-
-		internal ValueTaskWaiter(ValueTaskWaiter<T1, T2> waiter, ValueTask<T3> task)
-		{
-			_Waiter = waiter;
-			Tasks3 = ImmutableStack<ValueTask<T3>>.Empty.Push(task);
-			Count3 = 1;
-		}
-
-		internal ValueTaskWaiter(ValueTaskWaiter<T1, T2> waiter, ImmutableStack<ValueTask<T3>> tasks, int count)
-		{
-			_Waiter = waiter;
-			Tasks3 = tasks;
-			Count3 = count;
-		}
+	public readonly struct ValueTaskWaiter3
+	{
+		internal ValueTaskWaiter3(ValueTask task1, ValueTask task2, ValueTask task3) => (Task1, Task2, Task3) = (task1, task2, task3);
 
 		//****************************************
 
@@ -348,128 +350,582 @@ namespace System.Threading.Tasks
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1, T2, T3> Then(ValueTask task) => new ValueTaskWaiter<T1, T2, T3>(_Waiter.Then(task), Tasks3, Count3);
-
-		/// <summary>
-		/// Adds another <see cref="ValueTask{T1}"/> to the waiter
-		/// </summary>
-		/// <param name="task">The task to wait on</param>
-		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1, T2, T3> Then(ValueTask<T1> task) => new ValueTaskWaiter<T1, T2, T3>(_Waiter.Then(task), Tasks3, Count3);
-
-		/// <summary>
-		/// Adds another <see cref="ValueTask{T2}"/> to the waiter
-		/// </summary>
-		/// <param name="task">The task to wait on</param>
-		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1, T2, T3> Then(ValueTask<T2> task) => new ValueTaskWaiter<T1, T2, T3>(_Waiter.Then(task), Tasks3, Count3);
-
-		/// <summary>
-		/// Adds another <see cref="ValueTask{T3}"/> to the waiter
-		/// </summary>
-		/// <param name="task">The task to wait on</param>
-		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter<T1, T2, T3> Then(ValueTask<T3> task) => new ValueTaskWaiter<T1, T2, T3>(_Waiter, (Tasks3 ?? ImmutableStack<ValueTask<T3>>.Empty).Push(task), Count3 + 1);
-
-		//public ValueTaskWaiter<T1, T2, T3, T4> ThenWaitOn<T4>(ValueTask<T4> task) => new ValueTaskWaiter<T1, T2, T3, T4>(this, task);
+		public ValueTaskMultiWaiter Then(ValueTask task) => new ValueTaskMultiWaiter(ImmutableStack.Create(Task1, Task2, Task3, task));
 
 		/// <summary>
 		/// Gets an awaiter for the supplied tasks
 		/// </summary>
 		/// <returns>An awaiter that waits on all the supplied tasks</returns>
-		public ValueTaskAwaiter<(T1[], T2[], T3[])> GetAwaiter() => WhenAll().GetAwaiter();
+		public ValueTaskAwaiter GetAwaiter() => WhenAll().GetAwaiter();
 
 		//****************************************
 
-		private async ValueTask<(T1[], T2[], T3[])> WhenAll()
+		private async ValueTask WhenAll()
 		{
 			List<Exception>? Exceptions = null;
-			var Results1 = new T1[_Waiter.Count1];
-			var Results2 = new T2[_Waiter.Count2];
-			var Results3 = new T3[Count3];
 
-			foreach (var Task in _Waiter.Tasks ?? ImmutableStack<ValueTask>.Empty)
+			try
 			{
-				try
-				{
-					await Task;
-				}
-				catch (Exception e)
-				{
-					if (Exceptions == null)
-						Exceptions = new List<Exception>();
+				await Task1;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
 
-					Exceptions.Add(e);
-				}
+				Exceptions.Add(e);
 			}
 
-			var Index = 0;
-
-			foreach (var Task in _Waiter.Tasks1 ?? ImmutableStack<ValueTask<T1>>.Empty)
+			try
 			{
-				try
-				{
-					Results1[Index] = await Task;
-				}
-				catch (Exception e)
-				{
-					if (Exceptions == null)
-						Exceptions = new List<Exception>();
+				await Task2;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
 
-					Exceptions.Add(e);
-				}
-
-				Index++;
+				Exceptions.Add(e);
 			}
 
-			Index = 0;
-
-			foreach (var Task in _Waiter.Tasks2 ?? ImmutableStack<ValueTask<T2>>.Empty)
+			try
 			{
-				try
-				{
-					Results2[Index] = await Task;
-				}
-				catch (Exception e)
-				{
-					if (Exceptions == null)
-						Exceptions = new List<Exception>();
+				await Task3;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
 
-					Exceptions.Add(e);
-				}
-
-				Index++;
+				Exceptions.Add(e);
 			}
 
-			Index = 0;
+			if (Exceptions != null)
+				throw new AggregateException(Exceptions);
+		}
 
-			foreach (var Task in Tasks3 ?? ImmutableStack<ValueTask<T3>>.Empty)
+		//****************************************
+
+		internal ValueTask Task1 { get; }
+
+		internal ValueTask Task2 { get; }
+
+		internal ValueTask Task3 { get; }
+	}
+
+	/// <summary>
+	/// Allows a fluent syntax for awaiting multiple <see cref="ValueTask"/> and <see cref="ValueTask{TResult}"/> instances
+	/// </summary>
+	public readonly struct ValueTaskWaiter3<T1>
+	{
+		internal ValueTaskWaiter3(ValueTask<T1> task1, ValueTask task2, ValueTask task3) => (Task1, Task2, Task3) = (task1, task2, task3);
+
+		//****************************************
+
+		/// <summary>
+		/// Gets an awaiter for the supplied tasks
+		/// </summary>
+		/// <returns>An awaiter that waits on all the supplied tasks</returns>
+		public ValueTaskAwaiter<T1> GetAwaiter() => WhenAll().GetAwaiter();
+
+		//****************************************
+
+		private async ValueTask<T1> WhenAll()
+		{
+			List<Exception>? Exceptions = null;
+			T1 Result = default!;
+
+			try
 			{
-				try
-				{
-					Results3[Index] = await Task;
-				}
-				catch (Exception e)
-				{
-					if (Exceptions == null)
-						Exceptions = new List<Exception>();
+				Result = await Task1;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
 
-					Exceptions.Add(e);
-				}
+				Exceptions.Add(e);
+			}
 
-				Index++;
+			try
+			{
+				await Task2;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			try
+			{
+				await Task3;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
 			}
 
 			if (Exceptions != null)
 				throw new AggregateException(Exceptions);
 
-			return (Results1, Results2, Results3);
+			return Result;
 		}
 
 		//****************************************
 
-		internal ImmutableStack<ValueTask<T3>> Tasks3 { get; }
+		internal ValueTask<T1> Task1 { get; }
 
-		internal int Count3 { get; }
+		internal ValueTask Task2 { get; }
+
+		internal ValueTask Task3 { get; }
+	}
+
+	/// <summary>
+	/// Allows a fluent syntax for awaiting multiple <see cref="ValueTask"/> and <see cref="ValueTask{TResult}"/> instances
+	/// </summary>
+	public readonly struct ValueTaskWaiter3A<T1, T3>
+	{
+		internal ValueTaskWaiter3A(ValueTask<T1> task1, ValueTask task2, ValueTask<T3> task3) => (Task1, Task2, Task3) = (task1, task2, task3);
+
+		//****************************************
+
+		/// <summary>
+		/// Gets an awaiter for the supplied tasks
+		/// </summary>
+		/// <returns>An awaiter that waits on all the supplied tasks</returns>
+		public ValueTaskAwaiter<(T1, T3)> GetAwaiter() => WhenAll().GetAwaiter();
+
+		//****************************************
+
+		private async ValueTask<(T1, T3)> WhenAll()
+		{
+			List<Exception>? Exceptions = null;
+			T1 Result1 = default!;
+			T3 Result3 = default!;
+
+			try
+			{
+				Result1 = await Task1;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			try
+			{
+				await Task2;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			try
+			{
+				Result3 = await Task3;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			if (Exceptions != null)
+				throw new AggregateException(Exceptions);
+
+			return (Result1, Result3);
+		}
+
+		//****************************************
+
+		internal ValueTask<T1> Task1 { get; }
+
+		internal ValueTask Task2 { get; }
+
+		internal ValueTask<T3> Task3 { get; }
+	}
+
+	/// <summary>
+	/// Allows a fluent syntax for awaiting multiple <see cref="ValueTask"/> and <see cref="ValueTask{TResult}"/> instances
+	/// </summary>
+	public readonly struct ValueTaskWaiter3B<T2>
+	{
+		internal ValueTaskWaiter3B(ValueTask task1, ValueTask<T2> task2, ValueTask task3) => (Task1, Task2, Task3) = (task1, task2, task3);
+
+		//****************************************
+
+		/// <summary>
+		/// Gets an awaiter for the supplied tasks
+		/// </summary>
+		/// <returns>An awaiter that waits on all the supplied tasks</returns>
+		public ValueTaskAwaiter<T2> GetAwaiter() => WhenAll().GetAwaiter();
+
+		//****************************************
+
+		private async ValueTask<T2> WhenAll()
+		{
+			List<Exception>? Exceptions = null;
+			T2 Result = default!;
+
+			try
+			{
+				await Task1;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			try
+			{
+				Result = await Task2;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			try
+			{
+				await Task3;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			if (Exceptions != null)
+				throw new AggregateException(Exceptions);
+
+			return Result;
+		}
+
+		//****************************************
+
+		internal ValueTask Task1 { get; }
+
+		internal ValueTask<T2> Task2 { get; }
+
+		internal ValueTask Task3 { get; }
+	}
+
+	/// <summary>
+	/// Allows a fluent syntax for awaiting multiple <see cref="ValueTask"/> and <see cref="ValueTask{TResult}"/> instances
+	/// </summary>
+	public readonly struct ValueTaskWaiter3B<T2, T3>
+	{
+		internal ValueTaskWaiter3B(ValueTask task1, ValueTask<T2> task2, ValueTask<T3> task3) => (Task1, Task2, Task3) = (task1, task2, task3);
+
+		//****************************************
+
+		/// <summary>
+		/// Gets an awaiter for the supplied tasks
+		/// </summary>
+		/// <returns>An awaiter that waits on all the supplied tasks</returns>
+		public ValueTaskAwaiter<(T2, T3)> GetAwaiter() => WhenAll().GetAwaiter();
+
+		//****************************************
+
+		private async ValueTask<(T2, T3)> WhenAll()
+		{
+			List<Exception>? Exceptions = null;
+			T2 Result2 = default!;
+			T3 Result3 = default!;
+
+			try
+			{
+				await Task1;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			try
+			{
+				Result2 = await Task2;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			try
+			{
+				Result3 = await Task3;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			if (Exceptions != null)
+				throw new AggregateException(Exceptions);
+
+			return (Result2, Result3);
+		}
+
+		//****************************************
+
+		internal ValueTask Task1 { get; }
+
+		internal ValueTask<T2> Task2 { get; }
+
+		internal ValueTask<T3> Task3 { get; }
+	}
+
+	/// <summary>
+	/// Allows a fluent syntax for awaiting multiple <see cref="ValueTask"/> and <see cref="ValueTask{TResult}"/> instances
+	/// </summary>
+	public readonly struct ValueTaskWaiter3C<T3>
+	{
+		internal ValueTaskWaiter3C(ValueTask task1, ValueTask task2, ValueTask<T3> task3) => (Task1, Task2, Task3) = (task1, task2, task3);
+
+		//****************************************
+
+		/// <summary>
+		/// Gets an awaiter for the supplied tasks
+		/// </summary>
+		/// <returns>An awaiter that waits on all the supplied tasks</returns>
+		public ValueTaskAwaiter<T3> GetAwaiter() => WhenAll().GetAwaiter();
+
+		//****************************************
+
+		private async ValueTask<T3> WhenAll()
+		{
+			List<Exception>? Exceptions = null;
+			T3 Result = default!;
+
+			try
+			{
+				await Task1;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			try
+			{
+				 await Task2;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			try
+			{
+				Result = await Task3;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			if (Exceptions != null)
+				throw new AggregateException(Exceptions);
+
+			return Result;
+		}
+
+		//****************************************
+
+		internal ValueTask Task1 { get; }
+
+		internal ValueTask Task2 { get; }
+
+		internal ValueTask<T3> Task3 { get; }
+	}
+
+	/// <summary>
+	/// Allows a fluent syntax for awaiting multiple <see cref="ValueTask"/> and <see cref="ValueTask{TResult}"/> instances
+	/// </summary>
+	public readonly struct ValueTaskWaiter3<T1, T2>
+	{
+		internal ValueTaskWaiter3(ValueTask<T1> task1, ValueTask<T2> task2, ValueTask task3) => (Task1, Task2, Task3) = (task1, task2, task3);
+
+		//****************************************
+
+		/// <summary>
+		/// Gets an awaiter for the supplied tasks
+		/// </summary>
+		/// <returns>An awaiter that waits on all the supplied tasks</returns>
+		public ValueTaskAwaiter<(T1, T2)> GetAwaiter() => WhenAll().GetAwaiter();
+
+		//****************************************
+
+		private async ValueTask<(T1, T2)> WhenAll()
+		{
+			List<Exception>? Exceptions = null;
+			T1 Result1 = default!;
+			T2 Result2 = default!;
+
+			try
+			{
+				Result1 = await Task1;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			try
+			{
+				Result2 = await Task2;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			try
+			{
+				await Task3;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			if (Exceptions != null)
+				throw new AggregateException(Exceptions);
+
+			return (Result1, Result2);
+		}
+
+		//****************************************
+
+		internal ValueTask<T1> Task1 { get; }
+
+		internal ValueTask<T2> Task2 { get; }
+
+		internal ValueTask Task3 { get; }
+	}
+
+	/// <summary>
+	/// Allows a fluent syntax for awaiting multiple <see cref="ValueTask"/> and <see cref="ValueTask{TResult}"/> instances
+	/// </summary>
+	public readonly struct ValueTaskWaiter3<T1, T2, T3>
+	{
+		internal ValueTaskWaiter3(ValueTask<T1> task1, ValueTask<T2> task2, ValueTask<T3> task3) => (Task1, Task2, Task3) = (task1, task2, task3);
+
+		//****************************************
+
+		/// <summary>
+		/// Gets an awaiter for the supplied tasks
+		/// </summary>
+		/// <returns>An awaiter that waits on all the supplied tasks</returns>
+		public ValueTaskAwaiter<(T1, T2, T3)> GetAwaiter() => WhenAll().GetAwaiter();
+
+		//****************************************
+
+		private async ValueTask<(T1, T2, T3)> WhenAll()
+		{
+			List<Exception>? Exceptions = null;
+			T1 Result1 = default!;
+			T2 Result2 = default!;
+			T3 Result3 = default!;
+
+			try
+			{
+				Result1 = await Task1;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			try
+			{
+				Result2 = await Task2;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			try
+			{
+				Result3 = await Task3;
+			}
+			catch (Exception e)
+			{
+				if (Exceptions == null)
+					Exceptions = new List<Exception>();
+
+				Exceptions.Add(e);
+			}
+
+			if (Exceptions != null)
+				throw new AggregateException(Exceptions);
+
+			return (Result1, Result2, Result3);
+		}
+
+		//****************************************
+
+		internal ValueTask<T1> Task1 { get; }
+
+		internal ValueTask<T2> Task2 { get; }
+
+		internal ValueTask<T3> Task3 { get; }
 	}
 }

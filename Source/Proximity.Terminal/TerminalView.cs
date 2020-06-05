@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using Microsoft.Extensions.Logging;
@@ -8,7 +9,7 @@ namespace Proximity.Terminal
 {
 	public sealed class TerminalView : ITerminal, ITerminalListener
 	{ //****************************************
-		private readonly WeakHashSet<ITerminalListener> _Listeners = new WeakHashSet<ITerminalListener>();
+		private ImmutableHashSet<ITerminalListener> _Listeners = ImmutableHashSet<ITerminalListener>.Empty;
 
 		private readonly HashSet<LogLevel> _IsEnabled = new HashSet<LogLevel>();
 		//****************************************
@@ -106,10 +107,16 @@ namespace Proximity.Terminal
 		/// <summary>
 		/// Attach a listener to this Terminal
 		/// </summary>
-		/// <param name="listener"></param>
-		public void Attach(ITerminalListener listener) => _Listeners.Add(listener);
+		/// <param name="listener">The listener that will receive events from this Terminal</param>
+		/// <remarks>This keeps a strong reference to the listener, so care must be taken to detach</remarks>
+		public void Attach(ITerminalListener listener) => ImmutableInterlockedEx.Add(ref _Listeners, listener);
 
-		public bool Detach(ITerminalListener listener) => _Listeners.Remove(listener);
+		/// <summary>
+		/// Removes a listener from this Terminal
+		/// </summary>
+		/// <param name="listener">The listener to remove</param>
+		/// <returns>True if the listener was found and removed</returns>
+		public bool Detach(ITerminalListener listener) => ImmutableInterlockedEx.Remove(ref _Listeners, listener);
 
 		//****************************************
 

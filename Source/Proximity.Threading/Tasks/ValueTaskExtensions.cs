@@ -201,42 +201,50 @@ namespace System.Threading.Tasks
 		/// <summary>
 		/// Waits on two or more <see cref="ValueTask"/> instances
 		/// </summary>
-		/// <param name="task1">The first task to wait on</param>
-		/// <param name="task2">The second task to wait on</param>
+		/// <param name="task">The first task to wait on</param>
+		/// <param name="tasks">The second and subsequent tasks to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public static ValueTaskWaiter ThenWaitOn(this ValueTask task1, ValueTask task2) => new ValueTaskWaiter(task1, task2);
+		public static ValueTaskMultiWaiter ThenWaitOn(this ValueTask task, params ValueTask[] tasks) => new ValueTaskMultiWaiter(ImmutableStack<ValueTask>.Empty.Push(task).Push(tasks, out _));
 
 		/// <summary>
 		/// Waits on two or more <see cref="ValueTask"/> instances
 		/// </summary>
-		/// <param name="task1">The first task to wait on</param>
-		/// <param name="task2">The second task to wait on</param>
+		/// <param name="tasks">The first tasks to wait on</param>
+		/// <param name="task">The last task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public static ValueTaskWaiter<T> ThenWaitOn<T>(this ValueTask<T> task1, ValueTask task2) => new ValueTaskWaiter<T>(task2, task1);
+		public static ValueTaskMultiWaiter ThenWaitOn(this IEnumerable<ValueTask> tasks, ValueTask task) => new ValueTaskMultiWaiter(ImmutableStack<ValueTask>.Empty.Push(tasks, out _).Push(task));
 
 		/// <summary>
 		/// Waits on two or more <see cref="ValueTask"/> instances
 		/// </summary>
-		/// <param name="task1">The first task to wait on</param>
-		/// <param name="task2">The second task to wait on</param>
+		/// <param name="tasks">The first tasks to wait on</param>
+		/// <param name="tasks2">The following tasks to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public static ValueTaskWaiter<T> ThenWaitOn<T>(this ValueTask task1, ValueTask<T> task2) => new ValueTaskWaiter<T>(task1, task2);
+		public static ValueTaskMultiWaiter ThenWaitOn(this IEnumerable<ValueTask> tasks, IEnumerable<ValueTask> tasks2) => new ValueTaskMultiWaiter(ImmutableStack<ValueTask>.Empty.Push(tasks, out _).Push(tasks2, out _));
 
 		/// <summary>
-		/// Waits on two or more <see cref="ValueTask"/> instances
+		/// Waits on two or more <see cref="ValueTask{T}"/> instances
 		/// </summary>
-		/// <param name="task1">The first task to wait on</param>
-		/// <param name="task2">The second task to wait on</param>
+		/// <param name="task">The first task to wait on</param>
+		/// <param name="tasks">The second and subsequent tasks to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public static ValueTaskWaiter<T> ThenWaitOn<T>(this ValueTask<T> task1, ValueTask<T> task2) => new ValueTaskWaiter<T>(task1, task2);
+		public static ValueTaskMultiWaiter<T> ThenWaitOn<T>(this ValueTask<T> task, params ValueTask<T>[] tasks) => new ValueTaskMultiWaiter<T>(ImmutableStack<ValueTask<T>>.Empty.Push(task).Push(tasks, out var Count), Count + 1);
 
 		/// <summary>
-		/// Waits on two or more <see cref="ValueTask"/> instances
+		/// Waits on two or more <see cref="ValueTask{T}"/> instances
 		/// </summary>
-		/// <param name="task1">The first task to wait on</param>
-		/// <param name="task2">The second task to wait on</param>
+		/// <param name="tasks">The first tasks to wait on</param>
+		/// <param name="task">The last task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public static ValueTaskWaiter<T1,T2> ThenWaitOn<T1,T2>(this ValueTask<T1> task1, ValueTask<T2> task2) => new ValueTaskWaiter<T1, T2>(task1, task2);
+		public static ValueTaskMultiWaiter<T> ThenWaitOn<T>(this IEnumerable<ValueTask<T>> tasks, ValueTask<T> task) => new ValueTaskMultiWaiter<T>(ImmutableStack<ValueTask<T>>.Empty.Push(tasks, out var Count).Push(task), Count + 1);
+
+		/// <summary>
+		/// Waits on two or more <see cref="ValueTask{T}"/> instances
+		/// </summary>
+		/// <param name="tasks">The first tasks to wait on</param>
+		/// <param name="tasks2">The following tasks to wait on</param>
+		/// <returns>A new waiter that waits on all the supplied tasks</returns>
+		public static ValueTaskMultiWaiter<T> ThenWaitOn<T>(this IEnumerable<ValueTask<T>> tasks, IEnumerable<ValueTask<T>> tasks2) => new ValueTaskMultiWaiter<T>(ImmutableStack<ValueTask<T>>.Empty.Push(tasks, out var Count1).Push(tasks2, out var Count2), Count1 + Count2);
 
 		/*
 		public static void Wait(this ValueTask task, CancellationToken token = default)
@@ -251,6 +259,20 @@ namespace System.Threading.Tasks
 
 		public static void Wait(this ValueTask task, TimeSpan timeout, CancellationToken token = default) => task.AsTask().Wait((int)(timeout.Ticks / TimeSpan.TicksPerMillisecond), token);
 		*/
+
+		internal static ImmutableStack<T> Push<T>(this ImmutableStack<T> stack, IEnumerable<T> range, out int count)
+		{
+			count = 0;
+
+			foreach (var Item in range)
+			{
+				stack = stack.Push(Item);
+				count++;
+			}
+
+			return stack;
+		}
+
 		//****************************************
 
 		/// <summary>

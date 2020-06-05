@@ -67,9 +67,9 @@ namespace Proximity.Terminal.Tests
 		}
 
 		[Test]
-		public void StaticCommandSystemArgs()
+		public void StaticCommandStringArgs()
 		{
-			Assert.IsTrue(TerminalParser.TryParse("Command".AsSpan(), _Registries, out var Result));
+			Assert.IsTrue(TerminalParser.TryParse("CommandStringArg ABC".AsSpan(), _Registries, out var Result));
 
 			Assert.IsNull(Result.TypeSet);
 			Assert.IsNull(Result.Instance);
@@ -94,17 +94,7 @@ namespace Proximity.Terminal.Tests
 			}
 
 			[TerminalBinding]
-			public static void Command(ITerminal terminal)
-			{
-			}
-
-			[TerminalBinding]
-			public static void Command(ITerminal terminal, string text)
-			{
-			}
-
-			[TerminalBinding]
-			public static void Command(ITerminal terminal, int numeric)
+			public static void CommandStringArg(ITerminal terminal, string text)
 			{
 			}
 		}
