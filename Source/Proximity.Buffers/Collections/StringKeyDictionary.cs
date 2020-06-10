@@ -16,8 +16,8 @@ namespace System.Collections.Generic
 	/// <typeparam name="TValue">The type of value</typeparam>
 	/// <remarks>Note that index locations can change in response to Remove operations</remarks>
 	public class StringKeyDictionary<TValue> :
-		IDictionary<string, TValue>, IDictionary, // We don't implement IDictionary<ReadOnlyMemory<char>>, since it would require copying the key values
-		IList<KeyValuePair<string, TValue>>, IList,
+		IDictionary<string, TValue>, IDictionary, // We could implement IDictionary<ReadOnlyMemory<char>>, but it would require calling AsString on key values
+		IList<KeyValuePair<string, TValue>>, IList, // Same for IList<KeyValuePair<ReadOnlyMemory<char>, TValue>>
 		IReadOnlyDictionary<string, TValue>, IReadOnlyDictionary<ReadOnlyMemory<char>, TValue>,
 		IReadOnlyList<KeyValuePair<string, TValue>>, IReadOnlyList<KeyValuePair<ReadOnlyMemory<char>, TValue>>
 	{ //****************************************
@@ -621,21 +621,21 @@ namespace System.Collections.Generic
 
 		/// <inheritdoc />
 		public bool TryGetValue(string key,
-#if !NETSTANDARD2_0
+#if NETCOREAPP
 			[MaybeNullWhen(false)]
 #endif
-			out TValue value) => TryGetValue(key.AsSpan(), out value);
+			out TValue value) => TryGetValue(key.AsSpan(), out value!);
 
 		/// <inheritdoc />
 		public bool TryGetValue(ReadOnlyMemory<char> key,
-#if !NETSTANDARD2_0
+#if NETCOREAPP
 			[MaybeNullWhen(false)]
 #endif
-			out TValue value) => TryGetValue(key.Span, out value);
+			out TValue value) => TryGetValue(key.Span, out value!);
 
 		/// <inheritdoc />
 		public bool TryGetValue(ReadOnlySpan<char> key,
-#if !NETSTANDARD2_0
+#if NETCOREAPP
 			[MaybeNullWhen(false)]
 #endif
 			out TValue value)

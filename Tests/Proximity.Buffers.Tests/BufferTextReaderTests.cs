@@ -7,7 +7,7 @@ using NUnit.Framework;
 namespace Proximity.Buffers.Tests
 {
 	/// <summary>
-	/// Tests the functionality of the <see cref="BufferTextReader"/> class
+	/// Tests the functionality of the <see cref="CharTextReader"/> class
 	/// </summary>
 	[TestFixture()]
 	public class BufferTextReaderTests
@@ -29,7 +29,7 @@ namespace Proximity.Buffers.Tests
 		{
 			string MyResult;
 
-			using (var Reader = new BufferTextReader(_TestInput))
+			using (var Reader = new CharTextReader(_TestInput))
 			{
 				MyResult = Reader.ReadToEnd();
 			}
@@ -43,7 +43,7 @@ namespace Proximity.Buffers.Tests
 			var MyResult = new StringBuilder();
 			var MyBuffer = new char[capacity];
 
-			using (var Reader = new BufferTextReader(_TestInput))
+			using (var Reader = new CharTextReader(_TestInput))
 			{
 				for (; ; )
 				{
@@ -64,7 +64,7 @@ namespace Proximity.Buffers.Tests
 		{
 			var MyResult = new StringBuilder();
 
-			using (var Reader = new BufferTextReader(_TestInput))
+			using (var Reader = new CharTextReader(_TestInput))
 			{
 				for (; ; )
 				{
@@ -86,7 +86,7 @@ namespace Proximity.Buffers.Tests
 			string MyResult1, MyResult2;
 			//****************************************
 
-			using (var Reader = new BufferTextReader(_TestInput))
+			using (var Reader = new CharTextReader(_TestInput))
 			{
 				MyResult1 = Reader.ReadToEnd();
 

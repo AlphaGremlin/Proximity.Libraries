@@ -4,6 +4,11 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+using System.Numerics;
+#if NETCOREAPP3_1
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
+#endif
 
 namespace System.Buffers
 {
@@ -47,23 +52,113 @@ namespace System.Buffers
 		private protected sealed class ByteEqualityComparer : BlockEqualityComparer<byte>
 		{ //****************************************
 			private const int AdlerModulus = 65521;
+			private const int AdlerMax = 5552;
+
+#if NETCOREAPP3_1
+			private const int AdlerMaxSse2 = 5552 / 16;
+
+			private const byte S23O1 = (((2) << 6) | ((3) << 4) | ((0) << 2) | ((1)));
+			private const byte S1O32 = (((1) << 6) | ((0) << 4) | ((3) << 2) | ((2)));
+
+			private static readonly Vector128<short> SseOnes;
+			private static readonly Vector128<sbyte> SseTap;
+#endif
 			//****************************************
+
+			static ByteEqualityComparer()
+			{
+#if NETCOREAPP3_1
+				if (Ssse3.IsSupported)
+				{
+					SseTap = Vector128.Create(16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
+					SseOnes = Vector128.Create((short)1);
+				}
+#endif
+			}
 
 			public override bool Equals(ReadOnlySpan<byte> left, ReadOnlySpan<byte> right) => left.SequenceEqual(right);
 
 			public override int GetHashCode(ReadOnlySpan<byte> value)
 			{
 				// Adler-32 Checksum
-				var A = 1;
-				var B = 0;
+				var A = 1u;
+				var B = 0u;
 
-				for (var Index = 0; Index < value.Length; Index++)
+#if NETCOREAPP3_1
+				if (Ssse3.IsSupported)
 				{
-					A = (A + value[Index]) % AdlerModulus;
-					B = (B + A) % AdlerModulus;
+					var Vectors = MemoryMarshal.Cast<byte, Vector128<byte>>(value);
+
+					while (Vectors.Length > AdlerMaxSse2)
+					{
+						// B is the running total of every A value generated after each byte: For Each Value: (B = B + (A = A + Value)
+						// We know the starting A will be added N times, thus we can multiply it ahead of time by the number of operations.
+						var PreviousSum = Vector128.Create(0, 0, 0, A * AdlerMaxSse2);
+						var Sum = Vector128.Create(0u, 0, 0, 0);
+						var SumSum = Vector128.Create(0, 0, 0, B);
+
+						for (var Index = 0; Index < AdlerMaxSse2; Index++)
+						{
+							// Each block needs to include the sum from the previous block
+							PreviousSum = Sse2.Add(PreviousSum, Sum);
+							// Total up the bytes into two 16-bit numbers, and add them to the sum
+							Sum = Sse2.Add(Sum, Sse2.SumAbsoluteDifferences(Vectors[0], Vector128<byte>.Zero).AsUInt32());
+							// The tap multiplies each byte by the number of times it would be added to B, then we sum them all together and add them to the secondary sum
+							SumSum = Sse2.Add(SumSum, Sse2.MultiplyAddAdjacent(Ssse3.MultiplyAddAdjacent(Vectors[0], SseTap), SseOnes).AsUInt32());
+						}
+
+						// PreviousSum needs to be multiplied by sixteen, since each operation processes that many bytes.
+						// Add to the SumSum, since the loop doesn't total things fully
+						SumSum = Sse2.Add(SumSum, Sse2.ShiftLeftLogical(PreviousSum, 4));
+
+						// With 4 UInt32 values, calculate A+C, B+D, C+A, D+B
+						Sum = Sse2.Add(Sum, Sse2.Shuffle(Sum, S23O1));
+						// This then produces (A+C)+(B+D), (B+D)+(A+C), (C+A)+(D+B), (D+B)+(C+A)
+						Sum = Sse2.Add(Sum, Sse2.Shuffle(Sum, S1O32));
+						// Each UInt32 now has the same value. Extract and combine it with our A
+						A = (A + Sse2.ConvertToUInt32(Sum)) % AdlerModulus;
+
+						// Do the same with SumSum
+						SumSum = Sse2.Add(SumSum, Sse2.Shuffle(SumSum, S23O1));
+						SumSum = Sse2.Add(SumSum, Sse2.Shuffle(SumSum, S1O32));
+						B = Sse2.ConvertToUInt32(SumSum) % AdlerModulus;
+
+						// Once a section is processed, trim it off
+						Vectors = Vectors.Slice(AdlerMaxSse2);
+						value = value.Slice(AdlerMax);
+					}
+				}
+				else
+#endif
+				{
+					while (value.Length > AdlerMax)
+					{
+						for (var Index = 0; Index < AdlerMax; Index++)
+						{
+							A += value[Index];
+							B += A;
+						}
+
+						A %= AdlerModulus;
+						B %= AdlerModulus;
+
+						value = value.Slice(AdlerMax);
+					}
 				}
 
-				return (B << 16) | A;
+				if (!value.IsEmpty)
+				{
+					for (var Index = 0; Index < value.Length; Index++)
+					{
+						A += value[Index];
+						B += A;
+					}
+
+					A %= AdlerModulus;
+					B %= AdlerModulus;
+				}
+
+				return (int)((B << 16) | A);
 			}
 		}
 
@@ -76,7 +171,7 @@ namespace System.Buffers
 				var HashCode = new HashCode();
 
 				for (var Index = 0; Index < value.Length; Index++)
-					HashCode.Add(value[Index].GetHashCode());
+					HashCode.Add(value[Index]);
 
 				return HashCode.ToHashCode();
 			}
@@ -103,7 +198,7 @@ namespace System.Buffers
 				var HashCode = new HashCode();
 
 				for (var Index = 0; Index < value.Length; Index++)
-					HashCode.Add(value[Index]?.GetHashCode());
+					HashCode.Add(value[Index]);
 
 				return HashCode.ToHashCode();
 			}
@@ -175,12 +270,12 @@ namespace System.Buffers
 
 			public override int GetHashCode(ReadOnlySpan<T> value)
 			{
-				var HashCode = 0;
+				var HashCode = new HashCode();
 
 				for (var Index = 0; Index < value.Length; Index++)
-					HashCode ^= _Comparer.GetHashCode(value[Index]);
+					HashCode.Add(value[Index], _Comparer);
 
-				return HashCode;
+				return HashCode.ToHashCode();
 			}
 		}
 	}
@@ -224,7 +319,7 @@ namespace System.Buffers
 		/// <param name="left">The left array</param>
 		/// <param name="right">The right array</param>
 		/// <returns>True if both arrays are equal, otherwise False</returns>
-		public bool Equals(T[] left, T[] right) => Equals((ReadOnlySpan<T>)left.AsSpan(), right.AsSpan());
+		public bool Equals(T[]? left, T[]? right) => Equals((ReadOnlySpan<T>)left.AsSpan(), right.AsSpan());
 
 		/// <summary>
 		/// Determines whether the specified spans are equal

@@ -208,7 +208,12 @@ namespace System.Collections.Concurrent
 		/// </summary>
 		/// <param name="item">The item that was removed from the collection</param>
 		/// <returns>True if an item was removed without waiting, otherwise False</returns>
-		public bool TryTake(out TItem item) => TryTake(out item, TimeSpan.Zero);
+		public bool TryTake(
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+			out TItem item
+			) => TryTake(out item!, TimeSpan.Zero);
 
 		/// <summary>
 		/// Attempts to take an item from the collection without waiting

@@ -8,7 +8,7 @@ using NUnit.Framework;
 namespace Proximity.Buffers.Tests
 {
 	/// <summary>
-	/// Tests the functionality of the <see cref="BufferTextWriter"/> class
+	/// Tests the functionality of the <see cref="BufferWriter"/> class
 	/// </summary>
 	[TestFixture()]
 	public class BufferTextWriterTests
@@ -37,7 +37,7 @@ namespace Proximity.Buffers.Tests
 			//****************************************
 
 			using (var Buffer = new BufferWriter<char>())
-			using (var Writer = new BufferTextWriter(Buffer))
+			using (var Writer = new BufferWriter(Buffer))
 			{
 				Writer.Write(_TestInput);
 
@@ -56,7 +56,7 @@ namespace Proximity.Buffers.Tests
 			//****************************************
 
 			using (var Buffer = new BufferWriter<char>())
-			using (var Writer = new BufferTextWriter(Buffer, capacity))
+			using (var Writer = new BufferWriter(Buffer, capacity))
 			{
 				Writer.Write(_TestInput);
 
@@ -75,7 +75,7 @@ namespace Proximity.Buffers.Tests
 			//****************************************
 
 			using (var Buffer = new BufferWriter<char>())
-			using (var Writer = new BufferTextWriter(Buffer, capacity))
+			using (var Writer = new BufferWriter(Buffer, capacity))
 			{
 				foreach (var MyChar in _TestInput)
 				{

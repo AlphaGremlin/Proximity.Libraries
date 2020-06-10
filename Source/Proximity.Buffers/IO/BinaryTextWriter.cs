@@ -117,7 +117,7 @@ namespace System.IO
 		}
 
 		/// <inheritdoc />
-		public override void Write(char[] buffer) => Write(buffer.AsSpan());
+		public override void Write(char[]? buffer) => Write(buffer.AsSpan());
 
 		/// <inheritdoc />
 		public override void Write(char[] buffer, int index, int count) => Write(buffer.AsSpan(index, count));
@@ -192,7 +192,7 @@ namespace System.IO
 		}
 
 		/// <inheritdoc />
-		public override void Write(string value) => Write(value.AsSpan());
+		public override void Write(string? value) => Write(value.AsSpan());
 
 		/// <inheritdoc />
 		public override Task WriteAsync(char value)
@@ -218,7 +218,7 @@ namespace System.IO
 		}
 
 		/// <inheritdoc />
-		public override Task WriteAsync(string value) => WriteAsync(value.AsMemory());
+		public override Task WriteAsync(string? value) => WriteAsync(value.AsMemory());
 
 		/// <inheritdoc />
 		public override void WriteLine(char value)
@@ -228,7 +228,7 @@ namespace System.IO
 		}
 
 		/// <inheritdoc />
-		public override void WriteLine(char[] buffer) => WriteLine(buffer.AsSpan());
+		public override void WriteLine(char[]? buffer) => WriteLine(buffer.AsSpan());
 
 		/// <inheritdoc />
 		public override void WriteLine(char[] buffer, int index, int count) => WriteLine(buffer.AsSpan(index, count));
@@ -245,7 +245,7 @@ namespace System.IO
 		}
 
 		/// <inheritdoc />
-		public override void WriteLine(string value) => WriteLine(value.AsSpan());
+		public override void WriteLine(string? value) => WriteLine(value.AsSpan());
 
 		/// <inheritdoc />
 		public override Task WriteLineAsync()
@@ -281,7 +281,7 @@ namespace System.IO
 		}
 
 		/// <inheritdoc />
-		public override Task WriteLineAsync(string value) => WriteLineAsync(value.AsMemory());
+		public override Task WriteLineAsync(string? value) => WriteLineAsync(value.AsMemory());
 
 		//****************************************
 

@@ -12,7 +12,7 @@ namespace System.IO
 	/// <summary>
 	/// Implements a TextReader that works directly from a character sequence
 	/// </summary>
-	public sealed class BufferTextReader : TextReader
+	public sealed class CharTextReader : TextReader
 	{ //****************************************
 		private readonly ReadOnlySequence<char> _Initial;
 
@@ -21,44 +21,44 @@ namespace System.IO
 		//****************************************
 
 		/// <summary>
-		/// Creates a new Char Text Reader
+		/// Creates a new character sequence Text Reader
 		/// </summary>
 		/// <param name="array">The array segment to read from</param>
-		public BufferTextReader(ArraySegment<char> array) : this(new ReadOnlySequence<char>(array))
+		public CharTextReader(ArraySegment<char> array) : this(new ReadOnlySequence<char>(array))
 		{
 		}
 
 		/// <summary>
-		/// Creates a new Char Text Reader
+		/// Creates a new character sequence Text Reader
 		/// </summary>
 		/// <param name="array">The array to read from</param>
-		public BufferTextReader(char[] array) : this(new ReadOnlySequence<char>(array))
+		public CharTextReader(char[] array) : this(new ReadOnlySequence<char>(array))
 		{
 		}
 
 		/// <summary>
-		/// Creates a new Char Text Reader
+		/// Creates a new character sequence Text Reader
 		/// </summary>
 		/// <param name="array">The array to read from</param>
-		public BufferTextReader(ReadOnlyMemory<char> array) : this(new ReadOnlySequence<char>(array))
+		public CharTextReader(ReadOnlyMemory<char> array) : this(new ReadOnlySequence<char>(array))
 		{
 		}
 
 		/// <summary>
-		/// Creates a new Char Text Reader
+		/// Creates a new character sequence Text Reader
 		/// </summary>
 		/// <param name="array">The char array to read from</param>
 		/// <param name="offset">The offset into the char array to start from</param>
 		/// <param name="length">The maximum chars to read from the array</param>
-		public BufferTextReader(char[] array, int offset, int length) : this(new ReadOnlySequence<char>(array, offset, length))
+		public CharTextReader(char[] array, int offset, int length) : this(new ReadOnlySequence<char>(array, offset, length))
 		{
 		}
 
 		/// <summary>
-		/// Creates a new Char Text Reader
+		/// Creates a new character sequence Text Reader
 		/// </summary>
 		/// <param name="sequence">The array segment to read from</param>
-		public BufferTextReader(ReadOnlySequence<char> sequence)
+		public CharTextReader(ReadOnlySequence<char> sequence)
 		{
 			_Remainder = _Initial = sequence;
 		}
@@ -176,7 +176,7 @@ namespace System.IO
 		}
 
 		/// <inheritdoc />
-		public override Task<string> ReadLineAsync() => Task.FromResult(ReadLine());
+		public override Task<string?> ReadLineAsync() => Task.FromResult<string?>(ReadLine());
 
 		/// <inheritdoc />
 		public override string ReadToEnd()

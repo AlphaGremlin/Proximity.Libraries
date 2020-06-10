@@ -148,7 +148,7 @@ namespace System.Buffers
 		/// <param name="left">The left block</param>
 		/// <param name="right">The right block</param>
 		/// <returns>Positive if left is greater than right, negative if left is less than right, zero if left is equal to right</returns>
-		public int Compare(T[] left, T[] right) => Compare((ReadOnlySpan<T>)left.AsSpan(), right.AsSpan());
+		public int Compare(T[]? left, T[]? right) => Compare((ReadOnlySpan<T>)left.AsSpan(), right.AsSpan());
 
 		/// <summary>
 		/// Compares two blocks

@@ -14,7 +14,7 @@ namespace System.IO
 	/// <summary>
 	/// Implements a TextWriter that writes to an <see cref="IBufferWriter{Char}"/>
 	/// </summary>
-	public sealed class BufferTextWriter : TextWriter
+	public sealed class CharTextWriter : TextWriter
 	{ //****************************************
 		private const int DefaultBufferSize = 1024;
 		//****************************************
@@ -26,7 +26,7 @@ namespace System.IO
 		/// <summary>
 		/// Creates a new Buffer Writer
 		/// </summary>
-		public BufferTextWriter(IBufferWriter<char> writer, int maxBufferSize)
+		public CharTextWriter(IBufferWriter<char> writer, int maxBufferSize)
 		{
 			_Writer = writer;
 			_MaxBufferSize = maxBufferSize;
@@ -35,7 +35,7 @@ namespace System.IO
 		/// <summary>
 		/// Creates a new Buffer Writer
 		/// </summary>
-		public BufferTextWriter(IBufferWriter<char> writer) : this(writer, DefaultBufferSize)
+		public CharTextWriter(IBufferWriter<char> writer) : this(writer, DefaultBufferSize)
 		{
 		}
 
@@ -60,7 +60,7 @@ namespace System.IO
 		}
 
 		/// <inheritdoc />
-		public override void Write(char[] buffer) => Write(buffer.AsSpan());
+		public override void Write(char[]? buffer) => Write(buffer.AsSpan());
 
 		/// <inheritdoc />
 		public override void Write(char[] buffer, int index, int count) => Write(buffer.AsSpan(index, count));
@@ -87,7 +87,7 @@ namespace System.IO
 		}
 
 		/// <inheritdoc />
-		public override void Write(string value) => Write(value.AsSpan());
+		public override void Write(string? value) => Write(value.AsSpan());
 
 		/// <inheritdoc />
 		public override Task WriteAsync(char value)
@@ -113,7 +113,7 @@ namespace System.IO
 		}
 
 		/// <inheritdoc />
-		public override Task WriteAsync(string value) => WriteAsync(value.AsMemory());
+		public override Task WriteAsync(string? value) => WriteAsync(value.AsMemory());
 
 		/// <inheritdoc />
 		public override void WriteLine(char value)
@@ -123,7 +123,7 @@ namespace System.IO
 		}
 
 		/// <inheritdoc />
-		public override void WriteLine(char[] buffer) => WriteLine(buffer.AsSpan());
+		public override void WriteLine(char[]? buffer) => WriteLine(buffer.AsSpan());
 
 		/// <inheritdoc />
 		public override void WriteLine(char[] buffer, int index, int count) => WriteLine(buffer.AsSpan(index, count));
@@ -140,7 +140,7 @@ namespace System.IO
 		}
 
 		/// <inheritdoc />
-		public override void WriteLine(string value) => WriteLine(value.AsSpan());
+		public override void WriteLine(string? value) => WriteLine(value.AsSpan());
 
 		/// <inheritdoc />
 		public override Task WriteLineAsync()
@@ -176,14 +176,14 @@ namespace System.IO
 		}
 
 		/// <inheritdoc />
-		public override Task WriteLineAsync(string value) => WriteLineAsync(value.AsMemory());
+		public override Task WriteLineAsync(string? value) => WriteLineAsync(value.AsMemory());
 
 		//****************************************
 
 		/// <summary>
 		/// Gets the encoding used by this Char Text Writer
 		/// </summary>
-		/// <remarks>Null, since there is no encoding peformed</remarks>
-		public override Encoding? Encoding => null!;
+		/// <remarks>Since there is no encoding peformed, always returns <see cref="Encoding.Default"/></remarks>
+		public override Encoding Encoding => Encoding.Default;
 	}
 }

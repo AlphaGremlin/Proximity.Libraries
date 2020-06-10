@@ -23,7 +23,12 @@ namespace System.Collections.Concurrent
 			/// </summary>
 			/// <param name="source">The source of the result, if any</param>
 			/// <param name="item">The item that was retrieved, if any</param>
-		public void Deconstruct(out AsyncCollection<TItem>? source, out TItem item)
+		public void Deconstruct(out AsyncCollection<TItem>? source,
+#if !NETSTANDARD2_0
+			[MaybeNull]
+#endif
+			out TItem item
+			)
 		{
 			source = Source;
 			item = Item;

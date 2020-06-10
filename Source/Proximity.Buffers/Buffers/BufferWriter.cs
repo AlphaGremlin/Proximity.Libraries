@@ -84,7 +84,7 @@ namespace System.Buffers
 			while (Segment != null)
 			{
 				if (MemoryMarshal.TryGetArray(Segment.Memory, out var MyBuffer))
-					_Pool.Return(MyBuffer.Array, clearBuffers);
+					_Pool.Return(MyBuffer.Array!, clearBuffers);
 
 				Segment = Segment.Next;
 			}
@@ -92,7 +92,7 @@ namespace System.Buffers
 			if (_CurrentOffset != 0)
 			{
 				if (MemoryMarshal.TryGetArray<T>(_CurrentBuffer, out var MyBuffer))
-					_Pool.Return(MyBuffer.Array, clearBuffers);
+					_Pool.Return(MyBuffer.Array!, clearBuffers);
 			}
 
 			_CurrentBuffer = Memory<T>.Empty;
@@ -163,7 +163,7 @@ namespace System.Buffers
 			// We have a head segment. Is there any outstanding data?
 			if (_CurrentOffset == 0)
 				// No, so just return what we have
-				return new ReadOnlySequence<T>(_HeadSegment, 0, _TailSegment, _TailSegment!.Memory.Length);
+				return new ReadOnlySequence<T>(_HeadSegment, 0, _TailSegment!, _TailSegment!.Memory.Length);
 
 			// Does the current tail segment have a cached segment that matches our outstanding data??
 			if (_TailSegment!.Next == null || _TailSegment.Next.Memory.Length != _CurrentOffset)
@@ -171,7 +171,7 @@ namespace System.Buffers
 				_TailSegment.JoinTo(new BufferSegment(_CurrentBuffer.Slice(0, _CurrentOffset), _TailSegment.RunningIndex + _TailSegment.Memory.Length));
 
 			// Return the sequence
-			return new ReadOnlySequence<T>(_HeadSegment, 0, _TailSegment.Next, _TailSegment!.Next!.Memory.Length);
+			return new ReadOnlySequence<T>(_HeadSegment, 0, _TailSegment.Next!, _TailSegment.Next!.Memory.Length);
 		}
 
 		//****************************************

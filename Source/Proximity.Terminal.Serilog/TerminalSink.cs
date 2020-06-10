@@ -74,7 +74,7 @@ namespace Proximity.Terminal.Serilog
 			private static readonly ConcurrentBag<EmitterTarget> Instances = new ConcurrentBag<EmitterTarget>();
 			//****************************************
 
-			private EmitterTarget(BufferWriter<char> buffer, BufferTextWriter writer)
+			private EmitterTarget(BufferWriter<char> buffer, CharTextWriter writer)
 			{
 				Buffer = buffer;
 				Writer = writer;
@@ -94,7 +94,7 @@ namespace Proximity.Terminal.Serilog
 
 			public BufferWriter<char> Buffer { get; }
 
-			public BufferTextWriter Writer { get; }
+			public CharTextWriter Writer { get; }
 
 			//****************************************
 
@@ -104,7 +104,7 @@ namespace Proximity.Terminal.Serilog
 				{
 					var Buffer = new BufferWriter<char>();
 
-					Target = new EmitterTarget(Buffer, new BufferTextWriter(Buffer));
+					Target = new EmitterTarget(Buffer, new CharTextWriter(Buffer));
 				}
 
 				return Target;
