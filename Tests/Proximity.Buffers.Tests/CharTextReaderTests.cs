@@ -10,7 +10,7 @@ namespace Proximity.Buffers.Tests
 	/// Tests the functionality of the <see cref="CharTextReader"/> class
 	/// </summary>
 	[TestFixture()]
-	public class BufferTextReaderTests
+	public class CharTextReaderTests
 	{ //****************************************
 		private string _TestOutput = @"ABC!DEF@GHI#JKL$123%456^789&0*MNO(PQR)STU-VWX=YZ abcdefghijklmnopqrstuvwxyz ♥ ";
 		private char[] _TestInput;

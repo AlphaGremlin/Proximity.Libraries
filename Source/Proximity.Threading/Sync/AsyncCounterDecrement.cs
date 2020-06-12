@@ -8,13 +8,13 @@ using System.Threading.Tasks.Sources;
 
 namespace System.Threading
 {
-	internal sealed class AsyncCounterDecrement : BaseCancellable, IValueTaskSource
+	internal sealed class AsyncCounterDecrement : BaseCancellable, IValueTaskSource, IValueTaskSource<int>
 	{ //****************************************
 		private static readonly ConcurrentBag<AsyncCounterDecrement> Instances = new ConcurrentBag<AsyncCounterDecrement>();
 		//****************************************
 		private volatile int _InstanceState;
 
-		private ManualResetValueTaskSourceCore<VoidStruct> _TaskSource = new ManualResetValueTaskSourceCore<VoidStruct>();
+		private ManualResetValueTaskSourceCore<int> _TaskSource = new ManualResetValueTaskSourceCore<int>();
 		//****************************************
 
 		internal AsyncCounterDecrement() => _TaskSource.RunContinuationsAsynchronously = true;
@@ -120,7 +120,7 @@ namespace System.Threading
 				break;
 
 			case Status.Decremented:
-				_TaskSource.SetResult(default);
+				_TaskSource.SetResult(1); // When we're waiting, we always take only one counter
 				break;
 			}
 		}
@@ -143,12 +143,27 @@ namespace System.Threading
 			}
 		}
 
+		int IValueTaskSource<int>.GetResult(short token)
+		{
+			try
+			{
+				return _TaskSource.GetResult(token);
+			}
+			finally
+			{
+				// Don't release if we're on the wait queue. If we are, let TrySwitchToCompleted know it can release when ready
+				if (_InstanceState == Status.CancelledNotWaiting || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledNotWaiting)
+					Release();
+			}
+		}
+
 		//****************************************
 
 		private void Release()
 		{
 			Owner = null;
 			IsPeek = false;
+			ToZero = false;
 
 			_TaskSource.Reset();
 			_InstanceState = Status.Unused;
@@ -164,6 +179,8 @@ namespace System.Threading
 		public bool IsPending => _InstanceState == Status.Pending;
 
 		public bool IsPeek { get; private set; }
+
+		public bool ToZero { get; private set; }
 
 		public short Version => _TaskSource.Version;
 

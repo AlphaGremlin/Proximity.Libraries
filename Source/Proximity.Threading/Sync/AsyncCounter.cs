@@ -7,6 +7,7 @@ using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
+using Proximity.Threading;
 //****************************************
 
 namespace System.Threading
@@ -20,6 +21,8 @@ namespace System.Threading
 		private readonly WaiterQueue<AsyncCounterDecrement> _PeekWaiters = new WaiterQueue<AsyncCounterDecrement>();
 
 		private int _CurrentCount;
+
+		private LockDisposer? _Disposer;
 		//****************************************
 
 		/// <summary>
@@ -46,69 +49,30 @@ namespace System.Threading
 		/// <summary>
 		/// Disposes of the counter, cancelling any waiters
 		/// </summary>
-		public void Dispose()
-		{ //****************************************
-			var MyWait = new SpinWait();
-			int OldCount;
-			//****************************************
-
-			for (; ; )
+		/// <returns>A Task that completes when the Counter drops to zero</returns>
+		public ValueTask DisposeAsync()
+		{
+			if (_Disposer == null && Interlocked.CompareExchange(ref _Disposer, new LockDisposer(), null) == null)
 			{
-				OldCount = _CurrentCount;
+				// Success, now close any pending waiters
+				DisposeWaiters();
 
-				// Are we already disposed?
-				if (OldCount < 0)
-					return;
-
-				// Try and update the counter
-				if (Interlocked.CompareExchange(ref _CurrentCount, ~OldCount, OldCount) == OldCount)
-				{
-					// Success, now close any pending waiters
-					DisposeWaiters();
-					return;
-				}
-
-				// Failed. Spin and try again
-				MyWait.SpinOnce();
+				// If there's no counters, we can complete the dispose task
+				if (Interlocked.CompareExchange(ref _CurrentCount, -1, 0) == 0)
+					_Disposer.SwitchToComplete();
 			}
+
+			return new ValueTask(_Disposer, _Disposer.Token);
 		}
 
-		/// <summary>
-		/// Disposes of the counter if the count is zero
-		/// </summary>
-		/// <returns>True if the counter was disposed of, otherwise False</returns>
-		public bool DisposeIfZero()
-		{ //****************************************
-			var MyWait = new SpinWait();
-			int OldCount;
-			//****************************************
-
-			for (; ; )
-			{
-				OldCount = _CurrentCount;
-
-				// Are we zero?
-				if (OldCount != 0)
-					return false;
-
-				// Try and update the counter
-				if (Interlocked.CompareExchange(ref _CurrentCount, ~OldCount, OldCount) == OldCount)
-				{
-					// Success, now close any pending waiters
-					DisposeWaiters();
-					return true;
-				}
-
-				// Failed. Spin and try again
-				MyWait.SpinOnce();
-			}
-		}
+		void IDisposable.Dispose() => DisposeAsync();
 
 		/// <summary>
 		/// Attempts to decrement the Counter
 		/// </summary>
 		/// <param name="token">A cancellation token that can be used to abort waiting on the counter</param>
 		/// <returns>A task that completes when we were able to decrement the counter</returns>
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
 		public ValueTask Decrement(CancellationToken token = default) => Decrement(Timeout.InfiniteTimeSpan, token);
 
 		/// <summary>
@@ -121,23 +85,25 @@ namespace System.Threading
 		/// <exception cref="TimeoutException">The timeout elapsed</exception>
 		public ValueTask Decrement(TimeSpan timeout, CancellationToken token = default)
 		{
+			if (timeout < TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan)
+				throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout must be Timeout.InfiniteTimeSpan or a positive time");
+
 			if (timeout == TimeSpan.Zero)
 			{
 				if (TryDecrement())
 					return default;
 
-				throw new OperationCanceledException();
-			}
+				if (_Disposer != null)
+					throw new ObjectDisposedException(nameof(AsyncCounter), "Counter has been disposed of");
 
-			if (timeout < TimeSpan.Zero)
-				throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout must be Timeout.InfiniteTimeSpan or a positive time");
+				throw new TimeoutException();
+			}
 
 			// Try and decrement without waiting
 			if (_Waiters.IsEmpty && InternalTryDecrement())
 				return default;
 
-			// No free counters, are we disposed?
-			if (_CurrentCount == -1)
+			if (_Disposer != null)
 				throw new ObjectDisposedException(nameof(AsyncCounter), "Counter has been disposed of");
 
 			var Instance = AsyncCounterDecrement.GetOrCreateFor(this, false, false);
@@ -147,11 +113,66 @@ namespace System.Threading
 			// No free counters, add ourselves to the queue waiting on a counter
 			_Waiters.Enqueue(Instance);
 
-			// Was a counter added while we were busy?
-			if (InternalTryDecrement())
-				ForceIncrement(); // Try and activate a waiter, or at least increment
+			// Was a counter added while we were busy? If so, try to pass it to a counter
+			if (!(InternalTryDecrement() && TryIncrement()) && _Disposer != null)
+				DisposeWaiters(); // We disposed during processing
 
 			return new ValueTask(Instance, Instance.Version);
+		}
+
+		/// <summary>
+		/// Attempts to decrement the Counter one or more times
+		/// </summary>
+		/// <param name="token">A cancellation token that can be used to abort waiting on the counter</param>
+		/// <returns>A task that completes when we were able to decrement the counter, returning the number of times it was decremented</returns>
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		public ValueTask<int> DecrementToZero(CancellationToken token = default) => DecrementToZero(Timeout.InfiniteTimeSpan, token);
+
+		/// <summary>
+		/// Attempts to decrement the Counter one or more times
+		/// </summary>
+		/// <param name="timeout">The amount of time to wait</param>
+		/// <param name="token">A cancellation token that can be used to abort waiting on the counter</param>
+		/// <returns>A task that completes when we were able to decrement the counter, returning the number of times it was decremented</returns>
+		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		/// <exception cref="TimeoutException">The timeout elapsed</exception>
+		public ValueTask<int> DecrementToZero(TimeSpan timeout, CancellationToken token = default)
+		{
+			if (timeout < TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan)
+				throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout must be Timeout.InfiniteTimeSpan or a positive time");
+
+			if (timeout == TimeSpan.Zero)
+			{
+				if (TryDecrementToZero(out var Counter))
+					return new ValueTask<int>(Counter);
+
+				if (_Disposer != null)
+					throw new ObjectDisposedException(nameof(AsyncCounter), "Counter has been disposed of");
+
+				throw new TimeoutException();
+			}
+
+			{
+				// Try and decrement without waiting
+				if (_Waiters.IsEmpty && InternalTryDecrement(out var Counter))
+					return new ValueTask<int>(Counter);
+			}
+
+			if (_Disposer != null)
+				throw new ObjectDisposedException(nameof(AsyncCounter), "Counter has been disposed of");
+
+			var Instance = AsyncCounterDecrement.GetOrCreateFor(this, false, false);
+
+			Instance.ApplyCancellation(token, timeout);
+
+			// No free counters, add ourselves to the queue waiting on a counter
+			_Waiters.Enqueue(Instance);
+
+			// Was a counter added while we were busy? If so, try to pass it to a counter
+			if (!(InternalTryDecrement() && TryIncrement()) && _Disposer != null)
+				DisposeWaiters(); // We disposed during processing
+
+			return new ValueTask<int>(Instance, Instance.Version);
 		}
 
 		/// <summary>
@@ -200,9 +221,14 @@ namespace System.Threading
 
 			_Waiters.Enqueue(Instance);
 
-			// Was a counter added while we were busy?
-			if (InternalTryDecrement())
-				ForceIncrement(); // Try and activate a waiter, or at least increment
+			// Was a counter added while we were busy? If so, try to pass it to a counter
+			if (!(InternalTryDecrement() && TryIncrement()) && _Disposer != null)
+			{
+				DisposeWaiters(); // We disposed during processing
+
+				// Disposed, this should throw ObjectDisposedException
+				Instance.GetResult(Instance.Version);
+			}
 
 			//****************************************
 
@@ -235,38 +261,53 @@ namespace System.Threading
 		}
 
 		/// <summary>
+		/// Tries to decrement the counter without waiting
+		/// </summary>
+		/// <param name="count">The number of times the counter was decremented</param>
+		/// <returns>True if the counter was decremented at least once without waiting, otherwise False</returns>
+		public bool TryDecrementToZero(out int count)
+		{
+			if (_Waiters.IsEmpty)
+				return InternalTryDecrement(out count);
+
+			count = 0;
+
+			return false;
+		}
+
+		/// <summary>
 		/// Increments the Counter
 		/// </summary>
 		/// <remarks>The counter is not guaranteed to be incremented when this method returns, as waiters are evaluated on the ThreadPool. It will be incremented 'soon'.</remarks>
 		public bool TryIncrement()
 		{
-			// Try and retrieve a waiter
-			while (_Waiters.TryDequeue(out var NextInstance))
-			{
-				// Try and release this Instance
-				if (NextInstance.TrySwitchToCompleted())
-					return true;
-			}
-
-			//****************************************
-
-			// Nobody is waiting, so we can try and increment the counter. This will release anybody peeking
-			if (!InternalTryIncrement())
+			if (_Disposer != null)
 				return false;
 
-			// Is anybody waiting now?
-			if (_Waiters.IsEmpty)
-				return true; // No, so nothing to do
+			for (; ; )
+			{
+				// Try and retrieve a waiter
+				while (_Waiters.TryDequeue(out var NextInstance))
+				{
+					// Try and release this Instance
+					if (NextInstance.TrySwitchToCompleted())
+						return true;
+				}
 
-			// Someone is waiting. Try and take the counter back
-			if (!InternalTryDecrement())
-				return true; // Failed to take the counter back (pre-empted by a peek waiter or concurrent decrement), so we're done
+				//****************************************
 
-			// Success. Forcibly increment, even if we've been disposed
-			// This will attempt to pass the counter to a waiter and if it fails, will put it back even if we dispose
-			ForceIncrement();
+				// Nobody is waiting, so we can try and increment the counter. This will release anybody peeking
+				if (!InternalTryIncrement())
+					return false; // Disposed
 
-			return true;
+				// Is anybody waiting now?
+				if (_Waiters.IsEmpty)
+					return true; // No, so nothing to do
+
+				// Someone is waiting. Try and take the counter back
+				if (!InternalTryDecrement())
+					return true; // Failed to take the counter back (pre-empted by a peek waiter or concurrent decrement), so we're done
+			}
 		}
 
 		/// <summary>
@@ -324,66 +365,6 @@ namespace System.Threading
 
 		//****************************************
 
-		/// <summary>
-		/// Always increments, regardless of disposal state
-		/// </summary>
-		/// <remarks>Used for DecrementAny</remarks>
-		internal void ForceIncrement()
-		{ //****************************************
-			var MyWait = new SpinWait();
-			int OldCount, NewCount;
-			//****************************************
-
-			do
-			{
-				// Try and retrieve a waiter
-				while (_Waiters.TryDequeue(out var NextInstance))
-				{
-					// Try and release this Instance
-					if (NextInstance.TrySwitchToCompleted())
-						return;
-				}
-
-				//****************************************
-
-				// Forcibly increment the counter
-				for (; ; )
-				{
-					OldCount = _CurrentCount;
-
-					// Are we disposed?
-					if (OldCount < 0)
-						NewCount = OldCount - 1; // Yes, subtract to take us further from -1
-					else
-						NewCount = OldCount + 1; // No, add to take us further from 0
-
-					// Update the counter
-					if (Interlocked.CompareExchange(ref _CurrentCount, NewCount, OldCount) == OldCount)
-						break;
-
-					// Failed, spin and try again
-					MyWait.SpinOnce();
-				}
-
-				// Let any peekers know they can try and take a counter
-				ReleasePeekers();
-
-				// Is anybody waiting now?
-				if (_Waiters.IsEmpty)
-					return; // No, so nothing to do
-
-				// Someone is waiting. Try and take the counter back, regardless of if there's a waiter
-			} while (InternalTryDecrement());
-
-			// Failed to take the counter back, so we're done
-			if (_CurrentCount == -1)
-			{
-				DisposeWaiters();
-
-				return;
-			}
-		}
-
 		internal bool TryPeekDecrement(TimeSpan timeout, CancellationToken token, out AsyncCounterDecrement decrement)
 		{
 			var MyCount = _CurrentCount;
@@ -397,7 +378,7 @@ namespace System.Threading
 			}
 
 			// Are we able to decrement?
-			var Instance = AsyncCounterDecrement.GetOrCreateFor(this, true, MyCount > 0 || MyCount < -1);
+			var Instance = AsyncCounterDecrement.GetOrCreateFor(this, true, MyCount > 0);
 
 			if (Instance.GetStatus(Instance.Version) == ValueTaskSourceStatus.Pending)
 			{
@@ -438,7 +419,7 @@ namespace System.Threading
 				OldCount = _CurrentCount;
 
 				// Are we disposed?
-				if (OldCount < 0)
+				if (OldCount == -1)
 					return false;
 
 				// No, so we can add a counter to the pool
@@ -464,26 +445,61 @@ namespace System.Threading
 			{
 				OldCount = _CurrentCount;
 
-				// If we're equal or less than zero, we've either no counter or we're being disposed of
 				if (OldCount <= 0)
-				{
-					// If we're 0, there's no counter to decrement
-					// If we're -1, there's no counter to decrement and we're disposed
-					if (OldCount >= -1)
-						return false;
-
-					// Add one to bring us closer to -1 
-					NewCount = OldCount + 1;
-				}
+					return false; // No counter (or already disposed), cannot decrement again
+				else if (OldCount > 1)
+					NewCount = OldCount - 1; // Other counters, so just decrease by one
+				else if (_Disposer != null)
+					NewCount = -1; // Last counter, and we're disposing, switch to disposed
 				else
-				{
-					// Subtract one to bring us closer to 0
-					NewCount = OldCount - 1;
-				}
+					NewCount = 0; // Last counter, and not disposing, so we go to zero
 
 				// Try and update the counter
 				if (Interlocked.CompareExchange(ref _CurrentCount, NewCount, OldCount) == OldCount)
+				{
+					if (NewCount == -1)
+						_Disposer!.SwitchToComplete();
+
 					return true;
+				}
+
+				// Failed. Spin and try again
+				MyWait.SpinOnce();
+			}
+		}
+
+		private bool InternalTryDecrement(out int count)
+		{ //****************************************
+			var MyWait = new SpinWait();
+			int OldCount, NewCount;
+			//****************************************
+
+			for (; ; )
+			{
+				OldCount = _CurrentCount;
+
+				if (OldCount <= 0)
+				{
+					count = 0;
+
+					return false; // No counter (or already disposed), cannot decrement again
+				}
+
+				count = OldCount;
+
+				if (_Disposer != null)
+					NewCount = -1; // We're disposing, switch to disposed
+				else
+					NewCount = 0; // Just take every other counter
+
+				// Try and update the counter
+				if (Interlocked.CompareExchange(ref _CurrentCount, NewCount, OldCount) == OldCount)
+				{
+					if (NewCount == -1)
+						_Disposer!.SwitchToComplete();
+
+					return true;
+				}
 
 				// Failed. Spin and try again
 				MyWait.SpinOnce();
@@ -524,7 +540,7 @@ namespace System.Threading
 			{
 				var MyCount = _CurrentCount;
 
-				return MyCount < 0 ? ~MyCount : MyCount;
+				return MyCount < 0 ? 0 : MyCount;
 			}
 		}
 

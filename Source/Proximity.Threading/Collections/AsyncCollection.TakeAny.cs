@@ -157,11 +157,15 @@ namespace System.Collections.Concurrent
 		/// <param name="collection">Receives the collection we took the item from</param>
 		/// <param name="item">The item that was taken</param>
 		/// <returns>True if we took from a collection, otherwise False</returns>
-		public static bool TryTakeFromAny(IEnumerable<AsyncCollection<TItem>> collections, out AsyncCollection<TItem> collection, out TItem item)
+		public static bool TryTakeFromAny(IEnumerable<AsyncCollection<TItem>> collections, out AsyncCollection<TItem> collection,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+			out TItem item)
 		{
 			foreach (var SourceCollection in collections)
 			{
-				if (SourceCollection.TryTake(out item))
+				if (SourceCollection.TryTake(out item!))
 				{
 					collection = SourceCollection;
 

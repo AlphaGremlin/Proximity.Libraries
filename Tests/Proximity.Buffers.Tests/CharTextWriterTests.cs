@@ -8,10 +8,10 @@ using NUnit.Framework;
 namespace Proximity.Buffers.Tests
 {
 	/// <summary>
-	/// Tests the functionality of the <see cref="BufferWriter"/> class
+	/// Tests the functionality of the <see cref="CharTextWriter"/> class
 	/// </summary>
 	[TestFixture()]
-	public class BufferTextWriterTests
+	public class CharTextWriterTests
 	{ //****************************************
 		private string _TestInput = @"ABC!DEF@GHI#JKL$123%456^789&0*MNO(PQR)STU-VWX=YZ abcdefghijklmnopqrstuvwxyz ♥ ";
 		private char[] _TestOutput;
@@ -37,7 +37,7 @@ namespace Proximity.Buffers.Tests
 			//****************************************
 
 			using (var Buffer = new BufferWriter<char>())
-			using (var Writer = new BufferWriter(Buffer))
+			using (var Writer = new CharTextWriter(Buffer))
 			{
 				Writer.Write(_TestInput);
 
@@ -56,7 +56,7 @@ namespace Proximity.Buffers.Tests
 			//****************************************
 
 			using (var Buffer = new BufferWriter<char>())
-			using (var Writer = new BufferWriter(Buffer, capacity))
+			using (var Writer = new CharTextWriter(Buffer, capacity))
 			{
 				Writer.Write(_TestInput);
 
@@ -75,7 +75,7 @@ namespace Proximity.Buffers.Tests
 			//****************************************
 
 			using (var Buffer = new BufferWriter<char>())
-			using (var Writer = new BufferWriter(Buffer, capacity))
+			using (var Writer = new CharTextWriter(Buffer, capacity))
 			{
 				foreach (var MyChar in _TestInput)
 				{

@@ -15,8 +15,8 @@ namespace System.Threading
 	/// </summary>
 	internal sealed class AsyncCounterDecrementAny : BaseCancellable, IValueTaskSource<AsyncCounter>
 	{ //****************************************
-		private static readonly ConcurrentBag<AsyncCounterDecrementAny> _Instances = new ConcurrentBag<AsyncCounterDecrementAny>();
-		private static readonly ConcurrentBag<PeekDecrementWaiter> _Waiters = new ConcurrentBag<PeekDecrementWaiter>();
+		private static readonly ConcurrentBag<AsyncCounterDecrementAny> Instances = new ConcurrentBag<AsyncCounterDecrementAny>();
+		private static readonly ConcurrentBag<PeekDecrementWaiter> Waiters = new ConcurrentBag<PeekDecrementWaiter>();
 		//****************************************
 		private int _InstanceState;
 		private int _IsStarted;
@@ -156,7 +156,7 @@ namespace System.Threading
 			_WinningCounter = null;
 			ResetCancellation();
 
-			_Instances.Add(this);
+			Instances.Add(this);
 		}
 
 		private void OnPeekCompleted(AsyncCounter counter)
@@ -170,7 +170,9 @@ namespace System.Threading
 						return; // Success, no need to try and release since we'll do that after GetResult
 
 					// We can fail to switch to completion if we're cancelled - in which case we should return the counter we just took
-					counter.ForceIncrement();
+					// This may fail if the counter was disposed mid-operation
+					if (counter.TryIncrement())
+						return;
 				}
 				else
 				{
@@ -185,12 +187,12 @@ namespace System.Threading
 
 						return;
 					}
-
-					// Counter is disposed, fail
-					OnPeekFailed();
-
-					return;
 				}
+
+				// Counter is disposed, fail
+				OnPeekFailed();
+
+				return;
 			}
 
 			// If we're the last peek waiter, try and release
@@ -218,7 +220,7 @@ namespace System.Threading
 
 		internal static AsyncCounterDecrementAny GetOrCreate(CancellationToken token, TimeSpan timeout)
 		{
-			if (!_Instances.TryTake(out var Instance))
+			if (!Instances.TryTake(out var Instance))
 				Instance = new AsyncCounterDecrementAny();
 
 			Instance.Initialise(token, timeout);
@@ -287,14 +289,14 @@ namespace System.Threading
 				_Decrement = null;
 				_Awaiter = default;
 
-				_Waiters.Add(this);
+				Waiters.Add(this);
 			}
 
 			//****************************************
 
 			internal static PeekDecrementWaiter GetOrCreate(AsyncCounterDecrementAny operation, AsyncCounterDecrement decrement)
 			{
-				if (!_Waiters.TryTake(out var Waiter))
+				if (!Waiters.TryTake(out var Waiter))
 					Waiter = new PeekDecrementWaiter();
 
 				Waiter._Operation = operation;

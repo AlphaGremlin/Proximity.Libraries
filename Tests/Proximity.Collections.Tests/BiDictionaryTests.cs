@@ -185,7 +185,7 @@ namespace Proximity.Collections.Tests
 			var Random = Initialise();
 			var Records = new BiDictionary<int, int>();
 
-			var Inputs = YieldRandom(Random, 512).ToQueue();
+			var Inputs = YieldRandom(Random, 1024).ToQueue();
 
 			foreach (var (Left, Right) in YieldRandom(Random, 16))
 				Records.Add(Left, Right);
@@ -214,7 +214,7 @@ namespace Proximity.Collections.Tests
 			foreach (var (Left, Right) in YieldRandom(Random, 16))
 				Records.Add(Left, Right);
 
-			var Inputs = YieldRandom(Random, 512).ToQueue();
+			var Inputs = YieldRandom(Random, 1024).ToQueue();
 
 			for (var Index = 0; Index < 1024; Index++)
 			{

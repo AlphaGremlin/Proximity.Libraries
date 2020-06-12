@@ -33,7 +33,7 @@ namespace System.IO
 		/// Creates a new Binary Text Reader with auto-detected encoding
 		/// </summary>
 		/// <param name="array">The array segment to read from</param>
-		public BinaryTextReader(ArraySegment<byte> array) : this(array.Array, array.Offset, array.Count, Encoding.UTF8, true, DefaultBufferSize)
+		public BinaryTextReader(ArraySegment<byte> array) : this(array.Array ?? throw new ArgumentNullException(nameof(array)), array.Offset, array.Count, Encoding.UTF8, true, DefaultBufferSize)
 		{
 		}
 
@@ -42,7 +42,7 @@ namespace System.IO
 		/// </summary>
 		/// <param name="array">The array segment to read from</param>
 		/// <param name="encoding">The encoding of the text in the byte array</param>
-		public BinaryTextReader(ArraySegment<byte> array, Encoding encoding) : this(array.Array, array.Offset, array.Count, encoding, true, DefaultBufferSize)
+		public BinaryTextReader(ArraySegment<byte> array, Encoding encoding) : this(array.Array ?? throw new ArgumentNullException(nameof(array)), array.Offset, array.Count, encoding, true, DefaultBufferSize)
 		{
 		}
 
@@ -52,7 +52,7 @@ namespace System.IO
 		/// <param name="array">The array segment to read from</param>
 		/// <param name="encoding">The encoding of the text in the byte array</param>
 		/// <param name="detectEncoding">Whether to detect the encoding using the preamble</param>
-		public BinaryTextReader(ArraySegment<byte> array, Encoding encoding, bool detectEncoding) : this(array.Array, array.Offset, array.Count, encoding, detectEncoding, DefaultBufferSize)
+		public BinaryTextReader(ArraySegment<byte> array, Encoding encoding, bool detectEncoding) : this(array.Array ?? throw new ArgumentNullException(nameof(array)), array.Offset, array.Count, encoding, detectEncoding, DefaultBufferSize)
 		{
 		}
 
@@ -63,7 +63,7 @@ namespace System.IO
 		/// <param name="encoding">The encoding of the text in the byte array</param>
 		/// <param name="detectEncoding">Whether to detect the encoding using the preamble</param>
 		/// <param name="bufferSize">The buffer size to use when reading the text</param>
-		public BinaryTextReader(ArraySegment<byte> array, Encoding encoding, bool detectEncoding, int bufferSize) : this(array.Array, array.Offset, array.Count, encoding, detectEncoding, bufferSize)
+		public BinaryTextReader(ArraySegment<byte> array, Encoding encoding, bool detectEncoding, int bufferSize) : this(array.Array ?? throw new ArgumentNullException(nameof(array)), array.Offset, array.Count, encoding, detectEncoding, bufferSize)
 		{
 		}
 
@@ -343,7 +343,7 @@ namespace System.IO
 		}
 
 		/// <inheritdoc />
-		public override Task<string> ReadLineAsync() => Task.FromResult(ReadLine());
+		public override Task<string?> ReadLineAsync() => Task.FromResult<string?>(ReadLine());
 
 		/// <inheritdoc />
 		public override string ReadToEnd()

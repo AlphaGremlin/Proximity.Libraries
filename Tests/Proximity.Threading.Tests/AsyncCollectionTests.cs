@@ -138,7 +138,7 @@ namespace Proximity.Threading.Tests
 				
 				Assert.Fail("Should not reach here");
 			}
-			catch (OperationCanceledException)
+			catch (TimeoutException)
 			{
 			}
 			
@@ -224,7 +224,7 @@ namespace Proximity.Threading.Tests
 		}
 		
 		[Test, MaxTime(1000)]
-		public void TakeMaxTime()
+		public async Task TakeMaxTime()
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
 			//****************************************
@@ -232,10 +232,18 @@ namespace Proximity.Threading.Tests
 			var MyTask = MyCollection.Take(TimeSpan.FromMilliseconds(50));
 			
 			Thread.Sleep(100);
-			
+
 			//****************************************
-			
-			Assert.IsTrue(MyTask.IsCanceled, "Wait not cancelled");
+
+			try
+			{
+				await MyTask;
+
+				Assert.Fail("Wait not cancelled");
+			}
+			catch (TimeoutException)
+			{
+			}
 		}
 		
 		[Test, MaxTime(1000)]

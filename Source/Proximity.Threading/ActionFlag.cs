@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Security;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -14,14 +14,11 @@ namespace System.Threading
 	{ //****************************************
 		private readonly Func<ValueTask> _Callback;
 
-		private readonly WaitCallback _ExecuteTask;
-		private readonly Action _CompleteTask;
+		private readonly AsyncCounter _Counter;
 
-		private int _State;
-		private readonly Timer? _DelayTimer;
+		private readonly ValueTask _RunLoop;
 
-		private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _Awaiter;
-		private TaskCompletionSource<VoidStruct>? _WaitTask, _PendingWaitTask;
+		private TaskCompletionSource<VoidStruct>? _WaitTask;
 		//****************************************
 
 		/// <summary>
@@ -73,79 +70,28 @@ namespace System.Threading
 		/// <param name="delay">A fixed delay between callback executions</param>
 		public ActionFlag(Func<ValueTask> callback, TimeSpan delay)
 		{
+			if (delay < TimeSpan.Zero)
+				throw new ArgumentOutOfRangeException(nameof(delay));
+
+			Delay = delay;
+
+			_Counter = new AsyncCounter();
 			_Callback = callback;
-
-			if (delay == TimeSpan.Zero)
-			{
-				_ExecuteTask = ExecuteTask;
-			}
-			else
-			{
-				Delay = delay;
-				_ExecuteTask = ExecuteDelay;
-				_DelayTimer = new Timer(ExecuteTask);
-			}
-
-			_CompleteTask = CompleteTask;
+			_RunLoop = OnActionFlag();
 		}
 
 		//****************************************
 
-		void IDisposable.Dispose() => DisposeAsync();
+		void IDisposable.Dispose() => _ = DisposeAsync();
 
 		/// <summary>
 		/// Disposes of the asynchronous task flag
 		/// </summary>
-		public ValueTask DisposeAsync()
+		public async ValueTask DisposeAsync()
 		{
-			int PreviousState, NewState;
+			await _Counter.DisposeAsync();
 
-			do
-			{
-				PreviousState = _State;
-
-				switch (PreviousState)
-				{
-				case Status.Disposed:
-				case Status.DisposedFlagged:
-				case Status.DisposedExecuting:
-					return default; // Already Disposed, or waiting on a Dispose
-
-				case Status.Executing:
-					NewState = Status.DisposedExecuting;
-					break;
-
-				case Status.Flagged:
-					NewState = Status.DisposedFlagged;
-					break;
-
-				default:
-					NewState = Status.Disposed;
-					break;
-				}
-			}
-			while (Interlocked.CompareExchange(ref _State, NewState, PreviousState) != PreviousState);
-
-#if NETSTANDARD2_0
-			_DelayTimer?.Dispose();
-#else
-			if (_DelayTimer != null)
-			{
-				var DisposeTimer = _DelayTimer.DisposeAsync();
-
-				if (!DisposeTimer.IsCompleted)
-					return InternalDispose(DisposeTimer);
-
-				async ValueTask InternalDispose(ValueTask disposeTask)
-				{
-					await disposeTask;
-
-					await WaitForExecution();
-				}
-			}
-#endif
-
-			return WaitForExecution();
+			await _RunLoop;
 		}
 
 		//****************************************
@@ -155,30 +101,7 @@ namespace System.Threading
 		/// </summary>
 		public void Set()
 		{
-			int PreviousState;
-
-			do
-			{
-				PreviousState = _State;
-
-				switch (PreviousState)
-				{
-				case Status.Disposed:
-				case Status.DisposedExecuting:
-					throw new ObjectDisposedException(nameof(ActionFlag), "Action Flag has been disposed");
-
-				case Status.Flagged:
-				case Status.DisposedFlagged:
-					return; // Already pending execution
-				}
-
-				// We're either Waiting or Executing
-			}
-			while (Interlocked.CompareExchange(ref _State, Status.Flagged, PreviousState) != PreviousState);
-
-			if (PreviousState == Status.Waiting)
-				// The ActionFlag was in a waiting state, so start the callback
-				ThreadPool.UnsafeQueueUserWorkItem(_ExecuteTask, null);
+			_Counter.Increment();
 		}
 
 		/// <summary>
@@ -211,141 +134,39 @@ namespace System.Threading
 
 		//****************************************
 
-		private ValueTask WaitForExecution()
+		private async ValueTask OnActionFlag()
 		{
-			TaskCompletionSource<VoidStruct>? CurrentWaitTask;
-
 			for (; ; )
 			{
-				switch (Volatile.Read(ref _State))
+				try
 				{
-				case Status.Waiting:
-				case Status.Disposed:
-					return default; // Nothing to wait on
-
-				case Status.DisposedFlagged:
-				case Status.Flagged:
-					CurrentWaitTask = Volatile.Read(ref _WaitTask);
-
-					if (CurrentWaitTask != null)
-						return new ValueTask(CurrentWaitTask.Task);
-
-					Interlocked.CompareExchange(ref _WaitTask, new TaskCompletionSource<VoidStruct>(), null);
-					// Now loop back to make sure we're still flagged, otherwise we risk not being picked up
-					break;
-
-				case Status.DisposedExecuting:
-				case Status.Executing:
-					CurrentWaitTask = Volatile.Read(ref _PendingWaitTask);
-
-					if (CurrentWaitTask != null)
-						return new ValueTask(CurrentWaitTask.Task);
-
-					Interlocked.CompareExchange(ref _PendingWaitTask, new TaskCompletionSource<VoidStruct>(), null);
-					// Now loop back to make sure we're still executing, otherwise we risk not being picked up
+					await _Counter.Decrement();
+				}
+				catch (ObjectDisposedException)
+				{
 					break;
 				}
-			}
-		}
 
-		private void ExecuteDelay(object state)
-		{
-			try
-			{
-				// Wait a bit before beginning execution
-				_DelayTimer!.Change(Delay, Timeout.InfiniteTimeSpan);
-			}
-			catch (ObjectDisposedException)
-			{
-			}
-		}
+				if (Delay > TimeSpan.Zero)
+					await Task.Delay(Delay);
 
-		private void ExecuteTask(object state)
-		{
-			int PreviousState, NewState;
+				_Counter.TryDecrementToZero(out _);
 
-			// Update the state of the Action Flag to Executing/DisposedExecuting
-			do
-			{
-				PreviousState = _State;
+				// Capture any requests to wait for this callback
+				var PendingWaitTask = Interlocked.Exchange(ref _WaitTask, null);
 
-				NewState = PreviousState switch
+				try
 				{
-					Status.DisposedFlagged => Status.DisposedExecuting,
-					Status.Flagged => Status.Executing,
-					_ => throw new InvalidOperationException($"Action Flag is in an unexpected state: {PreviousState}"),
-				};
-			}
-			while (Interlocked.CompareExchange(ref _State, NewState, PreviousState) != PreviousState);
-
-			// Capture any requests to wait for this callback
-			_PendingWaitTask = Interlocked.Exchange(ref _WaitTask, null);
-
-			//****************************************
-
-			// Raise the callback
-			try
-			{
-				var Task = _Callback();
-
-				_Awaiter = Task.ConfigureAwait(false).GetAwaiter();
-
-				if (_Awaiter.IsCompleted)
-					CompleteTask();
-				else
-					_Awaiter.OnCompleted(_CompleteTask);
-			}
-			catch (Exception)
-			{
-				if (!SwallowExceptions)
-					throw;
-			}
-		}
-
-		private void CompleteTask()
-		{
-			// Examine the result of the Task
-			try
-			{
-				_Awaiter.GetResult();
-			}
-			catch (Exception)
-			{
-				if (!SwallowExceptions)
-					throw;
-			}
-
-			//****************************************
-
-			// If we captured a wait task, set it
-			Interlocked.Exchange(ref _PendingWaitTask, null)?.SetResult(default);
-
-			int PreviousState, NewState;
-
-			// Update the state of the Action Flag to Waiting/Disposed, or Executing/DisposedExecuting if we've been flagged again
-			do
-			{
-				PreviousState = _State;
-
-				NewState = PreviousState switch
+					await _Callback();
+				}
+				catch (Exception)
 				{
-					Status.Executing => Status.Waiting,
-					Status.DisposedExecuting => Status.Disposed,
-					Status.Flagged => Status.Executing,
-					Status.DisposedFlagged => Status.DisposedExecuting,
-					_ => throw new InvalidOperationException($"Action Flag is in an unexpected state: {PreviousState}"),
-				};
-			}
-			while (Interlocked.CompareExchange(ref _State, NewState, PreviousState) != PreviousState);
+					if (!SwallowExceptions)
+						throw;
+				}
 
-			// If we're executing, queue the callback again
-			switch (NewState)
-			{
-			case Status.DisposedExecuting:
-			case Status.Executing:
-				// It's not safe to rely on OnComplete to queue us on another thread, so this makes sure we break the call stack
-				ThreadPool.UnsafeQueueUserWorkItem(_ExecuteTask, null);
-				break;
+				// If we captured a wait task, set it
+				PendingWaitTask?.SetResult(default);
 			}
 		}
 
@@ -355,7 +176,7 @@ namespace System.Threading
 		/// Gets/Sets a delay to apply before executing the callback
 		/// </summary>
 		/// <remarks>Acts as a cheap batching mechanism, so rapid calls to Set do not execute the callback twice</remarks>
-		public TimeSpan Delay { get; } = TimeSpan.Zero;
+		public TimeSpan Delay { get; set; } = TimeSpan.Zero;
 
 		/// <summary>
 		/// Gets/Sets whether to swallow exceptions returned by the callback, or leave them to trigger an UnhandledException
@@ -367,22 +188,5 @@ namespace System.Threading
 		private static Func<ValueTask> WrapCallback(Func<Task> callback) => () => new ValueTask(callback());
 
 		private static Func<ValueTask> WrapCallback(Action callback) => () => { callback(); return default; };
-
-		//****************************************
-
-		private static class Status
-		{
-			public const int DisposedExecuting = -3;
-
-			public const int DisposedFlagged = -2;
-
-			public const int Disposed = -1;
-
-			public const int Waiting = 0;
-
-			public const int Flagged = 1;
-
-			public const int Executing = 2;
-		}
 	}
 }

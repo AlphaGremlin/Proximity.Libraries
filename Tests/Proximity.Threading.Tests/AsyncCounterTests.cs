@@ -150,7 +150,7 @@ namespace Proximity.Threading.Tests
 
 				Assert.Fail("Task did not cancel");
 			}
-			catch (OperationCanceledException)
+			catch (TimeoutException)
 			{
 			}
 
@@ -206,7 +206,7 @@ namespace Proximity.Threading.Tests
 			var MyLock = new AsyncCounter();
 			//****************************************
 			
-			MyLock.Dispose();
+			MyLock.DisposeAsync();
 
 			Assert.ThrowsAsync<ObjectDisposedException>(() => MyLock.Decrement().AsTask());
 			
@@ -222,7 +222,7 @@ namespace Proximity.Threading.Tests
 			var MyLock = new AsyncCounter();
 			//****************************************
 			
-			MyLock.Dispose();
+			MyLock.DisposeAsync();
 			
 			try
 			{
@@ -248,7 +248,7 @@ namespace Proximity.Threading.Tests
 			
 			var MyTask = MyLock.Decrement();
 			
-			MyLock.Dispose();
+			_ = MyLock.DisposeAsync();
 			
 			try
 			{
@@ -274,7 +274,9 @@ namespace Proximity.Threading.Tests
 			
 			MyLock.Increment();
 			
-			MyLock.Dispose();
+			var DisposeTask = MyLock.DisposeAsync();
+
+			Assert.IsFalse(DisposeTask.IsCompleted, "Dispose completed early");
 			
 			//****************************************
 			
@@ -416,29 +418,26 @@ namespace Proximity.Threading.Tests
 			var MyCounters = new AsyncCounter[] { new AsyncCounter(0), new AsyncCounter(0) };
 			//****************************************
 			
-			var MyTask1 = AsyncCounter.DecrementAny(MyCounters);
-			var MyTask2 = AsyncCounter.DecrementAny(MyCounters);
+			var MyTask1 = AsyncCounter.DecrementAny(MyCounters).AsTask();
+			var MyTask2 = AsyncCounter.DecrementAny(MyCounters).AsTask();
 			
 			Assert.IsFalse(MyTask1.IsCompleted, "Task 1 unexpectedly completed");
 			Assert.IsFalse(MyTask2.IsCompleted, "Task 2 unexpectedly completed");
 			
 			MyCounters[0].Increment();
 
-			var Result1 = await MyTask1; // Since it was the first registered, it should be the first to complete
-			
+			await Task.WhenAny(MyTask1, MyTask2); // No guarantee which peek will finish first
+
 			MyCounters[1].Increment();
 
-			var Result2 = await MyTask2;
-			
+			await Task.WhenAll(MyTask1, MyTask2);
+
 			//****************************************
+
+			CollectionAssert.Contains(MyCounters, MyTask1.Result, "Decremented unexpected counter");
+			CollectionAssert.Contains(MyCounters, MyTask2.Result, "Decremented unexpected counter");
 			
-			Assert.IsTrue(MyTask1.IsCompleted, "Still waiting to decrement");
-			Assert.IsTrue(MyTask2.IsCompleted, "Still waiting to decrement");
-			
-			CollectionAssert.Contains(MyCounters, Result1, "Decremented unexpected counter");
-			CollectionAssert.Contains(MyCounters, Result2, "Decremented unexpected counter");
-			
-			Assert.AreNotSame(Result1, Result2, "Decremented the same counter");
+			Assert.AreNotSame(MyTask1.Result, MyTask2.Result, "Decremented the same counter");
 			
 			Assert.AreEqual(0, MyCounters[0].CurrentCount, "Counter not decremented");
 			Assert.AreEqual(0, MyCounters[0].WaitingCount, "Tasks unexpectedly waiting");
@@ -484,8 +483,8 @@ namespace Proximity.Threading.Tests
 			
 			var MyTask = AsyncCounter.DecrementAny(MyCounters);
 			
-			MyCounters[0].Dispose();
-			MyCounters[1].Dispose();
+			MyCounters[0].DisposeAsync();
+			MyCounters[1].DisposeAsync();
 
 			// Wait for the DecrementAny task to cancel
 			while (!MyTask.IsCompleted)
@@ -537,7 +536,7 @@ namespace Proximity.Threading.Tests
 
 			var MyTask = MyCounter.PeekDecrement();
 
-			MyCounter.Dispose();
+			_ = MyCounter.DisposeAsync();
 
 			//****************************************
 
@@ -562,7 +561,7 @@ namespace Proximity.Threading.Tests
 
 			var MyTask = MyCounter.PeekDecrement(MySource.Token);
 
-			MyCounter.Dispose();
+			_ = MyCounter.DisposeAsync();
 
 			//****************************************
 
@@ -612,7 +611,7 @@ namespace Proximity.Threading.Tests
 
 			var MyInnerTask = MyTask.ContinueWith((task) => MyCounter.PeekDecrement().AsTask(), TaskContinuationOptions.ExecuteSynchronously).Unwrap();
 
-			MyCounter.Dispose();
+			_ = MyCounter.DisposeAsync();
 
 			//****************************************
 
@@ -892,7 +891,7 @@ namespace Proximity.Threading.Tests
 
 				var Increment1 = Increment(MyCounter, 10, CancellationToken.None);
 
-				MySource.Token.Register(MyCounter.Dispose);
+				MySource.Token.Register(((IDisposable)MyCounter).Dispose);
 
 				MyResults = await Task.WhenAll(Consume1, Consume2, Increment1);
 			}
@@ -916,7 +915,7 @@ namespace Proximity.Threading.Tests
 
 				var Increment1 = Increment(MyCounter, 10, CancellationToken.None);
 
-				MySource.Token.Register(MyCounter.Dispose);
+				MySource.Token.Register(((IDisposable)MyCounter).Dispose);
 
 				MyResults = await Task.WhenAll(Consume1, Consume2, Increment1);
 			}
@@ -940,7 +939,7 @@ namespace Proximity.Threading.Tests
 
 				var Increment1 = Increment(MyCounter, 10, CancellationToken.None);
 
-				MySource.Token.Register(MyCounter.Dispose);
+				MySource.Token.Register(((IDisposable)MyCounter).Dispose);
 
 				MyResults = await Task.WhenAll(Consume1, Consume2, Increment1);
 			}

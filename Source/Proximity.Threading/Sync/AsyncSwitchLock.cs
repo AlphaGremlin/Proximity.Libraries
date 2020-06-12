@@ -49,16 +49,16 @@ namespace System.Threading
 		/// <remarks>All tasks waiting on the lock will throw ObjectDisposedException</remarks>
 		public ValueTask DisposeAsync()
 		{
-			if (_Disposer != null || Interlocked.CompareExchange(ref _Disposer, new LockDisposer(), null) != null)
-				return default;
+			if (_Disposer == null && Interlocked.CompareExchange(ref _Disposer, new LockDisposer(), null) == null)
+			{
+				// Success, now close any pending waiters
+				DisposeLeft();
+				DisposeRight();
 
-			// Success, now close any pending waiters
-			DisposeLeft();
-			DisposeRight();
-
-			// If there's no counters, we can complete the dispose task
-			if (_Counter == 0)
-				_Disposer.SwitchToComplete();
+				// If there's no counters, we can complete the dispose task
+				if (_Counter == 0)
+					_Disposer.SwitchToComplete();
+			}
 
 			return new ValueTask(_Disposer, _Disposer.Token);
 		}

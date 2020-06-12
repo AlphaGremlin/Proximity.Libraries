@@ -138,7 +138,7 @@ namespace Proximity.Threading.Tests
 
 				Assert.Fail("Did not cancel");
 			}
-			catch (OperationCanceledException)
+			catch (TimeoutException)
 			{
 			}
 

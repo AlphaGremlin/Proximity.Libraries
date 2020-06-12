@@ -255,10 +255,10 @@ namespace System.Collections.Concurrent
 
 			// Cancel any adds that are waiting for a free slot
 			if (_FreeSlots != null)
-				_FreeSlots.Dispose();
+				_FreeSlots.DisposeAsync();
 
 			// If the collection is empty, cancel anyone waiting for items
-			_UsedSlots.DisposeIfZero();
+			_UsedSlots.DisposeAsync();
 		}
 
 		/// <summary>
@@ -301,16 +301,13 @@ namespace System.Collections.Concurrent
 
 				yield return MyItem;
 			}
-
-			// Cancel anyone waiting for items
-			_UsedSlots.Dispose();
 		}
 
 		internal bool TryPeekTake(CancellationToken token, out AsyncCounterDecrement decrement) => _UsedSlots.TryPeekDecrement(Timeout.InfiniteTimeSpan, token, out decrement);
 
 		internal bool TryReserveTake() => _UsedSlots.TryDecrement();
 
-		internal void ReleaseTake() => _UsedSlots.ForceIncrement();
+		internal void ReleaseTake() => _UsedSlots.TryIncrement();
 
 		internal TItem CompleteTake()
 		{
@@ -323,10 +320,6 @@ namespace System.Collections.Concurrent
 				// We've removed an item, so release any Adders
 				// Use TryIncrement, so we ignore if we're disposed and there are no more adders
 				_FreeSlots.TryIncrement();
-
-			// If the collection is now empty, cancel anyone waiting for items
-			if (IsCompleted)
-				_UsedSlots.DisposeIfZero();
 
 			return Item;
 		}

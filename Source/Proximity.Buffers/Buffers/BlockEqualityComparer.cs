@@ -85,6 +85,7 @@ namespace System.Buffers
 				var B = 0u;
 
 #if NETCOREAPP3_1
+				// Based on: https://github.com/SnowflakePowered/vcdiff/blob/b649ea08a6109b5fdbac4fca9565c98993c87e8c/src/VCDiff/Shared/Adler32.cs
 				if (Ssse3.IsSupported)
 				{
 					var Vectors = MemoryMarshal.Cast<byte, Vector128<byte>>(value);

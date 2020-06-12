@@ -1015,11 +1015,19 @@ namespace Proximity.Threading.Tests
 				
 				Thread.Sleep(100);
 			}
-			
+
 			//****************************************
-			
-			Assert.IsTrue(MyReader.IsCanceled, "Did not cancel");
-			
+
+			try
+			{
+				await MyReader;
+
+				Assert.Fail("Did not cancel");
+			}
+			catch (TimeoutException)
+			{
+			}
+
 			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
 			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
 			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");
@@ -1039,13 +1047,19 @@ namespace Proximity.Threading.Tests
 				
 				Thread.Sleep(100);
 			}
-			
+
 			//****************************************
-			
-			Thread.Sleep(100); // Release happens on another thread and there's nothing to wait on
-			
-			Assert.IsTrue(MyWriter.IsCanceled, "Did not cancel");
-			
+
+			try
+			{
+				await MyWriter;
+
+				Assert.Fail("Did not cancel");
+			}
+			catch (TimeoutException)
+			{
+			}
+
 			Assert.IsFalse(MyLock.IsReading, "Reader still registered");
 			Assert.IsFalse(MyLock.IsWriting, "Writer still registered");
 			Assert.AreEqual(0, MyLock.WaitingReaders, "Readers still waiting");

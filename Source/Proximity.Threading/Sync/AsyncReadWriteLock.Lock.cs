@@ -150,8 +150,11 @@ namespace System.Threading
 
 			internal void Release(short token)
 			{
-				if (_TaskSource.Version != token || Interlocked.CompareExchange(ref _InstanceState, Status.Unused, Status.Held) != Status.Held)
+				if (_TaskSource.Version != token)
 					throw new InvalidOperationException("Lock cannot be released multiple times");
+
+				if (Interlocked.CompareExchange(ref _InstanceState, Status.Unused, Status.Held) != Status.Held)
+					throw new InvalidOperationException($"Lock cannot be released multiple times ({_InstanceState})");
 
 				// Release the counter and then return to the pool
 				Owner!.Release(IsWriter);
@@ -186,6 +189,9 @@ namespace System.Threading
 				case Status.Held:
 					_TaskSource.SetResult(new Instance(this));
 					break;
+
+				default:
+					throw new InvalidOperationException($"Lock is in an invalid state ({_InstanceState})");
 				}
 			}
 
@@ -212,6 +218,9 @@ namespace System.Threading
 						if (Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledNotWaiting)
 							Release(); // We're cancelled/disposed and no longer on the Wait queue, so we can return to the pool
 						break;
+
+					case Status.Pending:
+						throw new InvalidOperationException("Lock is in an invalid state");
 					}
 				}
 			}
@@ -220,6 +229,8 @@ namespace System.Threading
 
 			private void Initialise(AsyncReadWriteLock owner, bool isWriter, bool isHeld)
 			{
+				Debug.Assert(_InstanceState == Status.Unused, "Lock Instance has been reused");
+
 				Owner = owner;
 				IsWriter = isWriter;
 
@@ -238,10 +249,13 @@ namespace System.Threading
 
 			private void Release()
 			{
+				Debug.Assert(Owner != null, "Double Release");
+				Debug.Assert(_InstanceState != Status.Pending && _InstanceState != Status.Held, "Release not valid at this time");
 				Owner = null;
 				IsWriter = false;
 				IsUpgrading = false;
 
+				_TaskSource.Reset();
 				_InstanceState = Status.Unused;
 				ResetCancellation();
 
