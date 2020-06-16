@@ -54,7 +54,7 @@ namespace Proximity.Threading
 			// If we can't remove continuations, each call would then leak a TaskCancelInstance, potentially indefinitely.
 
 			// Make sure we run the continuation on the ThreadPool (equivalent to ConfigureAwait(false))
-			task.ContinueWith(_CompleteTask ?? (_CompleteTask = OnCompleteTask), Token, TaskContinuationOptions.None, TaskScheduler.Default);
+			task.ContinueWith(_CompleteTask ??= OnCompleteTask, Token, TaskContinuationOptions.None, TaskScheduler.Default);
 		}
 
 		internal void Attach(ValueTask task)
@@ -79,7 +79,7 @@ namespace Proximity.Threading
 			if (_Awaiter.IsCompleted)
 				OnCompleteValueTask();
 			else
-				_Awaiter.OnCompleted(_CompleteValueTask ?? (_CompleteValueTask = OnCompleteValueTask));
+				_Awaiter.OnCompleted(_CompleteValueTask ??= OnCompleteValueTask);
 		}
 
 		internal void Attach(Task<TResult> task)
@@ -88,7 +88,7 @@ namespace Proximity.Threading
 			_Task = task;
 
 			// Make sure we run the continuation on the ThreadPool (equivalent to ConfigureAwait(false))
-			task.ContinueWith(_CompleteTask ?? (_CompleteTask = OnCompleteTask), Token, TaskContinuationOptions.None, TaskScheduler.Default);
+			task.ContinueWith(_CompleteTask ??= OnCompleteTask, Token, TaskContinuationOptions.None, TaskScheduler.Default);
 		}
 
 		internal void Attach(ValueTask<TResult> task)
@@ -102,7 +102,7 @@ namespace Proximity.Threading
 			if (_ResultAwaiter.IsCompleted)
 				OnCompleteValueTask();
 			else
-				_ResultAwaiter.OnCompleted(_CompleteValueTask ?? (_CompleteValueTask = OnCompleteValueTask));
+				_ResultAwaiter.OnCompleted(_CompleteValueTask ??= OnCompleteValueTask);
 		}
 
 		//****************************************

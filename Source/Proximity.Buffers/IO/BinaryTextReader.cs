@@ -1,25 +1,29 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics.Tracing;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 //****************************************
 
 namespace System.IO
 {
 	/// <summary>
-	/// Implements a TextReader that works directly from a byte array, rather than requiring a MemoryStream wrapper
+	/// Implements a TextReader that works directly from a byte sequence, rather than requiring a MemoryStream wrapper
 	/// </summary>
 	public sealed class BinaryTextReader : TextReader
-	{	//****************************************
+	{ //****************************************
 		private const int MinBufferSize = 128;
 		private const int DefaultBufferSize = 1024;
 		//****************************************
-		private readonly byte[] _Array;
-		private readonly int _StartIndex;
-		private int _Index, _Length;
+		private readonly ReadOnlySequence<byte> _Initial;
+
+		private ReadOnlySequence<byte> _Remainder;
+		private SequencePosition _Position;
+
 		private Decoder _Decoder;
 		private char[] _Buffer;
 		private int _BufferIndex, _BufferLength;
@@ -28,12 +32,12 @@ namespace System.IO
 		private bool _DetectEncoding, _CheckPreamble;
 		private byte[] _Preamble;
 		//****************************************
-		
+
 		/// <summary>
 		/// Creates a new Binary Text Reader with auto-detected encoding
 		/// </summary>
 		/// <param name="array">The array segment to read from</param>
-		public BinaryTextReader(ArraySegment<byte> array) : this(array.Array ?? throw new ArgumentNullException(nameof(array)), array.Offset, array.Count, Encoding.UTF8, true, DefaultBufferSize)
+		public BinaryTextReader(ArraySegment<byte> array) : this(new ReadOnlySequence<byte>(array))
 		{
 		}
 
@@ -42,7 +46,7 @@ namespace System.IO
 		/// </summary>
 		/// <param name="array">The array segment to read from</param>
 		/// <param name="encoding">The encoding of the text in the byte array</param>
-		public BinaryTextReader(ArraySegment<byte> array, Encoding encoding) : this(array.Array ?? throw new ArgumentNullException(nameof(array)), array.Offset, array.Count, encoding, true, DefaultBufferSize)
+		public BinaryTextReader(ArraySegment<byte> array, Encoding encoding) : this(new ReadOnlySequence<byte>(array), encoding)
 		{
 		}
 
@@ -52,7 +56,7 @@ namespace System.IO
 		/// <param name="array">The array segment to read from</param>
 		/// <param name="encoding">The encoding of the text in the byte array</param>
 		/// <param name="detectEncoding">Whether to detect the encoding using the preamble</param>
-		public BinaryTextReader(ArraySegment<byte> array, Encoding encoding, bool detectEncoding) : this(array.Array ?? throw new ArgumentNullException(nameof(array)), array.Offset, array.Count, encoding, detectEncoding, DefaultBufferSize)
+		public BinaryTextReader(ArraySegment<byte> array, Encoding encoding, bool detectEncoding) : this(new ReadOnlySequence<byte>(array), encoding, detectEncoding)
 		{
 		}
 
@@ -63,7 +67,7 @@ namespace System.IO
 		/// <param name="encoding">The encoding of the text in the byte array</param>
 		/// <param name="detectEncoding">Whether to detect the encoding using the preamble</param>
 		/// <param name="bufferSize">The buffer size to use when reading the text</param>
-		public BinaryTextReader(ArraySegment<byte> array, Encoding encoding, bool detectEncoding, int bufferSize) : this(array.Array ?? throw new ArgumentNullException(nameof(array)), array.Offset, array.Count, encoding, detectEncoding, bufferSize)
+		public BinaryTextReader(ArraySegment<byte> array, Encoding encoding, bool detectEncoding, int bufferSize) : this(new ReadOnlySequence<byte>(array), encoding, detectEncoding, bufferSize)
 		{
 		}
 
@@ -71,7 +75,7 @@ namespace System.IO
 		/// Creates a new Binary Text Reader with auto-detected encoding
 		/// </summary>
 		/// <param name="array">The byte array to read from</param>
-		public BinaryTextReader(byte[] array) : this(array, 0, array.Length, Encoding.UTF8, true, DefaultBufferSize)
+		public BinaryTextReader(byte[] array) : this(new ReadOnlySequence<byte>(array))
 		{
 		}
 
@@ -80,7 +84,7 @@ namespace System.IO
 		/// </summary>
 		/// <param name="array">The byte array to read from</param>
 		/// <param name="encoding">The encoding of the text in the byte array</param>
-		public BinaryTextReader(byte[] array, Encoding encoding) : this(array, 0, array.Length, encoding, true, DefaultBufferSize)
+		public BinaryTextReader(byte[] array, Encoding encoding) : this(new ReadOnlySequence<byte>(array), encoding)
 		{
 		}
 
@@ -90,7 +94,7 @@ namespace System.IO
 		/// <param name="array">The byte array to read from</param>
 		/// <param name="encoding">The encoding of the text in the byte array</param>
 		/// <param name="detectEncoding">Whether to detect the encoding using the preamble</param>
-		public BinaryTextReader(byte[] array, Encoding encoding, bool detectEncoding) : this(array, 0, array.Length, encoding, detectEncoding, DefaultBufferSize)
+		public BinaryTextReader(byte[] array, Encoding encoding, bool detectEncoding) : this(new ReadOnlySequence<byte>(array), encoding, detectEncoding)
 		{
 		}
 
@@ -101,17 +105,17 @@ namespace System.IO
 		/// <param name="encoding">The encoding of the text in the byte array</param>
 		/// <param name="detectEncoding">Whether to detect the encoding using the preamble</param>
 		/// <param name="bufferSize">The buffer size to use when reading the text</param>
-		public BinaryTextReader(byte[] array, Encoding encoding, bool detectEncoding, int bufferSize) : this(array, 0, array.Length, encoding, detectEncoding, bufferSize)
+		public BinaryTextReader(byte[] array, Encoding encoding, bool detectEncoding, int bufferSize) : this(new ReadOnlySequence<byte>(array), encoding, detectEncoding, bufferSize)
 		{
 		}
-		
+
 		/// <summary>
 		/// Creates a new Binary Text Reader with auto-detected encoding
 		/// </summary>
 		/// <param name="array">The byte array to read from</param>
 		/// <param name="offset">The offset into the byte array to start from</param>
 		/// <param name="length">The maximum bytes to read from the array</param>
-		public BinaryTextReader(byte[] array, int offset, int length) : this(array, offset, length, Encoding.UTF8, true, DefaultBufferSize)
+		public BinaryTextReader(byte[] array, int offset, int length) : this(new ReadOnlySequence<byte>(array, offset, length))
 		{
 		}
 
@@ -122,7 +126,7 @@ namespace System.IO
 		/// <param name="offset">The offset into the byte array to start from</param>
 		/// <param name="length">The maximum bytes to read from the array</param>
 		/// <param name="encoding">The encoding of the text in the byte array</param>
-		public BinaryTextReader(byte[] array, int offset, int length, Encoding encoding) : this(array, offset, length, encoding, true, DefaultBufferSize)
+		public BinaryTextReader(byte[] array, int offset, int length, Encoding encoding) : this(new ReadOnlySequence<byte>(array, offset, length), encoding)
 		{
 		}
 
@@ -134,7 +138,7 @@ namespace System.IO
 		/// <param name="length">The maximum bytes to read from the array</param>
 		/// <param name="encoding">The encoding of the text in the byte array</param>
 		/// <param name="detectEncoding">Whether to detect the encoding using the preamble</param>
-		public BinaryTextReader(byte[] array, int offset, int length, Encoding encoding, bool detectEncoding) : this(array, offset, length, encoding, detectEncoding, DefaultBufferSize)
+		public BinaryTextReader(byte[] array, int offset, int length, Encoding encoding, bool detectEncoding) : this(new ReadOnlySequence<byte>(array, offset, length), encoding, detectEncoding)
 		{
 		}
 
@@ -147,14 +151,52 @@ namespace System.IO
 		/// <param name="encoding">The encoding of the text in the byte array</param>
 		/// <param name="detectEncoding">Whether to detect the encoding using the preamble</param>
 		/// <param name="bufferSize">The buffer size to use when reading the text</param>
-		public BinaryTextReader(byte[] array, int offset, int length, Encoding encoding, bool detectEncoding, int bufferSize) : base()
+		public BinaryTextReader(byte[] array, int offset, int length, Encoding encoding, bool detectEncoding, int bufferSize) : this(new ReadOnlySequence<byte>(array, offset, length), encoding, detectEncoding, bufferSize)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Binary Text Reader with auto-detected encoding
+		/// </summary>
+		/// <param name="sequence">The byte sequence to read from</param>
+		public BinaryTextReader(ReadOnlySequence<byte> sequence) : this(sequence, Encoding.UTF8, true, DefaultBufferSize)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Binary Text Reader
+		/// </summary>
+		/// <param name="sequence">The byte sequence to read from</param>
+		/// <param name="encoding">The encoding of the text in the byte array</param>
+		public BinaryTextReader(ReadOnlySequence<byte> sequence, Encoding encoding) : this(sequence, encoding, true, DefaultBufferSize)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Binary Text Reader
+		/// </summary>
+		/// <param name="sequence">The byte sequence to read from</param>
+		/// <param name="encoding">The encoding of the text in the byte array</param>
+		/// <param name="detectEncoding">Whether to detect the encoding using the preamble</param>
+		public BinaryTextReader(ReadOnlySequence<byte> sequence, Encoding encoding, bool detectEncoding) : this(sequence, encoding, detectEncoding, DefaultBufferSize)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Binary Text Reader
+		/// </summary>
+		/// <param name="sequence">The byte sequence to read from</param>
+		/// <param name="encoding">The encoding of the text in the byte array</param>
+		/// <param name="detectEncoding">Whether to detect the encoding using the preamble</param>
+		/// <param name="bufferSize">The buffer size to use when reading the text</param>
+		public BinaryTextReader(ReadOnlySequence<byte> sequence, Encoding encoding, bool detectEncoding, int bufferSize) : base()
 		{
 			if (bufferSize < MinBufferSize)
 				bufferSize = MinBufferSize;
 
-			_Array = array;
-			_StartIndex = _Index = offset;
-			_Length = length;
+			_Initial = _Remainder = sequence;
+			_Position = sequence.Start;
+
 			Encoding = encoding;
 			_Decoder = encoding.GetDecoder();
 
@@ -192,80 +234,115 @@ namespace System.IO
 		}
 
 		/// <inheritdoc />
-		public override int Read(char[] buffer, int index, int count)
+		public override int Read(char[] buffer, int index, int count) => Read(buffer.AsSpan(index, count));
+
+		/// <inheritdoc />
+		public
+#if !NETSTANDARD2_0
+			override
+#endif
+			int Read(Span<char> buffer)
 		{	//****************************************
 			var CharsWritten = 0;
-			int WriteLength, TempLength;
 			//****************************************
+
+			if (buffer.IsEmpty)
+				return 0;
 
 			// Empty the buffer if there's anything in it
 			if (_BufferLength > 0)
 			{
-				WriteLength = Math.Min(_BufferLength, count);
+				var WriteLength = Math.Min(_BufferLength, buffer.Length);
 
-				Array.Copy(_Buffer, _BufferIndex, buffer, index, WriteLength);
+				_Buffer.AsSpan(_BufferIndex, WriteLength).CopyTo(buffer);
 
-				count -= WriteLength;
-				index += WriteLength;
+				buffer = buffer.Slice(WriteLength);
 
 				CharsWritten += WriteLength;
 
 				_BufferIndex += WriteLength;
 				_BufferLength -= WriteLength;
-			}
 
-			if (count == 0)
-				return CharsWritten;
+				if (buffer.IsEmpty)
+					return CharsWritten;
+			}
 
 			if (_CheckPreamble)
 				CheckPreamble();
 
-			if (_DetectEncoding && _Length >= 2)
+			if (_DetectEncoding && _Remainder.Length >= 2)
 				DetectEncoding();
 
-			// Keep trying to read until we fill the buffer, or the source array runs out
-			for (; ; )
+			var OutBuffer = _Buffer.AsSpan(0, _Buffer.Length);
+			var RemainingBytes = _Remainder.Length;
+			var ReadBytes = 0;
+
+			// Keep trying to read until we fill the buffer, or the source sequence runs out
+			foreach (var Segment in _Remainder)
 			{
-				var ReadLength = Math.Min(_Length, _Buffer.Length);
+				var InBuffer = Segment.Span;
+				bool IsCompleted;
 
-				// No more to read?
-				if (ReadLength == 0)
-					return CharsWritten;
-
-				// Decode the next block of chars
-				TempLength = _Decoder.GetChars(_Array, _Index, ReadLength, _Buffer, 0);
-
-				// Write what we can to the output buffer
-				WriteLength = Math.Min(TempLength, count);
-
-				Array.Copy(_Buffer, 0, buffer, index, WriteLength);
-
-				// Update the output counters
-				index += WriteLength;
-				count -= WriteLength;
-
-				CharsWritten += WriteLength;
-
-				// Update the source counters
-				_Index += ReadLength;
-				_Length -= ReadLength;
-
-				// If we've run out of output space, update the buffer counters and return
-				if (count == 0)
+				do
 				{
-					_BufferIndex = WriteLength;
-					_BufferLength = TempLength - WriteLength;
+					// Decode the bytes into our char buffer
+					_Decoder.Convert(
+						InBuffer,
+						OutBuffer,
+						RemainingBytes == InBuffer.Length,
+						out var BytesRead, out var WrittenChars, out IsCompleted
+						);
 
-					return CharsWritten;
+					var ReadLength = Math.Min(WrittenChars, buffer.Length);
+
+					OutBuffer.Slice(0, ReadLength).CopyTo(buffer);
+
+					buffer = buffer.Slice(ReadLength);
+
+					CharsWritten += ReadLength;
+					ReadBytes += BytesRead;
+					RemainingBytes -= BytesRead;
+
+					if (buffer.IsEmpty)
+					{
+						// Buffer is filled. Save any data left over for the next read operation
+						_BufferIndex = ReadLength;
+						_BufferLength = WrittenChars - ReadLength;
+
+						CompleteRead(ReadBytes);
+
+						return CharsWritten;
+					}
+
+					// Buffer is empty, but we have more space to fill, continue
+					InBuffer = InBuffer.Slice(BytesRead);
+
+					// Loop while there are more bytes unread, or there are no bytes left but there's still data to flush
 				}
+				while (!InBuffer.IsEmpty || (RemainingBytes == 0 && !IsCompleted));
 			}
+
+			CompleteRead(ReadBytes);
+			_BufferLength = 0;
+
+			return CharsWritten;
 		}
 
 		/// <inheritdoc />
 		public override Task<int> ReadAsync(char[] buffer, int index, int count) => Task.FromResult(Read(buffer, index, count));
 
+#if !NETSTANDARD2_0
+		/// <inheritdoc />
+		public override ValueTask<int> ReadAsync(Memory<char> buffer, CancellationToken token = default) => new ValueTask<int>(Read(buffer.Span));
+#endif
+
 		/// <inheritdoc />
 		public override int ReadBlock(char[] buffer, int index, int count) => Read(buffer, index, count);
+
+#if !NETSTANDARD2_0
+		/// <inheritdoc />
+		public override ValueTask<int> ReadBlockAsync(Memory<char> buffer, CancellationToken token = default) => new ValueTask<int>(Read(buffer.Span));
+#endif
 
 		/// <inheritdoc />
 		public override Task<int> ReadBlockAsync(char[] buffer, int index, int count) => Task.FromResult(Read(buffer, index, count));
@@ -273,7 +350,7 @@ namespace System.IO
 		/// <inheritdoc />
 		public override string ReadLine()
 		{
-			var MyBuilder = new StringBuilder();
+			var Builder = new StringBuilder();
 
 			for (; ; )
 			{
@@ -298,7 +375,7 @@ namespace System.IO
 				// None? Clear the buffer and keep looking
 				if (CharIndex == EndIndex)
 				{
-					MyBuilder.Append(_Buffer, _BufferIndex, _BufferLength);
+					Builder.Append(_Buffer, _BufferIndex, _BufferLength);
 
 					_BufferLength = 0;
 
@@ -308,7 +385,7 @@ namespace System.IO
 				var CharsBefore = CharIndex - _BufferIndex;
 
 				// Found a CR or LF. Append what we've read so far, minus the line character
-				MyBuilder.Append(_Buffer, _BufferIndex, CharsBefore);
+				Builder.Append(_Buffer, _BufferIndex, CharsBefore);
 
 				// If it's a carriage-return, check if the next character is available (might be a CRLF pair, so we need to skip it)
 				if (_Buffer[CharIndex] == '\r' && _BufferLength == CharsBefore + 1)
@@ -339,7 +416,7 @@ namespace System.IO
 				break; // We found a new-line, complete
 			}
 
-			return MyBuilder.ToString();
+			return Builder.ToString();
 		}
 
 		/// <inheritdoc />
@@ -348,7 +425,7 @@ namespace System.IO
 		/// <inheritdoc />
 		public override string ReadToEnd()
 		{
-			var MyBuilder = new StringBuilder(Encoding.GetMaxCharCount(_Length));
+			var MyBuilder = new StringBuilder(Encoding.GetMaxCharCount((int)_Remainder.Length));
 
 			if (_BufferLength != 0)
 			{
@@ -371,8 +448,7 @@ namespace System.IO
 		/// </summary>
 		public void Reset()
 		{
-			_Length += _Index - _StartIndex;
-			_Index = _StartIndex;
+			_Remainder = _Initial;
 			_BufferIndex = 0;
 			_BufferLength = 0;
 			_Decoder = Encoding.GetDecoder();
@@ -381,37 +457,81 @@ namespace System.IO
 
 		//****************************************
 
-		private bool FillBuffer()
-		{	//****************************************
-			int ReadLength;
-			//****************************************
+		private void CompleteRead(int bytesRead)
+		{
+			if (bytesRead > 0)
+			{
+				_Position = _Remainder.GetPosition(bytesRead);
 
+				_Remainder = _Remainder.Slice(_Position);
+			}
+		}
+
+		private bool FillBuffer()
+		{
 			if (_CheckPreamble)
 				CheckPreamble();
 
-			if (_DetectEncoding && _Length >= 2)
+			if (_DetectEncoding && _Remainder.Length >= 2)
 				DetectEncoding();
 
 			//****************************************
 
-			ReadLength = Math.Min(_Length, _Buffer.Length);
-
-			if (ReadLength == 0)
-				return false;
+			var OutBuffer = _Buffer.AsSpan();
+			var RemainingBytes = _Remainder.Length;
+			var ReadBytes = 0;
 
 			_BufferIndex = 0;
-			_BufferLength = _Decoder.GetChars(_Array, _Index, ReadLength, _Buffer, 0);
+			_BufferLength = 0;
 
-			_Index += ReadLength;
-			_Length -= ReadLength;
+			// Keep trying to read until we fill the buffer, or the source sequence runs out
+			foreach (var Segment in _Remainder)
+			{
+				var InBuffer = Segment.Span;
+				bool IsCompleted;
 
-			return true;
+				do
+				{
+					// Decode the bytes into our char buffer
+					_Decoder.Convert(
+						InBuffer,
+						OutBuffer,
+						RemainingBytes == InBuffer.Length,
+						out var BytesRead, out var WrittenChars, out IsCompleted
+						);
+
+					_BufferLength += WrittenChars;
+
+					OutBuffer = OutBuffer.Slice(WrittenChars);
+					ReadBytes += BytesRead;
+					RemainingBytes -= BytesRead;
+
+					if (OutBuffer.IsEmpty)
+					{
+						// Buffer is filled. Record what we read
+						CompleteRead(ReadBytes);
+
+						return true;
+					}
+
+					// We have more space to fill, continue
+					InBuffer = InBuffer.Slice(BytesRead);
+
+					// Loop while there are more bytes unread, or there are no bytes left but there's still data to flush
+				}
+				while (!InBuffer.IsEmpty || (RemainingBytes == 0 && !IsCompleted));
+			}
+
+			// No more data to read
+			CompleteRead(ReadBytes);
+
+			return _BufferLength != 0;
 		}
 
 		private void CheckPreamble()
 		{
 			// Do we have enough bytes for a Preamble?
-			if (_Length < _Preamble.Length)
+			if (_Remainder.Length < _Preamble.Length)
 			{
 				// No, so assume there isn't one
 				_CheckPreamble = false;
@@ -420,20 +540,12 @@ namespace System.IO
 			}
 
 			// Match the bytes in our input against the Preamble
-			for (var Index = 0; Index < _Preamble.Length; Index++)
-			{
-				if (_Preamble[Index] != _Array[_Index + Index])
-				{
-					// Preamble doesn't match
-					_CheckPreamble = false;
-				}
-			}
+			_CheckPreamble = _Remainder.StartsWith(_Preamble);
 
 			if (_CheckPreamble)
 			{
 				// Success. Skip over the Preamble
-				_Index += _Preamble.Length;
-				_Length -= _Preamble.Length;
+				_Remainder = _Remainder.Slice(_Preamble.Length);
 
 				_CheckPreamble = false;
 			}
@@ -442,10 +554,11 @@ namespace System.IO
 		private void DetectEncoding()
 		{	//****************************************
 			var PreambleLength = 0;
-			var FirstByte = _Array[_Index];
-			var SecondByte = _Array[_Index + 1];
-			var ThirdByte = _Length >= 3 ? _Array[_Index + 2] : (byte)0;
-			var FourthByte = _Length >= 4 ? _Array[_Index + 3] : (byte)0;
+			var TotalLength = _Remainder.LengthMinimum(4);
+			var FirstByte = _Remainder.Get(0);
+			var SecondByte = _Remainder.Get(1);
+			var ThirdByte = TotalLength >= 3 ? _Remainder.Get(2) : (byte)0;
+			var FourthByte = TotalLength >= 4 ? _Remainder.Get(3) : (byte)0;
 			//****************************************
 
 			_DetectEncoding = false;
@@ -460,7 +573,7 @@ namespace System.IO
 			// Detect little-endian UTF32 and Unicode
 			else if (FirstByte == 0xFF && SecondByte == 0xFE)
 			{
-				if (_Length < 4 || ThirdByte != 0 || FourthByte != 0)
+				if (TotalLength < 4 || ThirdByte != 0 || FourthByte != 0)
 				{
 					Encoding = new UnicodeEncoding(false, true);
 
@@ -474,14 +587,14 @@ namespace System.IO
 				}
 			}
 			// Detect plain UTF8
-			else if (_Length >= 3 && FirstByte == 0xEF && SecondByte == 0xBB && ThirdByte == 0xBF)
+			else if (TotalLength >= 3 && FirstByte == 0xEF && SecondByte == 0xBB && ThirdByte == 0xBF)
 			{
 				Encoding = Encoding.UTF8;
 
 				PreambleLength = 3;
 			}
 			// Detect big-endian UTF32
-			else if (_Length >= 4 && FirstByte == 0 && SecondByte == 0 && ThirdByte == 0xFE && FourthByte == 0xFF)
+			else if (TotalLength >= 4 && FirstByte == 0 && SecondByte == 0 && ThirdByte == 0xFE && FourthByte == 0xFF)
 			{
 				Encoding = new UTF32Encoding(true, true);
 
@@ -497,25 +610,31 @@ namespace System.IO
 				_Buffer = new char[Encoding.GetMaxCharCount(_BufferSize)];
 
 				// Skip over the Preamble
-				_Index += PreambleLength;
-				_Length -= PreambleLength;
+				_Remainder = _Remainder.Slice(PreambleLength);
 			}
 		}
 
 		//****************************************
 
 		/// <summary>
-		/// Gets the position we're reading from in the source Array
+		/// Gets the position we're reading from in the source Sequence
 		/// </summary>
-		public int Position => _Index - _StartIndex;
+		/// <remarks>Due to buffering, this may not reflect the position of the most recent character</remarks>
+		public long Position => _Initial.Slice(0, _Position).Length;
 
 		/// <summary>
-		/// Gets the number of remaining bytes to read from the source Array
+		/// Gets the sequence position we're reading from in the source Sequence
 		/// </summary>
-		public int BytesLeft => _Length;
+		/// <remarks>Due to buffering, this may not reflect the position of the most recent character</remarks>
+		public SequencePosition SequencePosition => _Position;
 
 		/// <summary>
-		/// Gets the Encoding being used to decode the source Array
+		/// Gets the number of remaining bytes to read from the source Sequence
+		/// </summary>
+		public long BytesLeft => _Remainder.Length;
+
+		/// <summary>
+		/// Gets the Encoding being used to decode the source Sequence
 		/// </summary>
 		public Encoding Encoding { get; private set; }
 	}

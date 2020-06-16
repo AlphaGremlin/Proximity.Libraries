@@ -275,30 +275,15 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <returns>A list containing all the live values in this dictionary</returns>
 		/// <remarks>Changes made to the returned list will not be reflected in the Weak Dictionary</remarks>
-		public IList<TValue> ToValueList()
+		public ICollection<TValue> ToStrongValues()
 		{	//****************************************
-			var MyList = new List<TValue>(_Dictionary.Count);
+			var Result = new List<TValue>(_Dictionary.Count);
 			//****************************************
 
 			foreach (var MyPair in this)
-				MyList.Add(MyPair.Value);
+				Result.Add(MyPair.Value);
 
-			return MyList;
-		}
-
-		/// <summary>
-		/// Constructs a list of strong references to the current key/value pairs in the dictionary
-		/// </summary>
-		/// <returns>A list containing all the live keys/value pairs in this dictionary</returns>
-		/// <remarks>Changes made to the returned list will not be reflected in the Weak Dictionary</remarks>
-		public IList<KeyValuePair<TKey, TValue>> ToList()
-		{	//****************************************
-			var MyList = new List<KeyValuePair<TKey, TValue>>(_Dictionary.Count);
-			//****************************************
-
-			MyList.AddRange(this);
-
-			return MyList;
+			return Result;
 		}
 
 		/// <summary>
@@ -306,15 +291,15 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <returns>A dictionary containing all the live values in this dictionary</returns>
 		/// <remarks>Changes made to the returned dictionary will not be reflected in the Weak Dictionary</remarks>
-		public IDictionary<TKey, TValue> ToDictionary()
+		public IDictionary<TKey, TValue> ToStrong()
 		{	//****************************************
-			var MyDictionary = new Dictionary<TKey, TValue>(_Dictionary.Count, _Dictionary.Comparer);
+			var Result = new Dictionary<TKey, TValue>(_Dictionary.Count, _Dictionary.Comparer);
 			//****************************************
 
-			foreach (var MyPair in this)
-				MyDictionary.Add(MyPair.Key, MyPair.Value);
+			foreach (var Pair in this)
+				Result.Add(Pair.Key, Pair.Value);
 
-			return MyDictionary;
+			return Result;
 		}
 
 		//****************************************

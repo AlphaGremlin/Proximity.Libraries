@@ -375,6 +375,34 @@ namespace System.Buffers
 		}
 
 		/// <summary>
+		/// Returns the length of the Sequence, or the maximum value, whichever is lower
+		/// </summary>
+		/// <typeparam name="T">The element type in the sequence</typeparam>
+		/// <param name="source">The source sequence</param>
+		/// <param name="maximum">The maximum length to evaluate</param>
+		/// <returns>The lower of the length of the Sequence and the maximum value</returns>
+		public static int LengthMinimum<T>(this ReadOnlySequence<T> source, int maximum)
+		{
+			if (maximum < 0)
+				throw new ArgumentOutOfRangeException(nameof(maximum));
+
+			if (maximum == 0)
+				return 0;
+
+			var Offset = 0;
+
+			foreach (var Segment in source)
+			{
+				if (Segment.Length > maximum - Offset)
+					return maximum;
+
+				Offset += Segment.Length;
+			}
+
+			return Offset;
+		}
+
+		/// <summary>
 		/// Gets the value from a ReadOnlySequence at a particular index
 		/// </summary>
 		/// <typeparam name="T">The element type in the sequence</typeparam>

@@ -123,7 +123,7 @@ namespace System.IO
 
 #if !NETSTANDARD2_0
 		/// <inheritdoc />
-		public override ValueTask<int> ReadBlockAsync(Memory<char> buffer, CancellationToken token = default) => new ValueTask<int>(ReadBlock(buffer.Span));
+		public override ValueTask<int> ReadBlockAsync(Memory<char> buffer, CancellationToken token = default) => new ValueTask<int>(Read(buffer.Span));
 #endif
 
 		/// <inheritdoc />
@@ -200,9 +200,12 @@ namespace System.IO
 
 		private void CompleteRead(int charsRead)
 		{
-			_Position = _Remainder.GetPosition(charsRead);
+			if (charsRead > 0)
+			{
+				_Position = _Remainder.GetPosition(charsRead);
 
-			_Remainder = _Remainder.Slice(_Position);
+				_Remainder = _Remainder.Slice(_Position);
+			}
 		}
 
 		//****************************************

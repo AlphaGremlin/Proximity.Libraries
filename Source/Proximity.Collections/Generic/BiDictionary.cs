@@ -176,9 +176,6 @@ namespace System.Collections.Generic
 				}
 			}
 
-			// Get everything into HashCode order
-			Array.Sort(_Entries, 0, _Size);
-
 			// Check the new items don't have any duplicates
 			VerifyDistinct(_Entries, _Size, leftComparer, rightComparer);
 
@@ -198,8 +195,8 @@ namespace System.Collections.Generic
 		/// <param name="right">The value of the item to add</param>
 		public void Add(TLeft left, TRight right)
 		{
-			if (!TryAdd(new KeyValuePair<TLeft, TRight>(left, right)))
-				throw new ArgumentException("An item with the same key has already been added.");
+			if (!TryAdd(new KeyValuePair<TLeft, TRight>(left, right), false, out _))
+				throw new ArgumentException("Left or right already exist in the dictionary.");
 		}
 
 		/// <summary>
@@ -208,8 +205,8 @@ namespace System.Collections.Generic
 		/// <param name="item">The element to add</param>
 		public void Add(KeyValuePair<TLeft, TRight> item)
 		{
-			if (!TryAdd(item))
-				throw new ArgumentException("An item with the same key has already been added.");
+			if (!TryAdd(item, false, out _))
+				throw new ArgumentException("Left or right already exist in the dictionary.");
 		}
 
 		/// <summary>
@@ -391,6 +388,14 @@ namespace System.Collections.Generic
 		/// <summary>
 		/// Determines the index of a specific item in the list
 		/// </summary>
+		/// <param name="left">The key of the item to lookup</param>
+		/// <param name="right">The value of the item to lookup</param>
+		/// <returns>The index of the item if found, otherwise -1</returns>
+		public int IndexOf(TLeft left, TRight right) => IndexOf(new KeyValuePair<TLeft, TRight>(left, right));
+
+		/// <summary>
+		/// Determines the index of a specific item in the list
+		/// </summary>
 		/// <param name="item">The item to locate</param>
 		/// <returns>The index of the item if found, otherwise -1</returns>
 		public int IndexOf(KeyValuePair<TLeft, TRight> item)
@@ -411,14 +416,86 @@ namespace System.Collections.Generic
 			{
 				if (Entries[Index].LeftHashCode == HashCode && LeftComparer.Equals(Entries[Index].Left, item.Key))
 				{
-					// Matched on First, check Second as well
+					// Matched on Left, check Right as well
 					if (RightComparer.Equals(Entries[Index].Right, item.Value))
 						break;
 
-					return -1; // Second doesn't match
+					return -1; // Right value doesn't match
 				}
 
 				Index = Entries[Index].NextLeftIndex;
+
+				if (TotalCollisions++ >= _Size)
+					throw new InvalidOperationException("State invalid");
+			}
+
+			return Index;
+		}
+
+		/// <summary>
+		/// Finds the index of a particular left value
+		/// </summary>
+		/// <param name="left">The left value to lookup</param>
+		/// <returns>The index of the left value, if found, otherwise -1</returns>
+		public int IndexOfLeft(TLeft left)
+		{
+			if (left == null)
+				throw new ArgumentNullException(nameof(left));
+
+			if (_Size == 0)
+				return -1;
+
+			var HashCode = LeftComparer.GetHashCode(left) & HashCodeMask;
+			var Entries = _Entries;
+			var TotalCollisions = 0;
+
+			// Find the bucket we belong to
+			ref var Bucket = ref _LeftBuckets[HashCode % _LeftBuckets.Length];
+			var Index = Bucket - 1;
+
+			// Check for collisions
+			while (Index >= 0)
+			{
+				if (Entries[Index].LeftHashCode == HashCode && LeftComparer.Equals(Entries[Index].Left, left))
+					break;
+
+				Index = Entries[Index].NextLeftIndex;
+
+				if (TotalCollisions++ >= _Size)
+					throw new InvalidOperationException("State invalid");
+			}
+
+			return Index;
+		}
+
+		/// <summary>
+		/// Finds the index of a particular right value
+		/// </summary>
+		/// <param name="right">The right value to lookup</param>
+		/// <returns></returns>
+		public int IndexOfRight(TRight right)
+		{
+			if (right == null)
+				throw new ArgumentNullException(nameof(right));
+
+			if (_Size == 0)
+				return -1;
+
+			var HashCode = RightComparer.GetHashCode(right) & HashCodeMask;
+			var Entries = _Entries;
+			var TotalCollisions = 0;
+
+			// Find the bucket we belong to
+			ref var Bucket = ref _RightBuckets[HashCode % _RightBuckets.Length];
+			var Index = Bucket - 1;
+
+			// Check for collisions
+			while (Index >= 0)
+			{
+				if (Entries[Index].RightHashCode == HashCode && RightComparer.Equals(Entries[Index].Right, right))
+					return Index;
+
+				Index = Entries[Index].NextRightIndex;
 
 				if (TotalCollisions++ >= _Size)
 					throw new InvalidOperationException("State invalid");
@@ -647,6 +724,24 @@ namespace System.Collections.Generic
 		}
 
 		/// <summary>
+		/// Removes the elements within the specified range
+		/// </summary>
+		/// <param name="index">The index of the element to remove</param>
+		/// <param name="count">The number of items to remove after the index</param>
+		public void RemoveRange(int index, int count)
+		{
+			var LastIndex = index + count - 1;
+
+			if (index < 0 || LastIndex >= _Size)
+				throw new ArgumentOutOfRangeException(nameof(index));
+
+			// Since a remove does not slide down the values above, and simply relocates the last item,
+			// we need to remove in reverse so we don't accidentally move one of the items we plan to remove
+			for (var Index = LastIndex; Index >= index; Index--)
+				RemoveAt(Index);
+		}
+
+		/// <summary>
 		/// Converts the contents of the Dictionary to an array
 		/// </summary>
 		/// <returns>The resulting array</returns>
@@ -665,7 +760,7 @@ namespace System.Collections.Generic
 		/// <param name="left">The key of the item</param>
 		/// <param name="right">The value to associate with the key</param>
 		/// <returns>True if the item was added, otherwise False</returns>
-		public bool TryAdd(TLeft left, TRight right) => TryAdd(new KeyValuePair<TLeft, TRight>(left, right), out _);
+		public bool TryAdd(TLeft left, TRight right) => TryAdd(new KeyValuePair<TLeft, TRight>(left, right), false, out _);
 
 		/// <summary>
 		/// Tries to add an item to the Dictionary
@@ -674,14 +769,14 @@ namespace System.Collections.Generic
 		/// <param name="right">The value to associate with the key</param>
 		/// <param name="index">Receives the index of the new key/value pair, if added</param>
 		/// <returns>True if the item was added, otherwise False</returns>
-		public bool TryAdd(TLeft left, TRight right, out int index) => TryAdd(new KeyValuePair<TLeft, TRight>(left, right), out index);
+		public bool TryAdd(TLeft left, TRight right, out int index) => TryAdd(new KeyValuePair<TLeft, TRight>(left, right), false, out index);
 
 		/// <summary>
 		/// Tries to add an item to the Dictionary
 		/// </summary>
 		/// <param name="item">The key/value pair to add</param>
 		/// <returns>True if the item was added, otherwise False</returns>
-		public bool TryAdd(KeyValuePair<TLeft, TRight> item) => TryAdd(item, out _);
+		public bool TryAdd(KeyValuePair<TLeft, TRight> item) => TryAdd(item, false, out _);
 
 		/// <summary>
 		/// Tries to add an item to the Dictionary
@@ -689,91 +784,7 @@ namespace System.Collections.Generic
 		/// <param name="item">The key/value pair to add</param>
 		/// <param name="index">Receives the index of the new key/value pair, if added</param>
 		/// <returns>True if the item was added, otherwise False</returns>
-		public bool TryAdd(KeyValuePair<TLeft, TRight> item, out int index)
-		{
-			if (item.Key == null || item.Value == null)
-				throw new ArgumentNullException("The key or value are null", nameof(item));
-
-			if (_LeftBuckets.Length == 0)
-				EnsureCapacity(0);
-
-			var Entries = _Entries;
-			var TotalCollisions = 0;
-
-			// Find the bucket we belong to
-			var LeftHashCode = LeftComparer.GetHashCode(item.Key) & HashCodeMask;
-			ref var LeftBucket = ref _LeftBuckets[LeftHashCode % _LeftBuckets.Length];
-			var Index = LeftBucket - 1;
-
-			index = -1;
-
-			// Check for Left collisions
-			while (Index >= 0)
-			{
-				if (Entries[Index].LeftHashCode == LeftHashCode && LeftComparer.Equals(Entries[Index].Left, item.Key))
-					return false;
-
-				Index = Entries[Index].NextLeftIndex;
-
-				if (TotalCollisions++ >= _Size)
-					throw new InvalidOperationException("State invalid");
-			}
-
-			TotalCollisions = 0;
-
-			var RightHashCode = RightComparer.GetHashCode(item.Value) & HashCodeMask;
-			ref var RightBucket = ref _RightBuckets[RightHashCode % _RightBuckets.Length];
-			Index = RightBucket - 1;
-
-			// Check for Right collisions
-			while (Index >= 0)
-			{
-				if (Entries[Index].RightHashCode == RightHashCode && RightComparer.Equals(Entries[Index].Right, item.Value))
-					return false;
-
-				Index = Entries[Index].NextRightIndex;
-
-				if (TotalCollisions++ >= _Size)
-					throw new InvalidOperationException("State invalid");
-			}
-
-			// No collisions found, are there enough slots for this item?
-			if (_Size >= Entries.Length)
-			{
-				// No, so resize our entries table
-				EnsureCapacity(_Size + 1);
-				LeftBucket = ref _LeftBuckets[LeftHashCode % _LeftBuckets.Length];
-				RightBucket = ref _RightBuckets[RightHashCode % _RightBuckets.Length];
-				Entries = _Entries;
-			}
-
-			// Store our item at the end
-			index = Index = _Size++;
-
-			ref var Entry = ref Entries[Index];
-			var NextLeftIndex = LeftBucket - 1;
-			var NextRightIndex = RightBucket - 1;
-
-			Entry.LeftHashCode = LeftHashCode;
-			Entry.RightHashCode = RightHashCode;
-			Entry.Item = item;
-
-			Entry.NextLeftIndex = NextLeftIndex; // We take over as the tail of the linked list
-			Entry.PreviousLeftIndex = -1; // We're the tail, so there's nobody behind us
-
-			Entry.NextRightIndex = NextRightIndex; // We take over as the tail of the linked list
-			Entry.PreviousRightIndex = -1; // We're the tail, so there's nobody behind us
-
-			// Double-link the list, so we can quickly resort
-			if (NextLeftIndex >= 0)
-				Entries[NextLeftIndex].PreviousLeftIndex = Index;
-			if (NextRightIndex >= 0)
-				Entries[NextRightIndex].PreviousRightIndex = Index;
-
-			LeftBucket = RightBucket = Index + 1;
-
-			return true;
-		}
+		public bool TryAdd(KeyValuePair<TLeft, TRight> item, out int index) => TryAdd(item, false, out index);
 
 		/// <summary>
 		/// Gets the Left associated with the specified Right
@@ -886,74 +897,189 @@ namespace System.Collections.Generic
 			_Entries = NewEntries;
 		}
 
-		private int IndexOfLeft(TLeft left)
-		{
-			if (left == null)
-				throw new ArgumentNullException(nameof(left));
-
-			if (_Size == 0)
-				return -1;
-
-			var HashCode = LeftComparer.GetHashCode(left) & HashCodeMask;
-			var Entries = _Entries;
-			var TotalCollisions = 0;
-
-			// Find the bucket we belong to
-			ref var Bucket = ref _LeftBuckets[HashCode % _LeftBuckets.Length];
-			var Index = Bucket - 1;
-
-			// Check for collisions
-			while (Index >= 0)
-			{
-				if (Entries[Index].LeftHashCode == HashCode && LeftComparer.Equals(Entries[Index].Left, left))
-					break;
-
-				Index = Entries[Index].NextLeftIndex;
-
-				if (TotalCollisions++ >= _Size)
-					throw new InvalidOperationException("State invalid");
-			}
-
-			return Index;
-		}
-
-		private int IndexOfRight(TRight right)
-		{
-			if (right == null)
-				throw new ArgumentNullException(nameof(right));
-
-			if (_Size == 0)
-				return -1;
-
-			var HashCode = RightComparer.GetHashCode(right) & HashCodeMask;
-			var Entries = _Entries;
-			var TotalCollisions = 0;
-
-			// Find the bucket we belong to
-			ref var Bucket = ref _RightBuckets[HashCode % _RightBuckets.Length];
-			var Index = Bucket - 1;
-
-			// Check for collisions
-			while (Index >= 0)
-			{
-				if (Entries[Index].RightHashCode == HashCode && RightComparer.Equals(Entries[Index].Right, right))
-					return Index;
-
-				Index = Entries[Index].NextRightIndex;
-
-				if (TotalCollisions++ >= _Size)
-					throw new InvalidOperationException("State invalid");
-			}
-
-			return Index;
-		}
-
 		private ref KeyValuePair<TLeft, TRight> GetByIndex(int index)
 		{
 			if (index >= _Size || index < 0)
 				throw new ArgumentOutOfRangeException(nameof(index));
 
 			return ref _Entries[index].Item;
+		}
+
+		private bool TryAdd(KeyValuePair<TLeft, TRight> item, bool replace, out int index)
+		{
+			if (item.Key == null || item.Value == null)
+				throw new ArgumentNullException("The key or value are null", nameof(item));
+
+			if (_LeftBuckets.Length == 0)
+				EnsureCapacity(0);
+
+			var Entries = _Entries;
+			var TotalCollisions = 0;
+
+			// Find the bucket we belong to
+			var LeftHashCode = LeftComparer.GetHashCode(item.Key) & HashCodeMask;
+			ref var LeftBucket = ref _LeftBuckets[LeftHashCode % _LeftBuckets.Length];
+			var LeftIndex = LeftBucket - 1;
+
+			index = -1;
+
+			// Check for Left collisions
+			while (LeftIndex >= 0)
+			{
+				if (Entries[LeftIndex].LeftHashCode == LeftHashCode && LeftComparer.Equals(Entries[LeftIndex].Left, item.Key))
+				{
+					if (!replace)
+						return false;
+
+					break;
+				}
+
+				LeftIndex = Entries[LeftIndex].NextLeftIndex;
+
+				if (TotalCollisions++ >= _Size)
+					throw new InvalidOperationException("State invalid");
+			}
+
+			TotalCollisions = 0;
+
+			var RightHashCode = RightComparer.GetHashCode(item.Value) & HashCodeMask;
+			ref var RightBucket = ref _RightBuckets[RightHashCode % _RightBuckets.Length];
+			var RightIndex = RightBucket - 1;
+
+			// Check for Right collisions
+			while (RightIndex >= 0)
+			{
+				if (Entries[RightIndex].RightHashCode == RightHashCode && RightComparer.Equals(Entries[RightIndex].Right, item.Value))
+				{
+					if (!replace || (LeftIndex != -1 && LeftIndex != RightIndex))
+						return false;
+
+					break;
+				}
+
+				RightIndex = Entries[RightIndex].NextRightIndex;
+
+				if (TotalCollisions++ >= _Size)
+					throw new InvalidOperationException("State invalid");
+			}
+
+			if (LeftIndex != -1)
+			{
+				// We're replacing the value on the right
+				index = LeftIndex;
+
+				ref var Entry = ref Entries[LeftIndex];
+
+				// Fix up the right linked list
+				if (Entry.NextRightIndex >= 0)
+				{
+					// There's someone after us. Adjust them to point to the entry before us. If there's nobody, they will become the new tail
+					Entries[Entry.NextRightIndex].PreviousRightIndex = Entry.PreviousRightIndex;
+				}
+
+				if (Entry.PreviousRightIndex >= 0)
+				{
+					// There's someone before us. Adjust them to point to the entry after us. If there's nobody, they will become the new head
+					Entries[Entry.PreviousRightIndex].NextRightIndex = Entry.NextRightIndex;
+				}
+				else
+				{
+					// We're either the tail or a solitary entry (with no one before or after us)
+					// Either way, we need to update the index stored in the Bucket
+					_RightBuckets[Entry.RightHashCode % _RightBuckets.Length] = Entry.NextRightIndex + 1;
+				}
+
+				var NextRightIndex = RightBucket - 1;
+				Entry.RightHashCode = RightHashCode;
+				Entry.Item = item;
+
+				Entry.NextRightIndex = NextRightIndex; // We take over as the tail of the linked list
+				Entry.PreviousRightIndex = -1; // We're the tail, so there's nobody behind us
+
+				// Double-link the list, so we can quickly resort
+				if (NextRightIndex >= 0)
+					Entries[NextRightIndex].PreviousRightIndex = LeftIndex;
+
+				RightBucket = LeftIndex + 1;
+			}
+			else if (RightIndex != -1)
+			{
+				// We're replacing the value on the left
+				index = RightIndex;
+
+				ref var Entry = ref Entries[RightIndex];
+
+				// We're removing an entry, so fix up the left linked list
+				if (Entry.NextLeftIndex >= 0)
+				{
+					// There's someone after us. Adjust them to point to the entry before us. If there's nobody, they will become the new tail
+					Entries[Entry.NextLeftIndex].PreviousLeftIndex = Entry.PreviousLeftIndex;
+				}
+
+				if (Entry.PreviousLeftIndex >= 0)
+				{
+					// There's someone before us. Adjust them to point to the entry after us. If there's nobody, they will become the new head
+					Entries[Entry.PreviousLeftIndex].NextLeftIndex = Entry.NextLeftIndex;
+				}
+				else
+				{
+					// We're either the tail or a solitary entry (with no one before or after us)
+					// Either way, we need to update the index stored in the Bucket
+					_LeftBuckets[Entry.LeftHashCode % _LeftBuckets.Length] = Entry.NextLeftIndex + 1;
+				}
+
+				var NextLeftIndex = LeftBucket - 1;
+				Entry.LeftHashCode = LeftHashCode;
+				Entry.Item = item;
+
+				Entry.NextLeftIndex = NextLeftIndex; // We take over as the tail of the linked list
+				Entry.PreviousLeftIndex = -1; // We're the tail, so there's nobody behind us
+
+				// Double-link the list, so we can quickly resort
+				if (NextLeftIndex >= 0)
+					Entries[NextLeftIndex].PreviousLeftIndex = RightIndex;
+
+				LeftBucket = RightIndex + 1;
+			}
+			else
+			{
+				// No collisions found, are there enough slots for this item?
+				if (_Size >= Entries.Length)
+				{
+					// No, so resize our entries table
+					EnsureCapacity(_Size + 1);
+					LeftBucket = ref _LeftBuckets[LeftHashCode % _LeftBuckets.Length];
+					RightBucket = ref _RightBuckets[RightHashCode % _RightBuckets.Length];
+					Entries = _Entries;
+				}
+
+				// Store our item at the end
+				index = LeftIndex = _Size++;
+
+				ref var Entry = ref Entries[LeftIndex];
+				var NextLeftIndex = LeftBucket - 1;
+				var NextRightIndex = RightBucket - 1;
+
+				Entry.LeftHashCode = LeftHashCode;
+				Entry.RightHashCode = RightHashCode;
+				Entry.Item = item;
+
+				Entry.NextLeftIndex = NextLeftIndex; // We take over as the tail of the linked list
+				Entry.PreviousLeftIndex = -1; // We're the tail, so there's nobody behind us
+
+				Entry.NextRightIndex = NextRightIndex; // We take over as the tail of the linked list
+				Entry.PreviousRightIndex = -1; // We're the tail, so there's nobody behind us
+
+				// Double-link the list, so we can quickly resort
+				if (NextLeftIndex >= 0)
+					Entries[NextLeftIndex].PreviousLeftIndex = LeftIndex;
+				if (NextRightIndex >= 0)
+					Entries[NextRightIndex].PreviousRightIndex = LeftIndex;
+
+				LeftBucket = RightBucket = LeftIndex + 1;
+			}
+
+			return true;
 		}
 
 		//****************************************
@@ -968,9 +1094,9 @@ namespace System.Collections.Generic
 
 		IDictionaryEnumerator IDictionary.GetEnumerator() => new DictionaryEnumerator(this);
 
-		bool IDictionary<TLeft, TRight>.TryGetValue(TLeft key, out TRight value) => TryGetRight(key, out value);
+		bool IDictionary<TLeft, TRight>.TryGetValue(TLeft key, out TRight value) => TryGetRight(key, out value!);
 
-		bool IReadOnlyDictionary<TLeft, TRight>.TryGetValue(TLeft key, out TRight value) => TryGetRight(key, out value);
+		bool IReadOnlyDictionary<TLeft, TRight>.TryGetValue(TLeft key, out TRight value) => TryGetRight(key, out value!);
 
 		void IList.Insert(int index, object value) => throw new NotSupportedException();
 
@@ -1083,8 +1209,8 @@ namespace System.Collections.Generic
 			{
 				var Item = new KeyValuePair<TLeft, TRight>(key, value);
 
-				if (!TryAdd(Item))
-					throw new ArgumentException("Left or Right already exist in the dictionary");
+				if (!TryAdd(Item, true, out _))
+					throw new ArgumentException("Left and Right already exist in the dictionary");
 			}
 		}
 
@@ -1162,8 +1288,8 @@ namespace System.Collections.Generic
 				if (!(value is TRight Right))
 					throw new ArgumentException("Not a supported value", nameof(value));
 
-				if (!TryAdd(Left, Right))
-					throw new ArgumentException("Left or Right already exist in the dictionary");
+				if (!TryAdd(new KeyValuePair<TLeft, TRight>(Left, Right), true, out _))
+					throw new ArgumentException("Left and Right already exist in the dictionary");
 			}
 		}
 
@@ -1210,12 +1336,8 @@ namespace System.Collections.Generic
 
 		private static void VerifyDistinct(Entry[] entries, int size, IEqualityComparer<TLeft> leftComparer, IEqualityComparer<TRight> rightComparer)
 		{
-			static int LeftCompare(Entry left, Entry right) => left.LeftHashCode - right.LeftHashCode;
-
-			static int RightCompare(Entry left, Entry right) => left.RightHashCode - right.RightHashCode;
-
 			// Get everything into Left HashCode order
-			Array.Sort(entries, LeftCompare);
+			Array.Sort(entries, 0, size, EntryLeftComparer.Default);
 
 			var Index = 0;
 
@@ -1247,7 +1369,7 @@ namespace System.Collections.Generic
 			}
 
 			// Now repeat in Right HashCode order
-			Array.Sort(entries, RightCompare);
+			Array.Sort(entries, 0, size, EntryRightComparer.Default);
 
 			Index = 0;
 
@@ -1290,6 +1412,28 @@ namespace System.Collections.Generic
 			public KeyValuePair<TRight, TLeft> InverseItem => new KeyValuePair<TRight, TLeft>(Right, Left);
 			public TLeft Left => Item.Key;
 			public TRight Right => Item.Value;
+		}
+
+		private sealed class EntryLeftComparer : IComparer<Entry>
+		{
+			private EntryLeftComparer()
+			{
+			}
+
+			public int Compare(Entry x, Entry y) => x.LeftHashCode.CompareTo(y.LeftHashCode);
+
+			public static EntryLeftComparer Default { get; } = new EntryLeftComparer();
+		}
+
+		private sealed class EntryRightComparer : IComparer<Entry>
+		{
+			private EntryRightComparer()
+			{
+			}
+
+			public int Compare(Entry x, Entry y) => x.RightHashCode.CompareTo(y.RightHashCode);
+
+			public static EntryRightComparer Default { get; } = new EntryRightComparer();
 		}
 
 		/// <summary>

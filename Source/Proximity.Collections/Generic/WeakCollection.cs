@@ -51,8 +51,8 @@ namespace System.Collections.Generic
 		/// <param name="handleType">The type of GCHandle to use</param>
 		public WeakCollection(IEnumerable<T> collection, GCHandleType handleType)
 		{
-			if (collection == null)
-				throw new ArgumentNullException("collection", "Collection cannot be null");
+			if (collection is null)
+				throw new ArgumentNullException(nameof(collection), "Collection cannot be null");
 
 			_HandleType = handleType;
 
@@ -74,8 +74,8 @@ namespace System.Collections.Generic
 		/// <exception cref="ArgumentNullException">Item was null</exception>
 		public void Add(T item)
 		{
-			if (item == null)
-				throw new ArgumentNullException("Cannot add null to a Weak Collection");
+			if (item is null)
+				throw new ArgumentNullException(nameof(item), "Cannot add null to a Weak Collection");
 			
 			_Values.Add(new GCReference(item, _HandleType));
 		}
@@ -101,6 +101,9 @@ namespace System.Collections.Generic
 		/// <returns>True if the item is in the collection, otherwise false</returns>
 		public bool Contains(T item)
 		{
+			if (item is null)
+				return false;
+
 			for (var Index = 0; Index < _Values.Count; Index++)
 			{
 				if ((T)_Values[Index].Target == item)
@@ -147,6 +150,9 @@ namespace System.Collections.Generic
 		/// <remarks>Will perform a partial compaction, up to the point the target item is found</remarks>
 		public bool Remove(T item)
 		{
+			if (item is null)
+				return false;
+
 			var Index = 0;
 
 			while (Index < _Values.Count)
@@ -182,7 +188,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <returns>A list of strong references to the collection</returns>
 		/// <remarks>Will perform a compaction.</remarks>
-		public IList<T> ToStrongList()
+		public ICollection<T> ToStrong()
 		{	//****************************************
 			var MyList = new List<T>(_Values.Count);
 			//****************************************

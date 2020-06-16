@@ -144,7 +144,7 @@ namespace System.Collections.ReadOnly
 		/// <param name="value">When complete, contains the value associed with the given key, otherwise the default value for the type</param>
 		/// <returns>True if the key was found, otherwise false</returns>
 		public bool TryGetValue(TKey key,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD
 			[MaybeNullWhen(false)]
 #endif
 			out TOutput value)

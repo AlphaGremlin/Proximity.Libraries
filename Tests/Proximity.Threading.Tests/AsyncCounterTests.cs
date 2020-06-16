@@ -26,7 +26,39 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(1, MyCounter.CurrentCount, "Counter not incremented");
 			Assert.AreEqual(0, MyCounter.WaitingCount, "Tasks unexpectedly waiting");
 		}
-		
+
+		[Test]
+		public void Add()
+		{ //****************************************
+			var MyCounter = new AsyncCounter();
+			//****************************************
+
+			MyCounter.Add(10);
+
+			//****************************************
+
+			Assert.AreEqual(10, MyCounter.CurrentCount, "Counter not incremented");
+			Assert.AreEqual(0, MyCounter.WaitingCount, "Tasks unexpectedly waiting");
+		}
+
+		[Test]
+		public void AddDecrement()
+		{ //****************************************
+			var MyCounter = new AsyncCounter();
+			//****************************************
+
+			MyCounter.Add(10);
+
+			var MyTask = MyCounter.Decrement();
+
+			//****************************************
+
+			Assert.IsTrue(MyTask.IsCompleted, "Still waiting to decrement");
+
+			Assert.AreEqual(9, MyCounter.CurrentCount, "Counter not decremented");
+			Assert.AreEqual(0, MyCounter.WaitingCount, "Tasks unexpectedly waiting");
+		}
+
 		[Test]
 		public void Decrement()
 		{	//****************************************
@@ -60,7 +92,41 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyCounter.CurrentCount, "Counter not decremented");
 			Assert.AreEqual(0, MyCounter.WaitingCount, "Tasks unexpectedly waiting");
 		}
-		
+
+		[Test]
+		public void DecrementToZero()
+		{ //****************************************
+			var MyCounter = new AsyncCounter(1);
+			//****************************************
+
+			var MyTask = MyCounter.DecrementToZero();
+
+			//****************************************
+
+			Assert.IsTrue(MyTask.IsCompleted, "Still waiting to decrement");
+			Assert.AreEqual(1, MyTask.Result);
+
+			Assert.AreEqual(0, MyCounter.CurrentCount, "Counter not decremented");
+			Assert.AreEqual(0, MyCounter.WaitingCount, "Tasks unexpectedly waiting");
+		}
+
+		[Test]
+		public void DecrementToZeroInitial()
+		{ //****************************************
+			var MyCounter = new AsyncCounter(10);
+			//****************************************
+
+			var MyTask = MyCounter.DecrementToZero();
+
+			//****************************************
+
+			Assert.IsTrue(MyTask.IsCompleted, "Still waiting to decrement");
+			Assert.AreEqual(10, MyTask.Result);
+
+			Assert.AreEqual(0, MyCounter.CurrentCount, "Counter not decremented");
+			Assert.AreEqual(0, MyCounter.WaitingCount, "Tasks unexpectedly waiting");
+		}
+
 		[Test, MaxTime(1000)]
 		public async Task DecrementIncrement()
 		{	//****************************************
@@ -80,7 +146,47 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyCounter.CurrentCount, "Counter not decremented");
 			Assert.AreEqual(0, MyCounter.WaitingCount, "Tasks unexpectedly waiting");
 		}
-		
+
+		[Test, MaxTime(1000)]
+		public async Task DecrementAdd()
+		{ //****************************************
+			var MyCounter = new AsyncCounter();
+			//****************************************
+
+			var MyTask = MyCounter.Decrement();
+
+			Assert.IsFalse(MyTask.IsCompleted, "Decremented too early");
+
+			MyCounter.Add(10);
+
+			//****************************************
+
+			await MyTask;
+
+			Assert.AreEqual(9, MyCounter.CurrentCount, "Counter not decremented");
+			Assert.AreEqual(0, MyCounter.WaitingCount, "Tasks unexpectedly waiting");
+		}
+
+		[Test, MaxTime(1000)]
+		public async Task DecrementToZeroAdd()
+		{ //****************************************
+			var MyCounter = new AsyncCounter();
+			//****************************************
+
+			var MyTask = MyCounter.DecrementToZero();
+
+			Assert.IsFalse(MyTask.IsCompleted, "Decremented too early");
+
+			MyCounter.Add(10);
+
+			//****************************************
+
+			Assert.AreEqual(10, await MyTask);
+
+			Assert.AreEqual(0, MyCounter.CurrentCount, "Counter not decremented");
+			Assert.AreEqual(0, MyCounter.WaitingCount, "Tasks unexpectedly waiting");
+		}
+
 		[Test, MaxTime(1000)]
 		public void DecrementCancel()
 		{	//****************************************

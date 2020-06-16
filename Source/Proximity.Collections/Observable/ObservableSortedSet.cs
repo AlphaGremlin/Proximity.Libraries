@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 //****************************************
@@ -441,12 +442,18 @@ namespace System.Collections.Observable
 		/// <summary>
 		/// Gets the minimum value in the sorted set
 		/// </summary>
-		public T Min => (_Size == 0) ? default : _Items[0];
+#if !NETSTANDARD2_0
+		[MaybeNull]
+#endif
+		public T Min => (_Size == 0) ? default! : _Items[0];
 
 		/// <summary>
 		/// Gets the maximum value in the sorted set
 		/// </summary>
-		public T Max => (_Size == 0) ? default : _Items[_Size - 1];
+#if !NETSTANDARD2_0
+		[MaybeNull]
+#endif
+		public T Max => (_Size == 0) ? default! : _Items[_Size - 1];
 
 		/// <summary>
 		/// Gets/Sets the number of elements that the Observable Sorted Set can contain.

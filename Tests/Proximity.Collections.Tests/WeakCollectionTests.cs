@@ -171,7 +171,7 @@ namespace Proximity.Collections.Tests
 			GC.Collect();
 			
 			// Should find two objects
-			foreach(var MyObject in MyCollection.ToStrongList())
+			foreach(var MyObject in MyCollection.ToStrong())
 			{
 				if (object.ReferenceEquals(MyObject, MyObject1))
 				{
@@ -236,7 +236,7 @@ namespace Proximity.Collections.Tests
 			GC.Collect();
 			
 			// Should find only one object
-			foreach(var MyInnerObject in MyCollection.ToStrongList())
+			foreach(var MyInnerObject in MyCollection.ToStrong())
 			{
 				if (object.ReferenceEquals(MyObject, MyInnerObject))
 				{
@@ -257,22 +257,19 @@ namespace Proximity.Collections.Tests
 		[Test()]
 		public void Cleanup()
 		{
-			var StrongRef = new object();
-			var WeakRef = new WeakReference(StrongRef);
-			var MyCollection = new WeakCollection<object>(System.Runtime.InteropServices.GCHandleType.Normal)
+			WeakReference WeakRef;
+			WeakCollection<object> WeakCollection;
+
 			{
-				StrongRef
-			};
+				var StrongRef = new object();
+				WeakRef = new WeakReference(StrongRef);
+				WeakCollection = new WeakCollection<object>()
+				{
+					StrongRef
+				};
 
-			CollectionAssert.Contains(MyCollection, StrongRef);
-
-#pragma warning disable IDE0059 // Unnecessary assignment of a value
-			StrongRef = null;
-			MyCollection = null;
-#pragma warning restore IDE0059 // Unnecessary assignment of a value
-
-			GC.Collect();
-			GC.WaitForPendingFinalizers();
+				CollectionAssert.Contains(WeakCollection, StrongRef);
+			}
 
 			GC.Collect();
 			GC.WaitForPendingFinalizers();

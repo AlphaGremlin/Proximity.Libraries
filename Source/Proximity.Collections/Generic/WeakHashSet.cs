@@ -33,7 +33,7 @@ namespace System.Collections.Generic
 		/// Creates a new WeakHashSet
 		/// </summary>
 		/// <param name="comparer">The comparer to use for items</param>
-		public WeakHashSet(IEqualityComparer<T> comparer) : this(comparer, GCHandleType.Weak)
+		public WeakHashSet(IEqualityComparer<T>? comparer) : this(comparer, GCHandleType.Weak)
 		{
 		}
 
@@ -42,9 +42,9 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <param name="comparer">The comparer to use for items</param>
 		/// <param name="handleType">The type of GCHandle to use</param>
-		public WeakHashSet(IEqualityComparer<T> comparer, GCHandleType handleType)
+		public WeakHashSet(IEqualityComparer<T>? comparer, GCHandleType handleType)
 		{
-			Comparer = comparer;
+			Comparer = comparer ?? EqualityComparer<T>.Default;
 			_HandleType = handleType;
 			_Size = 0;
 			_Values = new SetItem[0];
@@ -63,7 +63,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <param name="collection">The collection holding the items to weakly reference</param>
 		/// <param name="comparer">The comparer to use for items</param>
-		public WeakHashSet(IEnumerable<T> collection, IEqualityComparer<T> comparer) : this(collection, comparer, GCHandleType.Weak)
+		public WeakHashSet(IEnumerable<T> collection, IEqualityComparer<T>? comparer) : this(collection, comparer, GCHandleType.Weak)
 		{
 		}
 
@@ -73,12 +73,12 @@ namespace System.Collections.Generic
 		/// <param name="collection">The collection holding the items to reference</param>
 		/// <param name="comparer">The comparer to use for items</param>
 		/// <param name="handleType">The type of GCHandle to use</param>
-		public WeakHashSet(IEnumerable<T> collection, IEqualityComparer<T> comparer, GCHandleType handleType)
+		public WeakHashSet(IEnumerable<T> collection, IEqualityComparer<T>? comparer, GCHandleType handleType)
 		{
-			if (collection == null)
+			if (collection is null)
 				throw new ArgumentNullException("collection", "Collection cannot be null");
 
-			Comparer = comparer;
+			Comparer = comparer ?? EqualityComparer<T>.Default;
 			_HandleType = handleType;
 
 			_Values = collection.Select(item => new SetItem(item, this)).ToArray();
@@ -101,8 +101,8 @@ namespace System.Collections.Generic
 			T Current;
 			//****************************************
 
-			if (item == null)
-				throw new ArgumentNullException("Cannot add null to a Weak Collection");
+			if (item is null)
+				throw new ArgumentNullException(nameof(item), "Cannot add null to a Weak Hash Set");
 
 			Key = Comparer.GetHashCode(item);
 			Index = Array.BinarySearch<SetItem>(_Values, 0, _Size, new SetItem(Key));
@@ -194,8 +194,8 @@ namespace System.Collections.Generic
 		/// <param name="other">The collection of items to remove</param>
 		public void ExceptWith(IEnumerable<T> other)
 		{
-			if (other == null)
-				throw new ArgumentException("other");
+			if (other is null)
+				throw new ArgumentNullException(nameof(other));
 
 			var BitMask = new BitArray(_Size);
 
@@ -219,8 +219,8 @@ namespace System.Collections.Generic
 		/// <param name="other">The collection to compare against</param>
 		public void IntersectWith(IEnumerable<T> other)
 		{
-			if (other == null)
-				throw new ArgumentException("other");
+			if (other is null)
+				throw new ArgumentNullException(nameof(other));
 
 			var BitMask = new BitArray(_Size, true);
 
@@ -270,8 +270,8 @@ namespace System.Collections.Generic
 		/// <param name="other">The collection to compare against</param>
 		public void SymmetricExceptWith(IEnumerable<T> other)
 		{
-			if (other == null)
-				throw new ArgumentException("other");
+			if (other is null)
+				throw new ArgumentNullException(nameof(other));
 			
 			var BitMask = new BitArray(_Size);
 			var NewItems = new List<T>();
@@ -301,7 +301,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <returns>A set of strong references to the collection</returns>
 		/// <remarks>Will perform a compaction.</remarks>
-		public ISet<T> ToStrongSet()
+		public ISet<T> ToStrong()
 		{ //****************************************
 			var MyList = new HashSet<T>();
 			//****************************************
@@ -357,8 +357,8 @@ namespace System.Collections.Generic
 		/// <remarks>Ignores any null items, rather than throwing an exception</remarks>
 		public void UnionWith(IEnumerable<T> items)
 		{
-			if (items == null)
-				throw new ArgumentNullException("items");
+			if (items is null)
+				throw new ArgumentNullException(nameof(items));
 
 			foreach (var MyItem in items)
 			{
@@ -412,11 +412,13 @@ namespace System.Collections.Generic
 		}
 
 		private int IndexOf(T item)
-		{ //****************************************
+		{
+			if (item is null)
+				return -1;
+
 			var Key = Comparer.GetHashCode(item);
 			var Index = Array.BinarySearch(_Values, 0, _Size, new SetItem(Key));
 			T Current;
-			//****************************************
 
 			// Is there a matching hash code?
 			if (Index < 0)

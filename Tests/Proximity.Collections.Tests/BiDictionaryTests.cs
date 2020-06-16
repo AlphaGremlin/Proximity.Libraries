@@ -282,6 +282,627 @@ namespace Proximity.Collections.Tests
 			Validate(Records);
 		}
 
+		[Test()]
+		public void GetIndex()
+		{ //****************************************
+			var MyRecords = new BiDictionary<int, int>();
+			//****************************************
+
+			MyRecords[10] = 42;
+
+			//****************************************
+
+			Assert.AreEqual(new KeyValuePair<int, int>(10, 42), ((IList<KeyValuePair<int, int>>)MyRecords)[0]);
+		}
+
+		[Test()]
+		public void GetIndexMulti()
+		{ //****************************************
+			var MyRecords = new BiDictionary<int, int>();
+			//****************************************
+
+			MyRecords[8] = 40;
+			MyRecords[9] = 41;
+			MyRecords[10] = 42;
+			MyRecords[11] = 43;
+			MyRecords[12] = 44;
+
+			//****************************************
+
+			Assert.AreEqual(new KeyValuePair<int, int>(10, 42), ((IList<KeyValuePair<int, int>>)MyRecords)[2]);
+		}
+
+		[Test()]
+		public void GetIndexOutOfRange()
+		{ //****************************************
+			var MyRecords = new BiDictionary<int, int>();
+			//****************************************
+
+			MyRecords[10] = 42;
+
+			//****************************************
+
+			try
+			{
+				var Pair = ((IList<KeyValuePair<int, int>>)MyRecords)[1];
+
+				Assert.Fail("Key found");
+			}
+			catch (ArgumentOutOfRangeException)
+			{
+			}
+
+			try
+			{
+				var Pair = ((IList<KeyValuePair<int, int>>)MyRecords)[-1];
+
+				Assert.Fail("Key found");
+			}
+			catch (ArgumentOutOfRangeException)
+			{
+			}
+		}
+
+		[Test()]
+		public void GetKey()
+		{ //****************************************
+			var MyRecords = new BiDictionary<int, int>();
+			//****************************************
+
+			MyRecords[10] = 42;
+
+			//****************************************
+
+			Assert.AreEqual(42, MyRecords[10]);
+			Assert.AreEqual(10, MyRecords.Inverse[42]);
+		}
+
+		[Test()]
+		public void GetKeyMissing()
+		{ //****************************************
+			var MyRecords = new BiDictionary<int, int>();
+			//****************************************
+
+			MyRecords[10] = 42;
+
+			//****************************************
+
+			try
+			{
+				var Pair = MyRecords[42];
+
+				Assert.Fail("Key found");
+			}
+			catch (KeyNotFoundException)
+			{
+			}
+
+			try
+			{
+				var Pair = MyRecords.Inverse[10];
+
+				Assert.Fail("Key found");
+			}
+			catch (KeyNotFoundException)
+			{
+			}
+		}
+
+		[Test()]
+		public void IndexOf()
+		{ //****************************************
+			var MyRecords = new BiDictionary<int, int>();
+			//****************************************
+
+			MyRecords[10] = 42;
+
+			//****************************************
+
+			Assert.AreEqual(0, MyRecords.IndexOf(new KeyValuePair<int, int>(10, 42)));
+		}
+
+		[Test()]
+		public void IndexOfLeft()
+		{ //****************************************
+			var MyRecords = new BiDictionary<int, int>();
+			//****************************************
+
+			MyRecords[10] = 42;
+
+			//****************************************
+
+			Assert.AreEqual(0, MyRecords.IndexOfLeft(10));
+		}
+
+		[Test()]
+		public void IndexOfRight()
+		{ //****************************************
+			var MyRecords = new BiDictionary<int, int>();
+			//****************************************
+
+			MyRecords[10] = 42;
+
+			//****************************************
+
+			Assert.AreEqual(0, MyRecords.IndexOfRight(42));
+		}
+
+		[Test()]
+		public void IndexOfLeftCollideMissing()
+		{ //****************************************
+			var MyRecords = new BiDictionary<Collider, Collider>();
+			//****************************************
+
+			MyRecords[10] = 42;
+
+			//****************************************
+
+			Assert.AreEqual(-1, MyRecords.IndexOfLeft(11));
+		}
+
+		[Test()]
+		public void IndexOfLeftCollideMissing2()
+		{ //****************************************
+			var MyRecords = new BiDictionary<Collider, Collider>();
+			//****************************************
+
+			MyRecords[10] = 42;
+			MyRecords[int.MaxValue] = 43;
+
+			//****************************************
+
+			Assert.AreEqual(-1, MyRecords.IndexOfLeft(11));
+		}
+
+		[Test()]
+		public void IndexOfLeftMissing()
+		{ //****************************************
+			var MyRecords = new BiDictionary<int, int>();
+			//****************************************
+
+			MyRecords[10] = 42;
+
+			//****************************************
+
+			Assert.AreEqual(-1, MyRecords.IndexOfLeft(11));
+		}
+
+		[Test()]
+		public void IndexOfRightCollideMissing()
+		{ //****************************************
+			var MyRecords = new BiDictionary<Collider, Collider>();
+			//****************************************
+
+			MyRecords[10] = 42;
+
+			//****************************************
+
+			Assert.AreEqual(-1, MyRecords.IndexOfRight(11));
+		}
+
+		[Test()]
+		public void IndexOfRightCollideMissing2()
+		{ //****************************************
+			var MyRecords = new BiDictionary<Collider, Collider>();
+			//****************************************
+
+			MyRecords[10] = 42;
+			MyRecords[int.MaxValue] = 43;
+
+			//****************************************
+
+			Assert.AreEqual(-1, MyRecords.IndexOfRight(11));
+		}
+
+		[Test()]
+		public void IndexOfRightMissing()
+		{ //****************************************
+			var MyRecords = new BiDictionary<int, int>();
+			//****************************************
+
+			MyRecords[10] = 42;
+
+			//****************************************
+
+			Assert.AreEqual(-1, MyRecords.IndexOfRight(11));
+		}
+
+		[Test()]
+		public void IndexOfMissingLeft()
+		{ //****************************************
+			var MyRecords = new BiDictionary<int, int>();
+			//****************************************
+
+			MyRecords[10] = 42;
+
+			//****************************************
+
+			Assert.AreEqual(-1, MyRecords.IndexOf(new KeyValuePair<int, int>(11, 42)));
+		}
+
+		[Test()]
+		public void IndexOfMissingRight()
+		{ //****************************************
+			var MyRecords = new BiDictionary<int, int>();
+			//****************************************
+
+			MyRecords[10] = 42;
+
+			//****************************************
+
+			Assert.AreEqual(-1, MyRecords.IndexOf(new KeyValuePair<int, int>(10, 30)));
+		}
+
+		[Test(), Repeat(2)]
+		public void PrePopulate()
+		{ //****************************************
+			var Seed = Environment.TickCount;
+			var Random = new Random(Seed);
+			//****************************************
+
+			var Dictionary = new Dictionary<int, int>(1024);
+
+			foreach (var (Left, Right) in YieldRandom(Random, 1024))
+				Dictionary.Add(Left, Right);
+
+			var Records = new BiDictionary<int, int>(Dictionary);
+
+			//****************************************
+
+			Assert.AreEqual(1024, Records.Count, "Count incorrect. Bad Seed was {0}", Seed);
+
+			CollectionAssert.AreEquivalent(Dictionary, Records, "Collections don't match. Bad Seed was {0}", Seed);
+
+			foreach (var MyPair in Dictionary)
+			{
+				Assert.IsTrue(Records.TryGetRight(MyPair.Key, out var Value));
+				Assert.AreEqual(MyPair.Value, Value);
+			}
+		}
+
+		[Test()]
+		public void RemoveLeft()
+		{ //****************************************
+			var Seed = Environment.TickCount;
+			var Random = new Random(Seed);
+			//****************************************
+
+			var Dictionary = new Dictionary<int, int>(1024);
+
+			foreach (var (Left, Right) in YieldRandom(Random, 1024))
+				Dictionary.Add(Left, Right);
+
+			var Records = new BiDictionary<int, int>(Dictionary);
+
+			//****************************************
+
+			for (var Index = 0; Index < 512; Index++)
+			{
+				var InnerIndex = Random.Next(Records.Count);
+
+				var Key = Records.Lefts[InnerIndex];
+
+				Assert.IsTrue(Records.Remove(Key));
+				Assert.IsTrue(Dictionary.Remove(Key));
+			}
+
+			//****************************************
+
+			Assert.AreEqual(512, Records.Count, "Count incorrect. Bad Seed was {0}", Seed);
+
+			CollectionAssert.AreEquivalent(Dictionary, Records, "Collections don't match. Bad Seed was {0}", Seed);
+
+			foreach (var MyPair in Dictionary)
+			{
+				Assert.IsTrue(Records.TryGetRight(MyPair.Key, out var Value));
+				Assert.AreEqual(MyPair.Value, Value);
+			}
+		}
+
+		[Test()]
+		public void RemoveRight()
+		{ //****************************************
+			var Seed = Environment.TickCount;
+			var Random = new Random(Seed);
+			//****************************************
+
+			var Dictionary = new Dictionary<int, int>(1024);
+
+			foreach (var (Left, Right) in YieldRandom(Random, 1024))
+				Dictionary.Add(Left, Right);
+
+			var Records = BiDictionary.FromInverse(Dictionary);
+
+			//****************************************
+
+			for (var Index = 0; Index < 512; Index++)
+			{
+				var InnerIndex = Random.Next(Records.Count);
+
+				var Key = Records.Rights[InnerIndex];
+
+				Assert.IsTrue(Records.Inverse.Remove(Key));
+				Assert.IsTrue(Dictionary.Remove(Key));
+			}
+
+			//****************************************
+
+			Assert.AreEqual(512, Records.Count, "Count incorrect. Bad Seed was {0}", Seed);
+
+			CollectionAssert.AreEquivalent(Dictionary, Records.Inverse, "Collections don't match. Bad Seed was {0}", Seed);
+
+			foreach (var MyPair in Dictionary)
+			{
+				Assert.IsTrue(Records.TryGetLeft(MyPair.Key, out var Value));
+				Assert.AreEqual(MyPair.Value, Value);
+			}
+		}
+
+		[Test()]
+		public void RemoveAt()
+		{ //****************************************
+			var Seed = Environment.TickCount;
+			var Random = new Random(Seed);
+			//****************************************
+
+			var Dictionary = new Dictionary<int, int>(1024);
+
+			foreach (var (Left, Right) in YieldRandom(Random, 1024))
+				Dictionary.Add(Left, Right);
+
+			var Records = new BiDictionary<int, int>(Dictionary);
+
+			//****************************************
+
+			for (var Index = 0; Index < 512; Index++)
+			{
+				var InnerIndex = Random.Next(Records.Count);
+
+				var Key = Records.Lefts[InnerIndex];
+
+				Records.RemoveAt(InnerIndex);
+				Assert.IsTrue(Dictionary.Remove(Key));
+			}
+
+			//****************************************
+
+			Assert.AreEqual(512, Records.Count, "Count incorrect. Bad Seed was {0}", Seed);
+
+			CollectionAssert.AreEquivalent(Dictionary, Records, "Collections don't match. Bad Seed was {0}", Seed);
+
+			foreach (var MyPair in Dictionary)
+			{
+				Assert.IsTrue(Records.TryGetRight(MyPair.Key, out var Value));
+				Assert.AreEqual(MyPair.Value, Value);
+			}
+		}
+
+		[Test()]
+		public void RemoveAtSingle()
+		{ //****************************************
+			var Seed = Environment.TickCount;
+			var Random = new Random(Seed);
+			//****************************************
+
+			var Dictionary = new Dictionary<int, int>(16);
+
+			foreach (var (Left, Right) in YieldRandom(Random, 16))
+				Dictionary.Add(Left, Right);
+
+			var Records = new BiDictionary<int, int>(Dictionary);
+
+			//****************************************
+
+			var InnerIndex = Random.Next(Records.Count);
+
+			var Key = Records.Lefts[InnerIndex];
+
+			Records.RemoveAt(InnerIndex);
+			Assert.IsTrue(Dictionary.Remove(Key));
+			Assert.IsFalse(Records.ContainsLeft(Key));
+
+			//****************************************
+
+			Assert.AreEqual(15, Records.Count, "Count incorrect. Bad Seed was {0}", Seed);
+
+			CollectionAssert.AreEquivalent(Dictionary, Records, "Collections don't match. Bad Seed was {0}", Seed);
+
+			foreach (var MyPair in Dictionary)
+			{
+				Assert.IsTrue(Records.TryGetRight(MyPair.Key, out var Value));
+				Assert.AreEqual(MyPair.Value, Value);
+			}
+		}
+
+		[Test(), Repeat(2)]
+		public void RemoveAll()
+		{ //****************************************
+			var Seed = Environment.TickCount;
+			var Random = new Random(Seed);
+			//****************************************
+
+			var Dictionary = new Dictionary<int, int>(1024);
+
+			foreach (var (Left, Right) in YieldRandom(Random, 1024))
+				Dictionary.Add(Left, Right);
+
+			var Records = new BiDictionary<int, int>(Dictionary);
+
+			//****************************************
+
+			Records.RemoveAll((pair) => { if (Random.Next() > int.MaxValue / 2) return Dictionary.Remove(pair.Key); return false; });
+
+			//****************************************
+
+			CollectionAssert.AreEquivalent(Dictionary, Records, "Collections don't match. Bad Seed was {0}", Seed);
+
+			foreach (var MyPair in Dictionary)
+			{
+				Assert.IsTrue(Records.TryGetRight(MyPair.Key, out var Value));
+				Assert.AreEqual(MyPair.Value, Value);
+			}
+		}
+
+		[Test(), Repeat(2)]
+		public void RemoveRange()
+		{ //****************************************
+			var Seed = Environment.TickCount;
+			var Random = new Random(Seed);
+			//****************************************
+
+			var Dictionary = new Dictionary<int, int>(1024);
+
+			foreach (var (Left, Right) in YieldRandom(Random, 1024))
+				Dictionary.Add(Left, Right);
+
+			var Records = new BiDictionary<int, int>(Dictionary);
+
+			//****************************************
+
+			foreach (var MyResult in Records.Skip(256).Take(256))
+				Dictionary.Remove(MyResult.Key);
+
+			Records.RemoveRange(256, 256);
+
+			//****************************************
+
+			CollectionAssert.AreEquivalent(Dictionary, Records, "Collections don't match. Bad Seed was {0}", Seed);
+
+			foreach (var MyPair in Dictionary)
+			{
+				Assert.IsTrue(Records.TryGetRight(MyPair.Key, out var Value));
+				Assert.AreEqual(MyPair.Value, Value);
+			}
+		}
+
+		[Test()]
+		public void Replace()
+		{ //****************************************
+			var MyRecords = new BiDictionary<int, int>();
+			//****************************************
+
+			MyRecords.Add(9, 1);
+			MyRecords.Add(12, 2);
+			MyRecords.Add(10, 3);
+			MyRecords.Add(11, 4);
+
+			//****************************************
+
+			try
+			{
+				MyRecords[10] = 4;
+
+				Assert.Fail("Did not fail");
+			}
+			catch (ArgumentException)
+			{
+			}
+		}
+
+		[Test()]
+		public void ReplaceCollide()
+		{ //****************************************
+			var MyRecords = new BiDictionary<Collider, int>();
+			//****************************************
+
+			MyRecords.Add(9, 1);
+			MyRecords.Add(12, 2);
+			MyRecords.Add(10, 3);
+			MyRecords.Add(11, 4);
+
+			//****************************************
+
+			try
+			{
+				MyRecords[10] = 4;
+
+				Assert.Fail("Did not fail");
+			}
+			catch (ArgumentException)
+			{
+			}
+		}
+
+		[Test()]
+		public void SetKeyLeft()
+		{ //****************************************
+			var MyRecords = new BiDictionary<int, int>();
+			//****************************************
+
+			MyRecords[9] = 1;
+			MyRecords[12] = 2;
+			MyRecords[10] = 3;
+			MyRecords[11] = 4;
+
+			MyRecords[10] = 5;
+
+			//****************************************
+
+			Assert.AreEqual(4, MyRecords.Count);
+			Assert.AreEqual(5, MyRecords[10]);
+			Assert.AreEqual(10, MyRecords.Inverse[5]);
+		}
+
+		[Test()]
+		public void SetKeyRight()
+		{ //****************************************
+			var MyRecords = new BiDictionary<int, int>();
+			//****************************************
+
+			MyRecords[9] = 1;
+			MyRecords[12] = 2;
+			MyRecords[10] = 3;
+			MyRecords[11] = 4;
+
+			MyRecords[13] = 4;
+
+			//****************************************
+
+			Assert.AreEqual(4, MyRecords.Count);
+			Assert.AreEqual(4, MyRecords[13]);
+			Assert.AreEqual(13, MyRecords.Inverse[4]);
+		}
+
+		[Test()]
+		public void SetKeyCollideLeft()
+		{ //****************************************
+			var MyRecords = new BiDictionary<Collider, int>();
+			//****************************************
+
+			MyRecords[9] = 1;
+			MyRecords[12] = 2;
+			MyRecords[10] = 3;
+			MyRecords[11] = 4;
+
+			MyRecords[10] = 5;
+
+			//****************************************
+
+			Assert.AreEqual(4, MyRecords.Count);
+			Assert.AreEqual(5, MyRecords[10]);
+			Assert.AreEqual(10, MyRecords.Inverse[5].Value);
+		}
+
+		[Test()]
+		public void SetKeyCollideRight()
+		{ //****************************************
+			var MyRecords = new BiDictionary<Collider, int>();
+			//****************************************
+
+			MyRecords[9] = 1;
+			MyRecords[12] = 2;
+			MyRecords[10] = 3;
+			MyRecords[11] = 4;
+
+			MyRecords[13] = 4;
+
+			//****************************************
+
+			Assert.AreEqual(4, MyRecords.Count);
+			Assert.AreEqual(4, MyRecords[13]);
+			Assert.AreEqual(13, MyRecords.Inverse[4].Value);
+		}
+
 		//****************************************
 
 		private void Validate(BiDictionary<int, int> dictionary)

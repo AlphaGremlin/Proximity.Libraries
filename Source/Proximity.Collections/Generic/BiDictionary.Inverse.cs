@@ -190,9 +190,9 @@ namespace System.Collections.Generic
 
 			IEnumerator IEnumerable.GetEnumerator() => new InverseEnumerator(Inverse);
 
-			bool IDictionary<TRight, TLeft>.TryGetValue(TRight key, out TLeft value) => Inverse.TryGetLeft(key, out value);
+			bool IDictionary<TRight, TLeft>.TryGetValue(TRight key, out TLeft value) => Inverse.TryGetLeft(key, out value!);
 
-			bool IReadOnlyDictionary<TRight, TLeft>.TryGetValue(TRight key, out TLeft value) => Inverse.TryGetLeft(key, out value);
+			bool IReadOnlyDictionary<TRight, TLeft>.TryGetValue(TRight key, out TLeft value) => Inverse.TryGetLeft(key, out value!);
 
 			void IList.Insert(int index, object value) => throw new NotSupportedException();
 

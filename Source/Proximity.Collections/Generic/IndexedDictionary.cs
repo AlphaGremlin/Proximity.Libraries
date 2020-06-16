@@ -515,14 +515,14 @@ namespace System.Collections.Generic
 		/// <param name="count">The number of items to remove after the index</param>
 		public void RemoveRange(int index, int count)
 		{
-			var LastIndex = index + count;
+			var LastIndex = index + count - 1;
 
-			if (index < 0 || LastIndex > _Size)
+			if (index < 0 || LastIndex >= _Size)
 				throw new ArgumentOutOfRangeException(nameof(index));
 
 			// Since a remove does not slide down the values above, and simply relocates the last item,
 			// we need to remove in reverse so we don't accidentally move one of the items we plan to remove
-			for (var Index = LastIndex - 1; Index >= index; Index--)
+			for (var Index = LastIndex; Index >= index; Index--)
 				RemoveAt(Index);
 		}
 
@@ -560,7 +560,7 @@ namespace System.Collections.Generic
 
 		/// <inheritdoc />
 		public bool TryGetValue(TKey key,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD
 			[MaybeNullWhen(false)]
 #endif
 			out TValue value)

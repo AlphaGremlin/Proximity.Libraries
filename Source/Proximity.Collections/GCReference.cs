@@ -21,6 +21,16 @@ namespace Proximity.Collections
 		//****************************************
 
 		/// <summary>
+		/// Creates a new Weak GC Reference
+		/// </summary>
+		/// <param name="target">The target object</param>
+		[SecuritySafeCritical]
+		public GCReference(object target)
+		{
+			_Handle = GCHandle.Alloc(target, GCHandleType.Weak);
+		}
+
+		/// <summary>
 		/// Creates a new GC Reference
 		/// </summary>
 		/// <param name="target">The target object</param>

@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks.Sources;
+using Proximity.Threading;
 
 namespace System.Threading
 {
@@ -21,15 +22,16 @@ namespace System.Threading
 
 		//****************************************
 
-		internal void Initialise(AsyncCounter owner, bool isPeek, bool wasDecremented)
+		internal void Initialise(AsyncCounter owner, bool isPeek, bool toZero, bool wasDecremented)
 		{
 			Owner = owner;
 			IsPeek = isPeek;
+			Counters = toZero ? -1 : 1;
 
 			if (wasDecremented)
 			{
 				_InstanceState = Status.Decremented;
-				_TaskSource.SetResult(default);
+				_TaskSource.SetResult(0); // Can only happen on a Peek, so the result is 0 (nothing was taken)
 			}
 			else
 			{
@@ -54,11 +56,16 @@ namespace System.Threading
 			UnregisterCancellation();
 		}
 
-		internal bool TrySwitchToCompleted()
+		internal bool TrySwitchToCompleted(ref int count)
 		{
 			// Try and assign the counter to this Instance
 			if (Interlocked.CompareExchange(ref _InstanceState, Status.Decremented, Status.Pending) == Status.Pending)
 			{
+				if (Counters == -1)
+					Counters = Interlocked.Exchange(ref count, 0);
+				else
+					count--;
+
 				UnregisterCancellation();
 
 				return true;
@@ -120,7 +127,7 @@ namespace System.Threading
 				break;
 
 			case Status.Decremented:
-				_TaskSource.SetResult(1); // When we're waiting, we always take only one counter
+				_TaskSource.SetResult(Counters); // When we're waiting, we always take only one counter
 				break;
 			}
 		}
@@ -129,21 +136,7 @@ namespace System.Threading
 
 		public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
 
-		public void GetResult(short token)
-		{
-			try
-			{
-				_TaskSource.GetResult(token);
-			}
-			finally
-			{
-				// Don't release if we're on the wait queue. If we are, let TrySwitchToCompleted know it can release when ready
-				if (_InstanceState == Status.CancelledNotWaiting || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledNotWaiting)
-					Release();
-			}
-		}
-
-		int IValueTaskSource<int>.GetResult(short token)
+		public int GetResult(short token)
 		{
 			try
 			{
@@ -157,13 +150,15 @@ namespace System.Threading
 			}
 		}
 
+		void IValueTaskSource.GetResult(short token) => GetResult(token);
+
 		//****************************************
 
 		private void Release()
 		{
 			Owner = null;
 			IsPeek = false;
-			ToZero = false;
+			Counters = 0;
 
 			_TaskSource.Reset();
 			_InstanceState = Status.Unused;
@@ -180,18 +175,18 @@ namespace System.Threading
 
 		public bool IsPeek { get; private set; }
 
-		public bool ToZero { get; private set; }
+		public int Counters { get; private set; }
 
 		public short Version => _TaskSource.Version;
 
 		//****************************************
 
-		internal static AsyncCounterDecrement GetOrCreateFor(AsyncCounter counter, bool isPeek, bool isTaken)
+		internal static AsyncCounterDecrement GetOrCreateFor(AsyncCounter counter, bool isPeek, bool toZero, bool isTaken)
 		{
 			if (!Instances.TryTake(out var Instance))
 				Instance = new AsyncCounterDecrement();
 
-			Instance.Initialise(counter, isPeek, isTaken);
+			Instance.Initialise(counter, isPeek, toZero, isTaken);
 
 			return Instance;
 		}

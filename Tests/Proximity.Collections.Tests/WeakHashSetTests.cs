@@ -45,12 +45,8 @@ namespace Proximity.Collections.Tests
 
 		[Test()]
 		public void Remove()
-		{ //****************************************
-			WeakHashSet<object> MyCollection;
-			object MyObject;
-			//****************************************
-
-			AllocateWithSingle(out MyCollection, out MyObject, 0);
+		{
+			AllocateWithSingle<object>(out var MyCollection, out var MyObject, 0);
 
 			GC.Collect();
 
@@ -65,12 +61,8 @@ namespace Proximity.Collections.Tests
 
 		[Test()]
 		public void RemoveMulti()
-		{ //****************************************
-			WeakHashSet<object> MyCollection;
-			object MyObject1, MyObject2;
-			//****************************************
-
-			AllocateWithDual(out MyCollection, out MyObject1, out MyObject2, 0);
+		{
+			AllocateWithDual<object>(out var MyCollection, out var MyObject1, out var MyObject2, 0);
 
 			GC.Collect();
 
@@ -86,11 +78,8 @@ namespace Proximity.Collections.Tests
 
 		[Test()]
 		public void WeakAdd()
-		{ //****************************************
-			WeakHashSet<object> MyCollection;
-			//****************************************
-
-			AllocateRange(out MyCollection, 1);
+		{
+			AllocateRange<object>(out var MyCollection, 1);
 
 			GC.Collect();
 
@@ -99,11 +88,8 @@ namespace Proximity.Collections.Tests
 
 		[Test()]
 		public void WeakAddRange()
-		{ //****************************************
-			WeakHashSet<object> MyCollection;
-			//****************************************
-
-			AllocateRange(out MyCollection, 2);
+		{
+			AllocateRange<object>(out var MyCollection, 2);
 
 			GC.Collect();
 
@@ -112,12 +98,8 @@ namespace Proximity.Collections.Tests
 
 		[Test()]
 		public void WeakAddSingle()
-		{ //****************************************
-			WeakHashSet<object> MyCollection;
-			object MyObject;
-			//****************************************
-
-			AllocateWithSingle(out MyCollection, out MyObject, 0);
+		{
+			AllocateWithSingle<object>(out var MyCollection, out var MyObject, 0);
 
 			GC.Collect();
 
@@ -128,12 +110,8 @@ namespace Proximity.Collections.Tests
 
 		[Test()]
 		public void Clear()
-		{ //****************************************
-			WeakHashSet<object> MyCollection;
-			object MyObject;
-			//****************************************
-
-			AllocateWithSingle(out MyCollection, out MyObject, 0);
+		{
+			AllocateWithSingle<object>(out var MyCollection, out var MyObject, 0);
 
 			GC.Collect();
 
@@ -149,12 +127,10 @@ namespace Proximity.Collections.Tests
 		[Test()]
 		public void Enum()
 		{ //****************************************
-			WeakHashSet<object> MyCollection;
-			object MyObject1, MyObject2;
 			bool Found1 = false, Found2 = false;
 			//****************************************
 
-			AllocateWithDual(out MyCollection, out MyObject1, out MyObject2, 0);
+			AllocateWithDual<object>(out var MyCollection, out var MyObject1, out var MyObject2, 0);
 
 			GC.Collect();
 
@@ -187,17 +163,15 @@ namespace Proximity.Collections.Tests
 		[Test()]
 		public void EnumValues()
 		{ //****************************************
-			WeakHashSet<object> MyCollection;
-			object MyObject1, MyObject2;
 			bool Found1 = false, Found2 = false;
 			//****************************************
 
-			AllocateWithDual(out MyCollection, out MyObject1, out MyObject2, 0);
+			AllocateWithDual<object>(out var MyCollection, out var MyObject1, out var MyObject2, 0);
 
 			GC.Collect();
 
 			// Should find two objects
-			foreach (var MyObject in MyCollection.ToStrongSet())
+			foreach (var MyObject in MyCollection.ToStrong())
 			{
 				if (object.ReferenceEquals(MyObject, MyObject1))
 				{
@@ -225,12 +199,10 @@ namespace Proximity.Collections.Tests
 		[Test()]
 		public void WeakEnum()
 		{ //****************************************
-			WeakHashSet<object> MyCollection;
-			object MyObject;
-			bool Found = false;
+			var Found = false;
 			//****************************************
 
-			AllocateWithSingle(out MyCollection, out MyObject, 1);
+			AllocateWithSingle<object>(out var MyCollection, out var MyObject, 1);
 
 			GC.Collect();
 
@@ -256,17 +228,15 @@ namespace Proximity.Collections.Tests
 		[Test()]
 		public void WeakEnumValues()
 		{ //****************************************
-			WeakHashSet<object> MyCollection;
-			object MyObject;
-			bool Found = false;
+			var Found = false;
 			//****************************************
 
-			AllocateWithSingle(out MyCollection, out MyObject, 1);
+			AllocateWithSingle<object>(out var MyCollection, out var MyObject, 1);
 
 			GC.Collect();
 
 			// Should find only one object
-			foreach (var MyInnerObject in MyCollection.ToStrongSet())
+			foreach (var MyInnerObject in MyCollection.ToStrong())
 			{
 				if (object.ReferenceEquals(MyObject, MyInnerObject))
 				{
@@ -287,19 +257,19 @@ namespace Proximity.Collections.Tests
 		[Test()]
 		public void Cleanup()
 		{
-			var StrongRef = new object();
-			var WeakRef = new WeakReference(StrongRef);
-			var MyCollection = new WeakHashSet<object>(EqualityComparer<object>.Default, System.Runtime.InteropServices.GCHandleType.Normal);
+			WeakReference WeakRef;
+			WeakHashSet<object> WeakCollection;
 
-			MyCollection.Add(StrongRef);
+			{
+				var StrongRef = new object();
+				WeakRef = new WeakReference(StrongRef);
+				WeakCollection = new WeakHashSet<object>(EqualityComparer<object>.Default)
+				{
+					StrongRef
+				};
 
-			CollectionAssert.Contains(MyCollection, StrongRef);
-
-			StrongRef = null;
-			MyCollection = null;
-
-			GC.Collect();
-			GC.WaitForPendingFinalizers();
+				CollectionAssert.Contains(WeakCollection, StrongRef);
+			}
 
 			GC.Collect();
 			GC.WaitForPendingFinalizers();
@@ -314,7 +284,7 @@ namespace Proximity.Collections.Tests
 			var Items = new TItem[count];
 			//****************************************
 
-			for (int Index = 0; Index < count; Index++)
+			for (var Index = 0; Index < count; Index++)
 			{
 				Items[Index] = new TItem();
 			}
@@ -328,7 +298,7 @@ namespace Proximity.Collections.Tests
 			var Items = new TItem[count];
 			//****************************************
 
-			for (int Index = 0; Index < count; Index++)
+			for (var Index = 0; Index < count; Index++)
 			{
 				Items[Index] = new TItem();
 			}
@@ -344,7 +314,7 @@ namespace Proximity.Collections.Tests
 			var Items = new TItem[count];
 			//****************************************
 
-			for (int Index = 0; Index < count; Index++)
+			for (var Index = 0; Index < count; Index++)
 			{
 				Items[Index] = new TItem();
 			}
