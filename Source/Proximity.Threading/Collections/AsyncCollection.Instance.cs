@@ -59,7 +59,7 @@ namespace System.Collections.Concurrent
 
 		private sealed class CollectionAddInstance : CollectionInstance, IValueTaskSource
 		{ //****************************************
-			private static readonly ConcurrentBag<CollectionAddInstance> _Instances = new ConcurrentBag<CollectionAddInstance>();
+			private static readonly ConcurrentBag<CollectionAddInstance> Instances = new ConcurrentBag<CollectionAddInstance>();
 			//****************************************
 			private readonly Action _OnTookSlot;
 
@@ -96,7 +96,7 @@ namespace System.Collections.Concurrent
 				_Complete = false;
 				_Awaiter = default;
 
-				_Instances.Add(this);
+				Instances.Add(this);
 			}
 
 			//****************************************
@@ -125,7 +125,7 @@ namespace System.Collections.Concurrent
 
 			internal static CollectionAddInstance GetOrCreateFor(AsyncCollection<TItem> owner, TItem item, ValueTask waitForSlot, bool complete)
 			{
-				if (!_Instances.TryTake(out var Instance))
+				if (!Instances.TryTake(out var Instance))
 					Instance = new CollectionAddInstance();
 
 				Instance.Initialise(owner, item, waitForSlot, complete);
@@ -136,7 +136,7 @@ namespace System.Collections.Concurrent
 
 		private sealed class CollectionTakeInstance : CollectionInstance, IValueTaskSource<TItem>
 		{ //****************************************
-			private static readonly ConcurrentBag<CollectionTakeInstance> _Instances = new ConcurrentBag<CollectionTakeInstance>();
+			private static readonly ConcurrentBag<CollectionTakeInstance> Instances = new ConcurrentBag<CollectionTakeInstance>();
 			//****************************************
 			private readonly Action _OnTookItem;
 
@@ -167,7 +167,7 @@ namespace System.Collections.Concurrent
 			{
 				_Awaiter = default;
 
-				_Instances.Add(this);
+				Instances.Add(this);
 			}
 
 			//****************************************
@@ -194,7 +194,7 @@ namespace System.Collections.Concurrent
 
 			internal static CollectionTakeInstance GetOrCreateFor(AsyncCollection<TItem> owner, ValueTask waitForSlot)
 			{
-				if (!_Instances.TryTake(out var Instance))
+				if (!Instances.TryTake(out var Instance))
 					Instance = new CollectionTakeInstance();
 
 				Instance.Initialise(owner, waitForSlot);

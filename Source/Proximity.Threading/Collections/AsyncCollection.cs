@@ -242,13 +242,14 @@ namespace System.Collections.Concurrent
 		/// <summary>
 		/// Completes the collection
 		/// </summary>
+		/// <returns>A Task that completes when the collection is empty</returns>
 		/// <remarks>
-		/// <para>Any pending <see cref="O:Add" /> calls will complete successfully. Any future <see cref="O:Add" /> calls will throw <see cref="InvalidOperationException"/>.</para>
+		/// <para>Any pending <see cref="O:Add" /> calls may complete successfully. Any future <see cref="O:Add" /> calls will throw <see cref="InvalidOperationException"/>.</para>
 		/// <para>Any pending or future <see cref="O:Take" /> calls will return the contents of the collection until it is empty, before also throwing <see cref="InvalidOperationException"/>.</para>
 		/// <para>If the collection is empty at this point, pending <see cref="O:Take" /> calls will immediately throw <see cref="InvalidOperationException"/>.</para>
 		/// <para>If a consumer is currently waiting on a task retrieved via <see cref="O:GetConsumingEnumerable" /> and the collection is empty, the task will throw <see cref="InvalidOperationException"/>.</para>
 		/// </remarks>
-		public void CompleteAdding()
+		public ValueTask CompleteAdding()
 		{
 			// Any pending Adds may throw, any future adds -will- throw
 			_IsCompleted = true;
@@ -258,7 +259,7 @@ namespace System.Collections.Concurrent
 				_FreeSlots.DisposeAsync();
 
 			// If the collection is empty, cancel anyone waiting for items
-			_UsedSlots.DisposeAsync();
+			return _UsedSlots.DisposeAsync();
 		}
 
 		/// <summary>
@@ -279,6 +280,8 @@ namespace System.Collections.Concurrent
 		{
 			while (!IsCompleted)
 			{
+				token.ThrowIfCancellationRequested();
+
 				try
 				{
 					// Is there an item to take?

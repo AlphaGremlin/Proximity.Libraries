@@ -469,7 +469,7 @@ namespace Proximity.Threading.Tests
 			
 			Assert.IsFalse(MyTask.IsCompleted, "Took too early");
 			
-			MyCollection.CompleteAdding();
+			_ = MyCollection.CompleteAdding();
 			
 			//****************************************
 			
@@ -496,8 +496,8 @@ namespace Proximity.Threading.Tests
 			await MyCollection.Add(42);
 			
 			var MyTask = MyCollection.Add(84);
-			
-			MyCollection.CompleteAdding();
+
+			_ = MyCollection.CompleteAdding();
 			
 			//****************************************
 			
@@ -527,7 +527,7 @@ namespace Proximity.Threading.Tests
 			
 			_ = MyCollection.Add(84);
 			
-			MyCollection.CompleteAdding();
+			_ = MyCollection.CompleteAdding();
 			
 			var MyResult = await MyCollection.Take();
 			
@@ -550,7 +550,7 @@ namespace Proximity.Threading.Tests
 			
 			await MyCollection.Add(42);
 			
-			MyCollection.CompleteAdding();
+			_ = MyCollection.CompleteAdding();
 			
 			var MyResult = await MyTask;
 			

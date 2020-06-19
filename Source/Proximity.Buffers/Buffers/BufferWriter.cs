@@ -147,7 +147,7 @@ namespace System.Buffers
 		/// <summary>
 		/// Gets a sequence representing the written data
 		/// </summary>
-		/// <remarks>The sequence may mutate and become invalid if the BufferWriter is written to after generation</remarks>
+		/// <remarks>The sequence will become invalid after <see cref="O:Reset"/> is called.</remarks>
 		public ReadOnlySequence<T> ToSequence()
 		{
 			if (_HeadSegment == null)
@@ -167,11 +167,64 @@ namespace System.Buffers
 
 			// Does the current tail segment have a cached segment that matches our outstanding data??
 			if (_TailSegment!.Next == null || _TailSegment.Next.Memory.Length != _CurrentOffset)
+			{
 				// No, so add/replace it
 				_TailSegment.JoinTo(new BufferSegment(_CurrentBuffer.Slice(0, _CurrentOffset), _TailSegment.RunningIndex + _TailSegment.Memory.Length));
 
+				// Empty the current buffer, so a call to Reset doesn't call Return twice
+				_CurrentBuffer = Memory<T>.Empty;
+				_CurrentOffset = 0;
+			}
+
 			// Return the sequence
 			return new ReadOnlySequence<T>(_HeadSegment, 0, _TailSegment.Next!, _TailSegment.Next!.Memory.Length);
+		}
+
+		/// <summary>
+		/// Gets a <see cref="ReadOnlyMemory{T}"/> containing all written data
+		/// </summary>
+		/// <returns>A single buffer containing all written data</returns>
+		/// <remarks>Will avoid allocations/copying if possible. The buffer will become invalid after <see cref="O:Reset"/> is called.</remarks>
+		public ReadOnlyMemory<T> ToMemory()
+		{
+			if (_HeadSegment == null)
+			{
+				// Is there any data in this Writer?
+				if (_CurrentOffset == 0)
+					return ReadOnlyMemory<T>.Empty;
+
+				// Yes, so return just that
+				return _CurrentBuffer.Slice(0, _CurrentOffset);
+			}
+
+			// We have a head segment. Is there any outstanding data?
+			if (_CurrentOffset == 0)
+			{
+				// No. If we're just a head, return that directly
+				if (_HeadSegment == _TailSegment)
+					return _HeadSegment.Memory;
+			}
+
+			var BufferLength = (int)Length;
+
+			// Grab a buffer that represents the entire contents of this Writer
+			var Buffer = _Pool.Rent(BufferLength);
+
+			// Copy our current chain of buffers into it
+			new ReadOnlySequence<T>(_HeadSegment, 0, _TailSegment!.Next!, _TailSegment.Next!.Memory.Length).CopyTo(Buffer);
+
+			// Copy the final segment (if any)
+			if (_CurrentOffset > 0)
+				_CurrentBuffer.Slice(0, _CurrentOffset).CopyTo(Buffer.AsMemory((int)_TailSegment.RunningIndex + _TailSegment.Memory.Length));
+
+			// Release our old buffers
+			Reset();
+
+			// Replace our root buffer with the new buffer we just allocated
+			_CurrentBuffer = Buffer;
+			_CurrentOffset = BufferLength;
+
+			return Buffer.AsMemory(0, BufferLength);
 		}
 
 		//****************************************
