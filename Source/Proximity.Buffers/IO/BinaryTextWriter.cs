@@ -7,7 +7,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Buffers;
 using System.Threading;
-//****************************************
+
+#pragma warning disable IDE0060 // Remove unused parameter
 
 namespace System.IO
 {
@@ -16,7 +17,7 @@ namespace System.IO
 	/// </summary>
 	public sealed class BinaryTextWriter : TextWriter
 	{	//****************************************
-		private static readonly Encoding _UTF8NoBOM = new UTF8Encoding(false, true);
+		private static readonly Encoding UTF8NoBOM = new UTF8Encoding(false, true);
 		//****************************************
 		private const int DefaultBufferSize = 1024;
 		private const int PendingBufferSize = 128;
@@ -79,7 +80,7 @@ namespace System.IO
 		/// Creates a new Binary Text Writer using UTF8 with no BOM
 		/// </summary>
 		/// <param name="writer">The Buffer Writer to write to</param>
-		public BinaryTextWriter(IBufferWriter<byte> writer) : this(writer, _UTF8NoBOM, DefaultBufferSize, null)
+		public BinaryTextWriter(IBufferWriter<byte> writer) : this(writer, UTF8NoBOM, DefaultBufferSize, null)
 		{
 		}
 

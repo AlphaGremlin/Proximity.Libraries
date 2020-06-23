@@ -12,7 +12,7 @@ namespace Proximity.Buffers.Tests
 	[TestFixture()]
 	public class BinaryTextReaderTests
 	{	//****************************************
-		private string _TestOutput = @"ABC!DEF@GHI#JKL$123%456^789&0*MNO(PQR)STU-VWX=YZ abcdefghijklmnopqrstuvwxyz ♥ ";
+		private readonly string _TestOutput = @"ABC!DEF@GHI#JKL$123%456^789&0*MNO(PQR)STU-VWX=YZ abcdefghijklmnopqrstuvwxyz ♥ ";
 		private byte[] _TestInput;
 		//****************************************
 
@@ -57,7 +57,7 @@ namespace Proximity.Buffers.Tests
 			{
 				for (; ; )
 				{
-					int CharsRead = Reader.ReadBlock(MyBuffer, 0, capacity);
+					var CharsRead = Reader.ReadBlock(MyBuffer, 0, capacity);
 
 					if (CharsRead == 0)
 						break;
@@ -78,7 +78,7 @@ namespace Proximity.Buffers.Tests
 			{
 				for (; ; )
 				{
-					int MyChar = Reader.Read();
+					var MyChar = Reader.Read();
 
 					if (MyChar == -1)
 						break;
@@ -182,11 +182,9 @@ namespace Proximity.Buffers.Tests
 			string TempOutput;
 
 			using (var RawStream = new MemoryStream(_TestInput))
+			using (var Reader = new StreamReader(RawStream, Encoding.ASCII))
 			{
-				using (var Reader = new StreamReader(RawStream, Encoding.ASCII))
-				{
-					TempOutput = Reader.ReadToEnd();
-				}
+				TempOutput = Reader.ReadToEnd();
 			}
 
 			using (var Reader = new BinaryTextReader(_TestInput, Encoding.ASCII, true))
@@ -204,11 +202,9 @@ namespace Proximity.Buffers.Tests
 			string TempOutput;
 
 			using (var RawStream = new MemoryStream(_TestInput))
+			using (var Reader = new StreamReader(RawStream, Encoding.ASCII, false))
 			{
-				using (var Reader = new StreamReader(RawStream, Encoding.ASCII, false))
-				{
-					TempOutput = Reader.ReadToEnd();
-				}
+				TempOutput = Reader.ReadToEnd();
 			}
 
 			using (var Reader = new BinaryTextReader(_TestInput, Encoding.ASCII, false))

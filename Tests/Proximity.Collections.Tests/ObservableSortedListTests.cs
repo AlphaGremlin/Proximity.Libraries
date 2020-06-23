@@ -5,7 +5,8 @@ using System.Collections.Specialized;
 using System.Linq;
 using System.Threading;
 using NUnit.Framework;
-//****************************************
+
+#pragma warning disable IDE0028 // Simplify collection initialization
 
 namespace Proximity.Collections.Tests
 {
@@ -84,7 +85,7 @@ namespace Proximity.Collections.Tests
 			var MyDictionary = new Dictionary<CollideStruct, int>(64);
 			//****************************************
 
-			for (int Index = 0; Index < 64; Index++)
+			for (var Index = 0; Index < 64; Index++)
 			{
 				CollideStruct Key;
 				int Value;
@@ -172,7 +173,7 @@ namespace Proximity.Collections.Tests
 			var MyDictionary = new Dictionary<CollideStruct, int>(64);
 			//****************************************
 
-			for (int Index = 0; Index < 64; Index++)
+			for (var Index = 0; Index < 64; Index++)
 			{
 				CollideStruct Key;
 				int Value;
@@ -301,7 +302,7 @@ namespace Proximity.Collections.Tests
 			var MySecondSet = new List<KeyValuePair<CollideStruct, int>>(32);
 			//****************************************
 
-			for (int Index = 0; Index < 32; Index++)
+			for (var Index = 0; Index < 32; Index++)
 			{
 				CollideStruct Key;
 				int Value;
@@ -317,7 +318,7 @@ namespace Proximity.Collections.Tests
 				MyRecords.Add(Key, Value);
 			}
 
-			for (int Index = 0; Index < 32; Index++)
+			for (var Index = 0; Index < 32; Index++)
 			{
 				CollideStruct Key;
 				int Value;
@@ -554,7 +555,7 @@ namespace Proximity.Collections.Tests
 			var MyDictionary = new SortedList<int, int>(1024);
 			//****************************************
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 			{
 				int Key, Value;
 
@@ -572,9 +573,9 @@ namespace Proximity.Collections.Tests
 
 			//****************************************
 
-			for (int Index = 0; Index < 512; Index++)
+			for (var Index = 0; Index < 512; Index++)
 			{
-				int InnerIndex = MyRandom.Next(MyRecords.Count);
+				var InnerIndex = MyRandom.Next(MyRecords.Count);
 
 				var Key = MyRecords.Keys[InnerIndex];
 
@@ -590,9 +591,7 @@ namespace Proximity.Collections.Tests
 
 			foreach (var MyPair in MyDictionary)
 			{
-				int Value;
-
-				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out Value));
+				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out var Value));
 				Assert.AreEqual(MyPair.Value, Value);
 			}
 
@@ -608,7 +607,7 @@ namespace Proximity.Collections.Tests
 			var MyDictionary = new SortedList<int, int>(1024);
 			//****************************************
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 			{
 				int Key, Value;
 
@@ -626,9 +625,9 @@ namespace Proximity.Collections.Tests
 
 			//****************************************
 
-			for (int Index = 0; Index < 512; Index++)
+			for (var Index = 0; Index < 512; Index++)
 			{
-				int InnerIndex = MyRandom.Next(MyRecords.Count);
+				var InnerIndex = MyRandom.Next(MyRecords.Count);
 
 				var Key = MyRecords.Keys[InnerIndex];
 
@@ -644,9 +643,7 @@ namespace Proximity.Collections.Tests
 
 			foreach (var MyPair in MyDictionary)
 			{
-				int Value;
-
-				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out Value));
+				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out var Value));
 				Assert.AreEqual(MyPair.Value, Value);
 			}
 
@@ -662,7 +659,7 @@ namespace Proximity.Collections.Tests
 			var MyDictionary = new SortedList<int, int>(1024);
 			//****************************************
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 			{
 				int Key, Value;
 
@@ -688,9 +685,7 @@ namespace Proximity.Collections.Tests
 
 			foreach (var MyPair in MyDictionary)
 			{
-				int Value;
-
-				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out Value));
+				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out var Value));
 				Assert.AreEqual(MyPair.Value, Value);
 			}
 
@@ -706,7 +701,7 @@ namespace Proximity.Collections.Tests
 			var MyDictionary = new SortedList<int, int>(1024);
 			//****************************************
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 			{
 				int Key, Value;
 
@@ -735,9 +730,7 @@ namespace Proximity.Collections.Tests
 
 			foreach (var MyPair in MyDictionary)
 			{
-				int Value;
-
-				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out Value));
+				Assert.IsTrue(MyRecords.TryGetValue(MyPair.Key, out var Value));
 				Assert.AreEqual(MyPair.Value, Value);
 			}
 
@@ -909,12 +902,12 @@ namespace Proximity.Collections.Tests
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
 			var MyRecords = new ObservableSortedList<int, int>(1024);
-			int EventCount = 0;
+			var EventCount = 0;
 			//****************************************
 
 			MyRecords.CollectionChanged += (sender, e) => { if (e.Action == NotifyCollectionChangedAction.Add) EventCount++; };
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(), MyRandom.Next());
 
 			//****************************************
@@ -1103,10 +1096,10 @@ namespace Proximity.Collections.Tests
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
 			var MyRecords = new ObservableSortedList<int, int>(1024);
-			int EventCount = 0;
+			var EventCount = 0;
 			//****************************************
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(), MyRandom.Next());
 
 			MyRecords.CollectionChanged += (sender, e) => { if (e.Action == NotifyCollectionChangedAction.Remove) EventCount++; };

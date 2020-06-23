@@ -36,9 +36,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Configuration.Tes
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Logging.Tests", "Tests\Proximity.Logging.Tests\Proximity.Logging.Tests.csproj", "{BFF211EA-0A40-4556-8391-E3D72898D088}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Terminal.Serilog", "Source\Proximity.Terminal.Serilog\Proximity.Terminal.Serilog.csproj", "{7CFCBAB3-EAE1-4659-8746-BAA9D3CCCE10}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Terminal.Serilog", "Source\Proximity.Terminal.Serilog\Proximity.Terminal.Serilog.csproj", "{7CFCBAB3-EAE1-4659-8746-BAA9D3CCCE10}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Terminal.Tests", "Tests\Proximity.Terminal.Tests\Proximity.Terminal.Tests.csproj", "{18EBDE6E-5591-4FA2-8692-D7F3C67AABC8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Terminal.Tests", "Tests\Proximity.Terminal.Tests\Proximity.Terminal.Tests.csproj", "{18EBDE6E-5591-4FA2-8692-D7F3C67AABC8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Diagnostics", "Source\Proximity.Diagnostics\Proximity.Diagnostics.csproj", "{86E15EA5-6CEC-452B-8CC3-2322A2E89AAA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -292,6 +294,22 @@ Global
 		{18EBDE6E-5591-4FA2-8692-D7F3C67AABC8}.Release|Net40.Build.0 = Release|Any CPU
 		{18EBDE6E-5591-4FA2-8692-D7F3C67AABC8}.Release|Net45.ActiveCfg = Release|Any CPU
 		{18EBDE6E-5591-4FA2-8692-D7F3C67AABC8}.Release|Net45.Build.0 = Release|Any CPU
+		{86E15EA5-6CEC-452B-8CC3-2322A2E89AAA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{86E15EA5-6CEC-452B-8CC3-2322A2E89AAA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{86E15EA5-6CEC-452B-8CC3-2322A2E89AAA}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{86E15EA5-6CEC-452B-8CC3-2322A2E89AAA}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{86E15EA5-6CEC-452B-8CC3-2322A2E89AAA}.Debug|Net40.ActiveCfg = Debug|Any CPU
+		{86E15EA5-6CEC-452B-8CC3-2322A2E89AAA}.Debug|Net40.Build.0 = Debug|Any CPU
+		{86E15EA5-6CEC-452B-8CC3-2322A2E89AAA}.Debug|Net45.ActiveCfg = Debug|Any CPU
+		{86E15EA5-6CEC-452B-8CC3-2322A2E89AAA}.Debug|Net45.Build.0 = Debug|Any CPU
+		{86E15EA5-6CEC-452B-8CC3-2322A2E89AAA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{86E15EA5-6CEC-452B-8CC3-2322A2E89AAA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{86E15EA5-6CEC-452B-8CC3-2322A2E89AAA}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{86E15EA5-6CEC-452B-8CC3-2322A2E89AAA}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{86E15EA5-6CEC-452B-8CC3-2322A2E89AAA}.Release|Net40.ActiveCfg = Release|Any CPU
+		{86E15EA5-6CEC-452B-8CC3-2322A2E89AAA}.Release|Net40.Build.0 = Release|Any CPU
+		{86E15EA5-6CEC-452B-8CC3-2322A2E89AAA}.Release|Net45.ActiveCfg = Release|Any CPU
+		{86E15EA5-6CEC-452B-8CC3-2322A2E89AAA}.Release|Net45.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

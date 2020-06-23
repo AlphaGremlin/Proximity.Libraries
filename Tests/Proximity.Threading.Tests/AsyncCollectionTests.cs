@@ -207,7 +207,7 @@ namespace Proximity.Threading.Tests
 
 				try
 				{
-					await MyTask;
+					_ = await MyTask;
 
 					Assert.Fail("Wait not cancelled");
 				}
@@ -237,7 +237,7 @@ namespace Proximity.Threading.Tests
 
 			try
 			{
-				await MyTask;
+				_ = await MyTask;
 
 				Assert.Fail("Wait not cancelled");
 			}
@@ -264,7 +264,7 @@ namespace Proximity.Threading.Tests
 
 			try
 			{
-				await MyTask1;
+				_ = await MyTask1;
 
 				Assert.Fail("Wait not cancelled");
 			}
@@ -391,7 +391,7 @@ namespace Proximity.Threading.Tests
 			
 			try
 			{
-				await MyCollection.Take();
+				_ = await MyCollection.Take();
 				
 				Assert.Fail("Should not reach here");
 			}
@@ -440,8 +440,8 @@ namespace Proximity.Threading.Tests
 			await MyCollection.Add(42);
 			
 			var MyTask = MyCollection.AddComplete(84);
-			
-			await MyCollection.Take();
+
+			_ = await MyCollection.Take();
 			
 			await MyTask;
 			
@@ -475,7 +475,7 @@ namespace Proximity.Threading.Tests
 			
 			try
 			{
-				await MyTask;
+				_ = await MyTask;
 				
 				Assert.Fail("Should not reach here");
 			}
@@ -600,9 +600,9 @@ namespace Proximity.Threading.Tests
 
 			await ProducerTask;
 
-			MyCollection.CompleteAdding();
+			_ = MyCollection.CompleteAdding();
 
-			await MyTask;
+			_ = await MyTask;
 		}
 
 		[Test, MaxTime(1000), Repeat(4)]
@@ -617,10 +617,10 @@ namespace Proximity.Threading.Tests
 			{
 				await MyCollection.Add(Item);
 			}
-			
-			MyCollection.CompleteAdding();
-			
-			await MyTask;
+
+			_ = MyCollection.CompleteAdding();
+
+			_ = await MyTask;
 		}
 
 		[Test, MaxTime(1000), Repeat(4)]
@@ -636,9 +636,9 @@ namespace Proximity.Threading.Tests
 				await MyCollection.Add(Item);
 			}
 
-			MyCollection.CompleteAdding();
+			_ = MyCollection.CompleteAdding();
 
-			await MyTask;
+			_ = await MyTask;
 		}
 
 		[Test, MaxTime(1000), Repeat(4)]
@@ -653,9 +653,9 @@ namespace Proximity.Threading.Tests
 
 			await ProducerTask;
 
-			MyCollection.CompleteAdding();
+			_ = MyCollection.CompleteAdding();
 
-			await MyTask;
+			_ = await MyTask;
 		}
 
 		[Test, MaxTime(1000), Repeat(4)]
@@ -670,7 +670,7 @@ namespace Proximity.Threading.Tests
 
 			await ProducerTask;
 
-			await MyTask;
+			_ = await MyTask;
 		}
 
 		[Test, MaxTime(1000), Repeat(4)]
@@ -685,7 +685,7 @@ namespace Proximity.Threading.Tests
 
 			await ProducerTask;
 
-			await MyTask;
+			_ = await MyTask;
 		}
 
 		[Test, MaxTime(1000), Repeat(10)]
@@ -695,10 +695,10 @@ namespace Proximity.Threading.Tests
 			//****************************************
 			
 			var MyTask = Consumer(MyCollection);
-			
-			MyCollection.CompleteAdding();
-			
-			await MyTask;
+
+			_ = MyCollection.CompleteAdding();
+
+			_ = await MyTask;
 		}
 		
 		//****************************************
@@ -717,8 +717,8 @@ namespace Proximity.Threading.Tests
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(1);
 			//****************************************
-			
-			MyCollection.TryAdd(42);
+
+			_ = MyCollection.TryAdd(42);
 			
 			//****************************************
 			
@@ -730,8 +730,8 @@ namespace Proximity.Threading.Tests
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(1);
 			//****************************************
-			
-			MyCollection.CompleteAdding();
+
+			_ = MyCollection.CompleteAdding();
 			
 			//****************************************
 			
@@ -899,9 +899,9 @@ namespace Proximity.Threading.Tests
 			MyTask = AsyncCollection<int>.TakeFromAny(MyCollections);
 			
 			Assert.IsFalse(MyTask.IsCompleted, "Added too early");
-			
-			MyCollections[0].CompleteAdding();
-			MyCollections[1].CompleteAdding();
+
+			_ = MyCollections[0].CompleteAdding();
+			_ = MyCollections[1].CompleteAdding();
 
 			try
 			{
@@ -1014,8 +1014,8 @@ namespace Proximity.Threading.Tests
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
 			//****************************************
-			
-			MyCollection.TryAdd(42);
+
+			_ = MyCollection.TryAdd(42);
 			
 			Assert.IsTrue(MyCollection.TryPeek(), "Peek failed unexpectedly");
 		}
@@ -1038,8 +1038,8 @@ namespace Proximity.Threading.Tests
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>();
 			//****************************************
-			
-			MyCollection.TryAdd(42);
+
+			_ = MyCollection.TryAdd(42);
 			
 			var MyTask = MyCollection.Peek();
 			

@@ -170,7 +170,8 @@ namespace Proximity.Threading.Tests
 
 			Assert.True(MyLock.TryTake(out var MyHandle1), "Lock not taken");
 
-			Assert.False(MyLock.TryTake(out var MyHandle2), "Nested lock taken");
+
+			Assert.False(MyLock.TryTake(out _), "Nested lock taken");
 
 			MyHandle1.Dispose();
 
@@ -188,7 +189,8 @@ namespace Proximity.Threading.Tests
 
 			Assert.True(MyLock.TryTake(out var MyHandle1), "Lock not taken");
 
-			Assert.False(MyLock.TryTake(out var MyHandle2, TimeSpan.Zero), "Nested lock taken");
+
+			Assert.False(MyLock.TryTake(out _, TimeSpan.Zero), "Nested lock taken");
 
 			MyHandle1.Dispose();
 
@@ -232,7 +234,8 @@ namespace Proximity.Threading.Tests
 
 			var StartTime = DateTime.Now;
 
-			Assert.False(MyLock.TryTake(out var MyHandle2, TimeSpan.FromMilliseconds(50)), "Nested lock taken");
+
+			Assert.False(MyLock.TryTake(out _, TimeSpan.FromMilliseconds(50)), "Nested lock taken");
 
 			var EndTime = DateTime.Now;
 

@@ -1203,11 +1203,11 @@ namespace Proximity.Threading.Tests
 		public async Task QueueMultiple()
 		{ //****************************************
 			var MyQueue = new TaskQueue();
-			int RunCounter = 0;
+			var RunCounter = 0;
 			ValueTask LatestTask = default;
 			//****************************************
 
-			for (int Index = 0; Index < 100; Index++)
+			for (var Index = 0; Index < 100; Index++)
 				LatestTask = MyQueue.Queue(() => { RunCounter++; });
 
 			await LatestTask;
@@ -1221,11 +1221,11 @@ namespace Proximity.Threading.Tests
 		public async Task QueueMultipleInValue()
 		{ //****************************************
 			var MyQueue = new TaskQueue();
-			int RunCounter = 0;
+			var RunCounter = 0;
 			ValueTask LatestTask = default;
 			//****************************************
 
-			for (int Index = 0; Index < 100; Index++)
+			for (var Index = 0; Index < 100; Index++)
 				LatestTask = MyQueue.Queue((value) => { Assert.AreEqual(30, value); RunCounter++; }, 30);
 
 			await LatestTask;
@@ -1239,11 +1239,11 @@ namespace Proximity.Threading.Tests
 		public async Task QueueMultipleOutValue()
 		{ //****************************************
 			var MyQueue = new TaskQueue();
-			int RunCounter = 0;
+			var RunCounter = 0;
 			ValueTask<int> LatestTask = default;
 			//****************************************
 
-			for (int Index = 0; Index < 100; Index++)
+			for (var Index = 0; Index < 100; Index++)
 				LatestTask = MyQueue.Queue((value) => { RunCounter++; return value; }, Index);
 
 			var MyResult = await LatestTask;
@@ -1297,7 +1297,7 @@ namespace Proximity.Threading.Tests
 			var MyQueue = new TaskQueue();
 			ValueTask FirstTask, SecondTask;
 			TaskCompletionSource<VoidStruct> FirstSource;
-			bool SecondRan = false;
+			var SecondRan = false;
 			//****************************************
 
 			FirstSource = new TaskCompletionSource<VoidStruct>();
@@ -1336,7 +1336,7 @@ namespace Proximity.Threading.Tests
 			var MyQueue = new TaskQueue();
 			ValueTask FirstTask, SecondTask;
 			TaskCompletionSource<VoidStruct> FirstSource;
-			bool SecondRan = false;
+			var SecondRan = false;
 			//****************************************
 
 			FirstSource = new TaskCompletionSource<VoidStruct>();
@@ -1375,7 +1375,7 @@ namespace Proximity.Threading.Tests
 			var MyQueue = new TaskQueue();
 			ValueTask<int> FirstTask, SecondTask;
 			TaskCompletionSource<int> FirstSource;
-			bool SecondRan = false;
+			var SecondRan = false;
 			//****************************************
 
 			FirstSource = new TaskCompletionSource<int>();
@@ -1416,7 +1416,7 @@ namespace Proximity.Threading.Tests
 			var MyQueue = new TaskQueue();
 			ValueTask FirstTask, SecondTask;
 			TaskCompletionSource<VoidStruct> FirstSource;
-			bool SecondRan = false;
+			var SecondRan = false;
 			//****************************************
 
 			FirstSource = new TaskCompletionSource<VoidStruct>();
@@ -1457,7 +1457,7 @@ namespace Proximity.Threading.Tests
 			var MyQueue = new TaskQueue();
 			ValueTask FirstTask, SecondTask;
 			TaskCompletionSource<VoidStruct> FirstSource;
-			bool SecondRan = false;
+			var SecondRan = false;
 			//****************************************
 
 			FirstSource = new TaskCompletionSource<VoidStruct>();
@@ -1523,7 +1523,7 @@ namespace Proximity.Threading.Tests
 			var MyQueue = new TaskQueue();
 			ValueTask FirstTask, SecondTask;
 			TaskCompletionSource<VoidStruct> FirstSource;
-			bool SecondRan = false;
+			var SecondRan = false;
 			//****************************************
 
 			FirstSource = new TaskCompletionSource<VoidStruct>();
@@ -1815,12 +1815,12 @@ namespace Proximity.Threading.Tests
 			var MyQueue = new TaskQueue();
 			var TaskSource = new TaskCompletionSource<VoidStruct>();
 			ValueTask LatestTask = default;
-			int RunCounter = 0;
+			var RunCounter = 0;
 			//****************************************
 
 			var MyTask = MyQueue.QueueTask(() => (Task)TaskSource.Task);
 
-			for (int Index = 0; Index < 100; Index++)
+			for (var Index = 0; Index < 100; Index++)
 				LatestTask = MyQueue.Queue(() => { RunCounter++; });
 
 			var CompletionTask = MyQueue.Complete();
@@ -1880,7 +1880,7 @@ namespace Proximity.Threading.Tests
 		public async Task ConcurrentQueue()
 		{ //****************************************
 			var MyQueue = new TaskQueue();
-			int RunCounter = 0;
+			var RunCounter = 0;
 			//****************************************
 
 			await Task.WhenAll(
@@ -1889,7 +1889,7 @@ namespace Proximity.Threading.Tests
 					{
 						await Task.Yield(); // Yield, so it doesn't serialise
 
-						for (int Index = 0; Index < 20; Index++)
+						for (var Index = 0; Index < 20; Index++)
 						{
 							var MyTask = MyQueue.Queue(() => { RunCounter++; });
 
