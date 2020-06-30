@@ -93,6 +93,8 @@ namespace System.IO
 
 			if (disposing)
 			{
+				Flush(true);
+
 				ArrayPool<char>.Shared.Return(_PendingBuffer);
 			}
 		}
