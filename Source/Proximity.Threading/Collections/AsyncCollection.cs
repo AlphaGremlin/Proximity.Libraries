@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
+using Proximity.Threading;
 //****************************************
 
 namespace System.Collections.Concurrent
@@ -16,19 +17,19 @@ namespace System.Collections.Concurrent
 	/// Provides a BlockingCollection that supports async/await
 	/// </summary>
 	/// <remarks>Producers should not complete the underlying IProducerConsumerCollection, or add a limit to it</remarks>
-	public sealed partial class AsyncCollection<TItem> : IEnumerable<TItem>, IReadOnlyCollection<TItem>
+	public sealed partial class AsyncCollection<T> : IEnumerable<T>, IReadOnlyCollection<T>
 	{ //****************************************
-		private readonly IProducerConsumerCollection<TItem> _Collection;
+		private readonly IProducerConsumerCollection<T> _Collection;
 
 		private readonly AsyncCounter? _FreeSlots;
 		private readonly AsyncCounter _UsedSlots;
-		private bool _IsCompleted, _IsFailed;
+		private bool _IsFailed;
 		//****************************************
 
 		/// <summary>
 		/// Creates a new unlimited collection over a concurrent queue
 		/// </summary>
-		public AsyncCollection() : this(new ConcurrentQueue<TItem>())
+		public AsyncCollection() : this(new ConcurrentQueue<T>())
 		{
 		}
 
@@ -36,7 +37,7 @@ namespace System.Collections.Concurrent
 		/// Creates a new unlimited collection over the given producer consumer collection
 		/// </summary>
 		/// <param name="collection">The collection to block over</param>
-		public AsyncCollection(IProducerConsumerCollection<TItem> collection)
+		public AsyncCollection(IProducerConsumerCollection<T> collection)
 		{
 			_Collection = collection ?? throw new ArgumentNullException(nameof(collection));
 			Capacity = int.MaxValue;
@@ -48,7 +49,7 @@ namespace System.Collections.Concurrent
 		/// Creates a new collection over a concurrent queue
 		/// </summary>
 		/// <param name="capacity">The maximum number of items in the queue</param>
-		public AsyncCollection(int capacity) : this(new ConcurrentQueue<TItem>(), capacity)
+		public AsyncCollection(int capacity) : this(new ConcurrentQueue<T>(), capacity)
 		{
 		}
 
@@ -57,7 +58,7 @@ namespace System.Collections.Concurrent
 		/// </summary>
 		/// <param name="collection">The collection to block over</param>
 		/// <param name="capacity">The maximum number of items in the queue</param>
-		public AsyncCollection(IProducerConsumerCollection<TItem> collection, int capacity)
+		public AsyncCollection(IProducerConsumerCollection<T> collection, int capacity)
 		{
 			if (capacity <= 0)
 				throw new ArgumentException("Capacity is invalid");
@@ -76,77 +77,88 @@ namespace System.Collections.Concurrent
 		/// </summary>
 		/// <param name="item">The item to add</param>
 		/// <param name="timeout">The amount of time to wait if the collection is at full capacity</param>
-		/// <returns>A task representing the addition operation</returns>
-		/// <exception cref="OperationCanceledException">The collection was completed while we were waiting for free space</exception>
-		public ValueTask Add(TItem item, TimeSpan timeout) => InternalAdd(item, false, timeout);
+		/// <param name="token">A cancellation token to abort the addition operation</param>
+		/// <returns>A task returning True if the item was added, False if the Collection was completed</returns>
+		/// <exception cref="OperationCanceledException">The operation was cancelled</exception>
+		/// <exception cref="TimeoutException">The timeout elapsed</exception>
+		public ValueTask<bool> Add(T item, TimeSpan timeout, CancellationToken token = default) => InternalAdd(item, false, timeout, token);
 
 		/// <summary>
 		/// Attempts to add an Item to the collection
 		/// </summary>
 		/// <param name="item">The item to add</param>
 		/// <param name="token">A cancellation token to abort the addition operation</param>
-		/// <returns>A task representing the addition operation</returns>
-		/// <exception cref="OperationCanceledException">The collection was completed while we were waiting for free space</exception>
-		public ValueTask Add(TItem item, CancellationToken token = default) => InternalAdd(item, false, token);
+		/// <returns>A task returning True if the item was added, False if the Collection was completed</returns>
+		/// <exception cref="OperationCanceledException">The operation was cancelled</exception>
+		public ValueTask<bool> Add(T item, CancellationToken token = default) => InternalAdd(item, false, Timeout.InfiniteTimeSpan, token);
 
 		/// <summary>
-		/// Attempts to add and complete a collection in one operation
+		/// Attempts to add an Item to the collection and completes it once added
 		/// </summary>
 		/// <param name="item">The item to add</param>
 		/// <param name="timeout">The amount of time to wait if the collection is at full capacity</param>
-		/// <returns>A task representing the addition and completion operation</returns>
-		public ValueTask AddComplete(TItem item, TimeSpan timeout) => InternalAdd(item, true, timeout);
+		/// <param name="token">A cancellation token to abort the addition operation</param>
+		/// <returns>A task returning True if the item was added, False if the Collection was already completed</returns>
+		/// <exception cref="OperationCanceledException">The operation was cancelled</exception>
+		/// <exception cref="TimeoutException">The timeout elapsed</exception>
+		public ValueTask<bool> AddComplete(T item, TimeSpan timeout, CancellationToken token = default) => InternalAdd(item, true, timeout, token);
 
 		/// <summary>
-		/// Attempts to add and complete a collection in one operation
+		/// Attempts to add an Item to the collection and completes it once added
 		/// </summary>
 		/// <param name="item">The item to add</param>
 		/// <param name="token">A cancellation token to abort the addition operation</param>
-		/// <returns>A task representing the addition and completion operation</returns>
-		public ValueTask AddComplete(TItem item, CancellationToken token = default) => InternalAdd(item, true, token);
+		/// <returns>A task returning True if the item was added, False if the Collection was already completed</returns>
+		/// <exception cref="OperationCanceledException">The operation was cancelled</exception>
+		public ValueTask<bool> AddComplete(T item, CancellationToken token = default) => InternalAdd(item, true, Timeout.InfiniteTimeSpan, token);
 
 		/// <summary>
-		/// Waits until it's possible to remove an item from this collection
+		/// Completes the collection
 		/// </summary>
-		/// <returns>A task that completes when data is available in the collection</returns>
-		public ValueTask Peek() => _UsedSlots.PeekDecrement();
+		/// <returns>A Task that completes when the collection is empty</returns>
+		/// <remarks>
+		/// <para>This is safe to call multiple times</para>
+		/// <para>Any pending <see cref="O:Add" /> calls may complete successfully. Any future <see cref="O:Add" /> calls will return False</para>
+		/// <para>Any pending or future <see cref="O:Take" /> calls will return the contents of the collection until it is empty, before throwing <see cref="InvalidOperationException"/>.</para>
+		/// <para>If the collection is empty at this point, pending <see cref="O:Take" /> calls will immediately throw <see cref="InvalidOperationException"/>.</para>
+		/// <para>If a consumer is currently waiting on a task retrieved via <see cref="O:GetConsumingEnumerable" /> and the collection is empty, the task will throw <see cref="InvalidOperationException"/>.</para>
+		/// </remarks>
+		public ValueTask CompleteAdding()
+		{
+			// New Add operations will now fail. Take operations will fail once the collection is empty
+			var Used = _UsedSlots.DisposeAsync();
+
+			if (_FreeSlots != null)
+				// Pending Add operations will now fail.
+				_FreeSlots.DisposeAsync();
+
+			return Used;
+		}
+
+		/// <summary>
+		/// Copies the current contents of the collection
+		/// </summary>
+		/// <param name="array">The destination array</param>
+		/// <param name="index">The index at which copying begins</param>
+		public void CopyTo(T[] array, int index) => _Collection.CopyTo(array, index);
 
 		/// <summary>
 		/// Waits until it's possible to remove an item from this collection
 		/// </summary>
 		/// <param name="token">A cancellation token to abort the wait operation</param>
-		/// <returns>A task that completes when data is available in the collection</returns>
-		public ValueTask Peek(CancellationToken token) => _UsedSlots.PeekDecrement(token);
+		/// <returns>A task that returns True if an item is available, False if the collection is completed</returns>
+		/// <exception cref="OperationCanceledException">The operation was cancelled</exception>
+		public ValueTask<bool> Peek(CancellationToken token = default) => _UsedSlots.PeekDecrement(token);
 
 		/// <summary>
-		/// Peeks at the collection to see if there's an item to take without waiting
+		/// Waits until it's possible to remove an item from this collection
 		/// </summary>
-		/// <returns>True if there's an item to take, otherwise False</returns>
-		public bool TryPeek() => _UsedSlots.TryPeekDecrement();
-
-		/// <summary>
-		/// Attempts to take an Item to the collection
-		/// </summary>
-		/// <param name="timeout">The amount of time to wait for an item to arrive in the collection</param>
-		/// <returns>A task returning the result of the take operation</returns>
-		/// <exception cref="OperationCanceledException">The cancellation token was raised while we were waiting for an item</exception>
-		/// <exception cref="InvalidOperationException">The collection was completed and emptied while we were waiting for an item</exception>
-		public ValueTask<TItem> Take(TimeSpan timeout)
-		{
-			if (IsCompleted)
-				throw new InvalidOperationException("Collection is empty and adding has been completed");
-
-			// Is there an item to take?
-			var TakeItem = _UsedSlots.Decrement(timeout);
-
-			if (TakeItem.IsCompleted)
-				return new ValueTask<TItem>(CompleteTake());
-
-			// No, wait for one to arrive
-			var Instance = CollectionTakeInstance.GetOrCreateFor(this, TakeItem);
-
-			return new ValueTask<TItem>(Instance, Instance.Version);
-		}
+		/// <param name="timeout">The amount of time to wait if the collection is at full capacity</param>
+		/// <param name="token">A cancellation token to abort the wait operation</param>
+		/// <returns>A task that returns True if an item is available, False if the collection is completed</returns>
+		/// <exception cref="TimeoutException">The timeout elapsed</exception>
+		/// <exception cref="OperationCanceledException">The operation was cancelled</exception>
+		public ValueTask<bool> Peek(TimeSpan timeout, CancellationToken token = default) => _UsedSlots.PeekDecrement(timeout, token);
 
 		/// <summary>
 		/// Attempts to take an Item to the collection
@@ -155,80 +167,172 @@ namespace System.Collections.Concurrent
 		/// <returns>A task returning the result of the take operation</returns>
 		/// <exception cref="OperationCanceledException">The cancellation token was raised while we were waiting for an item</exception>
 		/// <exception cref="InvalidOperationException">The collection was completed and emptied while we were waiting for an item</exception>
-		public ValueTask<TItem> Take(CancellationToken token = default)
-		{
-			if (IsCompleted)
-				throw new InvalidOperationException("Collection is empty and adding has been completed");
+		public ValueTask<T> Take(CancellationToken token = default) => Take(Timeout.InfiniteTimeSpan, token);
 
+		/// <summary>
+		/// Attempts to take an Item to the collection
+		/// </summary>
+		/// <param name="timeout">The amount of time to wait for an item to arrive in the collection</param>
+		/// <param name="token">A cancellation token to abort the take operation</param>
+		/// <returns>A task returning the result of the take operation</returns>
+		/// <exception cref="OperationCanceledException">The cancellation token was raised while we were waiting for an item</exception>
+		/// <exception cref="InvalidOperationException">The collection was completed and emptied while we were waiting for an item</exception>
+		/// <exception cref="TimeoutException">The timeout elapsed</exception>
+		public ValueTask<T> Take(TimeSpan timeout, CancellationToken token = default)
+		{
 			// Is there an item to take?
-			var TakeItem = _UsedSlots.Decrement(token);
+			var TakeItem = _UsedSlots.TryDecrementAsync(timeout, token);
 
 			if (TakeItem.IsCompleted)
-				return new ValueTask<TItem>(CompleteTake());
+			{
+				if (TakeItem.Result)
+					return new ValueTask<T>(CompleteTake());
+
+				throw new InvalidOperationException("Collection is empty and adding has been completed");
+			}
 
 			// No, wait for one to arrive
 			var Instance = CollectionTakeInstance.GetOrCreateFor(this, TakeItem);
 
-			return new ValueTask<TItem>(Instance, Instance.Version);
+			return new ValueTask<T>(Instance, Instance.Version);
 		}
 
 		/// <summary>
 		/// Attempts to add an item to the collection without waiting
 		/// </summary>
 		/// <param name="item">The item to try and add</param>
-		/// <returns>True if the item was added without waiting, otherwise False</returns>
-		/// <remarks>Also returns False if the collection has completed adding</remarks>
-		public bool TryAdd(TItem item)
+		/// <returns>True if the item was added without waiting, False if we would have to wait, or if the collection is completed</returns>
+		public bool TryAdd(T item)
 		{
-			if (_IsCompleted)
-				return false;
-
 			// Is there a maximum size?
 			if (_FreeSlots != null)
 			{
 				// Try and find a free slot
 				if (!_FreeSlots.TryDecrement())
-					return false;
+					return false; // No free items, or we're disposed
 			}
 
-			// Try and add our item to the collection
-			if (!_Collection.TryAdd(item))
-			{
-				// Collection rejected our item. We now have promised to add an item that we can't add.
-				_IsFailed = true;
-				return false;
-			}
-
-			// Increment the slots counter, releasing any Takers
-			return _UsedSlots.TryIncrement();
+			return CompleteAdd(item, false);
 		}
 
 		/// <summary>
-		/// Attempts to take an item from the collection without waiting
+		/// Blocks while adding an item to the collection
 		/// </summary>
-		/// <param name="item">The item that was removed from the collection</param>
-		/// <returns>True if an item was removed without waiting, otherwise False</returns>
-		public bool TryTake(
-#if !NETSTANDARD2_0
-			[MaybeNullWhen(false)]
-#endif
-			out TItem item
-			) => TryTake(out item!, TimeSpan.Zero);
+		/// <param name="item">The item to try and add</param>
+		/// <param name="token">A cancellation token to abort the addition operation</param>
+		/// <returns>True if the item was added, False if the collection is completed</returns>
+		/// <exception cref="OperationCanceledException">The cancellation token was raised while we were waiting for a free slot</exception>
+		public bool TryAdd(T item, CancellationToken token) => TryAdd(item, Timeout.InfiniteTimeSpan, token);
+
+		/// <summary>
+		/// Blocks while adding an item to the collection
+		/// </summary>
+		/// <param name="item">The item to try and add</param>
+		/// <param name="timeout">The amount of time to wait if the collection is at full capacity</param>
+		/// <param name="token">A cancellation token to abort the addition operation</param>
+		/// <returns>True if the item was added, False if the collection is completed</returns>
+		/// <exception cref="OperationCanceledException">The cancellation token was raised while we were waiting for a free slot</exception>
+		/// <exception cref="TimeoutException">The timeout elapsed</exception>
+		public bool TryAdd(T item, TimeSpan timeout, CancellationToken token = default)
+		{
+			// Is there a maximum size?
+			if (_FreeSlots != null)
+			{
+				// Try and find a free slot
+				if (!_FreeSlots.TryDecrement(timeout, token))
+					return false; // No free items, or we're disposed
+			}
+
+			return CompleteAdd(item, false);
+		}
+
+		/// <summary>
+		/// Attempts to add an item to the collection and complete the collection without waiting
+		/// </summary>
+		/// <param name="item">The item to try and add</param>
+		/// <returns>True if the item was added without waiting, False if we would have to wait, or if the collection is already completed</returns>
+		public bool TryAddComplete(T item)
+		{
+			// Is there a maximum size?
+			if (_FreeSlots != null)
+			{
+				// Try and find a free slot
+				if (!_FreeSlots.TryDecrement())
+					return false; // No free items, or we're disposed
+			}
+
+			return CompleteAdd(item, true);
+		}
+
+		/// <summary>
+		/// Blocks until we can add an item to the collection and complete the collection
+		/// </summary>
+		/// <param name="item">The item to try and add</param>
+		/// <param name="token">A cancellation token to abort the addition operation</param>
+		/// <returns>True if the item was added, False if the collection is already completed</returns>
+		/// <exception cref="OperationCanceledException">The cancellation token was raised while we were waiting for a free slot</exception>
+		public bool TryAddComplete(T item, CancellationToken token) => TryAddComplete(item, Timeout.InfiniteTimeSpan, token);
+
+		/// <summary>
+		/// Blocks until we can add an item to the collection and complete the collection
+		/// </summary>
+		/// <param name="item">The item to try and add</param>
+		/// <param name="timeout">The amount of time to wait if the collection is at full capacity</param>
+		/// <param name="token">A cancellation token to abort the addition operation</param>
+		/// <returns>True if the item was added, False if the collection is already completed</returns>
+		/// <exception cref="OperationCanceledException">The cancellation token was raised while we were waiting for a free slot</exception>
+		/// <exception cref="TimeoutException">The timeout elapsed</exception>
+		public bool TryAddComplete(T item, TimeSpan timeout, CancellationToken token = default)
+		{
+			// Is there a maximum size?
+			if (_FreeSlots != null)
+			{
+				// Try and find a free slot
+				if (!_FreeSlots.TryDecrement(timeout, token))
+					return false; // No free items, or we're disposed
+			}
+
+			return CompleteAdd(item, true);
+		}
+
+		/// <summary>
+		/// Peeks at the collection to see if there's an item to take without waiting
+		/// </summary>
+		/// <returns>True if there's an item to take, otherwise False</returns>
+		public bool TryPeek() => _UsedSlots.TryPeekDecrement();
+
+		/// <summary>
+		/// Peeks at the collection to see if there's an item to take without waiting
+		/// </summary>
+		/// <param name="token">A cancellation token to abort the addition operation</param>
+		/// <returns>True if there's an item to take, otherwise False</returns>
+		/// <exception cref="OperationCanceledException">The cancellation token was raised while we were waiting for a free slot</exception>
+		public bool TryPeek(CancellationToken token) => _UsedSlots.TryPeekDecrement(token);
+
+		/// <summary>
+		/// Peeks at the collection to see if there's an item to take without waiting
+		/// </summary>
+		/// <param name="timeout">The amount of time to wait if the collection is at full capacity</param>
+		/// <param name="token">A cancellation token to abort the addition operation</param>
+		/// <returns>True if there's an item to take, otherwise False</returns>
+		/// <exception cref="OperationCanceledException">The cancellation token was raised while we were waiting for a free slot</exception>
+		/// <exception cref="TimeoutException">The timeout elapsed</exception>
+		public bool TryPeek(TimeSpan timeout, CancellationToken token = default) => _UsedSlots.TryPeekDecrement(timeout, token);
 
 		/// <summary>
 		/// Attempts to take an item from the collection without waiting
 		/// </summary>
 		/// <param name="item">The item that was removed from the collection</param>
-		/// <param name="timeout">The amount of time to block before returning False</param>
-		/// <returns>True if an item was removed without waiting, otherwise False</returns>
+		/// <returns>True if an item was removed without waiting, False if we would have to wait, or if the collection is completed and empty</returns>
 		public bool TryTake(
 #if !NETSTANDARD2_0
 			[MaybeNullWhen(false)]
 #endif
-		out TItem item, TimeSpan timeout)
+			out T item
+			)
 		{
 			// Is there an item to take?
-			if (!_UsedSlots.TryDecrement(timeout))
+			if (!_UsedSlots.TryDecrement())
 			{
 				item = default!;
 				return false;
@@ -240,79 +344,151 @@ namespace System.Collections.Concurrent
 		}
 
 		/// <summary>
-		/// Completes the collection
+		/// Blocks while taking an item from the collection
 		/// </summary>
-		/// <returns>A Task that completes when the collection is empty</returns>
-		/// <remarks>
-		/// <para>Any pending <see cref="O:Add" /> calls may complete successfully. Any future <see cref="O:Add" /> calls will throw <see cref="InvalidOperationException"/>.</para>
-		/// <para>Any pending or future <see cref="O:Take" /> calls will return the contents of the collection until it is empty, before also throwing <see cref="InvalidOperationException"/>.</para>
-		/// <para>If the collection is empty at this point, pending <see cref="O:Take" /> calls will immediately throw <see cref="InvalidOperationException"/>.</para>
-		/// <para>If a consumer is currently waiting on a task retrieved via <see cref="O:GetConsumingEnumerable" /> and the collection is empty, the task will throw <see cref="InvalidOperationException"/>.</para>
-		/// </remarks>
-		public ValueTask CompleteAdding()
+		/// <param name="item">The item that was removed from the collection</param>
+		/// <param name="token">A cancellation token to abort the take operation</param>
+		/// <returns>True if an item was removed, False if the collection is completed and empty</returns>
+		/// <exception cref="OperationCanceledException">The cancellation token was raised while we were waiting for an item</exception>
+		public bool TryTake(
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+			out T item, CancellationToken token
+			) => TryTake(out item!, Timeout.InfiniteTimeSpan, token);
+
+		/// <summary>
+		/// Blocks while taking an item from the collection
+		/// </summary>
+		/// <param name="item">The item that was removed from the collection</param>
+		/// <param name="timeout">The amount of time to block before returning False</param>
+		/// <param name="token">A cancellation token to abort the take operation</param>
+		/// <returns>True if an item was removed, False if the collection is completed and empty</returns>
+		/// <exception cref="OperationCanceledException">The cancellation token was raised while we were waiting for an item</exception>
+		/// <exception cref="TimeoutException">The timeout elapsed</exception>
+		public bool TryTake(
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+		out T item, TimeSpan timeout, CancellationToken token = default)
 		{
-			// Any pending Adds may throw, any future adds -will- throw
-			_IsCompleted = true;
+			// Is there an item to take?
+			if (!_UsedSlots.TryDecrement(timeout, token))
+			{
+				item = default!;
+				return false;
+			}
 
-			// Cancel any adds that are waiting for a free slot
-			if (_FreeSlots != null)
-				_FreeSlots.DisposeAsync();
+			item = CompleteTake();
 
-			// If the collection is empty, cancel anyone waiting for items
-			return _UsedSlots.DisposeAsync();
+			return true;
 		}
 
 		/// <summary>
 		/// Copies a snapshot of the collection to an array
 		/// </summary>
 		/// <returns>The current contents of the collection</returns>
-		public TItem[] ToArray() => _Collection.ToArray();
+		public T[] ToArray() => _Collection.ToArray();
+
+		/// <summary>
+		/// Creates a blocking enumerable that can be used to consume items as they are added to this collection
+		/// </summary>
+		/// <param name="token">A cancellation token to abort consuming</param>
+		/// <returns>An enumerable returning items that have been added</returns>
+		/// <exception cref="OperationCanceledException">The cancellation token was raised while we were waiting for an item</exception>
+		/// <remarks>
+		/// <para>If the provider calls <see cref="CompleteAdding" />, <see cref="O:AddComplete"/>, or <see cref="O:TryAddComplete"/> while waiting, the enumeration will complete once the collection is empty.</para>
+		/// </remarks>
+		public IEnumerable<T> GetConsumingEnumerable(CancellationToken token = default)
+		{
+			while (!IsCompleted)
+			{
+				token.ThrowIfCancellationRequested();
+
+				// Is there an item to take?
+				if (!_UsedSlots.TryDecrement(token))
+					yield break; // We're completed and empty
+
+				yield return CompleteTake();
+			}
+		}
+
+		/// <summary>
+		/// Creates an enumerable that can be used to consume items as they are added to this collection
+		/// </summary>
+		/// <param name="token">A cancellation token to abort consuming</param>
+		/// <returns>An enumerable returning tasks that asynchronously wait for items to be added</returns>
+		/// <exception cref="OperationCanceledException">The cancellation token was raised while we were waiting for an item</exception>
+		/// <remarks>
+		/// <para>If the provider calls <see cref="CompleteAdding" />, <see cref="O:AddComplete"/>, or <see cref="O:TryAddComplete"/> while waiting, the returned task will throw <see cref="InvalidOperationException"/>.</para>
+		/// <para>If there are still items in the collection at that point, the enumeration will complete successfully.</para>
+		/// </remarks>
+		public IEnumerable<ValueTask<T>> GetConsumingEnumerableAsync(CancellationToken token = default)
+		{
+			while (!IsCompleted)
+			{
+				token.ThrowIfCancellationRequested();
+
+				// Is there an item to take?
+				if (_UsedSlots.TryDecrement())
+				{
+					yield return new ValueTask<T>(CompleteTake());
+
+					continue;
+				}
+
+				// Is there an item to take?
+				var MyTask = _UsedSlots.TryDecrementAsync(token);
+
+				if (!MyTask.IsCompleted)
+					yield return TakeAsync(MyTask); // Wait for the operation to finish
+				else if (MyTask.Result)
+					yield return new ValueTask<T>(CompleteTake()); // We decremented an item
+				else
+					yield break; // We disposed
+			}
+
+			async ValueTask<T> TakeAsync(ValueTask<bool> decrementTask)
+			{
+				if (await decrementTask)
+					return CompleteTake();
+				else // Adding has completed while we were requesting
+					throw new InvalidOperationException("Collection is empty and adding has been completed");
+			}
+		}
 
 		/// <summary>
 		/// Creates an enumerable that can be used to consume items as they are added to this collection
 		/// </summary>
 		/// <param name="token">A cancellation token to abort consuming</param>
 		/// <returns>An async enumerable that waits for items to be added</returns>
+		/// <exception cref="OperationCanceledException">The cancellation token was raised while we were waiting for an item</exception>
 		/// <remarks>
-		/// <para>If the provider calls <see cref="CompleteAdding" /> while wating, the returned enumerable will complete.</para>
+		/// <para>If the provider calls <see cref="CompleteAdding" />, <see cref="O:AddComplete"/>, or <see cref="O:TryAddComplete"/>, the returned async enumerable will complete.</para>
 		/// </remarks>
-		public async IAsyncEnumerable<TItem> GetConsumingAsyncEnumerable([EnumeratorCancellation] CancellationToken token = default)
+		public async IAsyncEnumerable<T> GetConsumingAsyncEnumerable([EnumeratorCancellation] CancellationToken token = default)
 		{
 			while (!IsCompleted)
 			{
 				token.ThrowIfCancellationRequested();
 
-				try
-				{
-					// Is there an item to take?
-					await _UsedSlots.Decrement(token);
-				}
-				catch (ObjectDisposedException) // Adding has completed while we were requesting
-				{
-					break;
-				}
-
-				// Try and remove an item from the collection
-				if (!GetNextItem(out var MyItem))
-					throw new InvalidOperationException("Item was not returned by the underlying collection");
-
-				// Is there a maximum size?
-				if (_FreeSlots != null)
-					// We've removed an item, so release any Adders
-					// Use TryIncrement, so we ignore if we're disposed and there are no more adders
-					_FreeSlots.TryIncrement();
-
-				yield return MyItem;
+				// Is there an item to take?
+				if (await _UsedSlots.TryDecrementAsync(token))
+					yield return CompleteTake();
+				else // Adding has completed while we were requesting
+					yield break;
 			}
 		}
 
-		internal bool TryPeekTake(CancellationToken token, out AsyncCounterDecrement decrement) => _UsedSlots.TryPeekDecrement(Timeout.InfiniteTimeSpan, token, out decrement);
+		//****************************************
+
+		internal bool TryPeekTake(CancellationToken token, out AsyncCounterDecrement decrement) => _UsedSlots.TryPeekDecrement(AsyncCounterFlags.None, Timeout.InfiniteTimeSpan, token, out decrement);
 
 		internal bool TryReserveTake() => _UsedSlots.TryDecrement();
 
 		internal void ReleaseTake() => _UsedSlots.TryIncrement();
 
-		internal TItem CompleteTake()
+		internal T CompleteTake()
 		{
 			// Remove the item reserved by TryReserveTake from the collection
 			if (!GetNextItem(out var Item))
@@ -329,93 +505,37 @@ namespace System.Collections.Concurrent
 
 		//****************************************
 
-		private ValueTask InternalAdd(TItem item, bool complete, TimeSpan timeout)
+		private ValueTask<bool> InternalAdd(T item, bool complete, TimeSpan timeout, CancellationToken token = default)
 		{
-			if (_IsCompleted)
-				return Task.FromException(new InvalidOperationException("Adding has been completed")).AsValueTask();
-
 			// Is there a maximum size?
 			if (_FreeSlots != null)
 			{
 				// Try and find a free slot
-				var TakeSlot = _FreeSlots.Decrement(timeout);
+				var TakeSlot = _FreeSlots.TryDecrementAsync(timeout, token);
 
 				if (!TakeSlot.IsCompleted)
 				{
 					// No slot, wait for it
 					var Instance = CollectionAddInstance.GetOrCreateFor(this, item, TakeSlot, complete);
 
-					return new ValueTask(Instance, Instance.Version);
+					return new ValueTask<bool>(Instance, Instance.Version);
 				}
+
+				if (!TakeSlot.Result)
+					return new ValueTask<bool>(false); // Disposed
 			}
 
-			if (complete)
-				// Flag as completed first, so any Takers will handle the cleanup
-				_IsCompleted = true;
-
-			// Increment the slots counter, releasing a Taker. They'll wait until the item becomes available
-			if (!_UsedSlots.TryIncrement())
-				return Task.FromException(new InvalidOperationException("Adding has been completed")).AsValueTask();
-
-			// Try and add our item to the collection
-			if (!_Collection.TryAdd(item))
-			{
-				// Collection rejected our item. We now have promised to add an item that we can't add.
-				_IsFailed = true;
-				return Task.FromException(new InvalidOperationException("Item was rejected by the underlying collection")).AsValueTask();
-			}
-
-			return default;
+			return new ValueTask<bool>(CompleteAdd(item, complete));
 		}
 
-		private ValueTask InternalAdd(TItem item, bool complete, CancellationToken token)
+		private bool CompleteAdd(T item, bool complete)
 		{
-			if (_IsCompleted)
-				return Task.FromException(new InvalidOperationException("Adding has been completed")).AsValueTask();
-
-			// Is there a maximum size?
-			if (_FreeSlots != null)
-			{
-				// Try and find a free slot
-				var TakeSlot = _FreeSlots.Decrement(token);
-
-				if (!TakeSlot.IsCompleted)
-				{
-					// No slot, wait for it
-					var Instance = CollectionAddInstance.GetOrCreateFor(this, item, TakeSlot, complete);
-
-					return new ValueTask(Instance, Instance.Version);
-				}
-			}
+			// Increment the slots counter, releasing a Taker. GetNextItem may wait until the item becomes available
+			if (!_UsedSlots.TryIncrement())
+				return false;
 
 			if (complete)
-				// Flag as completed first, so any Takers will handle the cleanup
-				_IsCompleted = true;
-
-			// Increment the slots counter, releasing a Taker. They'll wait until the item becomes available
-			if (!_UsedSlots.TryIncrement())
-				return Task.FromException(new InvalidOperationException("Adding has been completed")).AsValueTask();
-
-			// Try and add our item to the collection
-			if (!_Collection.TryAdd(item))
-			{
-				// Collection rejected our item. We now have promised to add an item that we can't add.
-				_IsFailed = true;
-				return Task.FromException(new InvalidOperationException("Item was rejected by the underlying collection")).AsValueTask();
-			}
-
-			return default;
-		}
-
-		private void InternalAdd(TItem item, bool complete)
-		{
-			if (complete)
-				// Flag as completed first, so any Takers will handle the cleanup
-				_IsCompleted = true;
-
-			// Increment the slots counter, releasing a Taker. They'll wait until the item becomes available
-			if (!_UsedSlots.TryIncrement())
-				throw new InvalidOperationException("Adding has been completed");
+				CompleteAdding();
 
 			// Try and add our item to the collection
 			if (!_Collection.TryAdd(item))
@@ -424,9 +544,11 @@ namespace System.Collections.Concurrent
 				_IsFailed = true;
 				throw new InvalidOperationException("Item was rejected by the underlying collection");
 			}
+
+			return true;
 		}
 
-		private bool GetNextItem(out TItem item)
+		private bool GetNextItem(out T item)
 		{
 			if (!_Collection.TryTake(out item))
 			{
@@ -448,7 +570,7 @@ namespace System.Collections.Concurrent
 
 		//****************************************
 
-		IEnumerator<TItem> IEnumerable<TItem>.GetEnumerator() => _Collection.GetEnumerator();
+		IEnumerator<T> IEnumerable<T>.GetEnumerator() => _Collection.GetEnumerator();
 
 		IEnumerator IEnumerable.GetEnumerator() => _Collection.GetEnumerator();
 
@@ -477,11 +599,11 @@ namespace System.Collections.Concurrent
 		/// <summary>
 		/// Gets whether adding has been completed
 		/// </summary>
-		public bool IsAddingCompleted => _IsCompleted;
+		public bool IsAddingCompleted => _UsedSlots.IsDisposed;
 
 		/// <summary>
 		/// Gets whether adding has been completed and the collection is empty
 		/// </summary>
-		public bool IsCompleted => _IsCompleted && _UsedSlots.CurrentCount == 0;
+		public bool IsCompleted => _UsedSlots.IsDisposed && _UsedSlots.CurrentCount == 0;
 	}
 }

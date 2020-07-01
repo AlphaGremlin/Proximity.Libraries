@@ -71,7 +71,7 @@ namespace System.Threading
 					_Disposer.SwitchToComplete();
 			}
 
-			return new ValueTask(_Disposer, _Disposer.Token);
+			return new ValueTask(_Disposer.Task);
 		}
 
 		void IDisposable.Dispose() => DisposeAsync();

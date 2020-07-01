@@ -345,7 +345,59 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyLock.WaitingCount, "Waiter still registered");
 			Assert.AreEqual(0, MyLock.CurrentCount, "Count not zero");
 		}
-		
+
+		[Test]
+		public void IncrementDisposeTryDecrement()
+		{ //****************************************
+			var MyLock = new AsyncCounter();
+			//****************************************
+
+			MyLock.Increment();
+
+			_ = MyLock.DisposeAsync();
+
+			Assert.IsTrue(MyLock.TryDecrement());
+
+			Assert.IsFalse(MyLock.TryDecrement());
+
+			//****************************************
+
+			Assert.AreEqual(0, MyLock.WaitingCount, "Waiter still registered");
+			Assert.AreEqual(0, MyLock.CurrentCount, "Count not zero");
+		}
+
+		[Test]
+		public void DisposeTryDecrement()
+		{ //****************************************
+			var MyLock = new AsyncCounter();
+			//****************************************
+
+			_ = MyLock.DisposeAsync();
+
+			Assert.IsFalse(MyLock.TryDecrement());
+
+			//****************************************
+
+			Assert.AreEqual(0, MyLock.WaitingCount, "Waiter still registered");
+			Assert.AreEqual(0, MyLock.CurrentCount, "Count not zero");
+		}
+
+		[Test]
+		public async Task DisposeTryDecrementAsync()
+		{ //****************************************
+			var MyLock = new AsyncCounter();
+			//****************************************
+
+			_ = MyLock.DisposeAsync();
+
+			Assert.IsFalse(await MyLock.TryDecrementAsync());
+
+			//****************************************
+
+			Assert.AreEqual(0, MyLock.WaitingCount, "Waiter still registered");
+			Assert.AreEqual(0, MyLock.CurrentCount, "Count not zero");
+		}
+
 		[Test, MaxTime(1000)]
 		public async Task DecrementDispose()
 		{	//****************************************
@@ -444,10 +496,10 @@ namespace Proximity.Threading.Tests
 		[Test, MaxTime(1000)]
 		public void TryDecrementAny()
 		{	//****************************************
-			var MyCounters = new AsyncCounter[] { new AsyncCounter(), new AsyncCounter() };
+			var MyCounters = new [] { new AsyncCounter(), new AsyncCounter() };
 			//****************************************
 
-			var Success = AsyncCounter.TryDecrementAny(out var Counter, MyCounters);
+			var Success = AsyncCounter.TryDecrementAny(MyCounters, out var Counter);
 
 			//****************************************
 
@@ -459,12 +511,12 @@ namespace Proximity.Threading.Tests
 		[Test, MaxTime(1000)]
 		public void TryDecrementAnySuccess([Values(0, 1)] int index)
 		{	//****************************************
-			var MyCounters = new AsyncCounter[] { new AsyncCounter(), new AsyncCounter() };
+			var MyCounters = new [] { new AsyncCounter(), new AsyncCounter() };
 			//****************************************
 			
 			MyCounters[index].Increment();
 
-			var Success = AsyncCounter.TryDecrementAny(out var Counter, MyCounters);
+			var Success = AsyncCounter.TryDecrementAny(MyCounters, out var Counter);
 
 			//****************************************
 
@@ -646,15 +698,7 @@ namespace Proximity.Threading.Tests
 
 			//****************************************
 
-			try
-			{
-				await MyTask;
-
-				Assert.Fail("Should never reach this point");
-			}
-			catch (ObjectDisposedException)
-			{
-			}
+			Assert.IsFalse(await MyTask);
 		}
 
 		[Test, MaxTime(1000)]
@@ -671,15 +715,7 @@ namespace Proximity.Threading.Tests
 
 			//****************************************
 
-			try
-			{
-				await MyTask;
-
-				Assert.Fail("Should never reach this point");
-			}
-			catch (ObjectDisposedException)
-			{
-			}
+			Assert.IsFalse(await MyTask);
 		}
 
 		[Test, MaxTime(1000)]
@@ -721,25 +757,9 @@ namespace Proximity.Threading.Tests
 
 			//****************************************
 
-			try
-			{
-				await MyTask;
+			Assert.IsFalse(await MyTask);
 
-				Assert.Fail("Should never reach this point");
-			}
-			catch (ObjectDisposedException)
-			{
-			}
-
-			try
-			{
-				await MyInnerTask;
-
-				Assert.Fail("Should never reach this point");
-			}
-			catch (ObjectDisposedException)
-			{
-			}
+			Assert.IsFalse(await MyInnerTask);
 		}
 
 		[Test, MaxTime(2000)]
@@ -1095,7 +1115,11 @@ namespace Proximity.Threading.Tests
 			{
 				while (!token.IsCancellationRequested)
 				{
-					await counter.Decrement(token);
+					if (!await counter.TryDecrementAsync(token))
+					{
+						System.Diagnostics.Debug.WriteLine("Disposed Consumer");
+						break;
+					}
 
 					TotalDecrement++;
 
@@ -1106,10 +1130,6 @@ namespace Proximity.Threading.Tests
 			catch (OperationCanceledException)
 			{
 				System.Diagnostics.Debug.WriteLine("Cancelled Consumer");
-			}
-			catch (ObjectDisposedException)
-			{
-				System.Diagnostics.Debug.WriteLine("Disposed Consumer");
 			}
 
 			return TotalDecrement;
@@ -1123,7 +1143,11 @@ namespace Proximity.Threading.Tests
 			{
 				while (!token.IsCancellationRequested)
 				{
-					await counter.PeekDecrement(token);
+					if (!await counter.PeekDecrement(token))
+					{
+						System.Diagnostics.Debug.WriteLine("Disposed Consumer");
+						break;
+					}
 
 					if (!counter.TryDecrement())
 						continue;
@@ -1137,10 +1161,6 @@ namespace Proximity.Threading.Tests
 			catch (OperationCanceledException)
 			{
 				System.Diagnostics.Debug.WriteLine("Cancelled Consumer");
-			}
-			catch (ObjectDisposedException)
-			{
-				System.Diagnostics.Debug.WriteLine("Disposed Consumer");
 			}
 
 			return TotalDecrement;

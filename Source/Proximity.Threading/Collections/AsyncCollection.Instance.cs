@@ -8,73 +8,32 @@ using System.Threading.Tasks.Sources;
 
 namespace System.Collections.Concurrent
 {
-	public sealed partial class AsyncCollection<TItem>
+	public sealed partial class AsyncCollection<T>
 	{
-		private abstract class CollectionInstance
-		{ //****************************************
-			private ManualResetValueTaskSourceCore<TItem> _TaskSource = new ManualResetValueTaskSourceCore<TItem>();
-			//****************************************
-
-			internal CollectionInstance() => _TaskSource.RunContinuationsAsynchronously = true;
-
-			//****************************************
-
-			protected void Initialise(AsyncCollection<TItem> owner)
-			{
-				Owner = owner;
-			}
-
-			protected void SwitchToFailed(Exception e) => _TaskSource.SetException(e);
-
-			protected void SwitchToCompleted(TItem item) => _TaskSource.SetResult(item);
-
-			protected TItem GetResult(short token)
-			{
-				try
-				{
-					return _TaskSource.GetResult(token);
-				}
-				finally
-				{
-					_TaskSource.Reset();
-
-					Release();
-				}
-			}
-
-			protected abstract void Release();
-
-			//****************************************
-
-			public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
-
-			public ValueTaskSourceStatus GetStatus(short token) => _TaskSource.GetStatus(token);
-
-			//****************************************
-
-			public AsyncCollection<TItem>? Owner { get; private set; }
-
-			public short Version => _TaskSource.Version;
-		}
-
-		private sealed class CollectionAddInstance : CollectionInstance, IValueTaskSource
+		private sealed class CollectionAddInstance : IValueTaskSource<bool>
 		{ //****************************************
 			private static readonly ConcurrentBag<CollectionAddInstance> Instances = new ConcurrentBag<CollectionAddInstance>();
-			//****************************************
+			//**************************************** //****************************************
+			private ManualResetValueTaskSourceCore<bool> _TaskSource = new ManualResetValueTaskSourceCore<bool>();
+
 			private readonly Action _OnTookSlot;
 
-			private TItem _Item = default!;
+			private T _Item = default!;
 			private bool _Complete;
-			private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _Awaiter;
+			private ConfiguredValueTaskAwaitable<bool>.ConfiguredValueTaskAwaiter _Awaiter;
 			//****************************************
 
-			internal CollectionAddInstance() => _OnTookSlot = OnTookSlot;
-
-			//****************************************
-
-			internal void Initialise(AsyncCollection<TItem> owner, TItem item, ValueTask waitForSlot, bool complete)
+			internal CollectionAddInstance()
 			{
-				Initialise(owner);
+				_TaskSource.RunContinuationsAsynchronously = true;
+				_OnTookSlot = OnTookSlot;
+			}
+
+			//****************************************
+
+			internal void Initialise(AsyncCollection<T> owner, T item, ValueTask<bool> waitForSlot, bool complete)
+			{
+				Owner = owner;
 
 				_Item = item;
 				_Complete = complete;
@@ -88,10 +47,44 @@ namespace System.Collections.Concurrent
 
 			//****************************************
 
-			void IValueTaskSource.GetResult(short token) => GetResult(token);
-
-			protected override void Release()
+			bool IValueTaskSource<bool>.GetResult(short token)
 			{
+				try
+				{
+					return _TaskSource.GetResult(token);
+				}
+				finally
+				{
+					Release();
+				}
+			}
+
+			public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
+
+			public ValueTaskSourceStatus GetStatus(short token) => _TaskSource.GetStatus(token);
+
+			//****************************************
+
+			private void OnTookSlot()
+			{
+				try
+				{
+					var Result = _Awaiter.GetResult();
+
+					if (Result)
+						Result = Owner!.CompleteAdd(_Item, _Complete);
+
+					_TaskSource.SetResult(Result);
+				}
+				catch (Exception e)
+				{
+					_TaskSource.SetException(e);
+				}
+			}
+
+			private void Release()
+			{
+				_TaskSource.Reset();
 				_Item = default!;
 				_Complete = false;
 				_Awaiter = default;
@@ -101,29 +94,13 @@ namespace System.Collections.Concurrent
 
 			//****************************************
 
-			private void OnTookSlot()
-			{
-				try
-				{
-					_Awaiter.GetResult();
+			public AsyncCollection<T>? Owner { get; private set; }
 
-					Owner!.InternalAdd(_Item, _Complete);
-
-					SwitchToCompleted(default!);
-				}
-				catch (ObjectDisposedException)
-				{
-					SwitchToFailed(new InvalidOperationException("Adding was completed while waiting for a slot"));
-				}
-				catch (Exception e)
-				{
-					SwitchToFailed(e);
-				}
-			}
+			public short Version => _TaskSource.Version;
 
 			//****************************************
 
-			internal static CollectionAddInstance GetOrCreateFor(AsyncCollection<TItem> owner, TItem item, ValueTask waitForSlot, bool complete)
+			internal static CollectionAddInstance GetOrCreateFor(AsyncCollection<T> owner, T item, ValueTask<bool> waitForSlot, bool complete)
 			{
 				if (!Instances.TryTake(out var Instance))
 					Instance = new CollectionAddInstance();
@@ -134,23 +111,27 @@ namespace System.Collections.Concurrent
 			}
 		}
 
-		private sealed class CollectionTakeInstance : CollectionInstance, IValueTaskSource<TItem>
+		private sealed class CollectionTakeInstance : IValueTaskSource<T>
 		{ //****************************************
 			private static readonly ConcurrentBag<CollectionTakeInstance> Instances = new ConcurrentBag<CollectionTakeInstance>();
 			//****************************************
+			private ManualResetValueTaskSourceCore<T> _TaskSource = new ManualResetValueTaskSourceCore<T>();
 			private readonly Action _OnTookItem;
 
-			private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _Awaiter;
+			private ConfiguredValueTaskAwaitable<bool>.ConfiguredValueTaskAwaiter _Awaiter;
 			//****************************************
 
-			internal CollectionTakeInstance() => _OnTookItem = OnTookItem;
-
-			//****************************************
-
-			internal void Initialise(AsyncCollection<TItem> owner, ValueTask waitForItem)
+			internal CollectionTakeInstance()
 			{
-				Initialise(owner);
+				_TaskSource.RunContinuationsAsynchronously = true;
+				_OnTookItem = OnTookItem;
+			}
 
+			//****************************************
+
+			internal void Initialise(AsyncCollection<T> owner, ValueTask<bool> waitForItem)
+			{
+				Owner = owner;
 				_Awaiter = waitForItem.ConfigureAwait(false).GetAwaiter();
 
 				if (_Awaiter.IsCompleted)
@@ -161,14 +142,21 @@ namespace System.Collections.Concurrent
 
 			//****************************************
 
-			TItem IValueTaskSource<TItem>.GetResult(short token) => GetResult(token);
-
-			protected override void Release()
+			T IValueTaskSource<T>.GetResult(short token)
 			{
-				_Awaiter = default;
-
-				Instances.Add(this);
+				try
+				{
+					return _TaskSource.GetResult(token);
+				}
+				finally
+				{
+					Release();
+				}
 			}
+
+			public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
+
+			public ValueTaskSourceStatus GetStatus(short token) => _TaskSource.GetStatus(token);
 
 			//****************************************
 
@@ -176,23 +164,34 @@ namespace System.Collections.Concurrent
 			{
 				try
 				{
-					_Awaiter.GetResult();
-
-					SwitchToCompleted(Owner!.CompleteTake());
-				}
-				catch (ObjectDisposedException)
-				{
-					SwitchToFailed(new InvalidOperationException("Adding was completed while waiting for a slot"));
+					if (_Awaiter.GetResult())
+						_TaskSource.SetResult(Owner!.CompleteTake());
+					else
+						_TaskSource.SetException(new InvalidOperationException("Adding was completed while waiting for a slot"));
 				}
 				catch (Exception e)
 				{
-					SwitchToFailed(e);
+					_TaskSource.SetException(e);
 				}
+			}
+
+			private void Release()
+			{
+				_TaskSource.Reset();
+				_Awaiter = default;
+
+				Instances.Add(this);
 			}
 
 			//****************************************
 
-			internal static CollectionTakeInstance GetOrCreateFor(AsyncCollection<TItem> owner, ValueTask waitForSlot)
+			public AsyncCollection<T>? Owner { get; private set; }
+
+			public short Version => _TaskSource.Version;
+
+			//****************************************
+
+			internal static CollectionTakeInstance GetOrCreateFor(AsyncCollection<T> owner, ValueTask<bool> waitForSlot)
 			{
 				if (!Instances.TryTake(out var Instance))
 					Instance = new CollectionTakeInstance();

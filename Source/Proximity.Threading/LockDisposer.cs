@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
 
 namespace Proximity.Threading
@@ -11,6 +12,13 @@ namespace Proximity.Threading
 		private ManualResetValueTaskSourceCore<VoidStruct> _TaskSource = new ManualResetValueTaskSourceCore<VoidStruct>();
 
 		private int _IsDisposed;
+		//****************************************
+
+		public LockDisposer()
+		{
+			Task = new ValueTask(this, _TaskSource.Version).AsTask();
+		}
+
 		//****************************************
 
 		public void SwitchToComplete()
@@ -29,8 +37,8 @@ namespace Proximity.Threading
 
 		//****************************************
 
-		public short Token => _TaskSource.Version;
-
 		public bool IsDisposed => _IsDisposed == 1;
+
+		public Task Task { get; }
 	}
 }

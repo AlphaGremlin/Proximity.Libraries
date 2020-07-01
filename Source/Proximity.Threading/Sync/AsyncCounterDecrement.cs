@@ -9,7 +9,7 @@ using Proximity.Threading;
 
 namespace System.Threading
 {
-	internal sealed class AsyncCounterDecrement : BaseCancellable, IValueTaskSource, IValueTaskSource<int>
+	internal sealed class AsyncCounterDecrement : BaseCancellable, IValueTaskSource, IValueTaskSource<int>, IValueTaskSource<bool>
 	{ //****************************************
 		private static readonly ConcurrentBag<AsyncCounterDecrement> Instances = new ConcurrentBag<AsyncCounterDecrement>();
 		//****************************************
@@ -22,11 +22,10 @@ namespace System.Threading
 
 		//****************************************
 
-		internal void Initialise(AsyncCounter owner, bool isPeek, bool toZero, bool wasDecremented)
+		internal void Initialise(AsyncCounter owner, AsyncCounterFlags flags, /*bool isPeek, bool toZero,*/ bool wasDecremented)
 		{
 			Owner = owner;
-			IsPeek = isPeek;
-			Counters = toZero ? -1 : 1;
+			Flags = flags;
 
 			if (wasDecremented)
 			{
@@ -61,10 +60,15 @@ namespace System.Threading
 			// Try and assign the counter to this Instance
 			if (Interlocked.CompareExchange(ref _InstanceState, Status.Decremented, Status.Pending) == Status.Pending)
 			{
-				if (Counters == -1)
+				if ((Flags & AsyncCounterFlags.ToZero) == AsyncCounterFlags.ToZero)
+				{
 					Counters = Interlocked.Exchange(ref count, 0);
+				}
 				else
+				{
+					Counters = 1;
 					count--;
+				}
 
 				UnregisterCancellation();
 
@@ -123,7 +127,10 @@ namespace System.Threading
 			switch (_InstanceState)
 			{
 			case Status.Disposed:
-				_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncCounter), "Counter has been disposed of"));
+				if ((Flags & AsyncCounterFlags.ThrowOnDispose) == AsyncCounterFlags.ThrowOnDispose)
+					_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncCounter), "Counter has been disposed of"));
+				else
+					_TaskSource.SetResult(-1);
 				break;
 
 			case Status.Decremented:
@@ -152,12 +159,14 @@ namespace System.Threading
 
 		void IValueTaskSource.GetResult(short token) => GetResult(token);
 
+		bool IValueTaskSource<bool>.GetResult(short token) => GetResult(token) != -1;
+
 		//****************************************
 
 		private void Release()
 		{
 			Owner = null;
-			IsPeek = false;
+			Flags = AsyncCounterFlags.None;
 			Counters = 0;
 
 			_TaskSource.Reset();
@@ -173,7 +182,7 @@ namespace System.Threading
 
 		public bool IsPending => _InstanceState == Status.Pending;
 
-		public bool IsPeek { get; private set; }
+		public AsyncCounterFlags Flags { get; private set; }
 
 		public int Counters { get; private set; }
 
@@ -181,12 +190,12 @@ namespace System.Threading
 
 		//****************************************
 
-		internal static AsyncCounterDecrement GetOrCreateFor(AsyncCounter counter, bool isPeek, bool toZero, bool isTaken)
+		internal static AsyncCounterDecrement GetOrCreateFor(AsyncCounter counter, AsyncCounterFlags flags, bool isTaken)
 		{
 			if (!Instances.TryTake(out var Instance))
 				Instance = new AsyncCounterDecrement();
 
-			Instance.Initialise(counter, isPeek, toZero, isTaken);
+			Instance.Initialise(counter, flags, isTaken);
 
 			return Instance;
 		}

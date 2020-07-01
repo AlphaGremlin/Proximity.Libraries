@@ -93,7 +93,7 @@ namespace Proximity.Threading.Tests
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(1);
 			
-			ValueTask MyTask;
+			ValueTask<bool> MyTask;
 			//****************************************
 			
 			await MyCollection.Add(42);
@@ -125,7 +125,7 @@ namespace Proximity.Threading.Tests
 		{	//****************************************
 			var MyCollection = new AsyncCollection<int>(1);
 			
-			ValueTask MyTask;
+			ValueTask<bool> MyTask;
 			//****************************************
 			
 			await MyCollection.Add(42);
@@ -362,15 +362,7 @@ namespace Proximity.Threading.Tests
 			
 			await MyCollection.AddComplete(42);
 			
-			try
-			{
-				await MyCollection.Add(84);
-				
-				Assert.Fail("Should not reach here");
-			}
-			catch (InvalidOperationException)
-			{
-			}
+			Assert.IsFalse(await MyCollection.Add(84));
 			
 			//****************************************
 			
@@ -501,15 +493,7 @@ namespace Proximity.Threading.Tests
 			
 			//****************************************
 			
-			try
-			{
-				await MyTask;
-				
-				Assert.Fail("Should not reach here");
-			}
-			catch (InvalidOperationException)
-			{
-			}
+			Assert.IsFalse(await MyTask);
 			
 			Assert.AreEqual(1, MyCollection.Count, "Count not as expected");
 			

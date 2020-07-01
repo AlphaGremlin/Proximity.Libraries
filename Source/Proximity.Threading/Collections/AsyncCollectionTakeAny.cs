@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
+using Proximity.Threading;
 //****************************************
 
 namespace System.Collections.Concurrent
@@ -13,19 +14,17 @@ namespace System.Collections.Concurrent
 	/// <summary>
 	/// Provides the functionality for AsyncCounter.DecrementAny
 	/// </summary>
-	internal sealed class AsyncCollectionTakeAny<TItem> : IValueTaskSource<CollectionTakeResult<TItem>>
+	internal sealed class AsyncCollectionTakeAny<T> : BaseCancellable, IValueTaskSource<CollectionTakeResult<T>>
 	{ //****************************************
-		private static readonly ConcurrentBag<AsyncCollectionTakeAny<TItem>> _Instances = new ConcurrentBag<AsyncCollectionTakeAny<TItem>>();
-		private static readonly ConcurrentBag<PeekTakeWaiter> _Waiters = new ConcurrentBag<PeekTakeWaiter>();
+		private static readonly ConcurrentBag<AsyncCollectionTakeAny<T>> Instances = new ConcurrentBag<AsyncCollectionTakeAny<T>>();
+		private static readonly ConcurrentBag<PeekTakeWaiter> Waiters = new ConcurrentBag<PeekTakeWaiter>();
 		//****************************************
 		private int _InstanceState;
 		private int _IsStarted;
 
-		private ManualResetValueTaskSourceCore<CollectionTakeResult<TItem>> _TaskSource = new ManualResetValueTaskSourceCore<CollectionTakeResult<TItem>>();
+		private ManualResetValueTaskSourceCore<CollectionTakeResult<T>> _TaskSource = new ManualResetValueTaskSourceCore<CollectionTakeResult<T>>();
 
-		private CancellationTokenRegistration _Registration;
-		private CancellationTokenSource? _TokenSource;
-
+		private AsyncCollection<T>? _SourceCollection;
 		private int _OutstandingCounters;
 		//****************************************
 
@@ -33,31 +32,31 @@ namespace System.Collections.Concurrent
 
 		//****************************************
 
-		internal void Initialise(CancellationToken token)
+		internal void Initialise(CancellationToken token, TimeSpan timeout)
 		{
 			_InstanceState = Status.Pending;
 
-			Token = token;
+			RegisterCancellation(token, timeout);
 		}
 
-		internal void Attach(AsyncCollection<TItem> collection)
+		internal void Attach(AsyncCollection<T> collection)
 		{
 			if (!collection.TryPeekTake(Token, out var Decrement))
 				return; // Collection is completed, ignore it
 
-			var Waiter = PeekTakeWaiter.GetOrCreate(this, collection, Decrement);
+			var Waiter = PeekTakeWaiter.GetOrCreate(this, collection);
 
 			Interlocked.Increment(ref _OutstandingCounters);
 
 			Waiter.Attach(Decrement);
 		}
 
-		internal void ApplyCancellation(CancellationTokenSource? tokenSource)
+		internal void Activate()
 		{
 			Interlocked.Exchange(ref _IsStarted, 1);
 
 			if (_InstanceState != Status.Pending)
-				return; // No need to do anything with cancellation, because we've already decremented/disposed
+				return;
 
 			if (Volatile.Read(ref _OutstandingCounters) == 0)
 			{
@@ -66,21 +65,15 @@ namespace System.Collections.Concurrent
 
 				return;
 			}
-
-			if (Token.CanBeCanceled)
-			{
-				_TokenSource = tokenSource;
-				_Registration = Token.Register((state) => ((AsyncCollectionTakeAny<TItem>)state).SwitchToCancelled(), this);
-			}
 		}
 
 		//****************************************
 
-		ValueTaskSourceStatus IValueTaskSource<CollectionTakeResult<TItem>>.GetStatus(short token) => _TaskSource.GetStatus(token);
+		ValueTaskSourceStatus IValueTaskSource<CollectionTakeResult<T>>.GetStatus(short token) => _TaskSource.GetStatus(token);
 
-		void IValueTaskSource<CollectionTakeResult<TItem>>.OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
+		void IValueTaskSource<CollectionTakeResult<T>>.OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
 
-		CollectionTakeResult<TItem> IValueTaskSource<CollectionTakeResult<TItem>>.GetResult(short token)
+		CollectionTakeResult<T> IValueTaskSource<CollectionTakeResult<T>>.GetResult(short token)
 		{
 			try
 			{
@@ -100,15 +93,28 @@ namespace System.Collections.Concurrent
 
 		//****************************************
 
-		private void SwitchToCancelled()
+		protected override void SwitchToCancelled()
 		{
 			// State can be one of: Pending, Waiting, GotResult
 			// Try to switch from Pending to Waiting
 			if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Waiting, Status.Pending) != Status.Pending)
 				return; // Too late, we already have a result
 
-			_Registration.Dispose();
-			_TaskSource.SetException(new OperationCanceledException(Token));
+			_TaskSource.SetException(CreateCancellationException());
+		}
+
+		protected override void UnregisteredCancellation()
+		{
+			if (_SourceCollection == null)
+			{
+				_TaskSource.SetException(new InvalidOperationException("All collections are completed"));
+			}
+			else
+			{
+				var Item = _SourceCollection.CompleteTake();
+
+				_TaskSource.SetResult(new CollectionTakeResult<T>(_SourceCollection, Item));
+			}
 		}
 
 		private bool TrySwitchToDisposed()
@@ -118,9 +124,9 @@ namespace System.Collections.Concurrent
 			if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Waiting, Status.Pending) != Status.Pending)
 				return false; // Too late, we already have a result
 
-			_Registration.Dispose();
-			//_TaskSource.SetResult(default);
-			_TaskSource.SetException(new InvalidOperationException("All collections are completed"));
+			_SourceCollection = null;
+
+			UnregisterCancellation();
 
 			return true;
 		}
@@ -130,17 +136,16 @@ namespace System.Collections.Concurrent
 			if (_InstanceState == Status.GotResult || Interlocked.CompareExchange(ref _InstanceState, Status.Unused, Status.GotResult) != Status.GotResult)
 				return; // We're waiting on GetResult to execute
 
-			_IsStarted = 0;
-			_Registration.Dispose();
-			_TokenSource?.Dispose();
-			_TokenSource = null;
-			_TaskSource.Reset();
-			Token = default;
+			ResetCancellation();
 
-			_Instances.Add(this);
+			_IsStarted = 0;
+			_SourceCollection = null;
+			_TaskSource.Reset();
+
+			Instances.Add(this);
 		}
 
-		private void OnPeekCompleted(AsyncCollection<TItem> collection)
+		private void OnPeekCompleted(AsyncCollection<T> collection)
 		{
 			// Can be one of: Pending, Waiting, GotResult
 			if (_InstanceState == Status.Pending)
@@ -151,10 +156,9 @@ namespace System.Collections.Concurrent
 					// Try to switch from Pending to Waiting
 					if (_InstanceState == Status.Pending && Interlocked.CompareExchange(ref _InstanceState, Status.Waiting, Status.Pending) == Status.Pending)
 					{
-						var Item = collection.CompleteTake();
+						_SourceCollection = collection;
 
-						_Registration.Dispose();
-						_TaskSource.SetResult(new CollectionTakeResult<TItem>(collection, Item));
+						UnregisteredCancellation();
 
 						return; // Success, no need to try and release since we'll do that after GetResult
 					}
@@ -167,7 +171,7 @@ namespace System.Collections.Concurrent
 					// We failed to decrement this counter, but we're still pending, so try again
 					if (collection.TryPeekTake(Token, out var Decrement))
 					{
-						var Waiter = PeekTakeWaiter.GetOrCreate(this, collection, Decrement);
+						var Waiter = PeekTakeWaiter.GetOrCreate(this, collection);
 
 						Waiter.Attach(Decrement);
 
@@ -177,7 +181,7 @@ namespace System.Collections.Concurrent
 					}
 
 					// Counter is disposed, fail
-					OnPeekFailed(collection);
+					OnPeekFailed();
 
 					return;
 				}
@@ -188,7 +192,7 @@ namespace System.Collections.Concurrent
 				TryRelease();
 		}
 
-		private void OnPeekFailed(AsyncCollection<TItem> collection)
+		private void OnPeekFailed()
 		{
 			if (Interlocked.Decrement(ref _OutstandingCounters) > 0)
 				return; // There are other counters still waiting
@@ -202,18 +206,16 @@ namespace System.Collections.Concurrent
 
 		//****************************************
 
-		public CancellationToken Token { get; private set; }
-
 		public short Version => _TaskSource.Version;
 
 		//****************************************
 
-		internal static AsyncCollectionTakeAny<TItem> GetOrCreate(CancellationToken token)
+		internal static AsyncCollectionTakeAny<T> GetOrCreate(CancellationToken token, TimeSpan timeout)
 		{
-			if (!_Instances.TryTake(out var Instance))
-				Instance = new AsyncCollectionTakeAny<TItem>();
+			if (!Instances.TryTake(out var Instance))
+				Instance = new AsyncCollectionTakeAny<T>();
 
-			Instance.Initialise(token);
+			Instance.Initialise(token, timeout);
 
 			return Instance;
 		}
@@ -224,11 +226,10 @@ namespace System.Collections.Concurrent
 		{ //****************************************
 			private readonly Action _ContinuePeekDecrement;
 
-			private AsyncCollectionTakeAny<TItem>? _Operation;
-			private AsyncCollection<TItem>? _Collection;
-			private AsyncCounterDecrement? _Decrement;
+			private AsyncCollectionTakeAny<T>? _Operation;
+			private AsyncCollection<T>? _Collection;
 
-			private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _Awaiter;
+			private ConfiguredValueTaskAwaitable<bool>.ConfiguredValueTaskAwaiter _Awaiter;
 			//****************************************
 
 			public PeekTakeWaiter()
@@ -240,9 +241,7 @@ namespace System.Collections.Concurrent
 
 			public void Attach(AsyncCounterDecrement decrement)
 			{
-				_Decrement = decrement;
-
-				var Task = new ValueTask(decrement, decrement.Version);
+				var Task = new ValueTask<bool>(decrement, decrement.Version);
 
 				_Awaiter = Task.ConfigureAwait(false).GetAwaiter();
 
@@ -258,13 +257,14 @@ namespace System.Collections.Concurrent
 			{
 				try
 				{
-					_Awaiter.GetResult();
-
-					_Operation!.OnPeekCompleted(_Collection!);
+					if (_Awaiter.GetResult())
+						_Operation!.OnPeekCompleted(_Collection!);
+					else
+						_Operation!.OnPeekFailed();
 				}
 				catch
 				{
-					_Operation!.OnPeekFailed(_Collection!);
+					_Operation!.OnPeekFailed();
 				}
 				finally
 				{
@@ -278,19 +278,18 @@ namespace System.Collections.Concurrent
 				_Collection = null;
 				_Awaiter = default;
 
-				_Waiters.Add(this);
+				Waiters.Add(this);
 			}
 
 			//****************************************
 
-			internal static PeekTakeWaiter GetOrCreate(AsyncCollectionTakeAny<TItem> operation, AsyncCollection<TItem> collection, AsyncCounterDecrement decrement)
+			internal static PeekTakeWaiter GetOrCreate(AsyncCollectionTakeAny<T> operation, AsyncCollection<T> collection)
 			{
-				if (!_Waiters.TryTake(out var Waiter))
+				if (!Waiters.TryTake(out var Waiter))
 					Waiter = new PeekTakeWaiter();
 
 				Waiter._Operation = operation;
 				Waiter._Collection = collection;
-				Waiter._Decrement = decrement;
 
 				return Waiter;
 			}

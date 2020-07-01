@@ -41,7 +41,7 @@ namespace System.Threading
 
 		internal void Attach(AsyncCounter counter)
 		{
-			if (!counter.TryPeekDecrement(Timeout.InfiniteTimeSpan, Token, out var Decrement))
+			if (!counter.TryPeekDecrement(AsyncCounterFlags.None, Timeout.InfiniteTimeSpan, Token, out var Decrement))
 				return; // Counter is disposed, ignore it
 
 			var Waiter = PeekDecrementWaiter.GetOrCreate(this, Decrement);
@@ -178,7 +178,7 @@ namespace System.Threading
 				else
 				{
 					// We failed to decrement this counter, but we're still pending, so try again
-					if (counter.TryPeekDecrement(Timeout.InfiniteTimeSpan, Token, out var Decrement))
+					if (counter.TryPeekDecrement(AsyncCounterFlags.None, Timeout.InfiniteTimeSpan, Token, out var Decrement))
 					{
 						var Waiter = PeekDecrementWaiter.GetOrCreate(this, Decrement);
 
