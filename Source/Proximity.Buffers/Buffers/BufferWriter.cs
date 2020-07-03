@@ -89,7 +89,7 @@ namespace System.Buffers
 				Segment = Segment.Next;
 			}
 
-			if (_CurrentOffset != 0)
+			if (!_CurrentBuffer.IsEmpty)
 			{
 				if (MemoryMarshal.TryGetArray<T>(_CurrentBuffer, out var MyBuffer))
 					_Pool.Return(MyBuffer.Array!, clearBuffers);
@@ -162,14 +162,13 @@ namespace System.Buffers
 
 			// We have a head segment. Is there any outstanding data?
 			if (_CurrentOffset == 0)
-				// No, so just return what we have
-				return new ReadOnlySequence<T>(_HeadSegment, 0, _TailSegment!, _TailSegment!.Memory.Length);
-
-			// Does the current tail segment have a cached segment that matches our outstanding data??
-			if (_TailSegment!.Next == null || _TailSegment.Next.Memory.Length != _CurrentOffset)
 			{
-				// No, so add/replace it
-				_TailSegment.JoinTo(new BufferSegment(_CurrentBuffer.Slice(0, _CurrentOffset), _TailSegment.RunningIndex + _TailSegment.Memory.Length));
+			// Add a new tail segment
+				var OldTail = _TailSegment!;
+
+				_TailSegment = new BufferSegment(_CurrentBuffer.Slice(0, _CurrentOffset), OldTail.RunningIndex + OldTail.Memory.Length);
+
+				OldTail.JoinTo(_TailSegment);
 
 				// Empty the current buffer, so a call to Reset doesn't call Return twice
 				_CurrentBuffer = Memory<T>.Empty;
@@ -177,7 +176,7 @@ namespace System.Buffers
 			}
 
 			// Return the sequence
-			return new ReadOnlySequence<T>(_HeadSegment, 0, _TailSegment.Next!, _TailSegment.Next!.Memory.Length);
+			return new ReadOnlySequence<T>(_HeadSegment, 0, _TailSegment!, _TailSegment!.Memory.Length);
 		}
 
 		/// <summary>
@@ -211,7 +210,7 @@ namespace System.Buffers
 			var Buffer = _Pool.Rent(BufferLength);
 
 			// Copy our current chain of buffers into it
-			new ReadOnlySequence<T>(_HeadSegment, 0, _TailSegment!.Next!, _TailSegment.Next!.Memory.Length).CopyTo(Buffer);
+			new ReadOnlySequence<T>(_HeadSegment, 0, _TailSegment!, _TailSegment!.Memory.Length).CopyTo(Buffer);
 
 			// Copy the final segment (if any)
 			if (_CurrentOffset > 0)
@@ -225,6 +224,46 @@ namespace System.Buffers
 			_CurrentOffset = BufferLength;
 
 			return Buffer.AsMemory(0, BufferLength);
+		}
+
+		/// <summary>
+		/// Gets an array containing all written data
+		/// </summary>
+		/// <returns>A single array containing all written data</returns>
+		/// <remarks>The buffer is not rented from the array pool.</remarks>
+		public T[] ToArray()
+		{
+			if (_HeadSegment == null)
+			{
+				// Is there any data in this Writer?
+				if (_CurrentOffset == 0)
+					return Array.Empty<T>();
+
+				// Yes, so return just that
+				return _CurrentBuffer.Slice(0, _CurrentOffset).ToArray();
+			}
+
+			// We have a head segment. Is there any outstanding data?
+			if (_CurrentOffset == 0)
+			{
+				// No. If we're just a head, return that directly
+				if (_HeadSegment == _TailSegment)
+					return _HeadSegment.Memory.ToArray();
+			}
+
+			var BufferLength = (int)Length;
+
+			// Grab a buffer that represents the entire contents of this Writer
+			var Buffer = new T[BufferLength];
+
+			// Copy our current chain of buffers into it
+			new ReadOnlySequence<T>(_HeadSegment, 0, _TailSegment!, _TailSegment!.Memory.Length).CopyTo(Buffer);
+
+			// Copy the final segment (if any)
+			if (_CurrentOffset > 0)
+				_CurrentBuffer.Slice(0, _CurrentOffset).CopyTo(Buffer.AsMemory((int)_TailSegment.RunningIndex + _TailSegment.Memory.Length));
+
+			return Buffer;
 		}
 
 		//****************************************

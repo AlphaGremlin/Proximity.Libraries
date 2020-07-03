@@ -33,6 +33,7 @@ namespace System.IO
 
 		private readonly char[] _PendingBuffer;
 		private int _PendingLength;
+		private bool _Disposed = false;
 		//****************************************
 
 		/// <summary>
@@ -91,9 +92,11 @@ namespace System.IO
 		{
 			base.Dispose(disposing);
 
-			if (disposing)
+			if (disposing && !_Disposed)
 			{
 				Flush(true);
+
+				_Disposed = true;
 
 				ArrayPool<char>.Shared.Return(_PendingBuffer);
 			}
