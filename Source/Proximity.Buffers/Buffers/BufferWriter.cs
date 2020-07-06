@@ -161,7 +161,7 @@ namespace System.Buffers
 			}
 
 			// We have a head segment. Is there any outstanding data?
-			if (_CurrentOffset == 0)
+			if (_CurrentOffset > 0)
 			{
 			// Add a new tail segment
 				var OldTail = _TailSegment!;

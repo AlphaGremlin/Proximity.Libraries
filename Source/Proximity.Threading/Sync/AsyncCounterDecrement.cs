@@ -14,6 +14,7 @@ namespace System.Threading
 		private static readonly ConcurrentBag<AsyncCounterDecrement> Instances = new ConcurrentBag<AsyncCounterDecrement>();
 		//****************************************
 		private volatile int _InstanceState;
+		private int _Maximum;
 
 		private ManualResetValueTaskSourceCore<int> _TaskSource = new ManualResetValueTaskSourceCore<int>();
 		//****************************************
@@ -22,10 +23,11 @@ namespace System.Threading
 
 		//****************************************
 
-		internal void Initialise(AsyncCounter owner, AsyncCounterFlags flags, /*bool isPeek, bool toZero,*/ bool wasDecremented)
+		internal void Initialise(AsyncCounter owner, int maximum, AsyncCounterFlags flags, bool wasDecremented)
 		{
 			Owner = owner;
 			Flags = flags;
+			_Maximum = maximum;
 
 			if (wasDecremented)
 			{
@@ -60,15 +62,9 @@ namespace System.Threading
 			// Try and assign the counter to this Instance
 			if (Interlocked.CompareExchange(ref _InstanceState, Status.Decremented, Status.Pending) == Status.Pending)
 			{
-				if ((Flags & AsyncCounterFlags.ToZero) == AsyncCounterFlags.ToZero)
-				{
-					Counters = Interlocked.Exchange(ref count, 0);
-				}
-				else
-				{
-					Counters = 1;
-					count--;
-				}
+				Counters = Math.Min(_Maximum, count);
+
+				count -= Counters;
 
 				UnregisterCancellation();
 
@@ -167,6 +163,7 @@ namespace System.Threading
 		{
 			Owner = null;
 			Flags = AsyncCounterFlags.None;
+			_Maximum = 0;
 			Counters = 0;
 
 			_TaskSource.Reset();
@@ -190,12 +187,12 @@ namespace System.Threading
 
 		//****************************************
 
-		internal static AsyncCounterDecrement GetOrCreateFor(AsyncCounter counter, AsyncCounterFlags flags, bool isTaken)
+		internal static AsyncCounterDecrement GetOrCreateFor(AsyncCounter counter, int maximum, AsyncCounterFlags flags, bool isTaken)
 		{
 			if (!Instances.TryTake(out var Instance))
 				Instance = new AsyncCounterDecrement();
 
-			Instance.Initialise(counter, flags, isTaken);
+			Instance.Initialise(counter, maximum, flags, isTaken);
 
 			return Instance;
 		}

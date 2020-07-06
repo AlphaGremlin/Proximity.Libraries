@@ -93,6 +93,34 @@ namespace System.Collections.Concurrent
 		public ValueTask<bool> Add(T item, CancellationToken token = default) => InternalAdd(item, false, Timeout.InfiniteTimeSpan, token);
 
 		/// <summary>
+		/// Attempts to add a range of Items to the collection
+		/// </summary>
+		/// <param name="items">The range of items to add</param>
+		/// <param name="token">A cancellation token to abort the addition operation</param>
+		/// <returns>A task returning True if the item was added, False if the Collection was completed</returns>
+		/// <exception cref="OperationCanceledException">The operation was cancelled</exception>
+		/// <remarks>
+		/// <para>Items will be added sequentially, however they may be interleaved with other concurrent adders</para>
+		/// <para>When using a maximum capacity, cancelling this operation may still result in some of the items being added</para>
+		/// </remarks>
+		public ValueTask<bool> AddMany(IReadOnlyCollection<T> items, CancellationToken token = default) => InternalAddMany(items, false, Timeout.InfiniteTimeSpan, token);
+
+		/// <summary>
+		/// Attempts to add a range of Items to the collection
+		/// </summary>
+		/// <param name="items">The range of items to add</param>
+		/// <param name="timeout">The amount of time to wait if the collection is at full capacity</param>
+		/// <param name="token">A cancellation token to abort the addition operation</param>
+		/// <returns>A task returning True if the item was added, False if the Collection was completed</returns>
+		/// <exception cref="OperationCanceledException">The operation was cancelled</exception>
+		/// <exception cref="TimeoutException">The timeout elapsed</exception>
+		/// <remarks>
+		/// <para>Items will be added sequentially, however they may be interleaved with other concurrent adders</para>
+		/// <para>When using a maximum capacity, cancelling this operation may still result in some of the items being added</para>
+		/// </remarks>
+		public ValueTask<bool> AddMany(IReadOnlyCollection<T> items, TimeSpan timeout, CancellationToken token = default) => InternalAddMany(items, false, timeout, token);
+
+		/// <summary>
 		/// Attempts to add an Item to the collection and completes it once added
 		/// </summary>
 		/// <param name="item">The item to add</param>
@@ -528,6 +556,29 @@ namespace System.Collections.Concurrent
 			return new ValueTask<bool>(CompleteAdd(item, complete));
 		}
 
+		private ValueTask<bool> InternalAddMany(IReadOnlyCollection<T> items, bool complete, TimeSpan timeout, CancellationToken token = default)
+		{
+			if (items.Count == 0)
+				return new ValueTask<bool>(true);
+
+			// Is there a maximum size?
+			if (_FreeSlots != null)
+			{
+				// Try and find enough free slots
+				if (!_FreeSlots.TryDecrement(items.Count, out var Count) || Count < items.Count)
+				{
+					// Insufficient slots, wait for it
+					var Instance = CollectionAddManyInstance.GetOrCreateFor(this, items, Count, complete, timeout, token);
+
+					return new ValueTask<bool>(Instance, Instance.Version);
+				}
+			}
+
+			using var Enumerator = items.GetEnumerator();
+
+			return new ValueTask<bool>(CompleteAdd(Enumerator, items.Count, complete));
+		}
+
 		private bool CompleteAdd(T item, bool complete)
 		{
 			// Increment the slots counter, releasing a Taker. GetNextItem may wait until the item becomes available
@@ -544,6 +595,37 @@ namespace System.Collections.Concurrent
 				_IsFailed = true;
 				throw new InvalidOperationException("Item was rejected by the underlying collection");
 			}
+
+			return true;
+		}
+
+		private bool CompleteAdd(IEnumerator<T> items, int total, bool complete)
+		{
+			// Increment the slots counter, releasing one or more Takers. GetNextItem may wait until the items become available
+			if (!_UsedSlots.TryAdd(total))
+				return false;
+
+			if (complete)
+				CompleteAdding();
+
+			// Try and add our item to the collection
+			do
+			{
+				if (!items.MoveNext())
+				{
+					// Collection couldn't supply our item. We now have promised to add an item that we can't add.
+					_IsFailed = true;
+					throw new InvalidOperationException("Item was not available from the source collection");
+				}
+
+				if (!_Collection.TryAdd(items.Current))
+				{
+					// Collection rejected our item. We now have promised to add an item that we can't add.
+					_IsFailed = true;
+					throw new InvalidOperationException("Item was rejected by the underlying collection");
+				}
+			}
+			while (--total > 0);
 
 			return true;
 		}

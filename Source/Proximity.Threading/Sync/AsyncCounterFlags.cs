@@ -8,8 +8,7 @@ namespace Proximity.Threading
 	internal enum AsyncCounterFlags
 	{
 		None = 0x00,
-		ToZero = 0x01,
-		ThrowOnDispose = 0x02,
-		Peek = 0x04
+		ThrowOnDispose = 0x01,
+		Peek = 0x02
 	}
 }
