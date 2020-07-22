@@ -1098,7 +1098,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		public struct KeyEnumerator : IEnumerator<TKey>
 		{ //****************************************
-			private readonly Enumerator _Parent;
+			private Enumerator _Parent;
 			//****************************************
 
 			internal KeyEnumerator(IndexedDictionary<TKey, TValue> parent)
@@ -1131,7 +1131,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		public struct ValueEnumerator : IEnumerator<TValue>
 		{ //****************************************
-			private readonly Enumerator _Parent;
+			private Enumerator _Parent;
 			//****************************************
 
 			internal ValueEnumerator(IndexedDictionary<TKey, TValue> parent)

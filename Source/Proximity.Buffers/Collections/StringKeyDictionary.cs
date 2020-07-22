@@ -1225,7 +1225,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		public struct KeyEnumerator : IEnumerator<string>, IEnumerator<ReadOnlyMemory<char>>
 		{ //****************************************
-			private readonly Enumerator _Parent;
+			private Enumerator _Parent;
 			//****************************************
 
 			internal KeyEnumerator(StringKeyDictionary<TValue> parent)
@@ -1260,7 +1260,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		public struct ValueEnumerator : IEnumerator<TValue>
 		{ //****************************************
-			private readonly Enumerator _Parent;
+			private Enumerator _Parent;
 			//****************************************
 
 			internal ValueEnumerator(StringKeyDictionary<TValue> parent)
@@ -1292,7 +1292,7 @@ namespace System.Collections.Generic
 		/// Provides a base class for the Indexed Dictionary collections
 		/// </summary>
 		/// <typeparam name="T">The type of item</typeparam>
-		public abstract class Collection<T> : IList<T>, IReadOnlyList<T>, IList
+		public abstract class Collection<T> : IList<T>, IReadOnlyList<T>, IList, IEnumerable<T>
 		{
 			internal Collection(StringKeyDictionary<TValue> parent)
 			{
