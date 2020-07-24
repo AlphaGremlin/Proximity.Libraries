@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
+using System.Threading;
 //****************************************
 
 namespace Proximity.Terminal.Metadata
@@ -39,35 +40,40 @@ namespace Proximity.Terminal.Metadata
 		/// <param name="inArgs">The arguments to parse</param>
 		/// <param name="outArgs">The resulting properly typed arguments</param>
 		/// <returns>The command that best matches, or none if it could not be determined</returns>
-		public TerminalCommand FindCommand(string[] inArgs, out object[] outArgs)
-		{	//****************************************
-			var ParamData = new object[inArgs.Length];
-			ParameterInfo[] MethodParams;
-			TypeConverter MyConverter;
-			//****************************************
-			
+		public TerminalCommand FindCommand(string[] inArgs, ITerminal terminal, CancellationToken token, out object[] outArgs)
+		{
 			// Try and find an overload that matches the provided arguments
 			foreach(var MyCommand in _Commands)
 			{
-				MethodParams = MyCommand.Method.GetParameters();
+				var MethodParams = MyCommand.ExternalParameters;
 				
 				if (MethodParams.Length != inArgs.Length)
 					continue;
 				
 				try
 				{
+					var ParamData = new object[MethodParams.Length + (MyCommand.TakesToken ? 1 : 0) + (MyCommand.TakesTerminal ? 1 : 0)];
+
+					var ParamTarget = MyCommand.TakesTerminal ? ParamData.AsSpan(1) : ParamData.AsSpan(0);
+
 					// Parameter count matches, try and convert the arguments to the expected types
-					for(int Index = 0; Index < MethodParams.Length; Index++)
+					for(var Index = 0; Index < MethodParams.Length; Index++)
 					{
-						MyConverter = TypeDescriptor.GetConverter(MethodParams[Index].ParameterType);
-							
+						var MyConverter = TypeDescriptor.GetConverter(MethodParams.Span[Index].ParameterType);
+
 						if (MyConverter == null)
 							throw new NotSupportedException();
-						
-						ParamData[Index] = MyConverter.ConvertFromString(inArgs[Index]);
+
+						ParamTarget[Index] = MyConverter.ConvertFromString(inArgs[Index]);
 					}
-					
-					// Success!
+
+					// Success, populate the optionals
+					if (MyCommand.TakesTerminal)
+						ParamData[0] = terminal;
+
+					if (MyCommand.TakesToken)
+						ParamData[ParamData.Length - 1] = token;
+
 					outArgs = ParamData;
 					
 					return MyCommand;

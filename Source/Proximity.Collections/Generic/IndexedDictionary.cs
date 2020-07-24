@@ -1291,7 +1291,7 @@ namespace System.Collections.Generic
 			{
 				var Count = Parent._Size;
 
-				if (arrayIndex + Count >= array.Length)
+				if (arrayIndex + Count > array.Length)
 					throw new ArgumentOutOfRangeException(nameof(arrayIndex));
 
 				var Entries = Parent._Entries;
@@ -1335,7 +1335,7 @@ namespace System.Collections.Generic
 			{
 				var Count = Parent._Size;
 
-				if (arrayIndex + Count >= array.Length)
+				if (arrayIndex + Count > array.Length)
 					throw new ArgumentOutOfRangeException(nameof(arrayIndex));
 
 				var Entries = Parent._Entries;

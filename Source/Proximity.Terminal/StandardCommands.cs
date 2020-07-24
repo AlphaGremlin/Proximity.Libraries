@@ -102,16 +102,17 @@ namespace Proximity.Terminal
 		/// </summary>
 		/// <param name="terminal">The terminal to write help to</param>
 		/// <param name="fileName">The local file path</param>
+		/// <param name="token">The cancellation token to abort execution</param>
 		/// <returns>A task representing execution progress</returns>
 		[TerminalBinding("Execute a list of terminal commands")]
-		public static async ValueTask Exec(ITerminal terminal, string fileName)
+		public static async ValueTask Exec(ITerminal terminal, string fileName, CancellationToken token)
 		{
 			foreach (var MyLine in File.ReadLines(fileName))
 			{
 				if (MyLine == "" || MyLine.StartsWith("#"))
 					continue;
 
-				await TerminalParser.InternalExecute(terminal, MyLine);
+				await TerminalParser.InternalExecute(terminal, MyLine, token);
 			}
 		}
 

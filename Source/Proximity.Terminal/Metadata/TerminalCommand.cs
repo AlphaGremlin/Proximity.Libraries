@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using System.Security;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 //****************************************
@@ -23,6 +24,30 @@ namespace Proximity.Terminal.Metadata
 			
 			if (method.ReturnType != typeof(Task) && method.ReturnType != typeof(void) && method.ReturnType != typeof(ValueTask))
 				throw new FormatException($"Command Return Type for {method.DeclaringType.FullName}.{method.Name} must be Void or Task/ValueTask");
+
+			var Parameters = method.GetParameters();
+
+			if (Parameters.Length > 0)
+			{
+				TakesTerminal = Parameters[0].ParameterType.IsAssignableFrom(typeof(ITerminal));
+
+				TakesToken = Parameters[Parameters.Length - 1].ParameterType == typeof(CancellationToken);
+
+				if (TakesTerminal)
+				{
+					if (TakesToken)
+						ExternalParameters = Parameters.AsMemory(1, Parameters.Length - 2);
+					else
+						ExternalParameters = Parameters.AsMemory(1);
+				}
+				else
+				{
+					if (TakesToken)
+						ExternalParameters = Parameters.AsMemory(0, Parameters.Length - 1);
+					else
+						ExternalParameters = Parameters.AsMemory();
+				}
+			}
 		}
 
 		//****************************************
@@ -128,5 +153,20 @@ namespace Proximity.Terminal.Metadata
 		/// Gets a description of this Command
 		/// </summary>
 		public string Description { get; }
+
+		/// <summary>
+		/// Gets whether the first parameter is a Terminal
+		/// </summary>
+		public bool TakesTerminal { get; }
+
+		/// <summary>
+		/// Gets whether the last parameter is a Terminal
+		/// </summary>
+		public bool TakesToken { get; }
+
+		/// <summary>
+		/// Gets the required external parameters
+		/// </summary>
+		public ReadOnlyMemory<ParameterInfo> ExternalParameters { get; }
 	}
 }

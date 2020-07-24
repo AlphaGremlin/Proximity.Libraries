@@ -1,11 +1,13 @@
 using System;
+using Proximity.Terminal;
+using Proximity.Terminal.Serilog;
 using Serilog;
 using Serilog.Configuration;
 using Serilog.Core;
 using Serilog.Events;
 using Serilog.Formatting.Display;
 
-namespace Proximity.Terminal.Serilog
+namespace Serilog
 {
 	/// <summary>
 	/// Adds the WriteTo.Terminal() extension method
@@ -33,6 +35,9 @@ namespace Proximity.Terminal.Serilog
 			LoggingLevelSwitch? levelSwitch = null
 			)
 		{
+			if (sinkConfiguration == null)
+				throw new ArgumentNullException(nameof(sinkConfiguration));
+
 			var Formatter = new MessageTemplateTextFormatter(outputTemplate, formatProvider);
 
 			return sinkConfiguration.Sink(new TerminalSink(terminal, Formatter), restrictedToMinimumLevel, levelSwitch);

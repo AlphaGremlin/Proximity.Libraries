@@ -211,7 +211,7 @@ namespace Proximity.Terminal
 
 					IsFirst = true;
 
-					foreach (var Parameter in Command.Method.GetParameters())
+					foreach (var Parameter in Command.ExternalParameters.Span)
 					{
 						if (IsFirst)
 							IsFirst = false;
@@ -237,8 +237,9 @@ namespace Proximity.Terminal
 		/// </summary>
 		/// <param name="terminal">The terminal where any output from the command will appear</param>
 		/// <param name="command">The command to execute</param>
+		/// <param name="token">A token to pass to methods that accept it</param>
 		/// <returns>A task representing the execution result. True if the command ran successfully, otherwise False</returns>
-		public static ValueTask<bool> Execute(ITerminal terminal, string command) => InternalExecute(terminal, command);
+		public static ValueTask<bool> Execute(ITerminal terminal, string command, CancellationToken token) => InternalExecute(terminal, command, token);
 
 		/// <summary>
 		/// Finds the next command for auto completion
@@ -689,11 +690,29 @@ namespace Proximity.Terminal
 
 		//****************************************
 
-		internal static ValueTask<bool> InternalExecute(ITerminal terminal, string command)
+		internal static ValueTask<bool> InternalExecute(ITerminal terminal, string command, CancellationToken token)
 		{
 			terminal.Log(LogLevel.Information, default, new ConsoleRecord(DateTimeOffset.Now, null, command), null, (record, exception) => record.Text);
 
-			if (!TryParse(command.AsSpan(), terminal.Registries, out var ParseResult))
+			var Command = command.AsSpan();
+			var IsHelp = false;
+
+			if (Command.StartsWith("help".AsSpan(), StringComparison.InvariantCultureIgnoreCase))
+			{
+				Command = Command.Slice(4);
+				IsHelp = true;
+
+				if (Command.IsEmpty || Command[0] != ' ')
+				{
+					terminal.LogInformation(HelpOn(terminal));
+
+					return new ValueTask<bool>(true);
+				}
+
+				Command = Command.Slice(1);
+			}
+
+			if (!TryParse(Command, terminal.Registries, out var ParseResult))
 			{
 				if (ParseResult.TypeSet != null)
 				{
@@ -704,7 +723,7 @@ namespace Proximity.Terminal
 						else
 							terminal.LogInformation("{0}.{1} {2} is not a Command or Variable", ParseResult.TypeSet.TypeName, ParseResult.Instance.Name, ParseResult.Command.AsString());
 					}
-					else if (command[ParseResult.TypeSet.TypeName.Length] == '.')
+					else if (Command[ParseResult.TypeSet.TypeName.Length] == '.')
 					{
 						terminal.LogInformation("{0}.{1} is not a known Instance", ParseResult.TypeSet.TypeName, ParseResult.Command.AsString());
 					}
@@ -782,7 +801,7 @@ namespace Proximity.Terminal
 				// Do we have a target Instance?
 				if (ParseResult.Instance != null)
 				{
-					HelpOn(ParseResult.Instance);
+					terminal.LogInformation(HelpOn(ParseResult.Instance));
 
 					return new ValueTask<bool>(true);
 				}
@@ -790,7 +809,7 @@ namespace Proximity.Terminal
 				// Are we only targeting a Type?
 				if (ParseResult.TypeSet != null)
 				{
-					HelpOn(ParseResult.TypeSet);
+					terminal.LogInformation(HelpOn(ParseResult.TypeSet));
 
 					return new ValueTask<bool>(true);
 				}
@@ -802,12 +821,28 @@ namespace Proximity.Terminal
 
 			// Execute the Command
 			if (ParseResult.CommandSet != null)
-				return ExecuteCommand(terminal, TargetPath, TargetInstance, ParseResult.CommandSet, ParseResult.Arguments.AsString());
+			{
+				if (IsHelp)
+				{
+					terminal.LogInformation(HelpOn(ParseResult.CommandSet));
+
+					return new ValueTask<bool>(true);
+				}
+
+				return ExecuteCommand(terminal, TargetPath, TargetInstance, ParseResult.CommandSet, ParseResult.Arguments.AsString(), token);
+			}
 
 			//****************************************
 
 			if (ParseResult.Variable != null)
 			{
+				if (IsHelp)
+				{
+					terminal.LogInformation(HelpOn(ParseResult.Variable));
+
+					return new ValueTask<bool>(true);
+				}
+
 				// Process the Variable
 				if (ParseResult.Arguments.IsEmpty)
 				{
@@ -916,7 +951,7 @@ namespace Proximity.Terminal
 			return false;
 		}
 
-		private static async ValueTask<bool> ExecuteCommand(ITerminal terminal, string path, object? instance, TerminalCommandSet commandSet, string arguments)
+		private static async ValueTask<bool> ExecuteCommand(ITerminal terminal, string path, object? instance, TerminalCommandSet commandSet, string arguments, CancellationToken token)
 		{	//****************************************
 			var RawParams = new List<string>();
 			var AlteredText = arguments;
@@ -996,11 +1031,11 @@ namespace Proximity.Terminal
 			//****************************************
 			
 			// Try with the broken up arguments
-			Command = commandSet.FindCommand(RawParams.ToArray(), out var OutParams);
+			Command = commandSet.FindCommand(RawParams.ToArray(), terminal, token, out var OutParams);
 			
 			// If that fails, try and pass the whole argument text as the first argument, no quoting
 			if (Command == null && RawParams.Count > 1)
-				Command = commandSet.FindCommand(new [] { arguments }, out OutParams);
+				Command = commandSet.FindCommand(new [] { arguments }, terminal, token, out OutParams);
 				
 			if (Command == null)
 			{

@@ -21,8 +21,8 @@ namespace Proximity.Terminal.Serilog
 
 		internal TerminalSink(ITerminal terminal, ITextFormatter formatter)
 		{
-			Terminal = terminal;
-			_Formatter = formatter;
+			Terminal = terminal ?? throw new ArgumentNullException(nameof(terminal));
+			_Formatter = formatter ?? throw new ArgumentNullException(nameof(formatter));
 		}
 
 		//****************************************

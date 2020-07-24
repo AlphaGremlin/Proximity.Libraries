@@ -8,7 +8,7 @@
 		<Version>22.0.1</Version>
 		<AssemblyVersion>22.0.1.0</AssemblyVersion>
 		<FileVersion>22.0.1.0</FileVersion>
-		<Description>Proximity Terminal Serilog Adapter</Description>
+		<Description>Proximity Terminal IHosting Extensions</Description>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<SignAssembly>true</SignAssembly>
@@ -19,7 +19,8 @@
 		<LangVersion>Latest</LangVersion>
 	</PropertyGroup>
 	<ItemGroup>
-	  <PackageReference Include="Serilog" Version="2.9.0" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="3.1.6" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="3.1.6" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Proximity.Terminal\Proximity.Terminal.csproj" />

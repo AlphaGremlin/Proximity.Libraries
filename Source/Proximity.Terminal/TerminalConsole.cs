@@ -113,6 +113,8 @@ namespace Proximity.Terminal
 					IsBackground = true
 				};
 
+				View.Attach(this);
+
 				Thread.Start();
 			}
 
@@ -121,6 +123,8 @@ namespace Proximity.Terminal
 				_TokenSource.Cancel();
 
 				Interlocked.Exchange(ref _TerminalThread, null)?.Join();
+
+				View.Detach(this);
 
 				Cleanup();
 
@@ -268,7 +272,12 @@ namespace Proximity.Terminal
 					_InputIndex = 0;
 
 					// Attempt to parse and execute the command
-					ThreadPool.QueueUserWorkItem((state) => { var (View, CurrentLine) = (Tuple<TerminalView, string>)state; TerminalParser.Execute(View, CurrentLine); }, Tuple.Create(View, CurrentLine));
+					ThreadPool.QueueUserWorkItem((state) =>
+					{
+						var (View, CurrentLine, Token) = (Tuple<TerminalView, string, CancellationToken>)state;
+
+						TerminalParser.Execute(View, CurrentLine, Token);
+					}, Tuple.Create(View, CurrentLine, _TokenSource.Token));
 
 					// Store the new line into the history, as long as it's not already the most recent entry
 					if (_CommandHistory.Count == 0 || _CommandHistory[0] != CurrentLine)

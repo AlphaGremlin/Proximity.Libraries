@@ -14,6 +14,10 @@ namespace Proximity.Terminal
 		private readonly HashSet<LogLevel> _IsEnabled = new HashSet<LogLevel>();
 		//****************************************
 
+		public TerminalView() : this(TerminalRegistry.Global)
+		{
+		}
+
 		public TerminalView(TerminalRegistry registry) : this((IEnumerable<TerminalRegistry>)new[] { registry })
 		{
 		}
@@ -25,6 +29,7 @@ namespace Proximity.Terminal
 		public TerminalView(IEnumerable<TerminalRegistry> registries)
 		{
 			Registries = registries.ToArray();
+			SetMinimum(LogLevel.Trace);
 		}
 
 		//****************************************
