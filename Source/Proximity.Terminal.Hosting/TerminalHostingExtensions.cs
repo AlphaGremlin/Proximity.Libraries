@@ -1,4 +1,5 @@
 using System;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 namespace Proximity.Terminal
@@ -19,9 +20,11 @@ namespace Proximity.Terminal
 			if (builder == null)
 				throw new ArgumentNullException(nameof(builder));
 
-			builder.ConfigureServices((context, services) =>
+			return builder.ConfigureServices((context, services) =>
 			{
 				var Registry = TerminalRegistry.Global;
+
+				services.AddSingleton(Registry);
 
 				if (configureRegistry == null)
 				{
@@ -33,8 +36,6 @@ namespace Proximity.Terminal
 					configureRegistry(Registry);
 				}
 			});
-
-			return builder;
 		}
 	}
 }

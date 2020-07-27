@@ -628,7 +628,7 @@ namespace Proximity.Terminal
 							return false;
 						}
 
-						return ParseType(TypeSet, Type, null, Arguments, out result);
+						return ParseType(TypeSet, Type, TypeSet.Default, Arguments, out result);
 					}
 				}
 

@@ -95,8 +95,6 @@ namespace Proximity.Terminal.TestHarness
 
 				var Host = builder.Build();
 
-
-
 				await Host.RunAsync(Exited.Token);
 
 				return 0;
