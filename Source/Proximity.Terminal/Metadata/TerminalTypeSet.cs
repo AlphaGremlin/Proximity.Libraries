@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 //****************************************
 
 namespace Proximity.Terminal.Metadata
@@ -12,15 +13,17 @@ namespace Proximity.Terminal.Metadata
 	public sealed class TerminalTypeSet : ICommandTarget, IComparable<TerminalTypeSet>
 	{ //****************************************
 		private readonly StringKeyDictionary<TerminalTypeInstance> _Instances = new StringKeyDictionary<TerminalTypeInstance>(StringComparison.OrdinalIgnoreCase);
+		private TerminalTypeInstance? _Default;
+
 		//****************************************
-		
+
 		internal TerminalTypeSet(string typeName)
 		{
 			TypeName = typeName;
 		}
-			
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Retrieves a registered Instance by name
 		/// </summary>
@@ -47,41 +50,60 @@ namespace Proximity.Terminal.Metadata
 
 		//****************************************
 
+		internal void AddDefault(TerminalTypeInstance instance) => Interlocked.Exchange(ref _Default, instance);
+
 		internal void AddNamedInstance(TerminalTypeInstance instance)
 		{
+			if (instance.Name == null)
+				throw new InvalidOperationException("Name is not set");
+
 			lock (_Instances)
 			{
 				Cleanup();
-				
+
 				// Add the Instance under this name, or replace if it's already in use
 				_Instances[instance.Name] = instance;
 			}
 		}
-		
-		internal void Remove(string instanceName)
+
+		internal void RemoveNamedInstance(string instanceName)
 		{
 			lock (_Instances)
 			{
 				Cleanup();
-				
+
 				_Instances.Remove(instanceName);
 			}
 		}
-		
+
+		internal void RemoveDefault(object instance)
+		{
+			TerminalTypeInstance? OldInstance;
+
+			do
+			{
+				OldInstance = Volatile.Read(ref _Default);
+
+				if (OldInstance == null || OldInstance.Target != instance)
+					return;
+			}
+			while (Interlocked.CompareExchange(ref _Default, null, OldInstance) != OldInstance);
+		}
+
 		//****************************************
-		
+
 		private void Cleanup()
-		{	//****************************************
+		{ //****************************************
 			var OldInstances = new List<string>();
 			//****************************************
-			
-			foreach(var MyInstance in _Instances.Values)
+
+			foreach (var MyInstance in _Instances.Values)
 			{
 				if (MyInstance.Target == null)
-					OldInstances.Add(MyInstance.Name);
+					OldInstances.Add(MyInstance.Name!); // All instances in here must be named
 			}
-			
-			foreach(var MyOldInstance in OldInstances)
+
+			foreach (var MyOldInstance in OldInstances)
 			{
 				_Instances.Remove(MyOldInstance);
 			}
@@ -97,7 +119,7 @@ namespace Proximity.Terminal.Metadata
 		/// <summary>
 		/// Gets the default instance for this type set
 		/// </summary>
-		public TerminalTypeInstance? Default { get; set; }
+		public TerminalTypeInstance? Default => _Default;
 
 		/// <summary>
 		/// Gets a list of currently known instance names
@@ -109,7 +131,7 @@ namespace Proximity.Terminal.Metadata
 				lock (_Instances)
 				{
 					Cleanup();
-					
+
 					return _Instances.Keys.ToArray();
 				}
 			}

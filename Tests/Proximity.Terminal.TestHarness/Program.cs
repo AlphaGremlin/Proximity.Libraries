@@ -11,10 +11,21 @@ using Serilog.Events;
 
 namespace Proximity.Terminal.TestHarness
 {
-	[TerminalProvider]
-	public static class Program
+	[TerminalProvider(true)]
+	public sealed class Program : IHostedService
 	{ //****************************************
 		private static readonly CancellationTokenSource Exited = new CancellationTokenSource();
+
+		private readonly ILogger<Program> _Logger;
+		//****************************************
+
+		public Program(TerminalRegistry registry, ILogger<Program> logger)
+		{
+			registry.Add(this);
+
+			_Logger = logger;
+		}
+
 		//****************************************
 
 		public static async Task<int> Main(string[] args)
@@ -82,6 +93,8 @@ namespace Proximity.Terminal.TestHarness
 						var Configuration = hostContext.Configuration;
 
 						services.AddSingleton<ITerminal>(TerminalConsole.View);
+						services.AddSingleton<Program>();
+						services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<Program>());
 					})
 					.UseSerilog()
 					.UseTerminal(registry =>
@@ -120,6 +133,19 @@ namespace Proximity.Terminal.TestHarness
 
 		//****************************************
 
+
+		Task IHostedService.StartAsync(CancellationToken cancellationToken)
+		{
+			return Task.CompletedTask;
+		}
+
+		Task IHostedService.StopAsync(CancellationToken cancellationToken)
+		{
+			return Task.CompletedTask;
+		}
+
+		//****************************************
+
 		[TerminalBinding("Exit", "Exits the application")]
 		public static void Quit()
 		{
@@ -130,6 +156,22 @@ namespace Proximity.Terminal.TestHarness
 		public static void Cleanup()
 		{
 			GC.Collect();
+		}
+
+		//****************************************
+
+		[TerminalBinding("Writes some spam to the log")]
+		public void Spam()
+		{
+			var Random = new Random();
+			Span<byte> RandomData = stackalloc byte[8];
+
+			for (var Index = 0; Index < 10; Index++)
+			{
+				Random.NextBytes(RandomData);
+
+				_Logger.LogInformation(Convert.ToBase64String(RandomData));
+			}
 		}
 	}
 }

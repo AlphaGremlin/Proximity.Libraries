@@ -10,7 +10,7 @@ namespace Proximity.Terminal
 	public sealed class TerminalProviderAttribute : Attribute
 	{
 		/// <summary>
-		/// Identifies a static class that provides terminal commands
+		/// Identifies a static class that provides global terminal commands
 		/// </summary>
 		public TerminalProviderAttribute()
 		{
@@ -33,6 +33,15 @@ namespace Proximity.Terminal
 		public TerminalProviderAttribute(string typeSet, bool isDefault)
 		{
 			TypeSet = typeSet;
+			IsDefault = isDefault;
+		}
+
+		/// <summary>
+		/// Identifies a reference class that provides global terminal commands
+		/// </summary>
+		/// <param name="isDefault">Whether this instance acts as the default target for this instance type</param>
+		public TerminalProviderAttribute(bool isDefault)
+		{
 			IsDefault = isDefault;
 		}
 

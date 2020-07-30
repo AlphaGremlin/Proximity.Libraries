@@ -42,7 +42,11 @@ namespace Proximity.Terminal
 
 				IsFirst = true;
 
-				foreach (var Command in terminal.Registries.SelectMany(registry => registry.Commands).OrderBy(command => command))
+				foreach (var Command in
+					terminal.Registries.SelectMany(registry => registry.Commands)
+					.Concat(terminal.Registries.SelectMany(registry => registry.DefaultInstances).SelectMany(instance => instance.Type.Commands))
+					.OrderBy(command => command)
+					)
 				{
 					if (IsFirst)
 						IsFirst = false;
@@ -62,7 +66,10 @@ namespace Proximity.Terminal
 
 				IsFirst = true;
 
-				foreach (var Variable in terminal.Registries.SelectMany(registry => registry.Variables).OrderBy(variable => variable))
+				foreach (var Variable in
+					terminal.Registries.SelectMany(registry => registry.Variables)
+					.Concat(terminal.Registries.SelectMany(registry => registry.DefaultInstances).SelectMany(instance => instance.Type.Variables))
+					.OrderBy(variable => variable))
 				{
 					if (IsFirst)
 						IsFirst = false;
@@ -386,28 +393,45 @@ namespace Proximity.Terminal
 				else
 				{
 					// No dot, we're parsing a partial Command/Variable/Instance Type
-					foreach(var MyRegistry in registries)
+					foreach(var Registry in registries)
 					{
 						// Add matching commands
-						foreach (var MyCommand in MyRegistry.Commands)
+						foreach (var Command in Registry.Commands)
 						{
-							if (MyCommand.Name.StartsWith(partialCommand, StringComparison.InvariantCultureIgnoreCase))
-								PartialMatches.Add(MyCommand.Name);
+							if (Command.Name.StartsWith(partialCommand, StringComparison.InvariantCultureIgnoreCase))
+								PartialMatches.Add(Command.Name);
 						}
-						
+
 						// Add matching variables (with an equals sign, so they can't be the same as commands)
-						foreach (var MyVariable in MyRegistry.Variables)
+						foreach (var Variable in Registry.Variables)
 						{
-							if (MyVariable.Name.StartsWith(partialCommand, StringComparison.InvariantCultureIgnoreCase))
-								PartialMatches.Add(MyVariable.Name);
+							if (Variable.Name.StartsWith(partialCommand, StringComparison.InvariantCultureIgnoreCase))
+								PartialMatches.Add(Variable.Name);
 						}
-						
+
+						foreach (var Instance in Registry.DefaultInstances)
+						{
+							foreach (var Command in Instance.Type.Commands)
+							{
+								if (Command.Name.StartsWith(partialCommand, StringComparison.InvariantCultureIgnoreCase))
+									PartialMatches.Add(Command.Name);
+							}
+
+							// Add matching variables (with an equals sign, so they can't be the same as commands)
+							foreach (var Variable in Instance.Type.Variables)
+							{
+								if (Variable.Name.StartsWith(partialCommand, StringComparison.InvariantCultureIgnoreCase))
+									PartialMatches.Add(Variable.Name);
+							}
+
+						}
+
 						// Add matching type sets
-						foreach (var MyType in MyRegistry.TypeSets)
+						foreach (var Type in Registry.TypeSets)
 						{
 							// Only add ones that have an instance
-							if (MyType.TypeName.StartsWith(partialCommand, StringComparison.InvariantCultureIgnoreCase) && MyType.HasInstance)
-								PartialMatches.Add(MyType.TypeName);
+							if (Type.TypeName.StartsWith(partialCommand, StringComparison.InvariantCultureIgnoreCase) && Type.HasInstance)
+								PartialMatches.Add(Type.TypeName);
 						}
 					}
 				}
@@ -581,6 +605,19 @@ namespace Proximity.Terminal
 
 						return true;
 					}
+
+					foreach (var Instance in Registry.DefaultInstances)
+					{
+						if (Instance.Type.TryGetCommand(Command, out CommandSet))
+						{
+							// Is one of:
+							// > Command (on global instance)
+							// > Command Arguments (on global instance)...
+							result = new TerminalParseResult(null, Instance, CommandSet, default, Arguments);
+
+							return true;
+						}
+					}
 				}
 
 				// Is it a variable?
@@ -595,6 +632,18 @@ namespace Proximity.Terminal
 							result = new TerminalParseResult(null, null, Variable, default, default);
 
 							return true;
+						}
+
+						foreach (var Instance in Registry.DefaultInstances)
+						{
+							if (Instance.Type.TryGetVariable(Command, out Variable))
+							{
+								// Is:
+								// > Variable (on global instance)
+								result = new TerminalParseResult(null, Instance, Variable, default, Arguments);
+
+								return true;
+							}
 						}
 					}
 				}
@@ -750,24 +799,37 @@ namespace Proximity.Terminal
 			var TargetPath = "";
 
 			// Get the Instance we're targeting (may be null if it's been GC'ed)
-			if (ParseResult.TypeSet != null && ParseResult.Instance != null)
+			if (ParseResult.Instance != null)
 			{
 				TargetInstance = ParseResult.Instance.Target;
 
-				if (TargetInstance == null)
+				if (ParseResult.TypeSet != null)
 				{
+					if (TargetInstance == null)
+					{
+						if (ParseResult.Instance == ParseResult.TypeSet.Default)
+							terminal.LogInformation("{0} is not a known Instance", ParseResult.TypeSet.TypeName);
+						else
+							terminal.LogInformation("{0}.{1} is not a known Instance", ParseResult.TypeSet.TypeName, ParseResult.Instance.Name);
+
+						return new ValueTask<bool>(false);
+					}
+
 					if (ParseResult.Instance == ParseResult.TypeSet.Default)
-						terminal.LogInformation("{0} is not a known Instance", ParseResult.TypeSet.TypeName);
+						TargetPath = $"{ParseResult.TypeSet.TypeName} ";
 					else
-						terminal.LogInformation("{0}.{1} is not a known Instance", ParseResult.TypeSet.TypeName, ParseResult.Instance.Name);
-
-					return new ValueTask<bool>(false);
+						TargetPath = $"{ParseResult.TypeSet.TypeName}.{ParseResult.Instance.Name} ";
 				}
-
-				if (ParseResult.Instance == ParseResult.TypeSet.Default)
-					TargetPath = $"{ParseResult.TypeSet.TypeName} ";
 				else
-					TargetPath = $"{ParseResult.TypeSet.TypeName}.{ParseResult.Instance.Name} ";
+				{
+					if (TargetInstance == null)
+					{
+						// Instance was garbage collected
+						terminal.LogInformation("{0} is not a Command or Variable ", ParseResult.Command.AsString());
+
+						return new ValueTask<bool>(false);
+					}
+				}
 			}
 
 			//****************************************

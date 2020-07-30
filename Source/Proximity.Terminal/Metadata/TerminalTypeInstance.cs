@@ -13,7 +13,7 @@ namespace Proximity.Terminal.Metadata
 		private readonly WeakReference _Instance;
 		//****************************************
 		
-		internal TerminalTypeInstance(string name, TerminalType type, object instance)
+		internal TerminalTypeInstance(string? name, TerminalType type, object instance)
 		{
 			Name = name;
 			Type = type;
@@ -25,7 +25,7 @@ namespace Proximity.Terminal.Metadata
 		/// <summary>
 		/// Gets the name of this Instance
 		/// </summary>
-		public string Name { get; }
+		public string? Name { get; }
 
 		/// <summary>
 		/// Gets the type this Instance is of

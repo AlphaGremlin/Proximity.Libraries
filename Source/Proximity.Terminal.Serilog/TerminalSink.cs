@@ -37,9 +37,13 @@ namespace Proximity.Terminal.Serilog
 
 				Target.Writer.Flush();
 
-				var Message = Target.Buffer.ToSequence().AsString();
+				var Message = Target.Buffer.ToSequence();
 
-				Terminal.Log(Translate(logEvent.Level), logEvent.Exception, Message, Array.Empty<object>());
+				// Console automatically appends a newline, so ensure we don't write one
+				if (Message.EndsWith(Environment.NewLine.AsSpan(), StringComparison.Ordinal))
+					Message = Message.Slice(0, Message.Length - Environment.NewLine.Length);
+
+				Terminal.Log(Translate(logEvent.Level), logEvent.Exception, Message.AsString(), Array.Empty<object>());
 			}
 			finally
 			{

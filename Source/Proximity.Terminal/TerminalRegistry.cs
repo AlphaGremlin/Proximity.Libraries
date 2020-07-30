@@ -25,6 +25,8 @@ namespace Proximity.Terminal
 		
 		// Maps Type Names to Terminal Type Sets
 		private readonly StringKeyDictionary<TerminalTypeSet> _TypeSets = new StringKeyDictionary<TerminalTypeSet>(StringComparison.OrdinalIgnoreCase);
+
+		private readonly ConcurrentDictionary<TerminalType, TerminalTypeInstance> _DefaultInstances = new ConcurrentDictionary<TerminalType, TerminalTypeInstance>();
 		//****************************************
 
 		/// <summary>
@@ -139,6 +141,9 @@ namespace Proximity.Terminal
 					throw new ArgumentException("Unknown Instance Type");
 			}
 
+			if (TargetType.IsDefault)
+				throw new InvalidOperationException("Default type cannot be named");
+
 			if (TargetType.Name == null)
 				throw new InvalidOperationException("Missing Type Set Name");
 
@@ -149,18 +154,52 @@ namespace Proximity.Terminal
 
 			var NewInstance = new TerminalTypeInstance(name, TargetType, instance);
 
-			if (TargetType.IsDefault)
-				TypeSet.Default = NewInstance;
+			TypeSet.AddNamedInstance(NewInstance);
+
+			return NewInstance;
+		}
+
+		/// <summary>
+		/// Registers a default Terminal Instance with this Registry
+		/// </summary>
+		/// <param name="instance">The instance itself</param>
+		/// <returns>A new Terminal Instance describing this Instance</returns>
+		public TerminalTypeInstance? Add(object instance)
+		{
+			if (!_Types.TryGetValue(instance.GetType(), out TerminalType? TargetType))
+			{
+				TargetType = Scan(instance.GetType());
+
+				if (TargetType == null)
+					throw new ArgumentException("Unknown Instance Type");
+			}
+
+			if (!TargetType.IsDefault)
+				throw new InvalidOperationException("Type is not a default");
+
+			//****************************************
+
+			var NewInstance = new TerminalTypeInstance(null, TargetType, instance);
+
+			if (string.IsNullOrEmpty(TargetType.Name))
+			{
+				_DefaultInstances[TargetType] = NewInstance;
+			}
 			else
-				TypeSet.AddNamedInstance(NewInstance);
+			{
+				if (!_TypeSets.TryGetValue(TargetType.Name!, out var TypeSet))
+					throw new InvalidOperationException("Missing Type Set");
+
+				TypeSet.AddDefault(NewInstance);
+			}
 
 			//****************************************
 
 			return NewInstance;
 		}
-		
+
 		/// <summary>
-		/// Unregisters a Terminal Instance previously registered via <see cref="Add" />
+		/// Unregisters a Terminal Instance previously registered via <see cref="Add(string, object)" />
 		/// </summary>
 		/// <param name="name"></param>
 		/// <param name="instance"></param>
@@ -170,6 +209,9 @@ namespace Proximity.Terminal
 			if (!_Types.TryGetValue(instance.GetType(), out var TargetType))
 				throw new ArgumentException("Unknown Instance Type");
 
+			if (TargetType.IsDefault)
+				throw new InvalidOperationException("Default type cannot be named");
+
 			if (TargetType.Name == null)
 				throw new InvalidOperationException("Missing Type Set Name");
 
@@ -178,11 +220,40 @@ namespace Proximity.Terminal
 
 			//****************************************
 
-			TypeSet.Remove(name);
+			TypeSet.RemoveNamedInstance(name);
 		}
-		
+
+		/// <summary>
+		/// Unregisters a Terminal Instance previously registered via <see cref="Add(object)" />
+		/// </summary>
+		/// <param name="instance"></param>
+		/// <remarks>Instances are held with weak references, so this method is not necessary to call. It does, however, improve performance</remarks>
+		public void Remove(object instance)
+		{
+			if (!_Types.TryGetValue(instance.GetType(), out var TargetType))
+				throw new ArgumentException("Unknown Instance Type");
+
+			if (!TargetType.IsDefault)
+				throw new InvalidOperationException("Type is not a default");
+
+			//****************************************
+
+			if (string.IsNullOrEmpty(TargetType.Name))
+			{
+				if (_DefaultInstances.TryGetValue(TargetType, out var CurrentInstance) && CurrentInstance.Target == instance)
+					_DefaultInstances.Remove(TargetType, CurrentInstance);
+			}
+			else
+			{
+				if (!_TypeSets.TryGetValue(TargetType.Name!, out var TypeSet))
+					throw new InvalidOperationException("Missing Type Set");
+
+				TypeSet.RemoveDefault(instance);
+			}
+		}
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Looks up a global command set
 		/// </summary>
@@ -315,6 +386,11 @@ namespace Proximity.Terminal
 		/// Gets a collection of all type sets
 		/// </summary>
 		public ICollection<TerminalTypeSet> TypeSets => _TypeSets.Values;
+
+		/// <summary>
+		/// Gets a collection of all the default instances
+		/// </summary>
+		public ICollection<TerminalTypeInstance> DefaultInstances => _DefaultInstances.Values;
 
 		//****************************************
 

@@ -178,6 +178,15 @@ namespace System.Buffers
 		}
 
 		/// <summary>
+		/// Compares the sequence to a string using string comparison rules
+		/// </summary>
+		/// <param name="left">The left char sequence</param>
+		/// <param name="right">The right string</param>
+		/// <param name="comparisonType">The string comparison to perform</param>
+		/// <returns>Positive if left is greater than right, negative if left is less than right, zero if left is equal to right</returns>
+		public static int CompareTo(this ReadOnlySequence<char> left, string right, StringComparison comparisonType) => left.CompareTo(right.AsSpan(), comparisonType);
+
+		/// <summary>
 		/// Compares the sequence to a span using string comparison rules
 		/// </summary>
 		/// <param name="left">The left char sequence</param>
@@ -357,12 +366,21 @@ namespace System.Buffers
 		}
 
 		/// <summary>
-		/// Compares the start of a character sequence against a character span
+		/// Compares the end of a character sequence against a character span
 		/// </summary>
 		/// <param name="sequence">The sequence to check</param>
 		/// <param name="value">The value to check against</param>
 		/// <param name="comparisonType">The string comparison to use</param>
-		/// <returns>True if the sequence starts with the span, otherwise False</returns>
+		/// <returns>True if the sequence ends with the string, otherwise False</returns>
+		public static bool EndsWith(this ReadOnlySequence<char> sequence, string value, StringComparison comparisonType) => sequence.EndsWith(value.AsSpan(), comparisonType);
+
+		/// <summary>
+		/// Compares the end of a character sequence against a character span
+		/// </summary>
+		/// <param name="sequence">The sequence to check</param>
+		/// <param name="value">The value to check against</param>
+		/// <param name="comparisonType">The string comparison to use</param>
+		/// <returns>True if the sequence ends with the span, otherwise False</returns>
 		public static bool EndsWith(this ReadOnlySequence<char> sequence, ReadOnlySpan<char> value, StringComparison comparisonType)
 		{
 			if (sequence.Length < value.Length)
@@ -957,6 +975,15 @@ namespace System.Buffers
 				ArrayPool<char>.Shared.Return(OutBuffer);
 			}
 		}
+
+		/// <summary>
+		/// Compares the start of a character sequence against a string
+		/// </summary>
+		/// <param name="sequence">The sequence to check</param>
+		/// <param name="value">The value to check against</param>
+		/// <param name="comparisonType">The string comparison to use</param>
+		/// <returns>True if the sequence starts with the string, otherwise False</returns>
+		public static bool StartsWith(this ReadOnlySequence<char> sequence, string value, StringComparison comparisonType) => sequence.StartsWith(value.AsSpan(), comparisonType);
 
 		/// <summary>
 		/// Compares the start of a character sequence against a character span
