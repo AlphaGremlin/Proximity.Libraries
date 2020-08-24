@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -322,9 +323,20 @@ namespace System.Threading.Tasks
 				if (_Stream == null)
 					throw new InvalidOperationException("Task is not in a valid state");
 
-				// Assign as the next task, only if there is none set. If we're set to completed, just run it directly
-				if (Interlocked.CompareExchange(ref _NextTask, child, null) == CompleteStreamTask)
+				// Assign as the next task only if there is none set. If we're set to completed, just run it directly
+				var NextTask = Interlocked.CompareExchange(ref _NextTask, child, null);
+
+				if (NextTask == CompleteStreamTask)
+				{
+					// Make sure to release this Task to the pool now it's not longer referenced
+					TryRelease();
+
 					ExecutePool(child);
+				}
+				else
+				{
+					Debug.Assert(NextTask is null, "Task already has a descendant");
+				}
 			}
 
 			public override sealed bool TryActivate(
@@ -338,6 +350,7 @@ namespace System.Threading.Tasks
 				if (_CanCancel == 0)
 					return true; // Task cannot be cancelled, so its free to execute
 
+				// TODO: Refactor to remove the blocking cancellation disposal?
 				_Registration.Dispose();
 
 				// We've abandoned cancellation, but it may still be executing right now.
@@ -345,7 +358,7 @@ namespace System.Threading.Tasks
 				if (Interlocked.CompareExchange(ref _CanCancel, 0, 1) == 1)
 					return true; // Success, we're now able to begin executing
 
-				// The Task has already cancelled, so we can complete it now were not in the queue
+				// The Task has already cancelled, so we can complete it now we're not in the queue
 				nextTask = Complete();
 
 				return false;
@@ -417,24 +430,43 @@ namespace System.Threading.Tasks
 
 			private BaseTask Complete()
 			{
-				// Mark us as completed
-				var NextTask = Interlocked.CompareExchange(ref _NextTask, CompleteStreamTask, null);
+				// If we're the head of the queue, mark the entire queue as completed.
+				// This improves TaskQueue.Complete performance, and ensures there's no leftover reference to us.
+				var IsComplete = ReferenceEquals(Interlocked.CompareExchange(ref _Stream!._NextTask, CompleteStreamTask, this), this);
 
 				// Reduce the number of pending actions
 				Interlocked.Decrement(ref _Stream!._PendingActions);
 
-				if (NextTask == null)
-				{
-					// There's no task queued to run next, so mark us as completed. Makes GetComplete faster
-					Interlocked.CompareExchange(ref _Stream._NextTask, CompleteStreamTask, this);
+				BaseTask? NextTask = null;
 
-					// Return Completed as well, so ExecuteNextTask can safely abort
-					NextTask = CompleteStreamTask;
+				if (IsComplete)
+				{
+					// No need to mark ourselves as complete, since it's implied by clearing the queue head.
+					// No more reference to us on the queue, so we can safely call TryRelease
+					TryRelease();
+				}
+				else
+				{
+					// We're not the head of the queue, so TaskQueue.QueueX has been called.
+					// Set this task to Complete, and capture the next Task in the chain if it's been queued yet.
+					// If it hasn't, the QueueX call will handle execution.
+					NextTask = Interlocked.CompareExchange(ref _NextTask, CompleteStreamTask, null);
+
+					if (NextTask is null)
+					{
+						// We're not the head, but our Queue method hasn't been called yet.
+						// This means a TaskQueue.QueueX method is still in progress, and we can't safely call TryRelease here.
+						// Instead, it will get called by Queue when it detects our NextTask was set to CompleteStreamTask
+					}
+					else
+					{
+						// QueueX has already called our Queue method, so we're safe to release
+						TryRelease();
+					}
 				}
 
-				TryRelease();
-
-				return NextTask;
+				// If we don't have a following Task, ensure that ExecuteNextTask knows to abort.
+				return NextTask ?? CompleteStreamTask;
 			}
 
 			private void TryRelease()

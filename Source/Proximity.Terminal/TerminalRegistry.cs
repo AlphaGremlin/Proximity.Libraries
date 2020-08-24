@@ -105,7 +105,7 @@ namespace Proximity.Terminal
 			
 			if (MyProvider == null)
 				return null;
-			
+
 			// We've scanned at least one type, so mark us as Loaded
 			MyType = new TerminalType(this, type, MyProvider);
 			

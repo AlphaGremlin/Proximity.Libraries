@@ -37,9 +37,11 @@ namespace Proximity.Buffers.Tests
 			//****************************************
 
 			using (var Buffer = new BufferWriter<char>())
-			using (var Writer = new CharTextWriter(Buffer))
 			{
-				Writer.Write(_TestInput);
+				using (var Writer = new CharTextWriter(Buffer))
+				{
+					Writer.Write(_TestInput);
+				}
 
 				MyResult = Buffer.ToSequence().ToArray();
 			}
@@ -56,9 +58,11 @@ namespace Proximity.Buffers.Tests
 			//****************************************
 
 			using (var Buffer = new BufferWriter<char>())
-			using (var Writer = new CharTextWriter(Buffer, capacity))
 			{
-				Writer.Write(_TestInput);
+				using (var Writer = new CharTextWriter(Buffer, capacity))
+				{
+					Writer.Write(_TestInput);
+				}
 
 				MyResult = Buffer.ToSequence().ToArray();
 			}
@@ -75,11 +79,13 @@ namespace Proximity.Buffers.Tests
 			//****************************************
 
 			using (var Buffer = new BufferWriter<char>())
-			using (var Writer = new CharTextWriter(Buffer, capacity))
 			{
-				foreach (var MyChar in _TestInput)
+				using (var Writer = new CharTextWriter(Buffer, capacity))
 				{
-					Writer.Write(MyChar);
+					foreach (var MyChar in _TestInput)
+					{
+						Writer.Write(MyChar);
+					}
 				}
 
 				MyResult = Buffer.ToSequence().ToArray();

@@ -234,7 +234,7 @@ namespace Proximity.Terminal
 					{
 						try
 						{
-							_ConsoleOutput.Peek(_TokenSource.Token).GetAwaiter().GetResult();
+							_ConsoleOutput.Peek(_TokenSource.Token).AsTask().GetAwaiter().GetResult();
 						}
 						catch (OperationCanceledException)
 						{

@@ -20,21 +20,31 @@ namespace System.IO
 		//****************************************
 		private readonly IBufferWriter<char> _Writer;
 
-		private readonly int _MaxBufferSize;
+		private readonly int _MinBufferSize, _MaxBufferSize;
+
+		private int _PendingChars;
+		private Memory<char> _PendingBuffer;
 		//****************************************
 
 		/// <summary>
 		/// Creates a new Buffer Writer
 		/// </summary>
+		/// <param name="writer">The writer to write characters to</param>
+		/// <param name="maxBufferSize">The maximum buffer size to request from the Text Writer</param>
 		public CharTextWriter(IBufferWriter<char> writer, int maxBufferSize)
 		{
-			_Writer = writer;
+			if (maxBufferSize < 1)
+				throw new ArgumentOutOfRangeException(nameof(maxBufferSize));
+
+			_Writer = writer ?? throw new ArgumentNullException(nameof(writer));
 			_MaxBufferSize = maxBufferSize;
+			_MinBufferSize = Math.Min(DefaultBufferSize, maxBufferSize);
 		}
 
 		/// <summary>
 		/// Creates a new Buffer Writer
 		/// </summary>
+		/// <param name="writer">The writer to write characters to</param>
 		public CharTextWriter(IBufferWriter<char> writer) : this(writer, DefaultBufferSize)
 		{
 		}
@@ -42,49 +52,54 @@ namespace System.IO
 		//****************************************
 
 		/// <inheritdoc />
-		public override void Flush()
+		protected override void Dispose(bool disposing)
 		{
+			base.Dispose(disposing);
+
+			if (disposing)
+				Flush();
 		}
 
 		/// <inheritdoc />
-		public override Task FlushAsync() => Task.CompletedTask;
+		public override void Flush()
+		{
+			if (_PendingChars > 0)
+			{
+				_Writer.Advance(_PendingChars);
+
+				_PendingChars = 0;
+				_PendingBuffer = default;
+			}
+		}
+
+		/// <inheritdoc />
+		public override Task FlushAsync()
+		{
+			Flush();
+
+			return Task.CompletedTask;
+		}
 
 		/// <inheritdoc />
 		public override void Write(char value)
 		{
-			var Output = _Writer.GetSpan(1);
+			EnsureMinimum(1);
 
-			Output[0] = value;
-
-			_Writer.Advance(1);
+			_PendingBuffer.Span[_PendingChars++] = value;
 		}
 
 		/// <inheritdoc />
-		public override void Write(char[]? buffer) => Write(buffer.AsSpan());
+		public override void Write(char[]? buffer) => Write(buffer.AsSpan(), false);
 
 		/// <inheritdoc />
-		public override void Write(char[] buffer, int index, int count) => Write(buffer.AsSpan(index, count));
+		public override void Write(char[] buffer, int index, int count) => Write(buffer.AsSpan(index, count), false);
 
 		/// <inheritdoc />
 		public
 #if !NETSTANDARD2_0
 			override
 #endif
-			void Write(ReadOnlySpan<char> buffer)
-		{
-			while (!buffer.IsEmpty)
-			{
-				var Output = _Writer.GetSpan(_MaxBufferSize > 0 ? Math.Min(_MaxBufferSize, buffer.Length) : buffer.Length);
-
-				var Length = Math.Min(Output.Length, buffer.Length);
-
-				buffer.Slice(0, Length).CopyTo(Output);
-
-				_Writer.Advance(Length);
-
-				buffer = buffer.Slice(Length);
-			}
-		}
+			void Write(ReadOnlySpan<char> buffer) => Write(buffer, false);
 
 		/// <inheritdoc />
 		public override void Write(string? value) => Write(value.AsSpan());
@@ -107,7 +122,7 @@ namespace System.IO
 #endif
 			Task WriteAsync(ReadOnlyMemory<char> buffer, CancellationToken cancellationToken = default)
 		{
-			Write(buffer.Span);
+			Write(buffer.Span, false);
 
 			return Task.CompletedTask;
 		}
@@ -116,36 +131,49 @@ namespace System.IO
 		public override Task WriteAsync(string? value) => WriteAsync(value.AsMemory());
 
 		/// <inheritdoc />
-		public override void WriteLine(char value)
+		public override void WriteLine()
 		{
-			Write(value);
-			Write(CoreNewLine);
+			var Length = CoreNewLine.Length;
+
+			EnsureMinimum(Length);
+
+			CoreNewLine.AsSpan().CopyTo(_PendingBuffer.Span.Slice(_PendingChars));
+
+			_PendingChars += Length;
 		}
 
 		/// <inheritdoc />
-		public override void WriteLine(char[]? buffer) => WriteLine(buffer.AsSpan());
+		public override void WriteLine(char value)
+		{
+			var Length = CoreNewLine.Length + 1;
+			EnsureMinimum(Length);
+
+			_PendingBuffer.Span[_PendingChars] = value;
+			CoreNewLine.AsSpan().CopyTo(_PendingBuffer.Span.Slice(_PendingChars + 1));
+
+			_PendingChars += Length;
+		}
 
 		/// <inheritdoc />
-		public override void WriteLine(char[] buffer, int index, int count) => WriteLine(buffer.AsSpan(index, count));
+		public override void WriteLine(char[]? buffer) => Write(buffer.AsSpan(), true);
+
+		/// <inheritdoc />
+		public override void WriteLine(char[] buffer, int index, int count) => Write(buffer.AsSpan(index, count), true);
 
 		/// <inheritdoc />
 		public
 #if !NETSTANDARD2_0
 			override
 #endif
-			void WriteLine(ReadOnlySpan<char> buffer)
-		{
-			Write(buffer);
-			Write(CoreNewLine);
-		}
+			void WriteLine(ReadOnlySpan<char> buffer) => Write(buffer, true);
 
 		/// <inheritdoc />
-		public override void WriteLine(string? value) => WriteLine(value.AsSpan());
+		public override void WriteLine(string? value) => Write(value.AsSpan(), true);
 
 		/// <inheritdoc />
 		public override Task WriteLineAsync()
 		{
-			Write(CoreNewLine);
+			WriteLine();
 
 			return Task.CompletedTask;
 		}
@@ -153,8 +181,7 @@ namespace System.IO
 		/// <inheritdoc />
 		public override Task WriteLineAsync(char value)
 		{
-			Write(value);
-			Write(CoreNewLine);
+			WriteLine(value);
 
 			return Task.CompletedTask;
 		}
@@ -169,14 +196,52 @@ namespace System.IO
 #endif
 			Task WriteLineAsync(ReadOnlyMemory<char> buffer, CancellationToken cancellationToken = default)
 		{
-			Write(buffer);
-			Write(CoreNewLine);
+			Write(buffer.Span, true);
 
 			return Task.CompletedTask;
 		}
 
 		/// <inheritdoc />
 		public override Task WriteLineAsync(string? value) => WriteLineAsync(value.AsMemory());
+
+		//****************************************
+
+		private void EnsureMinimum(int hint)
+		{
+			hint = Math.Min(_MaxBufferSize, hint);
+
+			if (_PendingChars + hint >= _PendingBuffer.Length)
+			{
+				if (_PendingChars > 0)
+				{
+					_Writer.Advance(_PendingChars);
+					_PendingChars = 0;
+				}
+
+				hint = Math.Max(_MinBufferSize, hint);
+
+				_PendingBuffer = _Writer.GetMemory(hint);
+			}
+		}
+
+		private void Write(ReadOnlySpan<char> buffer, bool newLine)
+		{
+			while (!buffer.IsEmpty)
+			{
+				EnsureMinimum(buffer.Length);
+
+				var Output = _PendingBuffer.Span.Slice(_PendingChars);
+				var Length = Math.Min(Output.Length, buffer.Length);
+
+				buffer.Slice(0, Length).CopyTo(Output);
+				buffer = buffer.Slice(Length);
+
+				_PendingChars += Length;
+			}
+
+			if (newLine)
+				WriteLine();
+		}
 
 		//****************************************
 

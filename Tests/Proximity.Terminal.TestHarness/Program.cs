@@ -32,7 +32,7 @@ namespace Proximity.Terminal.TestHarness
 		{
 			if (args.Length == 0)
 			{
-				Console.WriteLine("Select Base Implementation: S - Serilog");
+				Console.WriteLine("Select Base Implementation: S - Serilog, s - Serilog (no Command Line)");
 
 				var Key = Console.ReadKey(true);
 
@@ -48,12 +48,17 @@ namespace Proximity.Terminal.TestHarness
 
 		private static Task<int> MainSelector(char code)
 		{
-			switch (char.ToUpperInvariant(code))
+			switch (code)
 			{
+			case 's':
+				Console.WriteLine("Using Serilog Intermediary (no Command Line)");
+
+				return MainSerilog(false);
+
 			case 'S':
 				Console.WriteLine("Using Serilog Intermediary");
 
-				return MainSerilog();
+				return MainSerilog(true);
 
 			default:
 				Console.WriteLine("Unknown Implementation: {0}", code);
@@ -61,11 +66,11 @@ namespace Proximity.Terminal.TestHarness
 			}
 		}
 
-		private static async Task<int> MainSerilog()
+		private static async Task<int> MainSerilog(bool commandLine)
 		{
 			try
 			{
-				TerminalConsole.Initialise(true);
+				TerminalConsole.Initialise(commandLine);
 
 				var builder = new HostBuilder()
 					.ConfigureAppConfiguration((hostContext, config) =>
