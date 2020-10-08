@@ -121,6 +121,8 @@ namespace System.Threading
 				if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Cancelled, Status.Pending) != Status.Pending)
 					return; // Instance is no longer in a cancellable state
 
+				Owner!._Waiters.Erase(this);
+
 				// The cancellation token was raised
 				_TaskSource.SetException(CreateCancellationException());
 			}

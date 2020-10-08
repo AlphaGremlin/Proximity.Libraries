@@ -62,7 +62,10 @@ namespace System.Threading
 			// Try and assign the counter to this Instance
 			if (Interlocked.CompareExchange(ref _InstanceState, Status.Decremented, Status.Pending) == Status.Pending)
 			{
-				Counters = Math.Min(_Maximum, count);
+				if (_Maximum == 0)
+					Counters = count;
+				else
+					Counters = Math.Min(_Maximum, count);
 
 				count -= Counters;
 

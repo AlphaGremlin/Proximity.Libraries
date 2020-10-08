@@ -270,7 +270,7 @@ namespace System.Threading
 					if (!isRight && !_RightWaiters.IsEmpty)
 					{
 						// One or more rights got queued, try and activate one
-						// We only check if this is a ;eft, since if it's a right they should auto-succeeded in unfair mode, and in fair mode it's up to the left that originally blocked them to release, not us
+						// We only check if this is a left, since if it's a right they should auto-succeeded in unfair mode, and in fair mode it's up to the left that originally blocked them to release, not us
 						if (!TryTakeRight(true) || TryActivateRight())
 							return;
 
@@ -381,6 +381,36 @@ namespace System.Threading
 
 			// Failed to dequeue, so trigger a release
 			return false;
+		}
+
+		private void CancelWaiter(LockInstance instance)
+		{
+			var WaiterSet = instance.IsRight ? _RightWaiters : _LeftWaiters;
+
+			if (!WaiterSet.Erase(instance) || !WaiterSet.IsEmpty)
+				return;
+
+			// In unfair mode, there won't be any waiters on the opposing side
+			if (IsUnfair)
+				return;
+
+			// Activate any waiters on the opposing side
+			if (instance.IsRight)
+			{
+				if (!_LeftWaiters.IsEmpty && TryTakeLeft())
+				{
+					if (!TryActivateLeft(true))
+						Release(false);
+				}
+			}
+			else
+			{
+				if (!_RightWaiters.IsEmpty && TryTakeRight())
+				{
+					if (!TryActivateRight(true))
+						Release(true);
+				}
+			}
 		}
 
 		private void DisposeLeft()

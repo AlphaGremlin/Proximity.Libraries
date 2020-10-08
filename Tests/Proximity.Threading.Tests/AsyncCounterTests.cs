@@ -127,7 +127,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyCounter.WaitingCount, "Tasks unexpectedly waiting");
 		}
 
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public async Task DecrementIncrement()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -147,7 +147,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyCounter.WaitingCount, "Tasks unexpectedly waiting");
 		}
 
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public async Task DecrementAdd()
 		{ //****************************************
 			var MyCounter = new AsyncCounter();
@@ -167,7 +167,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyCounter.WaitingCount, "Tasks unexpectedly waiting");
 		}
 
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public async Task DecrementToZeroAdd()
 		{ //****************************************
 			var MyCounter = new AsyncCounter();
@@ -187,7 +187,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyCounter.WaitingCount, "Tasks unexpectedly waiting");
 		}
 
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public void DecrementCancel()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -214,7 +214,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyCounter.WaitingCount, "Tasks unexpectedly waiting");
 		}
 		
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public async Task DecrementMultiCancel()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -244,8 +244,8 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyCounter.WaitingCount, "Tasks unexpectedly waiting");
 		}
 		
-		[Test, MaxTime(1000)]
-		public async Task DecrementMaxTime()
+		[Test, Timeout(1000)]
+		public async Task DecrementTimeout()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
 			//****************************************
@@ -268,7 +268,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyCounter.CurrentCount, "Count not zero");
 		}
 		
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public void DecrementTimeoutNone()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -286,7 +286,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyCounter.CurrentCount, "Count not zero");
 		}
 		
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public async Task DecrementTimeoutDelayed()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -306,7 +306,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyCounter.CurrentCount, "Count not zero");
 		}
 		
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public void DisposeDecrement()
 		{	//****************************************
 			var MyLock = new AsyncCounter();
@@ -322,7 +322,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyLock.CurrentCount, "Count not zero");
 		}
 		
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public void DisposeIncrement()
 		{	//****************************************
 			var MyLock = new AsyncCounter();
@@ -398,7 +398,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyLock.CurrentCount, "Count not zero");
 		}
 
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public async Task DecrementDispose()
 		{	//****************************************
 			var MyLock = new AsyncCounter();
@@ -424,7 +424,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyLock.CurrentCount, "Count not zero");
 		}
 		
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public void IncrementDispose()
 		{	//****************************************
 			var MyLock = new AsyncCounter();
@@ -465,7 +465,7 @@ namespace Proximity.Threading.Tests
 			await ResultTask;
 		}
 		
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public void TryDecrement()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -478,7 +478,7 @@ namespace Proximity.Threading.Tests
 			Assert.IsFalse(MyResult, "Decrement succeeded unexpectedly");
 		}
 		
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public void TryDecrementSuccess()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -493,7 +493,7 @@ namespace Proximity.Threading.Tests
 			Assert.IsTrue(MyResult, "Decrement failed unexpectedly");
 		}
 		
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public void TryDecrementAny()
 		{	//****************************************
 			var MyCounters = new [] { new AsyncCounter(), new AsyncCounter() };
@@ -508,7 +508,7 @@ namespace Proximity.Threading.Tests
 			Assert.IsNull(Counter, "Return an unexpected counter");
 		}
 		
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public void TryDecrementAnySuccess([Values(0, 1)] int index)
 		{	//****************************************
 			var MyCounters = new [] { new AsyncCounter(), new AsyncCounter() };
@@ -525,7 +525,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreSame(MyCounters[index], Counter, "Did not return the expected counter");
 		}
 		
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public async Task DecrementAny([Values(0, 1)] int index)
 		{	//****************************************
 			var MyCounters = new AsyncCounter[] { new AsyncCounter(0), new AsyncCounter(0) };
@@ -550,7 +550,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyCounters[1].WaitingCount, "Tasks unexpectedly waiting");
 		}
 		
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public void DecrementAnyInitial()
 		{	//****************************************
 			var MyCounters = new AsyncCounter[] { new AsyncCounter(1), new AsyncCounter(1) };
@@ -570,7 +570,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyCounters[1].WaitingCount, "Tasks unexpectedly waiting");
 		}
 		
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public async Task DecrementAnyMulti()
 		{	//****************************************
 			var MyCounters = new AsyncCounter[] { new AsyncCounter(0), new AsyncCounter(0) };
@@ -604,7 +604,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyCounters[1].WaitingCount, "Tasks unexpectedly waiting");
 		}
 		
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public void DecrementAnyCancel()
 		{	//****************************************
 			var MyCounters = new AsyncCounter[] { new AsyncCounter(0), new AsyncCounter(0) };
@@ -633,7 +633,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyCounters[1].WaitingCount, "Tasks unexpectedly waiting");
 		}
 		
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public void DecrementAnyDispose()
 		{	//****************************************
 			var MyCounters = new AsyncCounter[] { new AsyncCounter(0), new AsyncCounter(0) };
@@ -660,7 +660,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(0, MyCounters[1].WaitingCount, "Tasks unexpectedly waiting");
 		}
 		
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public void TryPeek()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -673,7 +673,7 @@ namespace Proximity.Threading.Tests
 			Assert.IsFalse(MyResult, "Peek succeeded unexpectedly");
 		}
 		
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public void Peek()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -686,7 +686,7 @@ namespace Proximity.Threading.Tests
 			Assert.IsFalse(MyTask.IsCompleted, "Peek succeeded unexpectedly");
 		}
 
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public async Task PeekDispose()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -701,7 +701,7 @@ namespace Proximity.Threading.Tests
 			Assert.IsFalse(await MyTask);
 		}
 
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public async Task PeekCancelDispose()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -718,7 +718,7 @@ namespace Proximity.Threading.Tests
 			Assert.IsFalse(await MyTask);
 		}
 
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public async Task PeekCancel()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -743,7 +743,7 @@ namespace Proximity.Threading.Tests
 			}
 		}
 
-		[Test, MaxTime(1000)]
+		[Test, Timeout(1000)]
 		public async Task PeekDisposeContinueWithPeek()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -762,7 +762,7 @@ namespace Proximity.Threading.Tests
 			Assert.IsFalse(await MyInnerTask);
 		}
 
-		[Test, MaxTime(2000)]
+		[Test, Timeout(2000)]
 		public async Task ConsumeDual()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -784,7 +784,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(MyResults[2], MyResults.Take(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Take(2).Sum(), MyCounter.CurrentCount);
 		}
 
-		[Test, MaxTime(2000)]
+		[Test, Timeout(2000)]
 		public async Task ConsumeDualPeek()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -806,7 +806,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(MyResults[2], MyResults.Take(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Take(2).Sum(), MyCounter.CurrentCount);
 		}
 
-		[Test, MaxTime(2000)]
+		[Test, Timeout(2000)]
 		public async Task ConsumeDualIncrement()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -829,7 +829,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(MyResults.Skip(2).Sum(), MyResults.Take(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Take(2).Sum(), MyCounter.CurrentCount);
 		}
 
-		[Test, MaxTime(2000)]
+		[Test, Timeout(2000)]
 		public async Task ConsumeDualIncrementPeek()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -852,7 +852,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(MyResults.Skip(2).Sum(), MyResults.Take(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Take(2).Sum(), MyCounter.CurrentCount);
 		}
 
-		[Test, MaxTime(2000)]
+		[Test, Timeout(2000)]
 		public async Task ConsumeLots()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -873,7 +873,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(MyResults[0], MyResults.Skip(1).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Skip(1).Sum(), MyCounter.CurrentCount);
 		}
 
-		[Test, MaxTime(2000)]
+		[Test, Timeout(2000)]
 		public async Task ConsumeLotsIncrement()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -894,7 +894,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(MyResults[0], MyResults.Skip(1).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Skip(1).Sum(), MyCounter.CurrentCount);
 		}
 
-		[Test, MaxTime(2000)]
+		[Test, Timeout(2000)]
 		public async Task ConsumeLotsDualIncrement()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -917,7 +917,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(MyResults.Take(2).Sum(), MyResults.Skip(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Skip(2).Sum(), MyCounter.CurrentCount);
 		}
 
-		[Test, Repeat(2), MaxTime(3000)]
+		[Test, Repeat(2), Timeout(3000)]
 		public async Task ConsumeLotsIncrementLots()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -938,7 +938,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(MyResults.Take(5).Sum(), MyResults.Skip(5).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Skip(5).Sum(), MyCounter.CurrentCount);
 		}
 
-		[Test, Repeat(2), MaxTime(3000)]
+		[Test, Repeat(2), Timeout(3000)]
 		public async Task ConsumeLotsIncrementLotsPeek()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -959,7 +959,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(MyResults.Take(5).Sum(), MyResults.Skip(5).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Skip(5).Sum(), MyCounter.CurrentCount);
 		}
 
-		[Test, MaxTime(2000)]
+		[Test, Timeout(2000)]
 		public async Task ConsumeDualCancel()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -981,7 +981,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(MyResults[2], MyResults.Take(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Take(2).Sum(), MyCounter.CurrentCount);
 		}
 
-		[Test, MaxTime(2000)]
+		[Test, Timeout(2000)]
 		public async Task ConsumeDualCancelPeek()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -1003,7 +1003,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(MyResults[2], MyResults.Take(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Take(2).Sum(), MyCounter.CurrentCount);
 		}
 
-		[Test, MaxTime(2000)]
+		[Test, Timeout(2000)]
 		public async Task ConsumeDualDispose()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -1027,7 +1027,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(MyResults[2], MyResults.Take(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Take(2).Sum(), MyCounter.CurrentCount);
 		}
 
-		[Test, MaxTime(2000)]
+		[Test, Timeout(2000)]
 		public async Task ConsumeDualDisposePeek()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -1051,7 +1051,7 @@ namespace Proximity.Threading.Tests
 			Assert.AreEqual(MyResults[2], MyResults.Take(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Take(2).Sum(), MyCounter.CurrentCount);
 		}
 
-		[Test, MaxTime(2000)]
+		[Test, Timeout(2000)]
 		public async Task ConsumeDualCancelDispose()
 		{	//****************************************
 			var MyCounter = new AsyncCounter();
@@ -1072,7 +1072,7 @@ namespace Proximity.Threading.Tests
 
 			//****************************************
 
-			Assert.AreEqual(MyResults[2], MyResults.Take(2).Sum() + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults.Take(2).Sum(), MyCounter.CurrentCount);
+			Assert.AreEqual(MyResults[2], MyResults[0] + MyResults[1] + MyCounter.CurrentCount, "Counts do not match: {0} + {1}", MyResults[0] + MyResults[1], MyCounter.CurrentCount);
 		}
 
 		//****************************************
@@ -1101,7 +1101,7 @@ namespace Proximity.Threading.Tests
 			}
 			catch (ObjectDisposedException)
 			{
-				System.Diagnostics.Debug.WriteLine("Disposed Incrementer");
+				Console.WriteLine("Disposed Incrementer");
 			}
 
 			return TotalIncrement;
@@ -1117,7 +1117,7 @@ namespace Proximity.Threading.Tests
 				{
 					if (!await counter.TryDecrementAsync(token))
 					{
-						System.Diagnostics.Debug.WriteLine("Disposed Consumer");
+						Console.WriteLine("Disposed Consumer");
 						break;
 					}
 
@@ -1129,7 +1129,7 @@ namespace Proximity.Threading.Tests
 			}
 			catch (OperationCanceledException)
 			{
-				System.Diagnostics.Debug.WriteLine("Cancelled Consumer");
+				//Console.WriteLine("Cancelled Consumer");
 			}
 
 			return TotalDecrement;
