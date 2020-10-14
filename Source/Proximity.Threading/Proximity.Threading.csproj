@@ -25,11 +25,9 @@
 	</ItemGroup>
 	<ItemGroup>
 	  <Compile Remove="AsyncKeyedLock.cs" />
-	  <Compile Remove="Sync\AsyncKeyedLock.cs" />
 	  <Compile Remove="WaitHandleExtensions.cs" />
 	</ItemGroup>
 	<ItemGroup>
-	  <None Include="Sync\AsyncKeyedLock.cs" />
 	  <None Include="WaitHandleExtensions.cs" />
 	</ItemGroup>
 	<ItemGroup>

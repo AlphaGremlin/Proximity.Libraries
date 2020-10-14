@@ -13,10 +13,10 @@ namespace System.Threading
 	/// Provides an async primitive for ordered locking based on a key
 	/// </summary>
 	/// <typeparam name="TKey">The type of key to lock on</typeparam>
-	public sealed class AsyncKeyedLock<TKey> : IDisposable
+	public sealed partial class AsyncKeyedLock<TKey> : IAsyncDisposable
 	{	//****************************************
-		private readonly ConcurrentDictionary<TKey, ImmutableQueue<TaskCompletionSource<IDisposable>>> _Locks;
-		private TaskCompletionSource<IDisposable>? _Dispose;
+		private readonly ConcurrentDictionary<TKey, ImmutableQueue<TaskCompletionSource<Instance>>> _Locks;
+		private TaskCompletionSource<VoidStruct>? _Dispose;
 		//****************************************
 
 		/// <summary>
@@ -32,7 +32,7 @@ namespace System.Threading
 		/// <param name="comparer">The equality comparer to use for matching keys</param>
 		public AsyncKeyedLock(IEqualityComparer<TKey> comparer)
 		{
-			_Locks = new ConcurrentDictionary<TKey, ImmutableQueue<TaskCompletionSource<IDisposable>>>(comparer);
+			_Locks = new ConcurrentDictionary<TKey, ImmutableQueue<TaskCompletionSource<Instance>>>(comparer);
 		}
 
 		//****************************************
@@ -42,38 +42,27 @@ namespace System.Threading
 		/// </summary>
 		/// <returns>A task that completes when all holders of the lock have exited</returns>
 		/// <remarks>All tasks waiting on the lock will throw ObjectDisposedException</remarks>
-		public Task Dispose()
+		public ValueTask DisposeAsync()
 		{
-			((IDisposable)this).Dispose();
-
-			return _Dispose.Task;
-		}
-
-		void IDisposable.Dispose()
-		{
-			if (_Dispose != null || Interlocked.CompareExchange(ref _Dispose, new TaskCompletionSource<IDisposable>(), null) != null)
-				return;
+			if (_Dispose != null || Interlocked.CompareExchange(ref _Dispose, new TaskCompletionSource<VoidStruct>(), null) != null)
+				return default;
 
 			DisposeWaiters();
-		}
 
-		/// <summary>
-		/// Attempts to take a lock
-		/// </summary>
-		/// <param name="key">The key to lock on</param>
-		/// <returns>A task that completes when the lock is taken, giving an IDisposable to release the counter</returns>
-		public Task<IDisposable> Lock(TKey key) => Lock(key, CancellationToken.None);
+			return new ValueTask(_Dispose.Task);
+		}
 
 		/// <summary>
 		/// Attempts to take a lock
 		/// </summary>
 		/// <param name="key">The key to lock on</param>
 		/// <param name="timeout">The amount of time to wait for the lock</param>
+		/// <param name="token">A cancellation token that can be used to abort waiting on the lock</param>
 		/// <returns>A task that completes when the lock is taken, giving an IDisposable to release the lock</returns>
-		public Task<IDisposable> Lock(TKey key, TimeSpan timeout)
+		public ValueTask<Instance> Lock(TKey key, TimeSpan timeout, CancellationToken token = default)
 		{	//****************************************
-			var MySource = new CancellationTokenSource();
-			var MyTask = Lock(key, MySource.Token);
+			var MySource = token.CanBeCanceled ? CancellationTokenSource.CreateLinkedTokenSource(token) : new CancellationTokenSource();
+			var MyTask = InternalLock(key, MySource.Token);
 			//****************************************
 
 			// If the task is already completed, no need for the token source
@@ -81,7 +70,7 @@ namespace System.Threading
 			{
 				MySource.Dispose();
 
-				return MyTask;
+				return new ValueTask<Instance>(MyTask);
 			}
 
 			MySource.CancelAfter(timeout);
@@ -89,7 +78,7 @@ namespace System.Threading
 			// Ensure we cleanup the cancellation source once we're done
 			MyTask.ContinueWith((task, innerSource) => ((CancellationTokenSource)innerSource).Dispose(), MySource, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Current);
 
-			return MyTask;
+			return new ValueTask<Instance>(MyTask);
 		}
 
 		/// <summary>
@@ -98,30 +87,34 @@ namespace System.Threading
 		/// <param name="key">The key to lock on</param>
 		/// <param name="token">A cancellation token that can be used to abort waiting on the lock</param>
 		/// <returns>A task that completes when the lock is taken, giving an IDisposable to release the lock</returns>
-		public Task<IDisposable> Lock(TKey key, CancellationToken token)
-		{	//****************************************
-			TaskCompletionSource<IDisposable> NewWaiter;
-			ImmutableQueue<TaskCompletionSource<IDisposable>> NewValue;
+		public ValueTask<Instance> Lock(TKey key, CancellationToken token = default) => new ValueTask<Instance>(InternalLock(key, token));
+
+		//****************************************
+
+		private Task<Instance> InternalLock(TKey key, CancellationToken token)
+		{ //****************************************
+			TaskCompletionSource<Instance> NewWaiter;
+			ImmutableQueue<TaskCompletionSource<Instance>> NewValue;
 			//****************************************
 
 			// A null key means it's a disposal, so we can't allow the user to lock on it
 			if (key == null)
-				throw new ArgumentNullException("key", "Key cannot be null");
+				throw new ArgumentNullException(nameof(key), "Key cannot be null");
 
-			NewWaiter = new TaskCompletionSource<IDisposable>(key);
+			NewWaiter = new TaskCompletionSource<Instance>(key);
 
 			// Is this keyed lock disposing?
 			if (_Dispose != null)
-				return Task.FromException<IDisposable>(new ObjectDisposedException("AsyncKeyedLock", "Keyed Lock has been disposed of"));
+				throw new ObjectDisposedException(nameof(AsyncKeyedLock<TKey>), "Keyed Lock has been disposed of");
 
 			// Try and add ourselves to the lock queue
-			for (; ;)
+			for (; ; )
 			{
 				if (_Locks.TryGetValue(key, out var OldValue))
 				{
 					// Has the lock been disposed? We may have been disposed while adding
 					if (!OldValue.IsEmpty && OldValue.Peek().Task.AsyncState == null)
-						return Task.FromException<IDisposable>(new ObjectDisposedException("AsyncKeyedLock", "Keyed Lock has been disposed of"));
+						throw new ObjectDisposedException(nameof(AsyncKeyedLock<TKey>), "Keyed Lock has been disposed of");
 
 					// No, so add ourselves to the queue
 					NewValue = OldValue.Enqueue(NewWaiter);
@@ -129,21 +122,21 @@ namespace System.Threading
 					if (_Locks.TryUpdate(key, NewValue, OldValue))
 						break;
 				}
-				else if (_Locks.TryAdd(key, NewValue = ImmutableQueue<TaskCompletionSource<IDisposable>>.Empty))
+				else if (_Locks.TryAdd(key, NewValue = ImmutableQueue<TaskCompletionSource<Instance>>.Empty))
 				{
 					if (_Dispose == null)
 						break;
 
 					// If we disposed during this, abort
-					((IDictionary<TKey, ImmutableQueue<TaskCompletionSource<IDisposable>>>)_Locks).Remove(key);
+					((IDictionary<TKey, ImmutableQueue<TaskCompletionSource<Instance>>>)_Locks).Remove(key);
 
-					return Task.FromException<IDisposable>(new ObjectDisposedException("AsyncKeyedLock", "Keyed Lock has been disposed of"));
+					throw new ObjectDisposedException(nameof(AsyncKeyedLock<TKey>), "Keyed Lock has been disposed of");
 				}
 			}
 
 			// Were we added (ie: did we take the lock)?
 			if (NewValue.IsEmpty)
-				return Task.FromResult<IDisposable>(new AsyncKeyedLockInstance(this, key));
+				return Task.FromResult(new Instance(new AsyncKeyedLockInstance(this, key)));
 
 			// No, so we're waiting then. Check if we can get cancelled
 			if (token.CanBeCanceled)
@@ -158,11 +151,9 @@ namespace System.Threading
 			return NewWaiter.Task;
 		}
 
-		//****************************************
-
 		private void Cancel(object state)
 		{	//****************************************
-			var MyWaiter = (TaskCompletionSource<IDisposable>)state;
+			var MyWaiter = (TaskCompletionSource<Instance>)state;
 			//****************************************
 
 			// Try and cancel our task. If it fails, we've already completed and been removed from the Waiters list.
@@ -171,7 +162,7 @@ namespace System.Threading
 
 		private void Release(TKey key)
 		{	//****************************************
-			ImmutableQueue<TaskCompletionSource<IDisposable>> NewQueue;
+			ImmutableQueue<TaskCompletionSource<Instance>> NewQueue;
 			//****************************************
 
 				// Retrieve the current lock state
@@ -185,7 +176,7 @@ namespace System.Threading
 					if (NewQueue.IsEmpty)
 					{
 						// Release the lock
-						if (_Locks.TryRemovePair(key, OldQueue))
+						if (((IDictionary<TKey, ImmutableQueue<TaskCompletionSource<Instance>>>)_Locks).Remove(new KeyValuePair<TKey, ImmutableQueue<TaskCompletionSource<Instance>>>(key, OldQueue)))
 							return;
 
 						// Someone modified the lock queue, probably a new waiter, so retry
@@ -204,10 +195,10 @@ namespace System.Threading
 					if (NextWaiter.Task.AsyncState == null)
 					{
 						// Yes, try and release the lock
-						if (!_Locks.TryRemovePair(key, OldQueue))
+						if (!((IDictionary<TKey, ImmutableQueue<TaskCompletionSource<Instance>>>)_Locks).Remove(new KeyValuePair<TKey, ImmutableQueue<TaskCompletionSource<Instance>>>(key, OldQueue)))
 							break;
 
-						NextWaiter.SetResult(null);
+						NextWaiter.SetException(new ObjectDisposedException(nameof(AsyncKeyedLock<TKey>), "Keyed Lock has been disposed of"));
 
 						return;
 					}
@@ -229,12 +220,12 @@ namespace System.Threading
 
 		private void ReleaseWaiter(object state)
 		{	//****************************************
-			var MyWaiter = (TaskCompletionSource<IDisposable>)state;
+			var MyWaiter = (TaskCompletionSource<Instance>)state;
 			var MyKey = (TKey)MyWaiter.Task.AsyncState;
 			//****************************************
 
 			// Activate our Waiter
-			if (!MyWaiter.TrySetResult(new AsyncKeyedLockInstance(this, MyKey)))
+			if (!MyWaiter.TrySetResult(new Instance(new AsyncKeyedLockInstance(this, MyKey))))
 				Release(MyKey); // Failed so it was cancelled. We hold the lock so release it
 		}
 
@@ -258,10 +249,10 @@ namespace System.Threading
 					// No, so we're going to make the attempt. Flag it so we retry if it fails
 					DisposedLock = true;
 
-					var MyDisposeWaiter = new TaskCompletionSource<IDisposable>();
+					var MyDisposeWaiter = new TaskCompletionSource<Instance>();
 
 					// Try and replace the pending waiters
-					if (_Locks.TryUpdate(MyPair.Key, ImmutableQueue<TaskCompletionSource<IDisposable>>.Empty.Enqueue(MyDisposeWaiter), MyPair.Value))
+					if (_Locks.TryUpdate(MyPair.Key, ImmutableQueue<TaskCompletionSource<Instance>>.Empty.Enqueue(MyDisposeWaiter), MyPair.Value))
 					{
 						MyWaitTasks.Add(MyDisposeWaiter.Task);
 
@@ -283,7 +274,7 @@ namespace System.Threading
 		private void CompleteDispose(Task task)
 		{
 			// We don't care if the parent task cancelled, and it will never fault, so just complete the disposal operation
-			_Dispose.SetResult(null);
+			_Dispose!.SetResult(default);
 		}
 
 		//****************************************
@@ -291,32 +282,29 @@ namespace System.Threading
 		/// <summary>
 		/// Gets an enumeration of the keys that are currently locked
 		/// </summary>
-		public IEnumerable<TKey> KeysHeld => _Locks.Keys;
+		public IReadOnlyCollection<TKey> KeysHeld => (IReadOnlyCollection<TKey>)_Locks.Keys;
 
 		//****************************************
 
-		private class AsyncKeyedLockInstance : IDisposable
-		{	//****************************************
-			private readonly AsyncKeyedLock<TKey> _Source;
-			private readonly TKey _Key;
-			private int _Released;
+		/// <summary>
+		/// Represents the Keyed Lock currently held
+		/// </summary>
+		public readonly struct Instance : IDisposable
+		{ //****************************************
+			private readonly AsyncKeyedLockInstance _Instance;
 			//****************************************
 
-			internal AsyncKeyedLockInstance(AsyncKeyedLock<TKey> source, TKey key)
+			internal Instance(AsyncKeyedLockInstance instance)
 			{
-				_Source = source;
-				_Key = key;
+				_Instance = instance;
 			}
 
 			//****************************************
 
-			public void Dispose()
-			{
-				if (_Source != null && Interlocked.Exchange(ref _Released, 1) == 0)
-				{
-					_Source.Release(_Key);
-				}
-			}
+			/// <summary>
+			/// Releases the lock currently held
+			/// </summary>
+			public void Dispose() => _Instance.Dispose();
 		}
 	}
 }
