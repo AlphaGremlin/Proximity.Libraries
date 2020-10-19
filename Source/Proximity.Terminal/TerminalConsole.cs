@@ -29,7 +29,6 @@ namespace Proximity.Terminal
 		/// <param name="hasCommandLine">Whether to offer an interactive command line</param>
 		/// <param name="view">The Terminal View to bind to</param>
 		/// <param name="theme">The Terminal Theme to use for the output</param>
-		[CLSCompliant(false)]
 		public static void Initialise(bool hasCommandLine, TerminalView view, TerminalTheme theme)
 		{
 			if (_Instance != null)
@@ -184,17 +183,20 @@ namespace Proximity.Terminal
 						else
 						{
 							// If we're echoing a command, ignore it if this is disabled
-							if (Record.Severity == null && !Theme.EchoCommands)
+							if (Record.Scope == TerminalScope.ConsoleCommand && !Theme.EchoCommands)
 								continue;
 
 							if (!IsRedirected)
-								Console.ForegroundColor = Theme.GetColour(Record.Severity);
+								Console.ForegroundColor = Theme.GetColour(Record.Severity, Record.Scope);
 
 							// If we're echoing a command, put the prompt before it
-							if (Record.Severity == null)
+							if (Record.Scope == TerminalScope.ConsoleCommand)
 								Console.WriteLine("{0}{1}", Theme.Prompt, Record.Text);
-							else
+							else if (Record.Indentation == 0)
 								Console.WriteLine(Record.Text);
+							else
+								Console.WriteLine("{0}{1}", Theme.Indentation, Record.Text);
+
 						}
 
 						// Handle any input

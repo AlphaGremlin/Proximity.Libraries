@@ -12,6 +12,36 @@ namespace Proximity.Terminal
 		private readonly List<ConsoleRecord> _History = new List<ConsoleRecord>();
 		//****************************************
 
+		/// <summary>
+		/// Creates a new, empty history
+		/// </summary>
+		public TerminalHistory()
+		{
+		}
+
+		/// <summary>
+		/// Creates a new history copied from an existing history source
+		/// </summary>
+		/// <param name="source"></param>
+		public TerminalHistory(TerminalHistory source)
+		{
+			_History.AddRange(source._History);
+		}
+
+		//****************************************
+
+		/// <summary>
+		/// Retrieves a snapshot of the current history
+		/// </summary>
+		/// <returns></returns>
+		public IReadOnlyList<ConsoleRecord> GetHistory()
+		{
+			lock (_History)
+				return _History.ToArray();
+		}
+
+		//****************************************
+
 		void ITerminalListener.Clear()
 		{
 			lock (_History)

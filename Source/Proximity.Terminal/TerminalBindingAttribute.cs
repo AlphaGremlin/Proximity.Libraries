@@ -43,12 +43,12 @@ namespace Proximity.Terminal
 		/// Gets/Sets the name to use for this binding
 		/// </summary>
 		/// <remarks>If omitted, defaults to the name of the method or property</remarks>
-		public string Name { get; set; }
+		public string? Name { get; set; }
 
 		/// <summary>
 		/// Gets/Sets the description of this binding
 		/// </summary>
 		/// <remarks>If the Provider specifies a resource manager, this is the index to the localised description text</remarks>
-		public string Description { get; set; }
+		public string? Description { get; set; }
 	}
 }

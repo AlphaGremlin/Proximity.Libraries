@@ -647,7 +647,7 @@ namespace Proximity.Threading.Tests
 				await TaskSource.Task;
 			}
 
-			var MyTask = MyQueue.QueueTask(Callback);
+			var MyTask = MyQueue.QueueAsync(Callback);
 
 			TaskSource.SetResult(default);
 
@@ -673,7 +673,7 @@ namespace Proximity.Threading.Tests
 				await TaskSource.Task;
 			}
 
-			var MyTask = MyQueue.QueueTask(Callback);
+			var MyTask = MyQueue.QueueAsync(Callback);
 
 			while (!TaskRan)
 			{
@@ -712,7 +712,7 @@ namespace Proximity.Threading.Tests
 				await TaskSource.Task; 
 			}
 
-			var MyTask = MyQueue.QueueTask(Callback);
+			var MyTask = MyQueue.QueueAsync(Callback);
 
 			try
 			{
@@ -744,7 +744,7 @@ namespace Proximity.Threading.Tests
 				await TaskSource.Task;
 			}
 
-			var MyTask = MyQueue.QueueTask(Callback, 42);
+			var MyTask = MyQueue.QueueAsync(Callback, 42);
 
 			TaskSource.SetResult(default);
 
@@ -771,7 +771,7 @@ namespace Proximity.Threading.Tests
 				await TaskSource.Task;
 			}
 
-			var MyTask = MyQueue.QueueTask(Callback, 42);
+			var MyTask = MyQueue.QueueAsync(Callback, 42);
 
 			while (!TaskRan)
 			{
@@ -811,7 +811,7 @@ namespace Proximity.Threading.Tests
 				await TaskSource.Task;
 			}
 
-			var MyTask = MyQueue.QueueTask(Callback, 42);
+			var MyTask = MyQueue.QueueAsync(Callback, 42);
 
 			try
 			{
@@ -844,7 +844,7 @@ namespace Proximity.Threading.Tests
 				return await TaskSource.Task;
 			}
 
-			var MyTask = MyQueue.QueueTask(Callback, 42);
+			var MyTask = MyQueue.QueueAsync(Callback, 42);
 
 			TaskSource.SetResult(30);
 
@@ -872,7 +872,7 @@ namespace Proximity.Threading.Tests
 				return await TaskSource.Task;
 			}
 
-			var MyTask = MyQueue.QueueTask(Callback, 42);
+			var MyTask = MyQueue.QueueAsync(Callback, 42);
 
 			while (!TaskRan)
 			{
@@ -912,7 +912,7 @@ namespace Proximity.Threading.Tests
 				return await TaskSource.Task;
 			}
 
-			var MyTask = MyQueue.QueueTask(Callback, 42);
+			var MyTask = MyQueue.QueueAsync(Callback, 42);
 
 			try
 			{
@@ -943,7 +943,7 @@ namespace Proximity.Threading.Tests
 				return await TaskSource.Task;
 			}
 
-			var MyTask = MyQueue.QueueTask(Callback);
+			var MyTask = MyQueue.QueueAsync(Callback);
 
 			TaskSource.SetResult(30);
 
@@ -970,7 +970,7 @@ namespace Proximity.Threading.Tests
 				return await TaskSource.Task;
 			}
 
-			var MyTask = MyQueue.QueueTask(Callback);
+			var MyTask = MyQueue.QueueAsync(Callback);
 
 			while (!TaskRan)
 			{
@@ -1009,7 +1009,7 @@ namespace Proximity.Threading.Tests
 				return await TaskSource.Task;
 			}
 
-			var MyTask = MyQueue.QueueTask(Callback);
+			var MyTask = MyQueue.QueueAsync(Callback);
 
 			try
 			{
@@ -1039,7 +1039,7 @@ namespace Proximity.Threading.Tests
 				return default;
 			}
 
-			var MyTask = MyQueue.QueueTask(Callback);
+			var MyTask = MyQueue.QueueAsync(Callback);
 
 			await MyTask;
 
@@ -1063,7 +1063,7 @@ namespace Proximity.Threading.Tests
 				await TaskSource.Task;
 			}
 
-			var MyTask = MyQueue.QueueTask(Callback);
+			var MyTask = MyQueue.QueueAsync(Callback);
 
 			while (!TaskRan)
 			{
@@ -1100,7 +1100,7 @@ namespace Proximity.Threading.Tests
 				return await TaskSource.Task;
 			}
 
-			var MyTask = MyQueue.QueueTask(Callback);
+			var MyTask = MyQueue.QueueAsync(Callback);
 
 			while (!TaskRan)
 			{
@@ -1134,7 +1134,7 @@ namespace Proximity.Threading.Tests
 				return default;
 			}
 
-			var MyTask = MyQueue.QueueTask(Callback);
+			var MyTask = MyQueue.QueueAsync(Callback);
 
 			await MyTask;
 
@@ -1156,7 +1156,7 @@ namespace Proximity.Threading.Tests
 				await TaskSource.Task;
 			}
 
-			var MyTask = MyQueue.QueueTask(Callback);
+			var MyTask = MyQueue.QueueAsync(Callback);
 
 			//****************************************
 
@@ -1184,7 +1184,7 @@ namespace Proximity.Threading.Tests
 				return await TaskSource.Task;
 			}
 
-			var MyTask = MyQueue.QueueTask(Callback);
+			var MyTask = MyQueue.QueueAsync(Callback);
 
 			//****************************************
 
@@ -1771,7 +1771,7 @@ namespace Proximity.Threading.Tests
 				await TaskSource.Task;
 			}
 
-			var MyTask = MyQueue.QueueTask(Callback);
+			var MyTask = MyQueue.QueueAsync(Callback);
 
 			var CompletionTask = MyQueue.Complete();
 
@@ -1796,7 +1796,7 @@ namespace Proximity.Threading.Tests
 				return await TaskSource.Task;
 			}
 
-			var MyTask = MyQueue.QueueTask(Callback);
+			var MyTask = MyQueue.QueueAsync(Callback);
 
 			var CompletionTask = MyQueue.Complete();
 
@@ -1859,11 +1859,11 @@ namespace Proximity.Threading.Tests
 				await TaskSource.Task;
 			}
 
-			var MyTask1 = MyQueue.QueueTask(Callback);
+			var MyTask1 = MyQueue.QueueAsync(Callback);
 
 			var CompletionTask = MyQueue.Complete();
 
-			var MyTask2 = MyQueue.QueueTask(Callback);
+			var MyTask2 = MyQueue.QueueAsync(Callback);
 
 			Assert.IsFalse(CompletionTask.IsCompleted, "Task completed early");
 
@@ -1937,7 +1937,7 @@ namespace Proximity.Threading.Tests
 
 			for (var Index = 0; Index < 100; Index++)
 			{
-				AllTasks.Add(MyQueue.QueueTask(Callback, Index).AsTask());
+				AllTasks.Add(MyQueue.QueueAsync(Callback, Index).AsTask());
 			}
 
 			TaskSource.SetResult(default);
@@ -2016,7 +2016,7 @@ namespace Proximity.Threading.Tests
 			{
 				if (MyQueue.PendingActions < 100)
 				{
-					AllTasks.Add(MyQueue.QueueTask(Callback).AsTask());
+					AllTasks.Add(MyQueue.QueueAsync(Callback).AsTask());
 				}
 
 				MySpinWait.SpinOnce();

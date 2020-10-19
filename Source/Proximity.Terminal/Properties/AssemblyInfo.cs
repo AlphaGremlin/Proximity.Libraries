@@ -1,7 +1,3 @@
-﻿/****************************************\
- AssemblyInfo.cs
- Created: 2014-02-28
-\****************************************/
 using System;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -15,4 +11,3 @@ using System.Security;
 //****************************************
 
 [assembly: ComVisible(false)]
-[assembly: CLSCompliant(true)]

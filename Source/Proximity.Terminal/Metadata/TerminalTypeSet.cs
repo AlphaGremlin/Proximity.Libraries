@@ -10,7 +10,7 @@ namespace Proximity.Terminal.Metadata
 	/// <summary>
 	/// Represents a set of types grouped by a type name
 	/// </summary>
-	public sealed class TerminalTypeSet : ICommandTarget, IComparable<TerminalTypeSet>
+	public sealed class TerminalTypeSet : IComparable<TerminalTypeSet>
 	{ //****************************************
 		private readonly StringKeyDictionary<TerminalTypeInstance> _Instances = new StringKeyDictionary<TerminalTypeInstance>(StringComparison.OrdinalIgnoreCase);
 		private TerminalTypeInstance? _Default;

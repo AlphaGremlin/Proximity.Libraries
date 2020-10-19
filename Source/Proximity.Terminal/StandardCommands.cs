@@ -17,7 +17,7 @@ namespace Proximity.Terminal
 	/// <summary>
 	/// Provides some standard console commands
 	/// </summary>
-	[TerminalProvider, CLSCompliant(false)]
+	[TerminalProvider]
 	public static class StandardCommands
 	{
 		/// <summary>

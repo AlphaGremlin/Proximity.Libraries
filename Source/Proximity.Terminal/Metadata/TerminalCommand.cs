@@ -152,7 +152,7 @@ namespace Proximity.Terminal.Metadata
 		/// <summary>
 		/// Gets a description of this Command
 		/// </summary>
-		public string Description { get; }
+		public string? Description { get; }
 
 		/// <summary>
 		/// Gets whether the first parameter is a Terminal

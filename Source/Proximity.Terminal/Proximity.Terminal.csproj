@@ -5,9 +5,9 @@
     <Company>Proximity Interactive</Company>
     <Copyright>Copyright © Daniel Chandler 2020</Copyright>
     <Product>Proximity Terminal Library</Product>
-		<Version>22.1.0</Version>
-		<AssemblyVersion>22.1.0.0</AssemblyVersion>
-		<FileVersion>22.1.0.0</FileVersion>
+		<Version>22.2.0</Version>
+		<AssemblyVersion>22.2.0.0</AssemblyVersion>
+		<FileVersion>22.2.0.0</FileVersion>
 		<Description>Proximity Terminal Library</Description>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -18,6 +18,14 @@
 		<Nullable>enable</Nullable>
 		<LangVersion>Latest</LangVersion>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="TerminalExtensions.cs" />
+    <Compile Remove="TerminalScopeProvider.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="TerminalExtensions.cs" />
+    <None Include="TerminalScopeProvider.cs" />
+  </ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.1.2" />
 	</ItemGroup>

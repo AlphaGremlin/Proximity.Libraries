@@ -176,7 +176,7 @@ namespace System.Threading.Tasks
 		/// <param name="token">A token to cancel this action</param>
 		/// <returns>A task representing the completion of the returned task</returns>
 		/// <remarks>The queue will not continue until the returned <see cref="ValueTask"/> has been completed</remarks>
-		public ValueTask QueueTask(Func<ValueTask> action, CancellationToken token = default)
+		public ValueTask QueueAsync(Func<ValueTask> action, CancellationToken token = default)
 		{
 			var NewTask = WrappedValueTask.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
 
@@ -193,7 +193,7 @@ namespace System.Threading.Tasks
 		/// <param name="token">A token to cancel this action</param>
 		/// <returns>A task representing the completion of the returned task and its result</returns>
 		/// <remarks>The queue will not continue until the returned <see cref="ValueTask{TResult}"/> has been completed</remarks>
-		public ValueTask<TResult> QueueTask<TResult>(Func<ValueTask<TResult>> action, CancellationToken token = default)
+		public ValueTask<TResult> QueueAsync<TResult>(Func<ValueTask<TResult>> action, CancellationToken token = default)
 		{
 			var NewTask = WrappedFuncValueTask<TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
 
@@ -211,7 +211,7 @@ namespace System.Threading.Tasks
 		/// <param name="token">A token to cancel this action</param>
 		/// <returns>A task representing the completion of the returned task</returns>
 		/// <remarks>The queue will not continue until the returned <see cref="ValueTask"/> has been completed</remarks>
-		public ValueTask QueueTask<TValue>(Func<TValue, ValueTask> action, TValue value, CancellationToken token = default)
+		public ValueTask QueueAsync<TValue>(Func<TValue, ValueTask> action, TValue value, CancellationToken token = default)
 		{
 			var NewTask = WrappedValueTask<TValue>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);
 
@@ -229,7 +229,7 @@ namespace System.Threading.Tasks
 		/// <param name="token">A token to cancel this action</param>
 		/// <returns>A task representing the completion of the returned task and its result</returns>
 		/// <remarks>The queue will not continue until the returned <see cref="ValueTask{TResult}"/> has been completed</remarks>
-		public ValueTask<TResult> QueueTask<TValue, TResult>(Func<TValue, ValueTask<TResult>> action, TValue value, CancellationToken token = default)
+		public ValueTask<TResult> QueueAsync<TValue, TResult>(Func<TValue, ValueTask<TResult>> action, TValue value, CancellationToken token = default)
 		{
 			var NewTask = WrappedFuncValueTask<TValue, TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);
 

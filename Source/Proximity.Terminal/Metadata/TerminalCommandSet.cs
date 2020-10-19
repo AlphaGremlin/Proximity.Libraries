@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Threading;
 //****************************************
@@ -10,7 +11,7 @@ namespace Proximity.Terminal.Metadata
 	/// <summary>
 	/// Describes a set of commands grouped by name
 	/// </summary>
-	public sealed class TerminalCommandSet : ICommandTarget, IComparable<TerminalCommandSet>
+	public sealed class TerminalCommandSet : IComparable<TerminalCommandSet>
 	{ //****************************************
 		private readonly List<TerminalCommand> _Commands = new List<TerminalCommand>();
 		//****************************************
@@ -35,12 +36,23 @@ namespace Proximity.Terminal.Metadata
 		//****************************************
 		
 		/// <summary>
-		/// Looks up a command based on its arguments
+		/// Looks up a command based on its arguments and prepares the parameter values
 		/// </summary>
 		/// <param name="inArgs">The arguments to parse</param>
-		/// <param name="outArgs">The resulting properly typed arguments</param>
-		/// <returns>The command that best matches, or none if it could not be determined</returns>
-		public TerminalCommand FindCommand(string[] inArgs, ITerminal terminal, CancellationToken token, out object[] outArgs)
+		/// <param name="terminal">The terminal to execute the command against</param>
+		/// <param name="token">The cancellation token to pass to the command</param>
+		/// <param name="command">Receives the command to execute</param>
+		/// <param name="outArgs">Receives the resulting arguments for the command</param>
+		/// <returns>True if a matching command was found, False if one could not be determined</returns>
+		public bool PrepareCommand(string[] inArgs, ITerminal terminal, CancellationToken token,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+			out TerminalCommand command,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+			out object[] outArgs)
 		{
 			// Try and find an overload that matches the provided arguments
 			foreach(var MyCommand in _Commands)
@@ -76,7 +88,9 @@ namespace Proximity.Terminal.Metadata
 
 					outArgs = ParamData;
 					
-					return MyCommand;
+					command = MyCommand;
+
+					return true;
 				}
 				catch(FormatException)
 				{
@@ -91,12 +105,13 @@ namespace Proximity.Terminal.Metadata
 					// Ignore exception and try again
 				}
 			}
-			
+
 			//****************************************
-			
-			outArgs = null;
-			
-			return null;
+
+			command = null!;
+			outArgs = null!;
+
+			return false;
 		}
 
 		/// <inheritdoc />

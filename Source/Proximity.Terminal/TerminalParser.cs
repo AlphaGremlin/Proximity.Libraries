@@ -246,7 +246,7 @@ namespace Proximity.Terminal
 		/// <param name="command">The command to execute</param>
 		/// <param name="token">A token to pass to methods that accept it</param>
 		/// <returns>A task representing the execution result. True if the command ran successfully, otherwise False</returns>
-		public static ValueTask<bool> Execute(ITerminal terminal, string command, CancellationToken token) => InternalExecute(terminal, command, token);
+		public static ValueTask<bool> Execute(ITerminal terminal, string command, CancellationToken token = default) => InternalExecute(terminal, command, token);
 
 		/// <summary>
 		/// Finds the next command for auto completion
@@ -510,6 +510,13 @@ namespace Proximity.Terminal
 			return null;
 		}
 
+		/// <summary>
+		/// Parses a terminal command
+		/// </summary>
+		/// <param name="command">The raw command text</param>
+		/// <param name="registries">The terminal registries to lookup commands from</param>
+		/// <param name="result">Receives the parsing result</param>
+		/// <returns>True if the command matched something useful, otherwise False</returns>
 		public static bool TryParse(ReadOnlySpan<char> command, IEnumerable<TerminalRegistry> registries, out TerminalParseResult result)
 		{
 			int CharIndex;
@@ -741,7 +748,7 @@ namespace Proximity.Terminal
 
 		internal static ValueTask<bool> InternalExecute(ITerminal terminal, string command, CancellationToken token)
 		{
-			terminal.Log(LogLevel.Information, default, new ConsoleRecord(DateTimeOffset.Now, null, command), null, (record, exception) => record.Text);
+			terminal.Log(LogLevel.Information, default, new ConsoleRecord(DateTimeOffset.Now, LogLevel.Information, command, scope: TerminalScope.ConsoleCommand), null, (record, exception) => record.Text);
 
 			var Command = command.AsSpan();
 			var IsHelp = false;
@@ -1018,7 +1025,6 @@ namespace Proximity.Terminal
 			var RawParams = new List<string>();
 			var AlteredText = arguments;
 			int LastIndex = 0, CharIndex = 0, QuoteMode = 0;
-			TerminalCommand Command;
 			char CurrentChar;
 			//****************************************
 			
@@ -1089,25 +1095,23 @@ namespace Proximity.Terminal
 				if (LastIndex != AlteredText.Length)
 					RawParams.Add(AlteredText.Substring(LastIndex));
 			}
-			
+
 			//****************************************
-			
+
 			// Try with the broken up arguments
-			Command = commandSet.FindCommand(RawParams.ToArray(), terminal, token, out var OutParams);
-			
-			// If that fails, try and pass the whole argument text as the first argument, no quoting
-			if (Command == null && RawParams.Count > 1)
-				Command = commandSet.FindCommand(new [] { arguments }, terminal, token, out OutParams);
-				
-			if (Command == null)
+			if (!commandSet.PrepareCommand(RawParams.ToArray(), terminal, token, out var Command, out var OutParams))
 			{
-				terminal.LogInformation("{0}{1} does not accept the given arguments", path, commandSet.Name);
-				
-				return false;
+				// Failed, so try and pass the whole argument text as the first argument, no quoting
+				if (RawParams.Count <= 1 || !commandSet.PrepareCommand(new[] { arguments }, terminal, token, out Command, out OutParams))
+				{
+					terminal.LogInformation("{0}{1} does not accept the given arguments", path, commandSet.Name);
+
+					return false;
+				}
 			}
-			
+
 			//****************************************
-			
+
 			await Command.InvokeAsync(terminal, instance, OutParams);
 
 			return true;

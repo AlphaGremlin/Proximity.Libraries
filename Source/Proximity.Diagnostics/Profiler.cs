@@ -13,7 +13,7 @@ namespace Proximity.Diagnostics
 	public sealed class Profiler
 	{ //****************************************
 		private readonly Stopwatch _Timer;
-		private readonly DateTime _StartTime;
+		private TimeSpan _StartTime;
 
 		private readonly TimeSpan[] _Intervals;
 		private readonly Dictionary<TimeSpan, int> _IntervalLookup;
@@ -23,9 +23,9 @@ namespace Proximity.Diagnostics
 		//****************************************
 
 		/// <summary>
-		/// Creates a new Profiler with default 15, 5 and 1 minute intervals
+		/// Creates a new Profiler with default 0, 15, 5 and 1 minute intervals
 		/// </summary>
-		public Profiler() : this(new TimeSpan(0, 15, 0), new TimeSpan(0, 5, 0), new TimeSpan(0, 1, 0))
+		public Profiler() : this(TimeSpan.Zero, new TimeSpan(0, 15, 0), new TimeSpan(0, 5, 0), new TimeSpan(0, 1, 0))
 		{
 		}
 
@@ -46,7 +46,7 @@ namespace Proximity.Diagnostics
 			_Intervals = intervals.ToArray();
 			_IntervalLookup = _Intervals.Select((interval, index) => (interval, index)).ToDictionary(pair => pair.interval, pair => pair.index);
 
-			_StartTime = DateTime.Now;
+			_StartTime = new TimeSpan(DateTime.Now.Ticks);
 			_Timer = Stopwatch.StartNew();
 
 			_Blank = new SectionState(_Intervals.Length);
@@ -75,6 +75,9 @@ namespace Proximity.Diagnostics
 		/// </summary>
 		public void Reset()
 		{
+			_Timer.Restart();
+			_StartTime = new TimeSpan(DateTime.Now.Ticks);
+
 			var Ticks = GetTicks();
 
 			foreach (var Statistic in _Sections.Values)
@@ -129,7 +132,7 @@ namespace Proximity.Diagnostics
 			for (var Index = 0; Index < values.Length; Index++)
 			{
 				var (LastTicks, Current, Previous) = Records[Index];
-				var IntervalTicks = Intervals[Index].Ticks;
+				var IntervalTicks = Intervals[Index];
 
 				var NextInterval = LastTicks + IntervalTicks;
 
@@ -163,14 +166,14 @@ namespace Proximity.Diagnostics
 			var (LastTicks, Current, Previous) = Statistic.Records[Index];
 			var CurrentTicks = GetTicks();
 
-			var NextInterval = LastTicks + interval.Ticks;
+			var NextInterval = LastTicks + interval;
 
 			// Determine when the currently active interval ends
 			if (NextInterval > CurrentTicks)
 				// The current interval has yet to elapse, so we return the result from the previous interval
 				return Previous;
 
-			if (NextInterval + interval.Ticks > CurrentTicks)
+			if (NextInterval + interval > CurrentTicks)
 				// The current interval has elapsed, but hasn't rolled over, so we return the result for this interval
 				return Current;
 
@@ -195,7 +198,7 @@ namespace Proximity.Diagnostics
 			var (LastTicks, Current, _) = Statistic.Records[Index];
 			var CurrentTicks = GetTicks();
 
-			var NextInterval = LastTicks + interval.Ticks;
+			var NextInterval = LastTicks + interval;
 
 			if (NextInterval > CurrentTicks)
 				return Current;
@@ -206,7 +209,7 @@ namespace Proximity.Diagnostics
 
 		//****************************************
 
-		private long GetTicks() => _StartTime.Ticks + _Timer.Elapsed.Ticks;
+		private TimeSpan GetTicks() => _StartTime + _Timer.Elapsed;
 
 		//****************************************
 
@@ -223,10 +226,10 @@ namespace Proximity.Diagnostics
 		public readonly struct ProfilerInstance : IDisposable
 		{ //****************************************
 			private readonly Section _Section;
-			private readonly long _StartTime;
+			private readonly TimeSpan _StartTime;
 			//****************************************
 
-			internal ProfilerInstance(Section section, long startTime)
+			internal ProfilerInstance(Section section, TimeSpan startTime)
 			{
 				_Section = section;
 				_StartTime = startTime;
@@ -263,7 +266,7 @@ namespace Proximity.Diagnostics
 
 			//****************************************
 
-			internal void Finish(long startTime)
+			internal void Finish(TimeSpan startTime)
 			{
 				var Ticks = _Profiler.GetTicks();
 				var Elapsed = Ticks - startTime;
@@ -274,10 +277,10 @@ namespace Proximity.Diagnostics
 				{
 					OldRecords = Volatile.Read(ref _Records);
 				}
-				while (Interlocked.CompareExchange(ref _Records, OldRecords.Add(Ticks, _Profiler, Elapsed), OldRecords) != OldRecords);
+				while (Interlocked.CompareExchange(ref _Records, OldRecords.Add(Ticks, _Profiler, Elapsed.Ticks), OldRecords) != OldRecords);
 			}
 
-			internal void Reset(long ticks)
+			internal void Reset(TimeSpan ticks)
 			{
 				SectionState OldRecords;
 
@@ -297,18 +300,18 @@ namespace Proximity.Diagnostics
 
 		internal sealed class SectionState
 		{ //****************************************
-			private readonly ImmutableArray<long> _LastTicks;
+			private readonly ImmutableArray<TimeSpan> _LastTicks;
 			private readonly ImmutableArray<ProfilerRecord> _Current, _Previous;
 			//****************************************
 
 			public SectionState(int intervals)
 			{
-				var Blank = ImmutableArray.CreateBuilder<long>(intervals);
+				var Blank = ImmutableArray.CreateBuilder<TimeSpan>(intervals);
 				var BlankEntries = ImmutableArray.CreateBuilder<ProfilerRecord>(intervals);
 
 				for (var Index = 0; Index < intervals; Index++)
 				{
-					Blank.Add(0);
+					Blank.Add(TimeSpan.Zero);
 					BlankEntries.Add(ProfilerRecord.Empty);
 				}
 
@@ -316,7 +319,7 @@ namespace Proximity.Diagnostics
 				_Current = _Previous = BlankEntries.ToImmutable();
 			}
 
-			private SectionState(ImmutableArray<long> lastTicks, ImmutableArray<ProfilerRecord> current, ImmutableArray<ProfilerRecord> previous)
+			private SectionState(ImmutableArray<TimeSpan> lastTicks, ImmutableArray<ProfilerRecord> current, ImmutableArray<ProfilerRecord> previous)
 			{
 				_LastTicks = lastTicks;
 				_Current = current;
@@ -325,9 +328,9 @@ namespace Proximity.Diagnostics
 
 			//****************************************
 
-			internal SectionState Add(long ticks, Profiler profiler, long elapsed)
+			internal SectionState Add(TimeSpan ticks, Profiler profiler, long elapsed)
 			{
-				ImmutableArray<long>.Builder? LastTicks = null;
+				ImmutableArray<TimeSpan>.Builder? LastTicks = null;
 				var Current = _Current.ToBuilder();
 				ImmutableArray<ProfilerRecord>.Builder? Previous = null;
 
@@ -335,7 +338,7 @@ namespace Proximity.Diagnostics
 
 				for (var Index = 0; Index < Intervals.Length; Index++)
 				{
-					var IntervalTicks = Intervals[Index].Ticks;
+					var IntervalTicks = Intervals[Index];
 					var IntervalEnds = _LastTicks[Index] + IntervalTicks;
 
 					if (IntervalEnds <= ticks)
@@ -348,7 +351,7 @@ namespace Proximity.Diagnostics
 						}
 
 						// Round to the nearest Interval
-						LastTicks[Index] = ticks - (ticks % IntervalTicks);
+						LastTicks[Index] = RoundTo(ticks, IntervalTicks);
 						// If it's been more than one interval since we last ticked over, the previous should be zero
 						Previous![Index] = IntervalEnds + IntervalTicks <= ticks ? ProfilerRecord.Empty : Current[Index];
 						// The current interval peak becomes the value of the previous interval
@@ -363,14 +366,14 @@ namespace Proximity.Diagnostics
 				return new SectionState(LastTicks?.ToImmutable() ?? _LastTicks, Current.ToImmutable(), Previous?.ToImmutable() ?? _Previous);
 			}
 
-			internal SectionState Reset(long ticks, Profiler profiler)
+			internal SectionState Reset(TimeSpan ticks, Profiler profiler)
 			{
 				// Every Last Tick should be 'now'
-				var LastTicks = ImmutableArray.CreateBuilder<long>(_LastTicks.Length);
+				var LastTicks = ImmutableArray.CreateBuilder<TimeSpan>(_LastTicks.Length);
 				var Intervals = profiler._Intervals;
 
 				for (var Index = 0; Index < Intervals.Length; Index++)
-					LastTicks.Add(ticks - (ticks % Intervals[Index].Ticks));
+					LastTicks.Add(RoundTo(ticks, Intervals[Index]));
 
 				var Blank = profiler._Blank;
 
@@ -383,7 +386,14 @@ namespace Proximity.Diagnostics
 
 			//****************************************
 
-			public (long ticks, ProfilerRecord current, ProfilerRecord previous) this[int index] => (_LastTicks[index], _Current[index], _Previous[index]);
+			public (TimeSpan ticks, ProfilerRecord current, ProfilerRecord previous) this[int index] => (_LastTicks[index], _Current[index], _Previous[index]);
+
+			//****************************************
+
+			private static TimeSpan RoundTo(TimeSpan value, TimeSpan nearest)
+			{
+				return new TimeSpan(value.Ticks - (value.Ticks % nearest.Ticks));
+			}
 		}
 	}
 }

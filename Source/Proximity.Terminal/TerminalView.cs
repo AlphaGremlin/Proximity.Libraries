@@ -7,25 +7,41 @@ using Microsoft.Extensions.Logging;
 
 namespace Proximity.Terminal
 {
-	public sealed class TerminalView : ITerminal, ITerminalListener
+	/// <summary>
+	/// Describes a terminal that receives text data and accepts a set of commands
+	/// </summary>
+	public sealed class TerminalView : TerminalRouter, ITerminal, ITerminalListener
 	{ //****************************************
-		private ImmutableHashSet<ITerminalListener> _Listeners = ImmutableHashSet<ITerminalListener>.Empty;
-
 		private readonly HashSet<LogLevel> _IsEnabled = new HashSet<LogLevel>();
 		//****************************************
 
+		/// <summary>
+		/// Creates a new Terminal View over the global command registry
+		/// </summary>
 		public TerminalView() : this(TerminalRegistry.Global)
 		{
 		}
 
+		/// <summary>
+		/// Creates a new Terminal View
+		/// </summary>
+		/// <param name="registry">The command registry</param>
 		public TerminalView(TerminalRegistry registry) : this((IEnumerable<TerminalRegistry>)new[] { registry })
 		{
 		}
 
+		/// <summary>
+		/// Creates a new Terminal View
+		/// </summary>
+		/// <param name="registries">The set of command registries</param>
 		public TerminalView(params TerminalRegistry[] registries) : this((IEnumerable<TerminalRegistry>)registries)
 		{
 		}
 
+		/// <summary>
+		/// Creates a new Terminal View
+		/// </summary>
+		/// <param name="registries">The set of command registries</param>
 		public TerminalView(IEnumerable<TerminalRegistry> registries)
 		{
 			Registries = registries.ToArray();
@@ -40,7 +56,6 @@ namespace Proximity.Terminal
 		/// Resets the minimum enabled log level
 		/// </summary>
 		/// <param name="minimum">The minimum log level</param>
-		[CLSCompliant(false)]
 		public void SetMinimum(LogLevel minimum)
 		{
 			_IsEnabled.Clear();
@@ -58,7 +73,6 @@ namespace Proximity.Terminal
 		/// </summary>
 		/// <param name="logLevel">The target log level</param>
 		/// <param name="enabled">Whether to enable or disable this level</param>
-		[CLSCompliant(false)]
 		public void IsEnabled(LogLevel logLevel, bool enabled)
 		{
 			if (logLevel == LogLevel.None)
@@ -71,10 +85,9 @@ namespace Proximity.Terminal
 		}
 
 		/// <inheritdoc />
-		[CLSCompliant(false)] public bool IsEnabled(LogLevel logLevel) => _IsEnabled.Contains(logLevel);
+		public bool IsEnabled(LogLevel logLevel) => _IsEnabled.Contains(logLevel);
 
 		/// <inheritdoc />
-		[CLSCompliant(false)]
 		public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
 		{
 			if (state is ConsoleRecord StateRecord)
@@ -105,23 +118,9 @@ namespace Proximity.Terminal
 		/// </summary>
 		public void Clear()
 		{
-			foreach (var Listener in _Listeners)
+			foreach (var Listener in Listeners)
 				Listener.Clear();
 		}
-
-		/// <summary>
-		/// Attach a listener to this Terminal
-		/// </summary>
-		/// <param name="listener">The listener that will receive events from this Terminal</param>
-		/// <remarks>This keeps a strong reference to the listener, so care must be taken to detach</remarks>
-		public void Attach(ITerminalListener listener) => ImmutableInterlockedEx.Add(ref _Listeners, listener);
-
-		/// <summary>
-		/// Removes a listener from this Terminal
-		/// </summary>
-		/// <param name="listener">The listener to remove</param>
-		/// <returns>True if the listener was found and removed</returns>
-		public bool Detach(ITerminalListener listener) => ImmutableInterlockedEx.Remove(ref _Listeners, listener);
 
 		//****************************************
 
@@ -132,7 +131,7 @@ namespace Proximity.Terminal
 
 		void ITerminalListener.Log(ConsoleRecord record)
 		{
-			foreach (var Listener in _Listeners)
+			foreach (var Listener in Listeners)
 				Listener.Log(record);
 		}
 

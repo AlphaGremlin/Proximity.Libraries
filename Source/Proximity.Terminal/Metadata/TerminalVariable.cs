@@ -97,7 +97,7 @@ namespace Proximity.Terminal.Metadata
 		/// <summary>
 		/// Gets a description of the Variable
 		/// </summary>
-		public string Description { get; }
+		public string? Description { get; }
 
 		/// <summary>
 		/// Gets whether this property can be written to
