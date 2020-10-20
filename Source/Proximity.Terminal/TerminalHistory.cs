@@ -59,11 +59,11 @@ namespace Proximity.Terminal
 			{
 				if (MaxRecords != null)
 				{
-					var ToRemove = _History.Count - MaxRecords.Value + 1;
+					var ToRemove = _History.Count + 1 - MaxRecords.Value;
 
 					if (ToRemove == 1)
 						_History.RemoveAt(0); // Moves the whole list down one element. Next addition will not cause an allocation
-					else
+					else if (ToRemove > 1)
 						_History.RemoveRange(0, ToRemove);
 				}
 

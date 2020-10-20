@@ -74,6 +74,7 @@ namespace Proximity.Terminal
 			private readonly ConsoleColor _InitialColour;
 			private Thread? _TerminalThread;
 
+			private readonly StringBuilder _Output = new StringBuilder();
 			private readonly StringBuilder? _InputLine;
 			private readonly List<string>? _CommandHistory;
 			private int _CommandHistoryIndex, _InputIndex, _InputTop;
@@ -194,9 +195,26 @@ namespace Proximity.Terminal
 								Console.WriteLine("{0}{1}", Theme.Prompt, Record.Text);
 							else if (Record.Indentation == 0)
 								Console.WriteLine(Record.Text);
-							else
+							else if (Record.Indentation == 1)
 								Console.WriteLine("{0}{1}", Theme.Indentation, Record.Text);
+							else
+							{
+								var IndentText = Theme.Indentation;
 
+								if (IndentText.Length == 1)
+									_Output.Append(IndentText[0], Record.Indentation);
+								else
+								{
+									for (var Index = 0; Index < Record.Indentation; Index++)
+										_Output.Append(IndentText);
+								}
+
+								_Output.Append(Record.Text);
+
+								Console.WriteLine(_Output.ToString());
+
+								_Output.Clear();
+							}
 						}
 
 						// Handle any input
@@ -270,7 +288,7 @@ namespace Proximity.Terminal
 						inputVisible = false;
 					}
 
-					_InputLine.Length = 0;
+					_InputLine.Clear();
 					_InputIndex = 0;
 
 					// Attempt to parse and execute the command

@@ -78,7 +78,7 @@ namespace Proximity.Terminal
 
 			public override bool EchoCommands => true;
 
-			public override string Indentation => "\t";
+			public override string Indentation => "  ";
 		}
 	}
 }

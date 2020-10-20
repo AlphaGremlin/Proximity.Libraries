@@ -38,7 +38,7 @@ namespace Proximity.Terminal
 
 			if (HasCommands)
 			{
-				Builder.AppendLine("Available Commands:").Append("\t");
+				Builder.AppendLine("Available Commands:").Append("  ");
 
 				IsFirst = true;
 
@@ -62,7 +62,7 @@ namespace Proximity.Terminal
 				if (Builder.Length > 0)
 					Builder.AppendLine();
 
-				Builder.AppendLine("Available Variables:").Append("\t");
+				Builder.AppendLine("Available Variables:").Append("  ");
 
 				IsFirst = true;
 
@@ -85,7 +85,7 @@ namespace Proximity.Terminal
 				if (Builder.Length > 0)
 					Builder.AppendLine();
 
-				Builder.AppendLine("Available Types:").Append("\t");
+				Builder.AppendLine("Available Types:").Append("  ");
 
 				IsFirst = true;
 
@@ -120,7 +120,7 @@ namespace Proximity.Terminal
 				{
 					if (TypeSet.Default.Type.Commands.Count != 0)
 					{
-						Builder.AppendLine().AppendLine("\tAvailable Default Commands:").Append("\t\t");
+						Builder.AppendLine().AppendLine("  Available Default Commands:").Append("    ");
 
 						IsFirst = true;
 
@@ -137,7 +137,7 @@ namespace Proximity.Terminal
 						
 					if (TypeSet.Default.Type.Variables.Count != 0)
 					{
-						Builder.AppendLine().AppendLine("\tAvailable Default Variables:").Append("\t\t");
+						Builder.AppendLine().AppendLine("  Available Default Variables:").Append("    ");
 
 						IsFirst = true;
 
@@ -155,7 +155,7 @@ namespace Proximity.Terminal
 					
 				if (TypeSet.Instances.Count != 0)
 				{
-					Builder.AppendLine().AppendLine("\tAvailable Instances:").Append("\t\t");
+					Builder.AppendLine().AppendLine("  Available Instances:").Append("    ");
 
 					IsFirst = true;
 
@@ -176,7 +176,7 @@ namespace Proximity.Terminal
 
 				if (Instance.Type.Commands.Count != 0)
 				{
-					Builder.AppendLine().AppendLine("\tAvailable Commands:").Append("\t\t");
+					Builder.AppendLine().AppendLine("  Available Commands:").Append("    ");
 
 					IsFirst = true;
 
@@ -193,7 +193,7 @@ namespace Proximity.Terminal
 
 				if (Instance.Type.Variables.Count != 0)
 				{
-					Builder.AppendLine().AppendLine("\tAvailable Variables:").Append("\t\t");
+					Builder.AppendLine().AppendLine("  Available Variables:").Append("    ");
 
 					IsFirst = true;
 
@@ -228,12 +228,12 @@ namespace Proximity.Terminal
 						Builder.AppendFormat("{0}: {1}", Parameter.Name, Parameter.ParameterType.Name);
 					}
 
-					Builder.Append(")\t").Append(Command.Description);
+					Builder.Append(")  ").Append(Command.Description);
 				}
 			}
 			else if (typeData is TerminalVariable Variable)
 			{
-				Builder.AppendFormat("{0}: {1}\t{2}", Variable.Name, Variable.Type.Name, Variable.Description);
+				Builder.AppendFormat("{0}: {1}  {2}", Variable.Name, Variable.Type.Name, Variable.Description);
 			}
 
 			return Builder.ToString();
