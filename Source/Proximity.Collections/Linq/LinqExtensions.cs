@@ -89,6 +89,75 @@ namespace System.Linq
 		}
 
 		/// <summary>
+		/// Splits an enumeration into chunks of equal or lesser size
+		/// </summary>
+		/// <typeparam name="T">The enumeration element type</typeparam>
+		/// <param name="source">The source enumeration</param>
+		/// <param name="size">The size of each chunk</param>
+		/// <returns>An enumeration of lists where each chunk is at most <paramref name="size"/> length</returns>
+		/// <remarks>If <paramref name="source"/> yields no results, no chunks are returned</remarks>
+		public static async IAsyncEnumerable<IReadOnlyList<T>> Chunk<T>(this IAsyncEnumerable<T> source, int size)
+		{
+			List<T>? CurrentChunk = null;
+
+			await foreach (var Item in source)
+			{
+				if (CurrentChunk == null)
+					// Creating a new List after each yield prevents unexpected behaviour when saving the results of Chunk() (such as calling .ToArray())
+					CurrentChunk = new List<T>(size);
+
+				CurrentChunk.Add(Item);
+
+				if (CurrentChunk.Count == size)
+				{
+					yield return CurrentChunk;
+
+					CurrentChunk = null;
+				}
+			}
+
+			// Return any partial chunk
+			if (CurrentChunk != null)
+				yield return CurrentChunk;
+		}
+
+		/// <summary>
+		/// Splits an enumeration into chunks of equal or lesser size
+		/// </summary>
+		/// <typeparam name="T">The enumeration element type</typeparam>
+		/// <param name="source">The source enumeration</param>
+		/// <param name="size">The size of each chunk</param>
+		/// <returns>An enumeration of lists where each chunk is at most <paramref name="size"/> length</returns>
+		/// <remarks>If <paramref name="source"/> yields no results, a single empty chunk is returned</remarks>
+		public static async IAsyncEnumerable<IReadOnlyList<T>> ChunkOrDefault<T>(this IAsyncEnumerable<T> source, int size)
+		{
+			var HasYielded = false;
+			List<T>? CurrentChunk = null;
+
+			await foreach (var Item in source)
+			{
+				if (CurrentChunk == null)
+					// Creating a new List after each yield prevents unexpected behaviour when saving the results of Chunk() (such as calling .ToArray())
+					CurrentChunk = new List<T>(size);
+
+				CurrentChunk.Add(Item);
+
+				if (CurrentChunk.Count == size)
+				{
+					HasYielded = true;
+
+					yield return CurrentChunk;
+
+					CurrentChunk = null;
+				}
+			}
+
+			// If we haven't returned a single chunk, return an empty one
+			if (!HasYielded)
+				yield return Array.Empty<T>();
+		}
+
+		/// <summary>
 		/// Performs a Select-Where operation
 		/// </summary>
 		/// <typeparam name="TInput">The type of input to the select</typeparam>

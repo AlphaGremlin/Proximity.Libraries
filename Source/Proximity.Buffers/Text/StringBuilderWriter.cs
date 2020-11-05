@@ -1,13 +1,14 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.IO;
 
 namespace System.Text
 {
 	/// <summary>
 	/// Provides an <see cref="IBufferWriter{Char}"/> that writes to a <see cref="StringBuilder"/>
 	/// </summary>
-	public sealed class StringBuilderWriter : IBufferWriter<char>, IDisposable
+	public sealed class StringBuilderWriter : TextWriter, IBufferWriter<char>, IDisposable
 	{ //****************************************
 		private char[] _Buffer;
 
@@ -141,5 +142,11 @@ namespace System.Text
 		/// </summary>
 		/// <remarks>It is safe to call all methods on the String Builder during writes.</remarks>
 		public StringBuilder Builder { get; }
+
+		/// <summary>
+		/// Gets the encoding used by this String Builder Writer
+		/// </summary>
+		/// <remarks>Since there is no encoding peformed, always returns <see cref="Encoding.Default"/></remarks>
+		public override Encoding Encoding => Encoding.Default;
 	}
 }

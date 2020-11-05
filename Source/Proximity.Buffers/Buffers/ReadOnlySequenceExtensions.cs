@@ -65,13 +65,15 @@ namespace System.Buffers
 				CurrentSegment = new CombinedSegment<T>(CurrentSegment, Segment);
 			}
 
-			// Only found one non-empty segment
-			if (FirstSegment != null)
-				return new ReadOnlySequence<T>(FirstSegment.Value);
-
-			// Found no non-empty sequences
 			if (CurrentSegment == null)
+			{
+				// Only found one non-empty sequence
+				if (FirstSegment != null)
+					return new ReadOnlySequence<T>(FirstSegment.Value);
+
+				// Found no non-empty sequences
 				return ReadOnlySequence<T>.Empty;
+			}
 
 			return new ReadOnlySequence<T>(StartSegment!, 0, CurrentSegment, CurrentSegment.Memory.Length);
 		}
@@ -112,13 +114,15 @@ namespace System.Buffers
 				CurrentSegment = new CombinedSegment<T>(CurrentSegment, Segment);
 			}
 
-			// Only found one non-empty segment
-			if (FirstSegment != null)
-				return new ReadOnlySequence<T>(FirstSegment.Value);
-
-			// Found no non-empty sequences
 			if (CurrentSegment == null)
+			{
+				// Only found one non-empty sequence
+				if (FirstSegment != null)
+					return new ReadOnlySequence<T>(FirstSegment.Value);
+
+				// Found no non-empty sequences
 				return ReadOnlySequence<T>.Empty;
+			}
 
 			return new ReadOnlySequence<T>(StartSegment!, 0, CurrentSegment, CurrentSegment.Memory.Length);
 		}
@@ -166,13 +170,15 @@ namespace System.Buffers
 					CurrentSegment = new CombinedSegment<T>(CurrentSegment, ChildSegment);
 			}
 
-			// Only found one non-empty sequence
-			if (FirstSequence != null)
-				return FirstSequence.Value;
-
-			// Found no non-empty sequences
 			if (CurrentSegment == null)
+			{
+				// Only found one non-empty sequence
+				if (FirstSequence != null)
+					return FirstSequence.Value;
+
+				// Found no non-empty sequences
 				return ReadOnlySequence<T>.Empty;
+			}
 
 			return new ReadOnlySequence<T>(StartSegment!, 0, CurrentSegment, CurrentSegment.Memory.Length);
 		}

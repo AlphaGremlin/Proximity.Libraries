@@ -390,7 +390,7 @@ namespace Proximity.Terminal
 
 					var NewCommand = TerminalParser.FindNextCommand(_PartialCommand, _InputLine.ToString(), View.Registries);
 
-					if (NewCommand == null) // No matching commands
+					if (string.IsNullOrEmpty(NewCommand)) // No matching commands
 						break;
 
 					_InputLine.Length = 0;

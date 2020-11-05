@@ -143,6 +143,16 @@ namespace System
 		}
 
 		/// <summary>
+		/// Checks whether a string contains a character span
+		/// </summary>
+		/// <param name="source">The string to check</param>
+		/// <param name="value">The character span to check for</param>
+		/// <param name="comparisonType">The string comparison type to apply</param>
+		/// <returns>True if the string ends with the given character span, otherwise False</returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool Contains(this string source, ReadOnlySpan<char> value, StringComparison comparisonType) => source.AsSpan().Contains(value, comparisonType);
+
+		/// <summary>
 		/// Checks whether a string ends with a character span
 		/// </summary>
 		/// <param name="source">The string to check</param>

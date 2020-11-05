@@ -102,6 +102,9 @@ namespace System.IO
 				{
 					var ReadBytes = Read(Buffer);
 
+					if (ReadBytes == 0)
+						break;
+
 #if NETSTANDARD2_0
 					await destination.WriteAsync(Buffer, 0, ReadBytes);
 #else
