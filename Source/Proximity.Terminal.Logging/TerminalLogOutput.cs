@@ -71,6 +71,8 @@ namespace Proximity.Terminal.Logging
 
 			if (entry.Severity == Severity.Milestone)
 				Scope = TerminalScope.Milestone;
+			else if (entry.Severity == Severity.None)
+				Scope = TerminalScope.ConsoleCommand;
 
 			if (entry is ExceptionLogEntry ExceptionEntry)
 				Logger.Log(Level, default, new ConsoleRecord(entry.Timestamp, Level, entry.Text, Target.SectionDepth, Scope, ExceptionEntry.Exception), ExceptionEntry.Exception, Formatter);

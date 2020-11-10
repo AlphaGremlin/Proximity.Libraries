@@ -108,7 +108,7 @@ namespace Proximity.Terminal
 			if (string.IsNullOrEmpty(Message) && exception == null)
 				return;
 
-			var Record = new ConsoleRecord(DateTimeOffset.Now, logLevel, Message);
+			var Record = new ConsoleRecord(DateTimeOffset.Now, logLevel, Message, exception: exception);
 
 			((ITerminalListener)this).Log(Record);
 		}

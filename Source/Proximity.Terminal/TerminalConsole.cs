@@ -190,30 +190,17 @@ namespace Proximity.Terminal
 							if (!IsRedirected)
 								Console.ForegroundColor = Theme.GetColour(Record.Severity, Record.Scope);
 
-							// If we're echoing a command, put the prompt before it
 							if (Record.Scope == TerminalScope.ConsoleCommand)
+							{
+								// We're echoing a command, put the prompt before it (no indentation)
 								Console.WriteLine("{0}{1}", Theme.Prompt, Record.Text);
-							else if (Record.Indentation == 0)
-								Console.WriteLine(Record.Text);
-							else if (Record.Indentation == 1)
-								Console.WriteLine("{0}{1}", Theme.Indentation, Record.Text);
+							}
 							else
 							{
-								var IndentText = Theme.Indentation;
+								ConsoleWrite(Record.Text, Record.Indentation);
 
-								if (IndentText.Length == 1)
-									_Output.Append(IndentText[0], Record.Indentation);
-								else
-								{
-									for (var Index = 0; Index < Record.Indentation; Index++)
-										_Output.Append(IndentText);
-								}
-
-								_Output.Append(Record.Text);
-
-								Console.WriteLine(_Output.ToString());
-
-								_Output.Clear();
+								if (Record.Exception != null)
+									ConsoleWrite(Record.Exception.ToString(), Record.Indentation);
 							}
 						}
 
@@ -454,6 +441,65 @@ namespace Proximity.Terminal
 				Console.Write(ClearMask, 0, ClearLength);
 
 				Console.SetCursorPosition(0, _InputTop);
+			}
+
+			private void ConsoleWrite(string content, int indentation)
+			{
+				if (indentation == 0)
+				{
+					Console.WriteLine(content);
+
+					return;
+				}
+
+				if (indentation == 1 && !content.Contains(Environment.NewLine))
+				{
+					Console.WriteLine("{0}{1}", Theme.Indentation, content);
+
+					return;
+				}
+
+				var IndentText = Theme.Indentation;
+
+				if (IndentText.Length == 1)
+					_Output.Append(IndentText[0], indentation);
+				else
+				{
+					for (var Index = 0; Index < indentation; Index++)
+						_Output.Append(IndentText);
+				}
+
+				if (content.Contains(Environment.NewLine))
+				{
+					// Indent every line
+					var StartLength = _Output.Length;
+
+					foreach (var Segment in content.AsSpan().Split(Environment.NewLine.AsSpan()))
+					{
+						if (Segment.IsEmpty)
+						{
+							// Write an empty line
+							Console.WriteLine();
+
+							continue;
+						}
+
+						// Trim any previous line
+						_Output.Length = StartLength;
+
+						_Output.Append(Segment);
+
+						Console.WriteLine(_Output.ToString());
+					}
+				}
+				else
+				{
+					_Output.Append(content);
+
+					Console.WriteLine(_Output.ToString());
+				}
+
+				_Output.Clear();
 			}
 
 			private void ShowInputArea()

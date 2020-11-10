@@ -112,6 +112,8 @@ namespace Proximity.Terminal.Logging
 			{
 				if (Record.Scope == TerminalScope.Milestone)
 					Level = Severity.Milestone;
+				else if (Record.Scope == TerminalScope.ConsoleCommand)
+					Level = Severity.None;
 
 				if (exception != null)
 					_Target.Write(new ExceptionLogEntry(new System.Diagnostics.StackFrame(1), Record.Text, exception));
@@ -128,8 +130,8 @@ namespace Proximity.Terminal.Logging
 
 			if (exception != null)
 				_Target.Write(new ExceptionLogEntry(new System.Diagnostics.StackFrame(1), Content, exception));
-
-			_Target.Write(new LogEntry(new System.Diagnostics.StackFrame(1), Level, Content));
+			else
+				_Target.Write(new LogEntry(new System.Diagnostics.StackFrame(1), Level, Content));
 		}
 
 		//****************************************
