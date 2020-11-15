@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 //****************************************
 
-namespace Proximity.Utility.Tests
+namespace Proximity.Threading.Tests
 {
 	/// <summary>
 	/// Tests the functionality of the ActionFlag class
@@ -120,30 +120,7 @@ namespace Proximity.Utility.Tests
 			
 			Assert.AreNotEqual(0, _Counter);
 		}
-		/*
-		[Test(), MaxTime(1500)]
-		public async Task SetScheduler()
-		{
-			bool OnCorrectScheduler = false;
-			
-			using (var MyScheduler = new DedicatedThreadScheduler("ActionFlag"))
-			{
-				var MyFlag = new ActionFlag(
-					() =>
-					{
-						if (MyScheduler == TaskScheduler.Current)
-							OnCorrectScheduler = true;
-						
-						return Task.Delay(50);
-						
-					}, MyScheduler);
-				
-				await MyFlag.SetAndWait();
-			}
-			
-			Assert.IsTrue(OnCorrectScheduler, "Did not run on the correct scheduler");
-		}
-		*/
+
 		//****************************************
 		
 		private Task WaitFiftyMs()

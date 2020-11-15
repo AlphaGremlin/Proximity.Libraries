@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 //****************************************
 
-namespace Proximity.Utility.Tests
+namespace Proximity.Threading.Tests
 {
 	/// <summary>
 	/// Tests the functionality of the asynchronous switch lock

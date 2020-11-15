@@ -3,11 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29318.209
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Utility.Tests", "Tests\Proximity.Utility\Proximity.Utility.Tests.csproj", "{887C7D16-0E23-4055-8535-46AA76DD4DEA}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{AD24E051-CE39-492E-9197-151B51C0C893}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Utility", "Source\Proximity.Utility\Proximity.Utility.csproj", "{6A47012C-9EBF-46EC-98F4-EFA34864978E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Terminal", "Source\Proximity.Terminal\Proximity.Terminal.csproj", "{0DFECB3F-A769-4A8F-8DC0-AF967C7D0CF8}"
 EndProject
@@ -48,7 +44,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Terminal.Hosting"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Diagnostics.Tests", "Tests\Proximity.Diagnostics.Tests\Proximity.Diagnostics.Tests.csproj", "{5E0C61CA-AB50-4A7A-9F5D-1C337D1F30E9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Terminal.Logging", "Source\Proximity.Terminal.Logging\Proximity.Terminal.Logging.csproj", "{4574B37A-A083-4B81-A5B8-13CD973C1B33}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Terminal.Logging", "Source\Proximity.Terminal.Logging\Proximity.Terminal.Logging.csproj", "{4574B37A-A083-4B81-A5B8-13CD973C1B33}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -62,38 +58,6 @@ Global
 		Release|Net45 = Release|Net45
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
-		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Debug|Net40.ActiveCfg = Debug|Any CPU
-		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Debug|Net40.Build.0 = Debug|Any CPU
-		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Debug|Net45.ActiveCfg = Debug|Any CPU
-		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Debug|Net45.Build.0 = Debug|Any CPU
-		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Release|Any CPU.Build.0 = Release|Any CPU
-		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Release|Mixed Platforms.Build.0 = Release|Any CPU
-		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Release|Net40.ActiveCfg = Release|Any CPU
-		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Release|Net40.Build.0 = Release|Any CPU
-		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Release|Net45.ActiveCfg = Release|Any CPU
-		{887C7D16-0E23-4055-8535-46AA76DD4DEA}.Release|Net45.Build.0 = Release|Any CPU
-		{6A47012C-9EBF-46EC-98F4-EFA34864978E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6A47012C-9EBF-46EC-98F4-EFA34864978E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6A47012C-9EBF-46EC-98F4-EFA34864978E}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{6A47012C-9EBF-46EC-98F4-EFA34864978E}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
-		{6A47012C-9EBF-46EC-98F4-EFA34864978E}.Debug|Net40.ActiveCfg = Debug|Any CPU
-		{6A47012C-9EBF-46EC-98F4-EFA34864978E}.Debug|Net40.Build.0 = Debug|Any CPU
-		{6A47012C-9EBF-46EC-98F4-EFA34864978E}.Debug|Net45.ActiveCfg = Debug|Any CPU
-		{6A47012C-9EBF-46EC-98F4-EFA34864978E}.Debug|Net45.Build.0 = Debug|Any CPU
-		{6A47012C-9EBF-46EC-98F4-EFA34864978E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{6A47012C-9EBF-46EC-98F4-EFA34864978E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{6A47012C-9EBF-46EC-98F4-EFA34864978E}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{6A47012C-9EBF-46EC-98F4-EFA34864978E}.Release|Mixed Platforms.Build.0 = Release|Any CPU
-		{6A47012C-9EBF-46EC-98F4-EFA34864978E}.Release|Net40.ActiveCfg = Release|Any CPU
-		{6A47012C-9EBF-46EC-98F4-EFA34864978E}.Release|Net40.Build.0 = Release|Any CPU
-		{6A47012C-9EBF-46EC-98F4-EFA34864978E}.Release|Net45.ActiveCfg = Release|Any CPU
-		{6A47012C-9EBF-46EC-98F4-EFA34864978E}.Release|Net45.Build.0 = Release|Any CPU
 		{0DFECB3F-A769-4A8F-8DC0-AF967C7D0CF8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{0DFECB3F-A769-4A8F-8DC0-AF967C7D0CF8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0DFECB3F-A769-4A8F-8DC0-AF967C7D0CF8}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
@@ -387,7 +351,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{887C7D16-0E23-4055-8535-46AA76DD4DEA} = {AD24E051-CE39-492E-9197-151B51C0C893}
 		{F1B5B74F-2921-4F15-8606-94FF534B5B1D} = {AD24E051-CE39-492E-9197-151B51C0C893}
 		{883EAFFD-1DF8-4F33-8086-935DBF515EAC} = {AD24E051-CE39-492E-9197-151B51C0C893}
 		{70675EC6-E86E-4FE4-BDB2-CAE5547A61CF} = {AD24E051-CE39-492E-9197-151B51C0C893}

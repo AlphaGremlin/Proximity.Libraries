@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Interleave;
 using Proximity.Threading;
 //****************************************
 
@@ -105,15 +106,16 @@ namespace System.Threading.Tasks
 		/// Interleaves an enumeration of tasks, returning the results in the order they complete
 		/// </summary>
 		/// <param name="source">The enumeration of tasks to interleave</param>
+		/// <param name="token">A cancellation token to cancel the enumeration</param>
 		/// <returns>An enumeration that returns the tasks in order of completion</returns>
-		public static IAsyncEnumerable<Task<TResult>> Interleave<TResult>(this IEnumerable<Task<TResult>> source) => new InterleaveTask<TResult>(source, default);
+		public static InterleaveTaskAsyncEnumerable<TResult> Interleave<TResult>(this IEnumerable<Task<TResult>> source, CancellationToken token = default) => new InterleaveTaskAsyncEnumerable<TResult>(source, token);
 
 		/// <summary>
 		/// Interleaves an enumeration of tasks, returning them in the order they complete
 		/// </summary>
 		/// <param name="source">The enumeration of tasks to interleave</param>
 		/// <param name="token">A cancellation token to cancel the enumeration</param>
-		/// <returns>An enumeration that returns the task and the index of the original task in order of completion</returns>
-		public static IAsyncEnumerable<(Task<TResult> result, int index)> InterleaveIndex<TResult>(this IEnumerable<Task<TResult>> source, CancellationToken token) => new InterleaveTask<TResult>(source, token);
+		/// <returns>An enumeration that returns the task and the original index of the task in order of completion</returns>
+		public static InterleaveTaskIndexAsyncEnumerable<TResult> InterleaveIndex<TResult>(this IEnumerable<Task<TResult>> source, CancellationToken token = default) => new InterleaveTaskIndexAsyncEnumerable<TResult>(source, token);
 	}
 }

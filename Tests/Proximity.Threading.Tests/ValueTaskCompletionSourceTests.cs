@@ -60,6 +60,7 @@ namespace Proximity.Threading.Tests
 			{
 			}
 		}
+
 		[Test]
 		public async Task ExceptionResult()
 		{

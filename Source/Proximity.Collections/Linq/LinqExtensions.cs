@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace System.Linq
@@ -12,7 +13,11 @@ namespace System.Linq
 	/// <param name="input">The input value</param>
 	/// <param name="output">The output value</param>
 	/// <returns>True to select this value, otherwise False</returns>
-	public delegate bool SelectWherePredicate<in TInput, TOutput>(TInput input, out TOutput output);
+	public delegate bool SelectWherePredicate<in TInput, TOutput>(TInput input,
+#if !NETSTANDARD2_0
+		[MaybeNullWhen(false)]
+#endif
+		out TOutput output);
 
 	/// <summary>
 	/// Provides useful Linq-style methods
@@ -191,6 +196,23 @@ namespace System.Linq
 				if (predicate(InRecord, out var OutRecord))
 					yield return resultSelector(InRecord, OutRecord);
 			}
+		}
+
+		/// <summary>
+		/// Converts an enumerable to a read-only collection
+		/// </summary>
+		/// <typeparam name="T">The type of element</typeparam>
+		/// <param name="source">The enumeration to convert</param>
+		/// <returns>A read-only collection</returns>
+		public static IReadOnlyCollection<T> ToReadOnlyCollection<T>(this IEnumerable<T> source)
+		{
+			if (source is null)
+				throw new ArgumentNullException(nameof(source));
+
+			if (source is IReadOnlyCollection<T> ReadOnlyList)
+				return ReadOnlyList;
+
+			return source.ToArray();
 		}
 
 		/// <summary>

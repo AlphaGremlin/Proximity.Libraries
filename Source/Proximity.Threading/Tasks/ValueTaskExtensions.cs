@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Tasks.Interleave;
 using System.Threading.Tasks.Sources;
 using Proximity.Threading;
 
@@ -18,16 +19,17 @@ namespace System.Threading.Tasks
 		/// Interleaves an enumeration of tasks, returning the results in the order they complete
 		/// </summary>
 		/// <param name="source">The enumeration of tasks to interleave</param>
+		/// <param name="token">A cancellation token to cancel the enumeration</param>
 		/// <returns>An enumeration that returns the tasks in order of completion</returns>
-		public static IAsyncEnumerable<ValueTask<TResult>> Interleave<TResult>(this IEnumerable<ValueTask<TResult>> source) => new InterleaveTask<TResult>(source, default);
+		public static InterleaveValueTaskAsyncEnumerable<TResult> Interleave<TResult>(this IEnumerable<ValueTask<TResult>> source, CancellationToken token = default) => new InterleaveValueTaskAsyncEnumerable<TResult>(source, token);
 
 		/// <summary>
 		/// Interleaves an enumeration of tasks, returning them in the order they complete
 		/// </summary>
 		/// <param name="source">The enumeration of tasks to interleave</param>
 		/// <param name="token">A cancellation token to cancel the enumeration</param>
-		/// <returns>An enumeration that returns the task and the index of the original task in order of completion</returns>
-		public static IAsyncEnumerable<(ValueTask<TResult> result, int index)> InterleaveIndex<TResult>(this IEnumerable<ValueTask<TResult>> source, CancellationToken token) => new InterleaveTask<TResult>(source, token);
+		/// <returns>An enumeration that returns the task and the original index of the task in order of completion</returns>
+		public static InterleaveValueTaskIndexAsyncEnumerable<TResult> InterleaveIndex<TResult>(this IEnumerable<ValueTask<TResult>> source, CancellationToken token = default) => new InterleaveValueTaskIndexAsyncEnumerable<TResult>(source, token);
 
 		/// <summary>
 		/// Wraps the given task, waiting for it to complete or the given token to cancel
