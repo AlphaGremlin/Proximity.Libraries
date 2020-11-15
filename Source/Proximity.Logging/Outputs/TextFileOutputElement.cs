@@ -1,7 +1,7 @@
-﻿using System;
+using System;
 using System.Configuration;
 using System.Security;
-using Proximity.Utility.Configuration;
+using Proximity.Configuration;
 //****************************************
 
 namespace Proximity.Logging.Outputs
@@ -27,28 +27,28 @@ namespace Proximity.Logging.Outputs
 		[ConfigurationProperty("IndentTabs", IsRequired=false, DefaultValue=true)]
 		public bool IndentTabs
 		{
-			get { return (bool)base["IndentTabs"]; }
-			set { base["IndentTabs"] = value; }
+			get => (bool)base["IndentTabs"];
+			set => base["IndentTabs"] = value;
 		}
-		
+
 		/// <summary>
 		/// Gets/Sets the size of each indent level when indenting with spaces
 		/// </summary>
 		[ConfigurationProperty("IndentSize", IsRequired=false, DefaultValue=2)]
 		public int IndentSize
 		{
-			get { return (int)base["IndentSize"]; }
-			set { base["IndentSize"] = value; }
+			get => (int)base["IndentSize"];
+			set => base["IndentSize"] = value;
 		}
-		
+
 		/// <summary>
 		/// Gets/Sets the text encoding to use
 		/// </summary>
 		[ConfigurationProperty("Encoding", IsRequired=false, DefaultValue="UTF-8")]
 		public string Encoding
 		{
-			get { return (string)base["Encoding"]; }
-			set { base["Encoding"] = value; }
+			get => (string)base["Encoding"];
+			set => base["Encoding"] = value;
 		}
 	}
 }

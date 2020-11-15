@@ -1,11 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Emit;
-using System.Security;
-using Proximity.Logging;
+using Proximity.Terminal.Metadata;
 //****************************************
 
 namespace Proximity.Terminal
@@ -15,22 +14,25 @@ namespace Proximity.Terminal
 	/// </summary>
 	public sealed class TerminalRegistry
 	{	//****************************************
-		private bool _IsLoaded = false;
-		
 		private readonly object _LockObject = new object();
 		
 		// Global Commands and Variables
-		private readonly Dictionary<string, TerminalCommandSet> _Commands = new Dictionary<string, TerminalCommandSet>(StringComparer.InvariantCultureIgnoreCase);
-		private readonly Dictionary<string, TerminalVariable> _Variables = new Dictionary<string, TerminalVariable>(StringComparer.InvariantCultureIgnoreCase);
+		private readonly StringKeyDictionary<TerminalCommandSet> _Commands = new StringKeyDictionary<TerminalCommandSet>(StringComparison.OrdinalIgnoreCase);
+		private readonly StringKeyDictionary<TerminalVariable> _Variables = new StringKeyDictionary<TerminalVariable>(StringComparison.OrdinalIgnoreCase);
 		
 		// Maps Types to Terminal Types
 		private readonly ConcurrentDictionary<Type, TerminalType> _Types = new ConcurrentDictionary<Type, TerminalType>();
 		
 		// Maps Type Names to Terminal Type Sets
-		private readonly ConcurrentDictionary<string, TerminalTypeSet> _TypeSets = new ConcurrentDictionary<string, TerminalTypeSet>(StringComparer.InvariantCultureIgnoreCase);
+		private readonly StringKeyDictionary<TerminalTypeSet> _TypeSets = new StringKeyDictionary<TerminalTypeSet>(StringComparison.OrdinalIgnoreCase);
+
+		private readonly ConcurrentDictionary<TerminalType, TerminalTypeInstance> _DefaultInstances = new ConcurrentDictionary<TerminalType, TerminalTypeInstance>();
 		//****************************************
-		
-		internal TerminalRegistry()
+
+		/// <summary>
+		/// Defines a new Registry
+		/// </summary>
+		public TerminalRegistry()
 		{
 		}
 
@@ -95,19 +97,16 @@ namespace Proximity.Terminal
 		/// </summary>
 		/// <param name="type">The type to scan</param>
 		/// <returns>A Terminal Type definition, or null if this type is not a Terminal Provider</returns>
-		public TerminalType Scan(Type type)
+		public TerminalType? Scan(Type type)
 		{	//****************************************
 			var MyProvider = type.GetCustomAttribute<TerminalProviderAttribute>();
 			TerminalType MyType;
-			TerminalTypeSet MyTypeSet;
 			//****************************************
 			
 			if (MyProvider == null)
 				return null;
-			
+
 			// We've scanned at least one type, so mark us as Loaded
-			_IsLoaded = true;
-			
 			MyType = new TerminalType(this, type, MyProvider);
 			
 			// Register this type
@@ -116,7 +115,11 @@ namespace Proximity.Terminal
 			// If defined, add a matching Type Set
 			if (MyType.Name != null)
 			{
-				MyTypeSet = _TypeSets.AddOrUpdate(MyType.Name, (typeName) => new TerminalTypeSet(typeName), (typeName, typeSet) => typeSet);
+				lock (_LockObject)
+				{
+					if (!_TypeSets.ContainsKey(MyType.Name))
+						_TypeSets[MyType.Name] = new TerminalTypeSet(MyType.Name);
+				}
 			}
 			
 			return MyType;
@@ -128,137 +131,205 @@ namespace Proximity.Terminal
 		/// <param name="name">The unique name to assign this Instance</param>
 		/// <param name="instance">The instance itself</param>
 		/// <returns>A new Terminal Instance describing this Instance</returns>
-		public TerminalInstance Add(string name, object instance)
-		{	//****************************************
-			TerminalInstance MyInstance;
+		public TerminalTypeInstance? Add(string name, object instance)
+		{
+			if (!_Types.TryGetValue(instance.GetType(), out TerminalType? TargetType))
+			{
+				TargetType = Scan(instance.GetType());
+
+				if (TargetType == null)
+					throw new ArgumentException("Unknown Instance Type");
+			}
+
+			if (TargetType.IsDefault)
+				throw new InvalidOperationException("Default type cannot be named");
+
+			if (TargetType.Name == null)
+				throw new InvalidOperationException("Missing Type Set Name");
+
+			if (!_TypeSets.TryGetValue(TargetType.Name, out var TypeSet))
+				throw new InvalidOperationException("Missing Type Set");
+
 			//****************************************
-			
-			if (!_IsLoaded)
-				return null;
-			
-			if (!_Types.TryGetValue(instance.GetType(), out var MyType) && (MyType = Scan(instance.GetType())) == null)
-				throw new ArgumentException("Unknown Instance Type");
-			
-			if (!_TypeSets.TryGetValue(MyType.Name, out var MyTypeSet))
-				throw new InvalidOperationException("Missing type set");
-			
-			//****************************************
-			
-			MyInstance = new TerminalInstance(name, MyType, instance);
-			
-			if (MyType.IsDefault)
-				MyTypeSet.Default = MyInstance;
-			else
-				MyTypeSet.AddNamedInstance(MyInstance);
-			
-			//****************************************
-			
-			return MyInstance;
+
+			var NewInstance = new TerminalTypeInstance(name, TargetType, instance);
+
+			TypeSet.AddNamedInstance(NewInstance);
+
+			return NewInstance;
 		}
-		
+
 		/// <summary>
-		/// Unregisters a Terminal Instance previously registered via <see cref="Add" />
+		/// Registers a default Terminal Instance with this Registry
+		/// </summary>
+		/// <param name="instance">The instance itself</param>
+		/// <returns>A new Terminal Instance describing this Instance</returns>
+		public TerminalTypeInstance? Add(object instance)
+		{
+			if (!_Types.TryGetValue(instance.GetType(), out TerminalType? TargetType))
+			{
+				TargetType = Scan(instance.GetType());
+
+				if (TargetType == null)
+					throw new ArgumentException("Unknown Instance Type");
+			}
+
+			if (!TargetType.IsDefault)
+				throw new InvalidOperationException("Type is not a default");
+
+			//****************************************
+
+			var NewInstance = new TerminalTypeInstance(null, TargetType, instance);
+
+			if (string.IsNullOrEmpty(TargetType.Name))
+			{
+				_DefaultInstances[TargetType] = NewInstance;
+			}
+			else
+			{
+				if (!_TypeSets.TryGetValue(TargetType.Name!, out var TypeSet))
+					throw new InvalidOperationException("Missing Type Set");
+
+				TypeSet.AddDefault(NewInstance);
+			}
+
+			//****************************************
+
+			return NewInstance;
+		}
+
+		/// <summary>
+		/// Unregisters a Terminal Instance previously registered via <see cref="Add(string, object)" />
 		/// </summary>
 		/// <param name="name"></param>
 		/// <param name="instance"></param>
 		/// <remarks>Instances are held with weak references, so this method is not necessary to call. It does, however, improve performance</remarks>
 		public void Remove(string name, object instance)
 		{
-			if (!_IsLoaded)
-				return;
-			
-			if (!_Types.TryGetValue(instance.GetType(), out var MyType))
+			if (!_Types.TryGetValue(instance.GetType(), out var TargetType))
 				throw new ArgumentException("Unknown Instance Type");
-			
-			if (!_TypeSets.TryGetValue(MyType.Name, out var MyTypeSet))
-				throw new InvalidOperationException("Missing type set");
-			
+
+			if (TargetType.IsDefault)
+				throw new InvalidOperationException("Default type cannot be named");
+
+			if (TargetType.Name == null)
+				throw new InvalidOperationException("Missing Type Set Name");
+
+			if (!_TypeSets.TryGetValue(TargetType.Name, out var TypeSet))
+				throw new InvalidOperationException("Missing Type Set");
+
 			//****************************************
-			
-			MyTypeSet.Remove(name);
+
+			TypeSet.RemoveNamedInstance(name);
 		}
-		
+
+		/// <summary>
+		/// Unregisters a Terminal Instance previously registered via <see cref="Add(object)" />
+		/// </summary>
+		/// <param name="instance"></param>
+		/// <remarks>Instances are held with weak references, so this method is not necessary to call. It does, however, improve performance</remarks>
+		public void Remove(object instance)
+		{
+			if (!_Types.TryGetValue(instance.GetType(), out var TargetType))
+				throw new ArgumentException("Unknown Instance Type");
+
+			if (!TargetType.IsDefault)
+				throw new InvalidOperationException("Type is not a default");
+
+			//****************************************
+
+			if (string.IsNullOrEmpty(TargetType.Name))
+			{
+				if (_DefaultInstances.TryGetValue(TargetType, out var CurrentInstance) && CurrentInstance.Target == instance)
+					_DefaultInstances.Remove(TargetType, CurrentInstance);
+			}
+			else
+			{
+				if (!_TypeSets.TryGetValue(TargetType.Name!, out var TypeSet))
+					throw new InvalidOperationException("Missing Type Set");
+
+				TypeSet.RemoveDefault(instance);
+			}
+		}
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Looks up a global command set
 		/// </summary>
 		/// <param name="commandName">The global command set to find</param>
-		/// <returns>The named command set, or null if it doesn't exist</returns>
-		public TerminalCommandSet FindCommand(string commandName)
+		/// <param name="commandSet">The named command set, or null if it doesn't exist</param>
+		/// <returns>Returns True if the Command Set was found, otherwise False</returns>
+		public bool TryGetCommandSet(ReadOnlySpan<char> commandName,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+		out TerminalCommandSet commandSet)
 		{
 			lock (_LockObject)
 			{
-				if (_Commands.TryGetValue(commandName, out var MyCommand))
-					return MyCommand;
+				return _Commands.TryGetValue(commandName, out commandSet!);
 			}
-			
-			return null;
 		}
-		
+
 		/// <summary>
 		/// Looks up a global variable
 		/// </summary>
 		/// <param name="variableName">The global variable to find</param>
-		/// <returns>The named variable, or null if it doesn't exist</returns>
-		public TerminalVariable FindVariable(string variableName)
+		/// <param name="variable">The named variable, or null if it doesn't exist</param>
+		/// <returns>Returns True if the Variable was found, otherwise False</returns>
+		public bool TryGetVariable(ReadOnlySpan<char> variableName,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+		out TerminalVariable variable)
 		{
 			lock (_LockObject)
 			{
-				if (_Variables.TryGetValue(variableName, out var MyVariable))
-					return MyVariable;
+				return _Variables.TryGetValue(variableName, out variable!);
 			}
-			
-			return null;
 		}
-		
+
 		/// <summary>
 		/// Looks up a type set
 		/// </summary>
 		/// <param name="typeName">The type set to find</param>
-		/// <returns>The named type set, or null if it doesn't exist</returns>
-		public TerminalTypeSet FindTypeSet(string typeName)
+		/// <param name="typeSet">The named type set, or null if it doesn't exist</param>
+		/// <returns>Returns True if the Type Set was found, otherwise False</returns>
+		public bool TryGetTypeSet(ReadOnlySpan<char> typeName,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+		out TerminalTypeSet typeSet)
 		{
 			lock (_LockObject)
 			{
-				if (_TypeSets.TryGetValue(typeName, out var MyType))
-					return MyType;
+				return _TypeSets.TryGetValue(typeName, out typeSet!);
 			}
-			
-			return null;
 		}
 		
 		//****************************************
 		
-		internal TerminalCommand RegisterCommand(MethodInfo method, TerminalBindingAttribute binding)
+		internal void RegisterCommand(MethodInfo method, TerminalBindingAttribute binding)
 		{	//****************************************
-			var MyName = binding.Name ?? method.Name;
+			var Name = binding.Name ?? method.Name;
 			//****************************************
 			
-			if (!_Commands.TryGetValue(MyName, out var MyCommands))
-				_Commands.Add(MyName, MyCommands = new TerminalCommandSet(MyName));
+			if (!_Commands.TryGetValue(Name, out var Commands))
+				_Commands.Add(Name, Commands = new TerminalCommandSet(Name));
 			
-			return MyCommands.AddOverload(method, binding);
+			Commands.AddOverload(method, binding);
 		}
 		
-		internal TerminalVariable RegisterVariable(PropertyInfo property, TerminalBindingAttribute binding)
+		internal void RegisterVariable(PropertyInfo property, TerminalBindingAttribute binding)
 		{	//****************************************
-			var MyName = binding.Name ?? property.Name;
-			TerminalVariable MyVariable;
+			var Name = binding.Name ?? property.Name;
 			//****************************************
 			
-			if (_Variables.ContainsKey(MyName))
-			{
-				Log.Warning("Ignoring duplicate property {0} in provider {1}", property.Name, property.DeclaringType.FullName);
-				
-				return null;
-			}
+			if (_Variables.ContainsKey(Name))
+				return;
 			
-			MyVariable = new TerminalVariable(property, binding);
-				
-			_Variables.Add(MyName, MyVariable);
-			
-			return MyVariable;
+			_Variables.Add(Name, new TerminalVariable(property, binding));
 		}
 
 		//****************************************
@@ -270,27 +341,27 @@ namespace Proximity.Terminal
 			
 			try
 			{
-				foreach(Type NewType in args.LoadedAssembly.GetTypes())
+				foreach(var NewType in args.LoadedAssembly.GetTypes())
 				{
 					Scan(NewType);
 				}
 			}
 			catch (ReflectionTypeLoadException e)
 			{
-				foreach (Type NewType in e.Types)
+				foreach (var NewType in e.Types)
 				{
 					if (NewType != null)
 						Scan(NewType);
 				}
 			}
 		}
-		
+
 		//****************************************
-		
+
 		/// <summary>
-		/// Gets a list of all global commands
+		/// Gets a collection of all global commands
 		/// </summary>
-		public IEnumerable<TerminalCommandSet> Commands
+		public IReadOnlyCollection<TerminalCommandSet> Commands
 		{
 			get
 			{
@@ -298,11 +369,11 @@ namespace Proximity.Terminal
 					return _Commands.Values.ToArray();
 			}
 		}
-		
+
 		/// <summary>
-		/// Gets a list of all global variables
+		/// Gets a collection of all global variables
 		/// </summary>
-		public IEnumerable<TerminalVariable> Variables
+		public IReadOnlyCollection<TerminalVariable> Variables
 		{
 			get
 			{
@@ -310,15 +381,19 @@ namespace Proximity.Terminal
 					return _Variables.Values.ToArray();
 			}
 		}
-		
+
 		/// <summary>
-		/// Gets a list of all type sets
+		/// Gets a collection of all type sets
 		/// </summary>
-		public IEnumerable<TerminalTypeSet> TypeSets
-		{
-			get { return _TypeSets.Values; }
-		}
-		
+		public ICollection<TerminalTypeSet> TypeSets => _TypeSets.Values;
+
+		/// <summary>
+		/// Gets a collection of all the default instances
+		/// </summary>
+		public ICollection<TerminalTypeInstance> DefaultInstances => _DefaultInstances.Values;
+
+		//****************************************
+
 		/// <summary>
 		/// A global registry of terminal provider instances
 		/// </summary>

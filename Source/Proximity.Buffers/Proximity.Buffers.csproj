@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFrameworks>netstandard2.0;netstandard2.1;netcoreapp3.1</TargetFrameworks>
+		<Authors>Daniel Chandler</Authors>
+		<Company>Proximity Interactive</Company>
+		<Copyright>Copyright © Daniel Chandler 2020</Copyright>
+		<Product>Proximity Buffers Utility Library</Product>
+		<Version>1.0.2</Version>
+		<AssemblyVersion>1.0.0.0</AssemblyVersion>
+		<FileVersion>1.0.2.0</FileVersion>
+		<Description>Buffers Utility Library</Description>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<SignAssembly>true</SignAssembly>
+		<AssemblyOriginatorKeyFile>..\Proximity.snk</AssemblyOriginatorKeyFile>
+		<OutputPath>..\..\Build</OutputPath>
+		<LangVersion>Latest</LangVersion>
+		<PackageProjectUrl>https://github.com/AlphaGremlin/Proximity.Libraries</PackageProjectUrl>
+		<RepositoryUrl></RepositoryUrl>
+		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+		<Nullable>enable</Nullable>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	</PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="System.Memory" Version="4.5.4" />
+		<PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
+	</ItemGroup>
+</Project>

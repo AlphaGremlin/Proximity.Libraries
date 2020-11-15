@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+		<Authors>Daniel Chandler</Authors>
+		<Company>Proximity Interactive</Company>
+		<Copyright>Copyright © Daniel Chandler 2019</Copyright>
+		<Product>Proximity Configuration Utility Library</Product>
+		<Version>1.0.0</Version>
+		<AssemblyVersion>1.0.0.0</AssemblyVersion>
+		<FileVersion>1.0.0.0</FileVersion>
+		<Description>Configuration Utility Library</Description>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<SignAssembly>true</SignAssembly>
+		<AssemblyOriginatorKeyFile>..\Proximity.snk</AssemblyOriginatorKeyFile>
+		<OutputPath>..\..\Build</OutputPath>
+		<LangVersion>Latest</LangVersion>
+		<PackageProjectUrl>https://github.com/AlphaGremlin/Proximity.Libraries</PackageProjectUrl>
+		<RepositoryUrl></RepositoryUrl>
+		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="System.Configuration.ConfigurationManager" Version="4.6.0" />
+	</ItemGroup>
+</Project>

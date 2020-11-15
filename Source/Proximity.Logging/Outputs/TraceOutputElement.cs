@@ -1,8 +1,8 @@
-﻿using System;
+using System;
 using System.Configuration;
 using System.Security;
 using Proximity.Logging.Config;
-using Proximity.Utility.Configuration;
+using Proximity.Configuration;
 //****************************************
 
 namespace Proximity.Logging.Outputs

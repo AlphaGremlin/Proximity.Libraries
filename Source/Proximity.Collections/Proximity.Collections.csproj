@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+		<Authors>Daniel Chandler</Authors>
+		<Company>Proximity Interactive</Company>
+		<Copyright>Copyright © Daniel Chandler 2020</Copyright>
+		<Product>Proximity Collections Utility Library</Product>
+		<Version>1.0.0</Version>
+		<AssemblyVersion>1.0.0.0</AssemblyVersion>
+		<FileVersion>1.0.0.0</FileVersion>
+		<Description>Collections Utility Library</Description>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<SignAssembly>true</SignAssembly>
+		<AssemblyOriginatorKeyFile>..\Proximity.snk</AssemblyOriginatorKeyFile>
+		<OutputPath>..\..\Build</OutputPath>
+		<LangVersion>Latest</LangVersion>
+		<PackageProjectUrl>https://github.com/AlphaGremlin/Proximity.Libraries</PackageProjectUrl>
+		<RepositoryUrl></RepositoryUrl>
+		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+	<ItemGroup Condition="$(TargetFramework)=='netstandard2.0'">
+		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.0" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Compile Remove="Observable\ObservableSortedSubset.cs" />
+	</ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="System.Memory" Version="4.5.4" />
+		<PackageReference Include="System.Collections.Immutable" Version="1.7.0" />
+	</ItemGroup>
+	<ItemGroup>
+	  <None Include="Observable\ObservableSortedSubset.cs" />
+	</ItemGroup>
+</Project>

@@ -1,5 +1,7 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -7,9 +9,8 @@ using System.Security;
 using System.Text;
 using System.Threading;
 using System.Xml;
+using Proximity.Configuration;
 using Proximity.Logging.Config;
-using Proximity.Utility.Collections;
-using Proximity.Utility.Configuration;
 //****************************************
 
 namespace Proximity.Logging.Outputs
@@ -122,7 +123,7 @@ namespace Proximity.Logging.Outputs
 			
 			if (entry is ExceptionLogEntry ExceptionEntry)
 			{
-				foreach(string EntryLine in ExceptionEntry.Exception.ToString().Split(new string[] {Environment.NewLine}, StringSplitOptions.None))
+				foreach(var EntryLine in ExceptionEntry.Exception.ToString().AsSpan().Split(Environment.NewLine.AsSpan(), false))
 				{
 					OutputBuilder.AppendLine();
 					

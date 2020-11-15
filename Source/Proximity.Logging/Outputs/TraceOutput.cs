@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Security;
 using System.Xml;
 using Proximity.Logging.Config;
-using Proximity.Utility.Configuration;
+using Proximity.Configuration;
 //****************************************
 
 namespace Proximity.Logging.Outputs

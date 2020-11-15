@@ -1,79 +1,35 @@
-﻿using System;
+using System;
 using System.Drawing;
-using Proximity.Logging;
+using Microsoft.Extensions.Logging;
 //****************************************
 
 namespace Proximity.Terminal
 {
 	/// <summary>
-	/// Represents a single entry in the console
+	/// Represents a single entry on a terminal
 	/// </summary>
 	public sealed class ConsoleRecord
 	{
-		internal ConsoleRecord(string text)
+		/// <summary>
+		/// Creates a new console record
+		/// </summary>
+		/// <param name="timestamp">The time the entry was recorded</param>
+		/// <param name="severity">The severity level</param>
+		/// <param name="text">The text content</param>
+		/// <param name="indentation">The indentation to display with</param>
+		/// <param name="scope">The scope providing additional context</param>
+		/// <param name="exception">An exception associated with the record</param>
+		public ConsoleRecord(DateTimeOffset timestamp, LogLevel severity, string text, int indentation = 0, TerminalScope? scope = null, Exception? exception = null)
 		{
-			ConsoleColour = ConsoleColor.Green;
-			Timestamp = DateTime.Now;
-
+			Timestamp = timestamp;
+			Severity = severity;
+			Scope = scope;
+			Exception = exception;
 			Text = text;
-			Severity = Severity.None;
-		}
-		
-		internal ConsoleRecord(ConsoleLogEntry entry)
-		{
-			ConsoleColour = ConsoleColor.Green;
-			Timestamp = entry.Timestamp;
-
-			Text = entry.Text;
-			Severity = Severity.None;
-		}
-
-		internal ConsoleRecord(LogEntry entry, string text, int indentLevel)
-		{
-			switch(entry.Severity)
-			{
-			case Severity.Critical:
-				ConsoleColour = ConsoleColor.DarkMagenta;
-				break;
-				
-			case Severity.Error:
-				ConsoleColour = ConsoleColor.Red;
-				break;
-				
-			case Severity.Warning:
-				ConsoleColour = ConsoleColor.Yellow;
-				break;
-			
-			case Severity.Milestone:
-				ConsoleColour = ConsoleColor.Cyan;
-				break;
-				
-			case Severity.Info:
-				ConsoleColour = ConsoleColor.White;
-				break;
-				
-			case Severity.Debug:
-				ConsoleColour = ConsoleColor.Blue;
-				break;
-				
-			case Severity.Verbose:
-			default:
-				ConsoleColour = ConsoleColor.Gray;
-				break;
-			}
-			
-			Text = text;
-			Severity = entry.Severity;
-			Timestamp = entry.Timestamp;
-			IndentLevel = indentLevel;
+			Indentation = indentation;
 		}
 
 		//****************************************
-
-		/// <summary>
-		/// Gets the console colour of this record
-		/// </summary>
-		public ConsoleColor ConsoleColour { get; }
 
 		/// <summary>
 		/// Gets the text displayed by this record
@@ -81,19 +37,28 @@ namespace Proximity.Terminal
 		public string Text { get; }
 
 		/// <summary>
+		/// Gets the indentation to apply to this record
+		/// </summary>
+		public int Indentation { get; }
+
+		/// <summary>
 		/// Gets the time this record was created
 		/// </summary>
-		public DateTime Timestamp { get; }
+		public DateTimeOffset Timestamp { get; }
 
 		/// <summary>
 		/// Gets the severity of this entry
 		/// </summary>
-		/// <remarks>Determines the <see cref="ConsoleColour" /> value</remarks>
-		public Severity Severity { get; }
+		public LogLevel Severity { get; }
 
 		/// <summary>
-		/// Gets the indentation level
+		/// Gets the scope of the record
 		/// </summary>
-		public int IndentLevel { get; }
+		public TerminalScope? Scope { get; }
+
+		/// <summary>
+		/// Gets the exception associated with the record
+		/// </summary>
+		public Exception? Exception { get; }
 	}
 }

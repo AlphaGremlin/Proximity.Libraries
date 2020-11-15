@@ -1,11 +1,13 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Security;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Proximity.Logging;
+using Microsoft.Extensions.Logging;
+using Proximity.Terminal.Metadata;
 //****************************************
 
 namespace Proximity.Terminal
@@ -14,107 +16,237 @@ namespace Proximity.Terminal
 	/// Provides parsing functionality for the terminal input
 	/// </summary>
 	public static class TerminalParser
-	{ //****************************************
-		private static AsyncLocal<TerminalRegistry[]> _Context = new AsyncLocal<TerminalRegistry[]>();
-		//****************************************
+	{
+		/// <summary>
+		/// Generates usage information for a terminal
+		/// </summary>
+		public static string HelpOn(ITerminal terminal)
+		{ //****************************************
+			var HasCommands = false;
+			var HasVariables = false;
+			var HasTypes = false;
+			var Builder = new StringBuilder();
+			bool IsFirst;
+			//****************************************
+
+			foreach (var Registry in terminal.Registries)
+			{
+				HasCommands |= Registry.Commands.Count > 0;
+				HasVariables |= Registry.Variables.Count > 0;
+				HasTypes |= Registry.TypeSets.Count > 0;
+			}
+
+			if (HasCommands)
+			{
+				Builder.AppendLine("Available Commands:").Append("  ");
+
+				IsFirst = true;
+
+				foreach (var Command in
+					terminal.Registries.SelectMany(registry => registry.Commands)
+					.Concat(terminal.Registries.SelectMany(registry => registry.DefaultInstances).SelectMany(instance => instance.Type.Commands))
+					.OrderBy(command => command)
+					)
+				{
+					if (IsFirst)
+						IsFirst = false;
+					else
+						Builder.Append(", ");
+
+					Builder.Append(Command.ToString());
+				}
+			}
+
+			if (HasVariables)
+			{
+				if (Builder.Length > 0)
+					Builder.AppendLine();
+
+				Builder.AppendLine("Available Variables:").Append("  ");
+
+				IsFirst = true;
+
+				foreach (var Variable in
+					terminal.Registries.SelectMany(registry => registry.Variables)
+					.Concat(terminal.Registries.SelectMany(registry => registry.DefaultInstances).SelectMany(instance => instance.Type.Variables))
+					.OrderBy(variable => variable))
+				{
+					if (IsFirst)
+						IsFirst = false;
+					else
+						Builder.Append(", ");
+
+					Builder.Append(Variable.ToString());
+				}
+			}
+
+			if (HasTypes)
+			{
+				if (Builder.Length > 0)
+					Builder.AppendLine();
+
+				Builder.AppendLine("Available Types:").Append("  ");
+
+				IsFirst = true;
+
+				foreach (var TypeSet in terminal.Registries.SelectMany(registry => registry.TypeSets).Where(type => type.HasInstance).OrderBy(type => type))
+				{
+					if (IsFirst)
+						IsFirst = false;
+					else
+						Builder.Append(", ");
+
+					Builder.Append(TypeSet.ToString());
+				}
+			}
+
+			return Builder.ToString();
+		}
 
 		/// <summary>
-		/// Outputs usage information for a terminal object
+		/// Generates usage information for a terminal object
 		/// </summary>
-		/// <param name="typeData">A <see cref="TerminalTypeSet"/>, <see cref="TerminalInstance" />, <see cref="TerminalCommandSet" /> or <see cref="TerminalVariable" /></param>
-		public static void HelpOn(object typeData)
+		/// <param name="typeData">A <see cref="TerminalTypeSet"/>, <see cref="TerminalTypeInstance" />, <see cref="TerminalCommandSet" /> or <see cref="TerminalVariable" /></param>
+		public static string HelpOn(object typeData)
 		{
-			if (typeData is TerminalTypeSet MyTypeSet)
+			var Builder = new StringBuilder();
+			bool IsFirst;
+
+			if (typeData is TerminalTypeSet TypeSet)
 			{
-				using (Log.VerboseSection("Usage information for '{0}':", MyTypeSet.TypeName))
+				Builder.AppendFormat("Usage information for Type: {0}", TypeSet.TypeName);
+
+				if (TypeSet.Default?.Target != null)
 				{
-					if (MyTypeSet.Default?.Target != null)
+					if (TypeSet.Default.Type.Commands.Count != 0)
 					{
-						if (MyTypeSet.Default.Type.Commands.Count() != 0)
+						Builder.AppendLine().AppendLine("  Available Default Commands:").Append("    ");
+
+						IsFirst = true;
+
+						foreach (var Command in TypeSet.Default.Type.Commands.OrderBy(set => set))
 						{
-							using (Log.VerboseSection("Available Default Commands:"))
-							{
-								Log.Info(string.Join(", ", MyTypeSet.Default.Type.Commands.OrderBy(set => set)));
-							}
+							if (IsFirst)
+								IsFirst = false;
+							else
+								Builder.Append(", ");
+
+							Builder.Append(Command.ToString());
 						}
+					}
 						
-						if (MyTypeSet.Default.Type.Variables.Count() != 0)
+					if (TypeSet.Default.Type.Variables.Count != 0)
+					{
+						Builder.AppendLine().AppendLine("  Available Default Variables:").Append("    ");
+
+						IsFirst = true;
+
+						foreach (var Variable in TypeSet.Default.Type.Variables.OrderBy(var => var))
 						{
-							using (Log.VerboseSection("Available Default Variables:"))
-							{
-								Log.Info(string.Join(", ", MyTypeSet.Default.Type.Variables.OrderBy(var => var)));
-							}
+							if (IsFirst)
+								IsFirst = false;
+							else
+								Builder.Append(", ");
+
+							Builder.Append(Variable.ToString());
 						}
 					}
+				}
 					
-					if (MyTypeSet.Instances.Count() != 0)
-					{
-						using (Log.VerboseSection("Available Instances:"))
-						{
-							Log.Info(string.Join(", ", MyTypeSet.Instances.OrderBy(name => name)));
-						}
-					}
-				}
-			}
-			else if (typeData is TerminalInstance MyInstance)
-			{
-				Log.Info("Instance: {0}", MyInstance.Target);
+				if (TypeSet.Instances.Count != 0)
+				{
+					Builder.AppendLine().AppendLine("  Available Instances:").Append("    ");
 
-				if (MyInstance.Type.Commands.Count() != 0)
-				{
-					using (Log.VerboseSection("Available Commands:"))
+					IsFirst = true;
+
+					foreach (var InstanceName in TypeSet.Instances.OrderBy(name => name))
 					{
-						Log.Info(string.Join(", ", MyInstance.Type.Commands.OrderBy(set => set)));
+						if (IsFirst)
+							IsFirst = false;
+						else
+							Builder.Append(", ");
+
+						Builder.Append(InstanceName);
+					}
+				}
+			}
+			else if (typeData is TerminalTypeInstance Instance)
+			{
+				Builder.AppendFormat("Usage information for Instance: {0}", Instance.Target);
+
+				if (Instance.Type.Commands.Count != 0)
+				{
+					Builder.AppendLine().AppendLine("  Available Commands:").Append("    ");
+
+					IsFirst = true;
+
+					foreach (var Command in Instance.Type.Commands.OrderBy(set => set))
+					{
+						if (IsFirst)
+							IsFirst = false;
+						else
+							Builder.Append(", ");
+
+						Builder.Append(Command.ToString());
 					}
 				}
 
-				if (MyInstance.Type.Variables.Count() != 0)
+				if (Instance.Type.Variables.Count != 0)
 				{
-					using (Log.VerboseSection("Available Variables:"))
+					Builder.AppendLine().AppendLine("  Available Variables:").Append("    ");
+
+					IsFirst = true;
+
+					foreach (var Variable in Instance.Type.Variables.OrderBy(var => var))
 					{
-						Log.Info(string.Join(", ", MyInstance.Type.Variables.OrderBy(var => var)));
+						if (IsFirst)
+							IsFirst = false;
+						else
+							Builder.Append(", ");
+
+						Builder.Append(Variable.ToString());
 					}
 				}
 			}
-			else if (typeData is TerminalCommandSet MyCommandSet)
+			else if (typeData is TerminalCommandSet CommandSet)
 			{
-				using (Log.VerboseSection("Available Overloads:"))
+				Builder.AppendFormat("Usage information for Command: {0}", CommandSet.Name);
+
+				foreach (var Command in CommandSet.Commands)
 				{
-					foreach (var MyCommand in MyCommandSet.Commands)
+					Builder.AppendLine().Append(Command.Name).Append('(');
+
+					IsFirst = true;
+
+					foreach (var Parameter in Command.ExternalParameters.Span)
 					{
-						Log.Info("{0}({1})\t{2}", MyCommand.Name, string.Join(", ", MyCommand.Method.GetParameters().Select(param => string.Format("{0}: {1}", param.Name, param.ParameterType.Name))), MyCommand.Description);
+						if (IsFirst)
+							IsFirst = false;
+						else
+							Builder.Append(", ");
+
+						Builder.AppendFormat("{0}: {1}", Parameter.Name, Parameter.ParameterType.Name);
 					}
+
+					Builder.Append(")  ").Append(Command.Description);
 				}
 			}
-			else if (typeData is TerminalVariable MyVariable)
+			else if (typeData is TerminalVariable Variable)
 			{
-				Log.Info("{0}: {1}\t{2}", MyVariable.Name, MyVariable.Type.Name, MyVariable.Description);
+				Builder.AppendFormat("{0}: {1}  {2}", Variable.Name, Variable.Type.Name, Variable.Description);
 			}
+
+			return Builder.ToString();
 		}
 
 		/// <summary>
 		/// Parses and executes a terminal command
 		/// </summary>
+		/// <param name="terminal">The terminal where any output from the command will appear</param>
 		/// <param name="command">The command to execute</param>
-		/// <param name="registry">The command registry to use</param>
+		/// <param name="token">A token to pass to methods that accept it</param>
 		/// <returns>A task representing the execution result. True if the command ran successfully, otherwise False</returns>
-		[SecurityCritical]
-		public static Task<bool> Execute(string command, TerminalRegistry registry)
-		{
-			return InternalExecute(command, new TerminalRegistry[] { registry });
-		}
-
-		/// <summary>
-		/// Parses and executes a terminal command
-		/// </summary>
-		/// <param name="command">The command to execute</param>
-		/// <param name="registries">One or more command registries to use</param>
-		/// <returns>A task representing the execution result. True if the command ran successfully, otherwise False</returns>
-		[SecurityCritical]
-		public static Task<bool> Execute(string command, params TerminalRegistry[] registries)
-		{
-			return InternalExecute(command, registries);
-		}
+		public static ValueTask<bool> Execute(ITerminal terminal, string command, CancellationToken token = default) => InternalExecute(terminal, command, token);
 
 		/// <summary>
 		/// Finds the next command for auto completion
@@ -123,23 +255,52 @@ namespace Proximity.Terminal
 		/// <param name="lastResult">The last result returned. Null to get the first match</param>
 		/// <param name="registries">The list of registries to search for matches</param>
 		/// <returns>The next command matching the partial string</returns>
-		public static string FindNextCommand(string partialCommand, string lastResult, params TerminalRegistry[] registries)
-		{	//****************************************
-			string CommandText, InstanceName = null, PartialText, Prefix = "";
-			
+		public static string FindNextCommand(string partialCommand, string lastResult, params TerminalRegistry[] registries) => FindNextCommand(partialCommand.AsSpan(), lastResult.AsSpan(), (IEnumerable<TerminalRegistry>)registries);
+
+		/// <summary>
+		/// Finds the next command for auto completion
+		/// </summary>
+		/// <param name="partialCommand">The partial command being completed</param>
+		/// <param name="lastResult">The last result returned. Null to get the first match</param>
+		/// <param name="registries">The list of registries to search for matches</param>
+		/// <returns>The next command matching the partial string</returns>
+		public static string FindNextCommand(string partialCommand, string lastResult, IEnumerable<TerminalRegistry> registries) => FindNextCommand(partialCommand.AsSpan(), lastResult.AsSpan(), registries);
+
+		/// <summary>
+		/// Finds the next command for auto completion
+		/// </summary>
+		/// <param name="partialCommand">The partial command being completed</param>
+		/// <param name="lastResult">The last result returned. Null to get the first match</param>
+		/// <param name="registries">The list of registries to search for matches</param>
+		/// <returns>The next command matching the partial string</returns>
+		public static string FindNextCommand(ReadOnlySpan<char> partialCommand, ReadOnlySpan<char> lastResult, params TerminalRegistry[] registries) => FindNextCommand(partialCommand, lastResult, (IEnumerable<TerminalRegistry>)registries);
+
+		/// <summary>
+		/// Finds the next command for auto completion
+		/// </summary>
+		/// <param name="partialCommand">The partial command being completed</param>
+		/// <param name="lastResult">The last result returned. Null to get the first match</param>
+		/// <param name="registries">The list of registries to search for matches</param>
+		/// <returns>The next command matching the partial string</returns>
+		public static string FindNextCommand(ReadOnlySpan<char> partialCommand, ReadOnlySpan<char> lastResult, IEnumerable<TerminalRegistry> registries)
+		{ //****************************************
+			ReadOnlySpan<char> CommandText, PartialText;
+			ReadOnlySpan<char> Prefix = default;
+			ReadOnlySpan<char> InstanceName = default;
+
 			int CharIndex;
 			
-			TerminalTypeSet MyTypeSet = null;
-			TerminalInstance MyInstance = null;
+			TerminalTypeSet? TypeSet = null;
+			TerminalTypeInstance? TypeInstance;
 			
 			var PartialMatches = new List<string>();
 			//****************************************
 			
-			if (partialCommand.StartsWith("help ", StringComparison.InvariantCultureIgnoreCase))
+			if (partialCommand.StartsWith("help ".AsSpan(), StringComparison.InvariantCultureIgnoreCase))
 			{
-				partialCommand = partialCommand.Substring(5);
+				partialCommand = partialCommand.Slice(5);
 				
-				Prefix = "Help ";
+				Prefix = "Help ".AsSpan();
 			}
 			
 			//****************************************
@@ -150,61 +311,57 @@ namespace Proximity.Terminal
 			// If there's a space, we're parsing an Instance Type and optional Instance Name, with a partial Command/Variable
 			if (CharIndex != -1)
 			{
-				CommandText = partialCommand.Substring(0, CharIndex);
-				PartialText = partialCommand.Substring(CharIndex + 1);
+				CommandText = partialCommand.Slice(0, CharIndex);
+				PartialText = partialCommand.Slice(CharIndex + 1);
 				
 				CharIndex = CommandText.IndexOf('.');
 				
 				// Split into Type and Name if necessary
 				if (CharIndex != -1)
 				{
-					InstanceName = CommandText.Substring(CharIndex + 1);
-					CommandText = CommandText.Substring(0, CharIndex);
+					InstanceName = CommandText.Slice(CharIndex + 1);
+					CommandText = CommandText.Slice(0, CharIndex);
 				}
 				
-				foreach(var MyRegistry in registries)
+				foreach(var Registry in registries)
 				{
-					MyTypeSet = MyRegistry.FindTypeSet(CommandText);
-
-					if (MyTypeSet != null)
+					if (Registry.TryGetTypeSet(CommandText, out TypeSet))
 						break;
 				}
 				
 				// If the instance type doesn't match, return the partial command as is
-				if (MyTypeSet == null)
-					return Prefix + partialCommand;
+				if (TypeSet == null)
+					return Prefix.Concat(partialCommand);
 				
 				if (InstanceName == null)
 				{
-					MyInstance = MyTypeSet.Default;
-					InstanceName = MyTypeSet.TypeName;
+					TypeInstance = TypeSet.Default;
+					CommandText = TypeSet.TypeName.AsSpan();
 				}
 				else
 				{
-					MyInstance = MyTypeSet.GetNamedInstance(InstanceName);
+					if (!TypeSet.TryGetNamedInstance(InstanceName, out TypeInstance))
+						return Prefix.Concat(partialCommand);
 
-					if (MyInstance == null)
-						return Prefix + partialCommand;
-
-					InstanceName = string.Format("{0}.{1}", MyTypeSet.TypeName, MyInstance.Name);
+					CommandText = $"{TypeSet.TypeName}.{TypeInstance.Name}".AsSpan();
 				}
 				
 				// If the instance doesn't exist, return as is
-				if (MyInstance == null)
-					return Prefix + partialCommand;
+				if (TypeInstance == null)
+					return Prefix.Concat(partialCommand);
 				
 				// Add matching commands
-				foreach (var MyCommand in MyInstance.Type.Commands)
+				foreach (var MyCommand in TypeInstance.Type.Commands)
 				{
 					if (MyCommand.Name.StartsWith(PartialText, StringComparison.InvariantCultureIgnoreCase))
-						PartialMatches.Add(string.Format("{0} {1}", InstanceName, MyCommand.Name));
+						PartialMatches.Add(CommandText.Concat(" ", MyCommand.Name));
 				}
 				
 				// Add matching variables
-				foreach (var MyVariable in MyInstance.Type.Variables)
+				foreach (var MyVariable in TypeInstance.Type.Variables)
 				{
 					if (MyVariable.Name.StartsWith(PartialText, StringComparison.InvariantCultureIgnoreCase))
-						PartialMatches.Add(string.Format("{0} {1}", InstanceName, MyVariable.Name));
+						PartialMatches.Add(CommandText.Concat(" ", MyVariable.Name));
 				}
 			}
 			else
@@ -214,49 +371,67 @@ namespace Proximity.Terminal
 				// If there's a dot, we're parsing an Instance Type, with a partial Instance Name
 				if (CharIndex != -1)
 				{
-					CommandText = partialCommand.Substring(0, CharIndex);
-					PartialText = partialCommand.Substring(CharIndex + 1);
+					CommandText = partialCommand.Slice(0, CharIndex);
+					PartialText = partialCommand.Slice(CharIndex + 1);
 
 					foreach(var MyRegistry in registries)
 					{
-						MyTypeSet = MyRegistry.FindTypeSet(CommandText);
+						if (MyRegistry.TryGetTypeSet(CommandText, out TypeSet))
+							break;
 					}
 					
 					// If the instance type doesn't match, return the partial command as is
-					if (MyTypeSet == null)
-						return Prefix + partialCommand;
+					if (TypeSet == null)
+						return Prefix.Concat(partialCommand);
 					
-					foreach(var MyInstanceName in MyTypeSet.Instances)
+					foreach(var MyInstanceName in TypeSet.Instances)
 					{
 						if (MyInstanceName.StartsWith(PartialText, StringComparison.InvariantCultureIgnoreCase))
-							PartialMatches.Add(string.Format("{0}.{1}", MyTypeSet.TypeName, MyInstanceName));
+							PartialMatches.Add(string.Format("{0}.{1}", TypeSet.TypeName, MyInstanceName));
 					}
 				}
 				else
 				{
 					// No dot, we're parsing a partial Command/Variable/Instance Type
-					foreach(var MyRegistry in registries)
+					foreach(var Registry in registries)
 					{
 						// Add matching commands
-						foreach (var MyCommand in MyRegistry.Commands)
+						foreach (var Command in Registry.Commands)
 						{
-							if (MyCommand.Name.StartsWith(partialCommand, StringComparison.InvariantCultureIgnoreCase))
-								PartialMatches.Add(MyCommand.Name);
+							if (Command.Name.StartsWith(partialCommand, StringComparison.InvariantCultureIgnoreCase))
+								PartialMatches.Add(Command.Name);
 						}
-						
+
 						// Add matching variables (with an equals sign, so they can't be the same as commands)
-						foreach (var MyVariable in MyRegistry.Variables)
+						foreach (var Variable in Registry.Variables)
 						{
-							if (MyVariable.Name.StartsWith(partialCommand, StringComparison.InvariantCultureIgnoreCase))
-								PartialMatches.Add(MyVariable.Name);
+							if (Variable.Name.StartsWith(partialCommand, StringComparison.InvariantCultureIgnoreCase))
+								PartialMatches.Add(Variable.Name);
 						}
-						
+
+						foreach (var Instance in Registry.DefaultInstances)
+						{
+							foreach (var Command in Instance.Type.Commands)
+							{
+								if (Command.Name.StartsWith(partialCommand, StringComparison.InvariantCultureIgnoreCase))
+									PartialMatches.Add(Command.Name);
+							}
+
+							// Add matching variables (with an equals sign, so they can't be the same as commands)
+							foreach (var Variable in Instance.Type.Variables)
+							{
+								if (Variable.Name.StartsWith(partialCommand, StringComparison.InvariantCultureIgnoreCase))
+									PartialMatches.Add(Variable.Name);
+							}
+
+						}
+
 						// Add matching type sets
-						foreach (var MyType in MyRegistry.TypeSets)
+						foreach (var Type in Registry.TypeSets)
 						{
 							// Only add ones that have an instance
-							if (MyType.TypeName.StartsWith(partialCommand, StringComparison.InvariantCultureIgnoreCase) && MyType.HasInstance)
-								PartialMatches.Add(MyType.TypeName);
+							if (Type.TypeName.StartsWith(partialCommand, StringComparison.InvariantCultureIgnoreCase) && Type.HasInstance)
+								PartialMatches.Add(Type.TypeName);
 						}
 					}
 				}
@@ -266,7 +441,7 @@ namespace Proximity.Terminal
 			
 			// Any results?
 			if (PartialMatches.Count == 0)
-				return null;
+				return "";
 			
 			// Sort them, so we can pick the next matching result
 			PartialMatches.Sort();
@@ -274,418 +449,586 @@ namespace Proximity.Terminal
 			if (lastResult != null)
 			{
 				// Find one greater than our last match (user has requested the next one)
-				foreach(string NextCommand in PartialMatches)
+				foreach(var NextCommand in PartialMatches)
 				{
-					if (NextCommand.CompareTo(lastResult) > 0)
-						return Prefix + NextCommand;
+					if (NextCommand.AsSpan().CompareTo(lastResult, StringComparison.OrdinalIgnoreCase) > 0)
+						return Prefix.Concat(NextCommand);
 				}
 				// Nothing greater, go back to the start
 			}
 			
-			return Prefix + PartialMatches[0];
+			return Prefix.Concat(PartialMatches[0]);
 		}
-		
+
 		/// <summary>
 		/// Parses a command target (no arguments) and outputs the best match
 		/// </summary>
 		/// <param name="command">The command to parse</param>
 		/// <param name="registries">The list of registries to search for matches</param>
-		/// <returns>A <see cref="TerminalTypeSet"/>, <see cref="TerminalInstance" />, <see cref="TerminalCommandSet" /> or <see cref="TerminalVariable" />, or null if no match was found</returns>
-		public static object FindCommand(string command, params TerminalRegistry[] registries)
-		{	//****************************************
-			string CommandText, InstanceName = null, InstanceType;
-			
+		/// <returns>A <see cref="TerminalTypeSet"/>, <see cref="TerminalTypeInstance" />, <see cref="TerminalCommandSet" /> or <see cref="TerminalVariable" />, or null if no match was found</returns>
+		public static object? FindCommand(string command, params TerminalRegistry[] registries) => FindCommand(command.AsSpan(), (IEnumerable<TerminalRegistry>)registries);
+
+		/// <summary>
+		/// Parses a command target (no arguments) and outputs the best match
+		/// </summary>
+		/// <param name="command">The command to parse</param>
+		/// <param name="registries">The list of registries to search for matches</param>
+		/// <returns>A <see cref="TerminalTypeSet"/>, <see cref="TerminalTypeInstance" />, <see cref="TerminalCommandSet" /> or <see cref="TerminalVariable" />, or null if no match was found</returns>
+		public static object? FindCommand(string command, IEnumerable<TerminalRegistry> registries) => FindCommand(command.AsSpan(), registries);
+
+		/// <summary>
+		/// Parses a command target (no arguments) and outputs the best match
+		/// </summary>
+		/// <param name="command">The command to parse</param>
+		/// <param name="registries">The list of registries to search for matches</param>
+		/// <returns>A <see cref="TerminalTypeSet"/>, <see cref="TerminalTypeInstance" />, <see cref="TerminalCommandSet" /> or <see cref="TerminalVariable" />, or null if no match was found</returns>
+		public static object? FindCommand(ReadOnlySpan<char> command, params TerminalRegistry[] registries) => FindCommand(command, (IEnumerable<TerminalRegistry>)registries);
+
+		/// <summary>
+		/// Parses a command target (no arguments) and outputs the best match
+		/// </summary>
+		/// <param name="command">The command to parse</param>
+		/// <param name="registries">The list of registries to search for matches</param>
+		/// <returns>A <see cref="TerminalTypeSet"/>, <see cref="TerminalTypeInstance" />, <see cref="TerminalCommandSet" /> or <see cref="TerminalVariable" />, or null if no match was found</returns>
+		public static object? FindCommand(ReadOnlySpan<char> command, IEnumerable<TerminalRegistry> registries)
+		{
+			if (!TryParse(command, registries, out var ParseResult))
+				return null;
+
+			if (ParseResult.CommandSet != null)
+				return ParseResult.CommandSet;
+
+			if (ParseResult.Variable != null)
+				return ParseResult.Variable;
+
+			if (ParseResult.Instance != null)
+				return ParseResult.Instance;
+
+			if (ParseResult.TypeSet != null)
+				return ParseResult.TypeSet;
+
+			return null;
+		}
+
+		/// <summary>
+		/// Parses a terminal command
+		/// </summary>
+		/// <param name="command">The raw command text</param>
+		/// <param name="registries">The terminal registries to lookup commands from</param>
+		/// <param name="result">Receives the parsing result</param>
+		/// <returns>True if the command matched something useful, otherwise False</returns>
+		public static bool TryParse(ReadOnlySpan<char> command, IEnumerable<TerminalRegistry> registries, out TerminalParseResult result)
+		{
 			int CharIndex;
-			
-			TerminalTypeSet MyTypeSet = null;
-			TerminalInstance MyInstance = null;
-			
-			var PartialMatches = new List<string>();
-			//****************************************
-			
-			// Find the first word (split on a space/exclamation)
-			CharIndex = command.IndexOfAny(new char[] { ' ', '!' });
-			
-			// If there's a space, we're parsing an Instance Type and optional Instance Name, with a Command/Variable
+
+			ReadOnlySpan<char> InstanceType, InstanceName, Command, Arguments;
+
+			CharIndex = command.IndexOf(' ');
+
 			if (CharIndex != -1)
 			{
-				InstanceType = command.Substring(0, CharIndex);
-				CommandText = command.Substring(CharIndex + 1);
-				
-				CharIndex = InstanceType.IndexOf('.');
-				
-				// Split into Type and Name if necessary
+				// Found a space - could be one of the following:
+				// > Command
+				// > Command Arguments...
+				// > Variable=Value Continued
+				// > InstanceType Command
+				// > InstanceType Command Arguments...
+				// > InstanceType Variable
+				// > InstanceType Variable=Value
+				// > InstanceType.InstanceName Command
+				// > InstanceType.InstanceName Command Arguments...
+				// > InstanceType.InstanceName Variable
+				// > InstanceType.InstanceName Variable=Value
+
+				Arguments = command.Slice(CharIndex + 1);
+				Command = command.Slice(0, CharIndex);
+			}
+			else
+			{
+				// No space - could be one of the following:
+				// > Command
+				// > Variable
+				// > Variable=Value
+				// > InstanceType
+				// > InstanceType.InstanceName
+
+				Command = command;
+				Arguments = default;
+			}
+
+			CharIndex = Command.IndexOf('.');
+
+			if (CharIndex == -1)
+			{
+				// Did not find a dot - could be one of the following:
+				// > Command
+				// > Command Arguments...
+				// > Variable
+				// > Variable=Value
+				// > Variable=Value Continued
+				// > InstanceType
+				// > InstanceType Command
+				// > InstanceType Command Arguments...
+				// > InstanceType Variable
+				// > InstanceType Variable=Value
+
+				// Is it a Variable set?
+				CharIndex = Command.IndexOf('=');
+
 				if (CharIndex != -1)
 				{
-					InstanceName = InstanceType.Substring(CharIndex + 1);
-					InstanceType = InstanceType.Substring(0, CharIndex);
-				}
-				
-				foreach(var MyRegistry in registries)
-				{
-					MyTypeSet = MyRegistry.FindTypeSet(InstanceType);
-				}
-				
-				if (MyTypeSet == null)
-					return null;
-				
-				if (InstanceName == null)
-				{
-					MyInstance = MyTypeSet.Default;
-				}
-				else
-				{
-					MyInstance = MyTypeSet.GetNamedInstance(InstanceName);
-				}
-				
-				// If the instance doesn't exist, return the type set
-				if (MyInstance == null)
-					return MyTypeSet;
-				
-				var MyVariable = MyInstance.Type.FindVariable(CommandText);
-				
-				if (MyVariable != null)
-					return MyVariable;
-				
-				return MyInstance.Type.FindCommand(CommandText);
-			}
-			
-			//****************************************
-			
-			CharIndex = command.IndexOf('.');
-				
-			// If there's a dot, we're parsing an Instance Type plus an Instance Name
-			if (CharIndex != -1)
-			{
-				InstanceType = command.Substring(0, CharIndex);
-				CommandText = command.Substring(CharIndex + 1);
+					// Is one of:
+					// > Variable=Value
+					// > Variable=Value Continued
 
-				foreach(var MyRegistry in registries)
-				{
-					MyTypeSet = MyRegistry.FindTypeSet(InstanceType);
+					// Fix up the arguments, in case Value is continued
+					Command = Command.Slice(0, CharIndex);
+					Arguments = command.Slice(CharIndex + 1);
+
+					foreach (var Registry in registries)
+					{
+						if (Registry.TryGetVariable(Command, out var Variable))
+						{
+							result = new TerminalParseResult(null, null, Variable, default, Arguments);
+
+							return true;
+						}
+					}
+
+					result = default;
+
+					return false;
 				}
-				
-				if (MyTypeSet == null)
-					return null;
-				
-				MyInstance = MyTypeSet.GetNamedInstance(CommandText);
-				
-				if (MyInstance != null)
-					return MyInstance;
-				
-				return MyTypeSet;
+
+				// Is it a command?
+				foreach (var Registry in registries)
+				{
+					if (Registry.TryGetCommandSet(Command, out var CommandSet))
+					{
+						// Is one of:
+						// > Command
+						// > Command Arguments...
+						result = new TerminalParseResult(null, null, CommandSet, default, Arguments);
+
+						return true;
+					}
+
+					foreach (var Instance in Registry.DefaultInstances)
+					{
+						if (Instance.Type.TryGetCommand(Command, out CommandSet))
+						{
+							// Is one of:
+							// > Command (on global instance)
+							// > Command Arguments (on global instance)...
+							result = new TerminalParseResult(null, Instance, CommandSet, default, Arguments);
+
+							return true;
+						}
+					}
+				}
+
+				// Is it a variable?
+				if (Arguments.IsEmpty)
+				{
+					foreach (var Registry in registries)
+					{
+						if (Registry.TryGetVariable(Command, out var Variable))
+						{
+							// Is:
+							// > Variable
+							result = new TerminalParseResult(null, null, Variable, default, default);
+
+							return true;
+						}
+
+						foreach (var Instance in Registry.DefaultInstances)
+						{
+							if (Instance.Type.TryGetVariable(Command, out Variable))
+							{
+								// Is:
+								// > Variable (on global instance)
+								result = new TerminalParseResult(null, Instance, Variable, default, Arguments);
+
+								return true;
+							}
+						}
+					}
+				}
+
+				// Is it an Instance Type?
+				foreach (var Registry in registries)
+				{
+					if (Registry.TryGetTypeSet(Command, out var TypeSet))
+					{
+						// Are there any arguments?
+						if (Arguments.Length == 0)
+						{
+							// Is: InstanceType
+							result = new TerminalParseResult(TypeSet, null, default, default);
+
+							return true;
+						}
+
+						// Yes - could be one of the following:
+						// > InstanceType Command
+						// > InstanceType Command Arguments...
+						// > InstanceType Variable
+						// > InstanceType Variable=Value
+						var Type = TypeSet.Default?.Type;
+
+						if (Type == null)
+						{
+							// Failed to parse, arguments supplied without a default instance
+							result = new TerminalParseResult(TypeSet, null, default, default);
+
+							return false;
+						}
+
+						return ParseType(TypeSet, Type, TypeSet.Default, Arguments, out result);
+					}
+				}
+
+				result = new TerminalParseResult(null, null, Command, default);
+
+				return false;
 			}
-			
-			//****************************************
-			
-			// No dot, we're parsing a Command/Variable/Instance Type
-			foreach(var MyRegistry in registries)
+
+			// Found a dot - could be one of the following:
+			// > InstanceType.InstanceName
+			// > InstanceType.InstanceName Command
+			// > InstanceType.InstanceName Command Arguments...
+			// > InstanceType.InstanceName Variable
+			// > InstanceType.InstanceName Variable=Value
+
+			InstanceType = Command.Slice(0, CharIndex);
+			InstanceName = Command.Slice(CharIndex + 1);
+
+			foreach (var Registry in registries)
 			{
-				var MyVariable = MyRegistry.FindVariable(command);
-				
-				if (MyVariable != null)
-					return MyVariable;
-				
-				var MyCommand = MyRegistry.FindCommand(command);
-				
-				if (MyCommand != null)
-					return MyCommand;
-				
-				MyTypeSet = MyRegistry.FindTypeSet(command);
-				
-				if (MyTypeSet != null)
-					return MyTypeSet;
+				if (Registry.TryGetTypeSet(InstanceType, out var TypeSet))
+				{
+					if (TypeSet.TryGetNamedInstance(InstanceName, out var Instance))
+					{
+						// Are there any arguments?
+						if (Arguments.Length == 0)
+						{
+							// Is: InstanceType.InstanceName
+							result = new TerminalParseResult(TypeSet, Instance, default, default);
+
+							return true;
+						}
+
+						// Yes - could be one of the following:
+						// > InstanceType.InstanceName Command
+						// > InstanceType.InstanceName Command Arguments...
+						// > InstanceType.InstanceName Variable
+						// > InstanceType.InstanceName Variable=Value
+						return ParseType(TypeSet, Instance.Type, Instance, Arguments, out result);
+					}
+				}
 			}
-			
-			return null;
+
+			// Couldn't find the requested Instance
+			foreach (var Registry in registries)
+			{
+				if (Registry.TryGetTypeSet(InstanceType, out var TypeSet))
+				{
+					result = new TerminalParseResult(TypeSet, default, InstanceName, Arguments);
+
+					return false;
+				}
+			}
+
+			result = new TerminalParseResult(default, default, Command, Arguments);
+
+			return false;
 		}
 
 		//****************************************
 
-		internal static Task<bool> InternalExecute(string command, params TerminalRegistry[] registries)
-		{ //****************************************
-			string CommandText, ArgumentText;
-			string InstanceName, CurrentPath = "";
+		internal static ValueTask<bool> InternalExecute(ITerminal terminal, string command, CancellationToken token)
+		{
+			terminal.Log(LogLevel.Information, default, new ConsoleRecord(DateTimeOffset.Now, LogLevel.Information, command, scope: TerminalScope.ConsoleCommand), null, (record, exception) => record.Text);
 
-			int CharIndex;
-			char WordDivider;
+			var Command = command.AsSpan();
+			var IsHelp = false;
 
-			TerminalTypeSet MyTypeSet = null;
-			TerminalInstance MyInstance = null;
-			Task<bool> MyResult;
-			//****************************************
-
-			Context = registries;
-
-			Log.Write(new ConsoleLogEntry(string.Format("> {0}", command)));
-
-			// Find the first word (split on a space, equals)
-			CharIndex = command.IndexOfAny(new char[] { ' ', '=' });
-
-			// Split off the arguments (if any)
-			if (CharIndex == -1)
+			if (Command.StartsWith("help".AsSpan(), StringComparison.InvariantCultureIgnoreCase))
 			{
-				CommandText = command;
-				ArgumentText = null;
-				WordDivider = '\0';
-			}
-			else
-			{
-				CommandText = command.Substring(0, CharIndex);
-				ArgumentText = command.Substring(CharIndex + 1);
-				WordDivider = command[CharIndex];
-			}
+				Command = Command.Slice(4);
+				IsHelp = true;
 
-			//****************************************
-
-			// Is there a dot divider identifying an instance path?
-			CharIndex = CommandText.IndexOf('.');
-
-			if (CharIndex != -1 && WordDivider != '=')
-			{
-				InstanceName = CommandText.Substring(CharIndex + 1);
-				CommandText = CommandText.Substring(0, CharIndex);
-
-				// Split into Type and Instance
-				foreach (var MyRegistry in registries)
+				if (Command.IsEmpty || Command[0] != ' ')
 				{
-					MyTypeSet = MyRegistry.FindTypeSet(CommandText);
+					terminal.LogInformation(HelpOn(terminal));
 
-					if (MyTypeSet != null)
+					return new ValueTask<bool>(true);
+				}
+
+				Command = Command.Slice(1);
+			}
+
+			if (!TryParse(Command, terminal.Registries, out var ParseResult))
+			{
+				if (ParseResult.TypeSet != null)
+				{
+					if (ParseResult.Instance != null)
 					{
-						MyInstance = MyTypeSet.GetNamedInstance(InstanceName);
-						break;
+						if (ParseResult.Instance == ParseResult.TypeSet.Default)
+							terminal.LogInformation("{0} {1} is not a Command or Variable", ParseResult.TypeSet.TypeName, ParseResult.Command.AsString());
+						else
+							terminal.LogInformation("{0}.{1} {2} is not a Command or Variable", ParseResult.TypeSet.TypeName, ParseResult.Instance.Name, ParseResult.Command.AsString());
+					}
+					else if (Command[ParseResult.TypeSet.TypeName.Length] == '.')
+					{
+						terminal.LogInformation("{0}.{1} is not a known Instance", ParseResult.TypeSet.TypeName, ParseResult.Command.AsString());
+					}
+					else
+					{
+						terminal.LogInformation("{0} {1} is not a Command or Variable", ParseResult.TypeSet.TypeName, ParseResult.Command.AsString());
 					}
 				}
-
-				if (MyTypeSet == null)
+				else if (ParseResult.Command.IndexOf('.') != -1)
 				{
-					Log.Info("{0} is not an Instance Type", CommandText);
-
-					return Task.FromResult(false);
-				}
-
-				if (MyInstance == null)
-				{
-					Log.Info("{0} is not a known Instance of {1}", InstanceName, MyTypeSet.TypeName);
-
-					return Task.FromResult(false);
-				}
-
-				CurrentPath = string.Format("{0}.{1}!", MyTypeSet.TypeName, MyInstance.Name);
-			}
-
-			//****************************************
-
-			if (MyTypeSet == null)
-			{
-				// Attempt to execute it as a command or variable
-				MyResult = TryExecute(registries, CurrentPath, null, CommandText, ArgumentText);
-
-				if (MyResult != null)
-					return MyResult;
-
-				// Perhaps it's an instance type, and we're calling the default instance
-				foreach (var MyRegistry in registries)
-				{
-					MyTypeSet = MyRegistry.FindTypeSet(CommandText);
-
-					if (MyTypeSet != null)
-						break;
-				}
-
-				// Do we have a match at all?
-				if (MyTypeSet == null)
-				{
-					Log.Info("{0} is not a Command, Variable, or Instance Type", CommandText);
-
-					return Task.FromResult(false);
-				}
-
-				// If there are no arguments, we should list all the instances that match
-				if (ArgumentText == null)
-				{
-					TerminalParser.HelpOn(MyTypeSet);
-
-					return Task.FromResult(true);
-				}
-
-				// We have arguments, so is there a default instance?
-				MyInstance = MyTypeSet.Default;
-
-				if (MyInstance == null)
-				{
-					Log.Info("{0} does not have a default instance", MyTypeSet.TypeName);
-
-					return Task.FromResult(false);
-				}
-
-				CurrentPath = MyTypeSet.TypeName + " ";
-			}
-
-			//****************************************
-
-			// We're calling an Instance Type, are there any arguments?
-			if (ArgumentText == null)
-			{
-				// Display the instance details (ToString, available commands and variables)
-				TerminalParser.HelpOn(MyInstance);
-
-				return Task.FromResult(true);
-			}
-
-			// Repeat the argument process on the arguments themselves
-			CharIndex = ArgumentText.IndexOfAny(new char[] { ' ', '=' });
-
-			// Split off the arguments (if any)
-			if (CharIndex == -1)
-			{
-				CommandText = ArgumentText;
-				ArgumentText = null;
-				WordDivider = '\0';
-			}
-			else
-			{
-				CommandText = ArgumentText.Substring(0, CharIndex);
-				WordDivider = ArgumentText[CharIndex];
-				ArgumentText = ArgumentText.Substring(CharIndex + 1);
-			}
-
-			//****************************************
-
-			// Attempt to execute it as a command or variable
-			MyResult = TryExecute(registries, CurrentPath, MyInstance, CommandText, ArgumentText);
-
-			if (MyResult != null)
-				return MyResult;
-
-			Log.Info("{0}{1} is not a Command or Variable", CurrentPath, CommandText);
-
-			return Task.FromResult(false);
-		}
-
-		private static Task<bool> TryExecute(TerminalRegistry[] registries, string path, TerminalInstance instance, string commandText, string argumentText)
-		{	//****************************************
-			TerminalVariable MyVariable = null;
-			TerminalCommandSet MyCommand = null;
-			object MyInstance = null;
-			//****************************************
-			
-			if (instance != null)
-			{
-				MyInstance = instance.Target;
-				
-				if (MyInstance == null)
-				{
-					Log.Info("{0} is not a known Instance of {1}", instance.Name, instance.Type.Name);
-					
-					return Task.FromResult(false);
-				}
-			}
-			
-			//****************************************
-			
-			if (commandText == "*")
-			{
-				if (instance != null)
-				{
-					foreach(var MyVar in instance.Type.Variables)
-					{
-						Log.Info("{0}{1}={2}", path, MyVar.Name, MyVar.GetValue(MyInstance));
-					}
+					terminal.LogInformation("{0} is not a known Type", ParseResult.Command.Slice(ParseResult.Command.IndexOf('.')).AsString());
 				}
 				else
 				{
-					foreach(var MyRegistry in registries)
+					terminal.LogInformation("{0} is not a Command or Variable ", ParseResult.Command.AsString());
+				}
+
+				return new ValueTask<bool>(false);
+			}
+
+			//****************************************
+
+			object? TargetInstance = null;
+			var TargetPath = "";
+
+			// Get the Instance we're targeting (may be null if it's been GC'ed)
+			if (ParseResult.Instance != null)
+			{
+				TargetInstance = ParseResult.Instance.Target;
+
+				if (ParseResult.TypeSet != null)
+				{
+					if (TargetInstance == null)
 					{
-						foreach(var MyVar in MyRegistry.Variables)
+						if (ParseResult.Instance == ParseResult.TypeSet.Default)
+							terminal.LogInformation("{0} is not a known Instance", ParseResult.TypeSet.TypeName);
+						else
+							terminal.LogInformation("{0}.{1} is not a known Instance", ParseResult.TypeSet.TypeName, ParseResult.Instance.Name);
+
+						return new ValueTask<bool>(false);
+					}
+
+					if (ParseResult.Instance == ParseResult.TypeSet.Default)
+						TargetPath = $"{ParseResult.TypeSet.TypeName} ";
+					else
+						TargetPath = $"{ParseResult.TypeSet.TypeName}.{ParseResult.Instance.Name} ";
+				}
+				else
+				{
+					if (TargetInstance == null)
+					{
+						// Instance was garbage collected
+						terminal.LogInformation("{0} is not a Command or Variable ", ParseResult.Command.AsString());
+
+						return new ValueTask<bool>(false);
+					}
+				}
+			}
+
+			//****************************************
+
+			if (ParseResult.CommandSet == null && ParseResult.Variable == null)
+			{
+				// No Command or Variable, are we asking for star?
+				if (ParseResult.Command.Length == 1 && ParseResult.Command[0] == '*')
+				{
+					if (ParseResult.Instance != null && TargetInstance != null)
+					{
+						foreach (var MyVar in ParseResult.Instance.Type.Variables)
 						{
-							Log.Info("{0}{1}={2}", path, MyVar.Name, MyVar.GetValue(null));
+							terminal.LogInformation("{0}{1}={2}", TargetPath, MyVar.Name, MyVar.GetValue(TargetInstance));
 						}
 					}
+					else
+					{
+						foreach (var Registry in terminal.Registries)
+						{
+							foreach (var Variable in Registry.Variables)
+							{
+								terminal.LogInformation("{0}={1}", Variable.Name, Variable.GetValue(null));
+							}
+						}
+					}
+
+					return new ValueTask<bool>(true);
 				}
-				
-				return Task.FromResult(true);
+
+				// Do we have a target Instance?
+				if (ParseResult.Instance != null)
+				{
+					terminal.LogInformation(HelpOn(ParseResult.Instance));
+
+					return new ValueTask<bool>(true);
+				}
+
+				// Are we only targeting a Type?
+				if (ParseResult.TypeSet != null)
+				{
+					terminal.LogInformation(HelpOn(ParseResult.TypeSet));
+
+					return new ValueTask<bool>(true);
+				}
+
+				throw new InvalidOperationException("Failed to execute, no target specified");
 			}
-			
+
 			//****************************************
-			
-			// Check if it's a variable first, and either get or set it
-			if (instance != null)
-				MyVariable = instance.Type.FindVariable(commandText);
-			else
+
+			// Execute the Command
+			if (ParseResult.CommandSet != null)
 			{
-				foreach(var MyRegistry in registries)
+				if (IsHelp)
 				{
-					MyVariable = MyRegistry.FindVariable(commandText);
-					
-					if (MyVariable != null)
-						break;
+					terminal.LogInformation(HelpOn(ParseResult.CommandSet));
+
+					return new ValueTask<bool>(true);
 				}
+
+				return ExecuteCommand(terminal, TargetPath, TargetInstance, ParseResult.CommandSet, ParseResult.Arguments.AsString(), token);
 			}
-			
-			if (MyVariable != null)
+
+			//****************************************
+
+			if (ParseResult.Variable != null)
 			{
-				if (argumentText != null)
+				if (IsHelp)
 				{
-					if (!MyVariable.CanWrite)
-					{
-						Log.Info("{0}{1} is not writeable", path, MyVariable.Name);
-						
-						return Task.FromResult(false);
-					}
-					
-					if (!MyVariable.SetValue(MyInstance, argumentText))
-					{
-						Log.Info("{0}{1} is of type {2}", path, MyVariable.Name, MyVariable.Type);
-						
-						return Task.FromResult(false);
-					}
-					
-					return Task.FromResult(true);
+					terminal.LogInformation(HelpOn(ParseResult.Variable));
+
+					return new ValueTask<bool>(true);
+				}
+
+				// Process the Variable
+				if (ParseResult.Arguments.IsEmpty)
+				{
+					terminal.LogInformation("{0}{1}={2}", TargetPath, ParseResult.Variable.Name, ParseResult.Variable.GetValue(TargetInstance));
+
+					return new ValueTask<bool>(true);
+				}
+
+				if (ParseResult.Variable.CanWrite)
+				{
+					if (ParseResult.Variable.SetValue(TargetInstance, ParseResult.Arguments))
+						return new ValueTask<bool>(true);
+
+					terminal.LogInformation("{0}{1} is of type {2}", TargetPath, ParseResult.Variable.Name, ParseResult.Variable.Type);
 				}
 				else
 				{
-					Log.Info("{0}{1}={2}", path, MyVariable.Name, MyVariable.GetValue(MyInstance));
-					
-					return Task.FromResult(true);
+					terminal.LogInformation("{0}{1} is not writeable", TargetPath, ParseResult.Variable.Name);
 				}
+
+				return new ValueTask<bool>(false);
 			}
-			
+
 			//****************************************
-			
-			// Check if it's a command and attempt to execute it
-			if (instance != null)
-				MyCommand = instance.Type.FindCommand(commandText);
+
+			throw new InvalidOperationException("Failed to execute, no target specified");
+		}
+
+		//****************************************
+
+		private static bool ParseType(TerminalTypeSet typeSet, TerminalType type, TerminalTypeInstance? instance, ReadOnlySpan<char> command, out TerminalParseResult result)
+		{
+			ReadOnlySpan<char> Command, Arguments;
+			TerminalVariable? Variable;
+
+			// Star command lists all variables
+			if (command.Length == 1 && command[0] == '*')
+			{
+				result = new TerminalParseResult(typeSet, instance, command, default);
+
+				return true;
+			}
+
+			// Is there an equals or space?
+			var CharIndex = command.IndexOfAny(new[] { '=', ' ' });
+
+			if (CharIndex == -1)
+			{
+				// Single word - could be one of the following:
+				// > InstanceType Command
+				// > InstanceType Variable
+				// > InstanceType.InstanceName Command
+				// > InstanceType.InstanceName Variable
+				Command = command;
+				Arguments = default;
+			}
 			else
 			{
-				foreach(var MyRegistry in registries)
+				Command = command.Slice(0, CharIndex);
+				Arguments = command.Slice(CharIndex + 1);
+
+				if (command[CharIndex] == '=')
 				{
-					MyCommand = MyRegistry.FindCommand(commandText);
-					
-					if (MyCommand != null)
-						break;
+					// Equals Sign - could be one of the following:
+					// > InstanceType Variable=Value
+					// > InstanceType.InstanceName Variable=Value
+					if (type.TryGetVariable(Command, out Variable))
+					{
+						result = new TerminalParseResult(typeSet, instance, Variable, default, Arguments);
+
+						return true;
+					}
+					else
+					{
+						// Failed to parse, variable does not exist
+						result = new TerminalParseResult(typeSet, instance, Command, Arguments);
+
+						return false;
+					}
+				}
+				else
+				{
+					// Space - could be one of the following:
+					// > InstanceType Command Arguments...
+					// > InstanceType.InstanceName Command Arguments...
 				}
 			}
-			
-			if (MyCommand != null)
+
+			if (type.TryGetCommand(Command, out var CommandSet))
 			{
-				return ExecuteCommand(path, MyInstance, MyCommand, argumentText);
+				result = new TerminalParseResult(typeSet, instance, CommandSet, default, Arguments);
+
+				return true;
 			}
-			
-			return null;
+
+			if (Arguments.IsEmpty && type.TryGetVariable(Command, out Variable))
+			{
+				result = new TerminalParseResult(typeSet, instance, Variable, default, default);
+
+				return true;
+			}
+
+			// Failed to parse, command or variable does not exist
+			result = new TerminalParseResult(typeSet, instance, Command, Arguments);
+
+			return false;
 		}
-		
-		private static async Task<bool> ExecuteCommand(string path, object instance, TerminalCommandSet commandSet, string argumentText)
+
+		private static async ValueTask<bool> ExecuteCommand(ITerminal terminal, string path, object? instance, TerminalCommandSet commandSet, string arguments, CancellationToken token)
 		{	//****************************************
 			var RawParams = new List<string>();
-			string AlteredText = argumentText;
+			var AlteredText = arguments;
 			int LastIndex = 0, CharIndex = 0, QuoteMode = 0;
-			TerminalCommand MyCommand;
 			char CurrentChar;
 			//****************************************
 			
-			if (argumentText != null)
+			if (arguments.Length > 0)
 			{
 				for(; CharIndex < AlteredText.Length; CharIndex++)
 				{
@@ -752,39 +1095,26 @@ namespace Proximity.Terminal
 				if (LastIndex != AlteredText.Length)
 					RawParams.Add(AlteredText.Substring(LastIndex));
 			}
-			
+
 			//****************************************
-			
+
 			// Try with the broken up arguments
-			MyCommand = commandSet.FindCommand(RawParams.ToArray(), out var OutParams);
-			
-			// If that fails, try and pass the whole argument text as the first argument, no quoting
-			if (MyCommand == null)
-				MyCommand = commandSet.FindCommand(new string[] { argumentText }, out OutParams);
-				
-			if (MyCommand == null)
+			if (!commandSet.PrepareCommand(RawParams.ToArray(), terminal, token, out var Command, out var OutParams))
 			{
-				Log.Info("{0}{1} does not accept the given arguments", path, commandSet.Name);
-				
-				return false;
+				// Failed, so try and pass the whole argument text as the first argument, no quoting
+				if (RawParams.Count <= 1 || !commandSet.PrepareCommand(new[] { arguments }, terminal, token, out Command, out OutParams))
+				{
+					terminal.LogInformation("{0}{1} does not accept the given arguments", path, commandSet.Name);
+
+					return false;
+				}
 			}
-			
+
 			//****************************************
-			
-			await MyCommand.InternalInvokeAsync(instance, OutParams);
-			
+
+			await Command.InvokeAsync(terminal, instance, OutParams);
+
 			return true;
-		}
-		
-		//****************************************
-		
-		/// <summary>
-		/// When executing a command, gets the registries that serve as context
-		/// </summary>
-		public static TerminalRegistry[] Context
-		{
-			get => _Context.Value;
-			private set => _Context.Value = value;
 		}
 	}
 }

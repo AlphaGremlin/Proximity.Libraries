@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+		<Authors>Daniel Chandler</Authors>
+		<Company>Proximity Interactive</Company>
+		<Copyright>Copyright © Daniel Chandler 2020</Copyright>
+		<Product>Proximity Terminal Library</Product>
+		<Version>22.2.0</Version>
+		<AssemblyVersion>22.2.0.0</AssemblyVersion>
+		<FileVersion>22.2.0.0</FileVersion>
+		<Description>Proximity Terminal Logging Adapter</Description>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<SignAssembly>true</SignAssembly>
+		<AssemblyOriginatorKeyFile>..\Proximity.snk</AssemblyOriginatorKeyFile>
+		<OutputPath>..\..\Build</OutputPath>
+		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+		<Nullable>enable</Nullable>
+		<LangVersion>Latest</LangVersion>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Proximity.Logging\Proximity.Logging.csproj" />
+		<ProjectReference Include="..\Proximity.Terminal\Proximity.Terminal.csproj" />
+	</ItemGroup>
+</Project>

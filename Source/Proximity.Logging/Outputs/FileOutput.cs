@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -7,8 +9,6 @@ using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Proximity.Logging.Config;
-using Proximity.Utility.Collections;
-using Proximity.Utility.Threading;
 //****************************************
 
 namespace Proximity.Logging.Outputs
@@ -59,35 +59,20 @@ namespace Proximity.Logging.Outputs
 		/// <inheritdoc />
 		protected internal sealed override void Write(LogEntry newEntry)
 		{
-			try
-			{
-				_Entries.Add(new FullLogEntry(newEntry, Target.Context)).Wait();
-			}
-			catch (OperationCanceledException)
-			{
-			}
-			catch (InvalidOperationException)
-			{
-			}
+			// Will only fail after Finish is called
+			_Entries.TryAdd(new FullLogEntry(newEntry, Target.Context));
 		}
 		
 		/// <inheritdoc />
 		protected internal override void Flush()
 		{
 			var MyCompletionSource = new TaskCompletionSource<VoidStruct>();
-			
-			try
-			{
-				_Entries.Add(new FullLogEntry(null, null, () => MyCompletionSource.SetResult(VoidStruct.Empty))).Wait();
-				
+
+			// Don't block if we're Finished
+			if (_Entries.TryAdd(new FullLogEntry(null, null, () => MyCompletionSource.SetResult(default))))
 				MyCompletionSource.Task.Wait();
-			}
-			catch (OperationCanceledException)
-			{
-			}
-			catch (InvalidOperationException)
-			{
-			}
+			else
+				_LogTask.Wait();
 		}
 		
 		/// <inheritdoc />
@@ -100,7 +85,7 @@ namespace Proximity.Logging.Outputs
 		{
 			_Entries.CompleteAdding();
 			
-			_LogTask.Wait();
+			_LogTask.GetAwaiter().GetResult();
 		}
 
 		//****************************************
@@ -129,38 +114,29 @@ namespace Proximity.Logging.Outputs
 		private void OnWrite(FullLogEntry entry) => OnWrite(entry.Entry, entry.Context);
 
 		private async Task PerformLogging()
-		{	//****************************************
-			FullLogEntry MyEntry;
-			//****************************************
-
+		{
 			try
 			{
 				CheckOutput();
-				
-				foreach (var MyEntryTask in _Entries.GetConsumingEnumerable())
+
+				var LastThreadID = Thread.CurrentThread.ManagedThreadId;
+
+				await foreach (var Entry in _Entries.GetConsumingAsyncEnumerable())
 				{
-					if (MyEntryTask.Status == TaskStatus.RanToCompletion)
-					{
-						MyEntry = MyEntryTask.Result;
-					}
-					else
-					{
-						MyEntry = await MyEntryTask;
-						
-						// Check the output file status, since we've been waiting
+					// We don't want to constantly check the output, so only do it when we hop threads (meaning we've awaited)
+					// Technically we could be queued to the same thread multiple times, but this will suffice to reduce the frequency
+					var CurrentThreadID = Thread.CurrentThread.ManagedThreadId;
+
+					if (Interlocked.Exchange(ref LastThreadID, CurrentThreadID) != CurrentThreadID)
 						CheckOutput();
-					}
 					
-					if (MyEntry.Entry != null)
-						OnWrite(MyEntry);
+					if (Entry.Entry != null)
+						OnWrite(Entry);
 					
 					_Stream.Flush();
 
-					MyEntry.Callback?.Invoke();
+					Entry.Callback?.Invoke();
 				}
-			}
-			catch (OperationCanceledException)
-			{
 			}
 			catch (InvalidOperationException)
 			{
@@ -187,7 +163,7 @@ namespace Proximity.Logging.Outputs
 		
 		private void CheckOutput()
 		{	//****************************************
-			bool CloseOld = false;
+			var CloseOld = false;
 			var CurrentTime = DateTime.Now;
 			var CurrentStream = _Stream;
 			//****************************************
@@ -234,7 +210,7 @@ namespace Proximity.Logging.Outputs
 			
 			// We either have no stream, or we're performing a rollover
 			string FullPath;
-			bool CanAppend = false;
+			var CanAppend = false;
 			
 			// Figure out the appropriate file name
 			switch (RolloverOn)
@@ -346,7 +322,7 @@ namespace Proximity.Logging.Outputs
 		/// </summary>
 		public string FileName
 		{
-			get { return _FileName; }
+			get => _FileName;
 			set
 			{
 				if (_Stream != null)
@@ -378,8 +354,7 @@ namespace Proximity.Logging.Outputs
 
 		//****************************************
 
-		[SecuritySafeCritical]
-		private struct FullLogEntry
+		private readonly struct FullLogEntry
 		{
 			public readonly ImmutableCountedStack<LogSection> Context;
 			public readonly LogEntry Entry;

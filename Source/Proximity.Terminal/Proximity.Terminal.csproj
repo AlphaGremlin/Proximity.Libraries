@@ -1,13 +1,13 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
     <Authors>Daniel Chandler</Authors>
     <Company>Proximity Interactive</Company>
-    <Copyright>Copyright © Daniel Chandler 2019</Copyright>
+    <Copyright>Copyright © Daniel Chandler 2020</Copyright>
     <Product>Proximity Terminal Library</Product>
-		<Version>21.1.0</Version>
-		<AssemblyVersion>21.0.0.0</AssemblyVersion>
-		<FileVersion>21.1.0.0</FileVersion>
+		<Version>22.2.0</Version>
+		<AssemblyVersion>22.2.0.0</AssemblyVersion>
+		<FileVersion>22.2.0.0</FileVersion>
 		<Description>Proximity Terminal Library</Description>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -15,9 +15,23 @@
     <AssemblyOriginatorKeyFile>..\Proximity.snk</AssemblyOriginatorKeyFile>
     <OutputPath>..\..\Build</OutputPath>
 		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+		<Nullable>enable</Nullable>
+		<LangVersion>Latest</LangVersion>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Proximity.Logging\Proximity.Logging.csproj" />
-    <ProjectReference Include="..\Proximity.Utility\Proximity.Utility.csproj" />
+    <Compile Remove="TerminalExtensions.cs" />
+    <Compile Remove="TerminalScopeProvider.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="TerminalExtensions.cs" />
+    <None Include="TerminalScopeProvider.cs" />
+  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.1.2" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Proximity.Buffers\Proximity.Buffers.csproj" />
+		<ProjectReference Include="..\Proximity.Collections\Proximity.Collections.csproj" />
+	  <ProjectReference Include="..\Proximity.Threading\Proximity.Threading.csproj" />
+	</ItemGroup>
 </Project>
