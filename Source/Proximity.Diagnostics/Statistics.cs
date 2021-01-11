@@ -42,7 +42,14 @@ namespace Proximity.Diagnostics
 		/// <param name="intervals">The time intervals to track each value over</param>
 		public Statistics(IEnumerable<TimeSpan> intervals)
 		{
-			_Intervals = intervals.ToArray();
+			_Intervals = (intervals ?? throw new ArgumentNullException(nameof(intervals))).ToArray();
+
+			foreach (var Interval in _Intervals)
+			{
+				if (Interval <= TimeSpan.Zero)
+					throw new ArgumentOutOfRangeException(nameof(intervals));
+			}
+
 			_IntervalLookup = _Intervals.Select((interval, index) => (interval, index)).ToDictionary(pair => pair.interval, pair => pair.index);
 
 			_StartTime = new TimeSpan(DateTime.Now.Ticks);
@@ -67,7 +74,7 @@ namespace Proximity.Diagnostics
 		/// <param name="name">The metric name to track</param>
 		public void Add(string name)
 		{
-			_Statistics.Add(name, new Statistic(_Intervals.Length));
+			_Statistics.Add(name, new Statistic(_Intervals));
 		}
 
 		/// <summary>
@@ -81,7 +88,7 @@ namespace Proximity.Diagnostics
 			var Ticks = GetTicks();
 
 			foreach (var Statistic in _Statistics.Values)
-				Statistic.Reset(Ticks, _Intervals);
+				Statistic.Reset(Ticks);
 		}
 
 		/// <summary>
@@ -108,7 +115,7 @@ namespace Proximity.Diagnostics
 			if (name is null || !_Statistics.TryGetValue(name, out var Statistic))
 				throw new ArgumentOutOfRangeException(nameof(name));
 
-			Statistic.Add(GetTicks(), _Intervals, value);
+			Statistic.Add(GetTicks(), value);
 		}
 
 		/// <summary>
@@ -128,7 +135,7 @@ namespace Proximity.Diagnostics
 			if (name is null || !_Statistics.TryGetValue(name, out var Statistic))
 				throw new ArgumentOutOfRangeException(nameof(name));
 
-			Statistic.Peak(GetTicks(), _Intervals, value);
+			Statistic.Peak(GetTicks(), value);
 		}
 
 		/// <summary>
@@ -165,28 +172,7 @@ namespace Proximity.Diagnostics
 
 			for (var Index = 0; Index < values.Length; Index++)
 			{
-				var (LastTicks, Current, Previous) = Records[Index];
-				var IntervalTicks = Intervals[Index];
-
-				if (IntervalTicks == TimeSpan.Zero)
-				{
-					values[Index] = Current;
-
-					continue;
-				}
-
-				var NextInterval = LastTicks + IntervalTicks;
-
-				// Determine when the currently active interval ends
-				if (NextInterval > CurrentTicks)
-					// The current interval has yet to elapse, so we return the result from the previous interval
-					values[Index] = Previous;
-				else if (NextInterval + IntervalTicks > CurrentTicks)
-					// The current interval has elapsed, but hasn't rolled over, so we return the result for this interval
-					values[Index] = Current;
-				else
-					// The current interval has elapsed, and the next interval has also elapsed without a roll-over, meaning no events occurred
-					values[Index] = 0;
+				values[Index] = GetCurrentValue(Records[Index], CurrentTicks).Value;
 			}
 		}
 
@@ -204,25 +190,7 @@ namespace Proximity.Diagnostics
 			if (!_IntervalLookup.TryGetValue(interval, out var Index))
 				throw new ArgumentOutOfRangeException(nameof(interval));
 
-			var (LastTicks, Current, Previous) = Statistic.Records[Index];
-			var CurrentTicks = GetTicks();
-
-			var NextInterval = LastTicks + interval;
-
-			if (interval == TimeSpan.Zero)
-				return Current;
-
-			// Determine when the currently active interval ends
-			if (NextInterval > CurrentTicks)
-				// The current interval has yet to elapse, so we return the result from the previous interval
-				return Previous;
-
-			if (NextInterval + interval > CurrentTicks)
-				// The current interval has elapsed, but hasn't rolled over, so we return the result for this interval
-				return Current;
-
-			// The current interval has elapsed, and the next interval has also elapsed without a roll-over, meaning no events occurred
-			return 0;
+			return GetCurrentValue(Statistic.Records[Index], GetTicks()).Value;
 		}
 
 		/// <summary>
@@ -259,28 +227,7 @@ namespace Proximity.Diagnostics
 
 			for (var Index = 0; Index < values.Length; Index++)
 			{
-				var (LastTicks, Current, Previous) = Records[Index];
-				var IntervalTicks = Intervals[Index];
-
-				if (IntervalTicks == TimeSpan.Zero)
-				{
-					values[Index] = new StatisticsRecord(Current, CurrentTicks - LastTicks);
-
-					continue;
-				}
-
-				var NextInterval = LastTicks + IntervalTicks;
-
-				// Determine when the currently active interval ends
-				if (NextInterval > CurrentTicks)
-					// The current interval has yet to elapse, so we return the result from the previous interval
-					values[Index] = new StatisticsRecord(Previous, IntervalTicks);
-				else if (NextInterval + IntervalTicks > CurrentTicks)
-					// The current interval has elapsed, but hasn't rolled over, so we return the result for this interval
-					values[Index] = new StatisticsRecord(Current, IntervalTicks);
-				else
-					// The current interval has elapsed, and the next interval has also elapsed without a roll-over, meaning no events occurred
-					values[Index] = new StatisticsRecord(0, IntervalTicks);
+				values[Index] = GetCurrentValue(Records[Index], CurrentTicks);
 			}
 		}
 
@@ -298,54 +245,48 @@ namespace Proximity.Diagnostics
 			if (!_IntervalLookup.TryGetValue(interval, out var Index))
 				throw new ArgumentOutOfRangeException(nameof(interval));
 
-			var (LastTicks, Current, Previous) = Statistic.Records[Index];
-			var CurrentTicks = GetTicks();
-
-			if (interval == TimeSpan.Zero)
-				return new StatisticsRecord(Current, CurrentTicks - LastTicks);
-
-			var NextInterval = LastTicks + interval;
-
-			// Determine when the currently active interval ends
-			if (NextInterval > CurrentTicks)
-				// The current interval has yet to elapse, so we return the result from the previous interval
-				return new StatisticsRecord(Previous, interval);
-
-			if (NextInterval + interval > CurrentTicks)
-				// The current interval has elapsed, but hasn't rolled over, so we return the result for this interval
-				return new StatisticsRecord(Current, interval);
-
-			// The current interval has elapsed, and the next interval has also elapsed without a roll-over, meaning no events occurred
-			return new StatisticsRecord(0, interval);
-		}
-
-		/// <summary>
-		/// Retrieves the active value of a metric
-		/// </summary>
-		/// <param name="name">The metric name to retrieve</param>
-		/// <param name="interval">The time interval we're interested in</param>
-		/// <returns>The active value of the metric in the given time interval</returns>
-		public long GetLatest(string name, TimeSpan interval)
-		{
-			if (name is null || !_Statistics.TryGetValue(name, out var Statistic))
-				throw new ArgumentOutOfRangeException(nameof(name));
-
-			if (!_IntervalLookup.TryGetValue(interval, out var Index))
-				throw new ArgumentOutOfRangeException(nameof(interval));
-
-			var (LastTicks, Current, _) = Statistic.Records[Index];
-			var CurrentTicks = GetTicks();
-
-			var NextInterval = LastTicks + interval;
-
-			if (NextInterval > CurrentTicks)
-				return Current;
-
-			// The current interval has elapsed, so the next interval is zero
-			return 0;
+			return GetCurrentValue(Statistic.Records[Index], GetTicks());
 		}
 
 		//****************************************
+
+		private StatisticsRecord GetCurrentValue(in StatisticsState state, TimeSpan time)
+		{
+			var Wait = new SpinWait();
+
+			StatisticsState State;
+			long Current;
+
+			for (; ; )
+			{
+				State = state; // Can't use Volatile.Read since it needs 'ref', not 'in'
+				Thread.MemoryBarrier();
+				Current = State.Current;
+
+				if (Current != -1)
+					break;
+
+				Wait.SpinOnce();
+			}
+
+			var Interval = State.Interval;
+
+			if (Interval == TimeSpan.Zero)
+				return new StatisticsRecord(Current, time - State.Time);
+
+			var NextInterval = State.Time + Interval;
+
+			// Determine when the currently active interval ends
+			if (NextInterval > time)
+				// The current interval has yet to elapse, so we return the result from the previous interval
+				return new StatisticsRecord(State.Previous, Interval);
+			else if (NextInterval + Interval > time)
+				// The current interval has elapsed, but hasn't rolled over, so we return the result for this interval
+				return new StatisticsRecord(Current, Interval);
+			else
+				// The current interval has elapsed, and the next interval has also elapsed without a roll-over, meaning no events occurred
+				return new StatisticsRecord(0, Interval);
+		}
 
 		private TimeSpan GetTicks() => _Timer.Elapsed;
 
@@ -368,188 +309,236 @@ namespace Proximity.Diagnostics
 
 		//****************************************
 
-		private sealed class Statistic
+		private readonly struct Statistic
 		{ //****************************************
-			private StatisticsState _Records;
+			private readonly StatisticsState[] _Statistics;
 			//****************************************
 
-			internal Statistic(int intervals)
+			internal Statistic(TimeSpan[] intervals)
 			{
-				_Records = new StatisticsState(intervals);
-			}
+				_Statistics = new StatisticsState[intervals.Length];
 
-			//****************************************
-
-			internal void Add(TimeSpan ticks, IReadOnlyList<TimeSpan> intervals, long value)
-			{
-				StatisticsState OldRecords, NewRecords;
-
-				do
+				for (var Index = 0; Index < intervals.Length; Index++)
 				{
-					OldRecords = Volatile.Read(ref _Records);
-					NewRecords = OldRecords.Prepare(ticks, intervals);
+					_Statistics[Index] = new StatisticsState(intervals[Index], TimeSpan.Zero);
 				}
-				while (Interlocked.CompareExchange(ref _Records, NewRecords, OldRecords) != OldRecords);
-
-				NewRecords.Add(value);
-			}
-
-			internal void Peak(TimeSpan ticks, IReadOnlyList<TimeSpan> intervals, long value)
-			{
-				StatisticsState OldRecords, NewRecords;
-
-				do
-				{
-					OldRecords = Volatile.Read(ref _Records);
-					NewRecords = OldRecords.Prepare(ticks, intervals);
-				}
-				while (Interlocked.CompareExchange(ref _Records, NewRecords, OldRecords) != OldRecords);
-
-				NewRecords.Peak(value);
-			}
-
-			internal void Reset(TimeSpan ticks, IReadOnlyList<TimeSpan> intervals)
-			{
-				StatisticsState OldRecords;
-
-				do
-				{
-					OldRecords = Volatile.Read(ref _Records);
-				}
-				while (Interlocked.CompareExchange(ref _Records, OldRecords.Reset(ticks, intervals), OldRecords) != OldRecords);
 			}
 
 			//****************************************
 
-			public StatisticsState Records => Volatile.Read(ref _Records);
+			internal void Add(TimeSpan time, long value)
+			{
+				for (var Index = 0; Index < _Statistics.Length; Index++)
+				{
+					StatisticsState.Add(ref _Statistics[Index], time, value);
+				}
+			}
+
+			internal void Peak(TimeSpan time, long value)
+			{
+				for (var Index = 0; Index < _Statistics.Length; Index++)
+				{
+					StatisticsState.Peak(ref _Statistics[Index], time, value);
+				}
+			}
+
+			internal void Reset(TimeSpan time)
+			{
+				for (var Index = 0; Index < _Statistics.Length; Index++)
+				{
+					StatisticsState.Reset(ref _Statistics[Index], time);
+				}
+			}
+
+			//****************************************
+
+			public ReadOnlySpan<StatisticsState> Records => _Statistics;
 		}
 
 		private sealed class StatisticsState
 		{ //****************************************
-			private readonly ImmutableArray<TimeSpan> _LastTicks;
-			private readonly ImmutableArray<StrongBox<long>> _Current, _Previous;
+			private readonly TimeSpan _Interval;
+			private readonly TimeSpan _Time;
+
+			private long _Current;
+			private readonly long _Previous;
 			//****************************************
 
-			public StatisticsState(int intervals)
+			public StatisticsState(TimeSpan interval, TimeSpan time, long current = 0, long previous = 0)
 			{
-				var BlankTicks = ImmutableArray.CreateBuilder<TimeSpan>(intervals);
-				var BlankCurrent = ImmutableArray.CreateBuilder<StrongBox<long>>(intervals);
-				var BlankPrevious = ImmutableArray.CreateBuilder<StrongBox<long>>(intervals);
-
-				for (var Index = 0; Index < intervals; Index++)
-				{
-					BlankTicks.Add(default);
-					BlankCurrent.Add(new StrongBox<long>(0));
-					BlankPrevious.Add(new StrongBox<long>(0));
-				}
-
-				_LastTicks = BlankTicks.ToImmutable();
-				_Current = BlankCurrent.ToImmutable();
-				_Previous = BlankPrevious.ToImmutable();
-			}
-
-			private StatisticsState(ImmutableArray<TimeSpan> lastTicks, ImmutableArray<StrongBox<long>> current, ImmutableArray<StrongBox<long>> previous)
-			{
-				_LastTicks = lastTicks;
+				_Interval = interval;
 				_Current = current;
 				_Previous = previous;
+
+				if (interval == TimeSpan.Zero)
+					_Time = time;
+				else
+					_Time = RoundTo(time, interval);
 			}
 
 			//****************************************
 
-			internal StatisticsState Prepare(TimeSpan ticks, IReadOnlyList<TimeSpan> intervals)
+			public TimeSpan Time => _Time;
+
+			public TimeSpan Interval => _Interval;
+
+			public long Current => _Current;
+
+			public long Previous => _Previous;
+
+			//****************************************
+
+			internal static void Reset(ref StatisticsState state, TimeSpan time)
 			{
-				ImmutableArray<TimeSpan>.Builder? LastTicks = null;
-				ImmutableArray<StrongBox<long>>.Builder? Current = null, Previous = null;
+				var NewState = new StatisticsState(state.Interval, time);
 
-				for (var Index = 0; Index < _LastTicks.Length; Index++)
+				Interlocked.Exchange(ref state, NewState);
+			}
+
+			internal static void Add(ref StatisticsState state, TimeSpan time, long value)
+			{
+				StatisticsState State;
+				var Wait = new SpinWait();
+
+				for (; ; )
 				{
-					var IntervalTicks = intervals[Index];
+					State = Volatile.Read(ref state);
 
-					if (IntervalTicks == TimeSpan.Zero)
-						continue;
+					var Interval = State._Interval;
 
-					var IntervalEnds = _LastTicks[Index] + IntervalTicks;
-
-					if (IntervalEnds <= ticks)
+					if (Interval == TimeSpan.Zero)
 					{
-						// This interval has elapsed and needs rolling over
-						if (LastTicks == null)
+						Interlocked.Add(ref State._Current, value);
+
+						return;
+					}
+
+					var Finish = State._Time + Interval;
+
+					if (time < Finish)
+					{
+						// Still within the time interval
+						if (Interlocked.Add(ref State._Current, value) >= value)
+							return;
+
+						// If the result is less than our input value, this state has been expired (added to -1)
+						// Restore the expired state. Since our previous addition opens a window where another thread can successfully add,
+						// we take the old current value and use it for our own addition
+						value = Interlocked.Exchange(ref State._Current, -1) + 1;
+
+						// Wait a moment for the other thread to finish replacing the state
+						Wait.SpinOnce();
+					}
+					else if (time < Finish + Interval)
+					{
+						// We're within the next time interval, flag the state as expired so we can lock in that interval
+						var Previous = Interlocked.Exchange(ref State._Current, -1);
+
+						if (Previous != -1)
 						{
-							LastTicks = _LastTicks.ToBuilder();
-							Previous = _Previous.ToBuilder();
-							Current = _Current.ToBuilder();
+							var NewState = new StatisticsState(Interval, time, value, Previous);
+
+							// Replace the current state with a new state
+							if (Interlocked.CompareExchange(ref state, NewState, State) == State)
+								return;
+						}
+						else
+						{
+							// Wait a moment for the other thread to finish replacing the state
+							Wait.SpinOnce();
 						}
 
-						// Round to the nearest Interval
-						LastTicks[Index] = RoundTo(ticks, IntervalTicks);
-						// If it's been more than one interval since we last ticked over, the previous should be zero
-						Previous![Index] = IntervalEnds + IntervalTicks <= ticks ? new StrongBox<long>(0) : Current![Index];
-						// The current interval peak becomes the value of the previous interval
-						Current![Index] = new StrongBox<long>(0);
+						// Another thread is performing a replacement, wait and try again
 					}
-				}
-
-				if (LastTicks == null)
-					return this;
-
-				return new StatisticsState(LastTicks.ToImmutable(), Current!.ToImmutable(), Previous!.ToImmutable());
-			}
-
-			internal void Add(long value)
-			{
-				for (var Index = 0; Index < _Current.Length; Index++)
-				{
-					Interlocked.Add(ref _Current[Index].Value, value);
-				}
-			}
-
-			internal void Peak(long value)
-			{
-				for (var Index = 0; Index < _Current.Length; Index++)
-				{
-					ref var Value = ref _Current[Index].Value;
-
-					long OldValue;
-
-					do
+					else
 					{
-						OldValue = Value;
+						// Two intervals have passed since this state began recording, so we replace with a zero previous record
+						var NewState = new StatisticsState(Interval, time, value);
 
-						if (OldValue >= value)
+						// Replace the current state with a new state
+						if (Interlocked.CompareExchange(ref state, NewState, State) == State)
 							return;
+
+						// Another thread is performing a replacement, wait and try again
 					}
-					while (Interlocked.CompareExchange(ref Value, value, OldValue) < value);
 				}
 			}
 
-			internal StatisticsState Reset(TimeSpan ticks, IReadOnlyList<TimeSpan> intervals)
+			internal static void Peak(ref StatisticsState state, TimeSpan time, long value)
 			{
-				var LastTicks = ImmutableArray.CreateBuilder<TimeSpan>(_LastTicks.Length);
-				var BlankCurrent = ImmutableArray.CreateBuilder<StrongBox<long>>(_LastTicks.Length);
-				var BlankPrevious = ImmutableArray.CreateBuilder<StrongBox<long>>(_LastTicks.Length);
+				StatisticsState State;
+				var Wait = new SpinWait();
 
-				for (var Index = 0; Index < intervals.Count; Index++)
+				for (; ; )
 				{
-					var IntervalTicks = intervals[Index];
+					State = Volatile.Read(ref state);
 
-					// Every Last Tick should be 'now'
-					LastTicks.Add(IntervalTicks == TimeSpan.Zero ? ticks : RoundTo(ticks, IntervalTicks));
-					// Current and Previous should be zero
-					BlankCurrent.Add(new StrongBox<long>(0));
-					BlankPrevious.Add(new StrongBox<long>(0));
+					var Interval = State._Interval;
+
+					if (Interval == TimeSpan.Zero)
+					{
+						var OldValue = Volatile.Read(ref State._Current);
+
+						if (OldValue >= value || Interlocked.CompareExchange(ref State._Current, value, OldValue) >= value)
+							return;
+
+						continue;
+					}
+
+					var Finish = State._Time + Interval;
+
+					if (time < Finish)
+					{
+						// Still within the time interval
+						var OldValue = Volatile.Read(ref State._Current);
+
+						if (OldValue == -1)
+						{
+							// Expired. Wait a moment for the other thread to finish replacing the state
+							Wait.SpinOnce();
+						}
+						else
+						{
+							if (OldValue >= value || Interlocked.CompareExchange(ref State._Current, value, OldValue) >= value)
+								return;
+
+							// Another thread replaced our value with something greater than the previous peak, but less than our new peak
+						}
+					}
+					else if (time < Finish + Interval)
+					{
+						// We're within the next time interval, flag the state as expired so we can lock in that interval
+						var Previous = Interlocked.Exchange(ref State._Current, -1);
+
+						if (Previous != -1)
+						{
+							var NewState = new StatisticsState(Interval, time, value, Previous);
+
+							// Replace the current state with a new state
+							if (Interlocked.CompareExchange(ref state, NewState, State) == State)
+								return;
+						}
+						else
+						{
+							// Wait a moment for the other thread to finish replacing the state
+							Wait.SpinOnce();
+						}
+
+						// Another thread is performing a replacement, wait and try again
+					}
+					else
+					{
+						// Two intervals have passed since this state began recording, so we replace with a zero previous record
+						var NewState = new StatisticsState(Interval, time, value);
+
+						// Replace the current state with a new state
+						if (Interlocked.CompareExchange(ref state, NewState, State) == State)
+							return;
+
+						// Another thread is performing a replacement, wait and try again
+					}
 				}
-
-				return new StatisticsState(
-					LastTicks.ToImmutable(),
-					BlankCurrent.ToImmutable(),
-					BlankPrevious.ToImmutable()
-					);
 			}
-
-			//****************************************
-
-			public (TimeSpan ticks, long current, long previous) this[int index] => (_LastTicks[index], _Current[index].Value, _Previous[index].Value);
 
 			//****************************************
 

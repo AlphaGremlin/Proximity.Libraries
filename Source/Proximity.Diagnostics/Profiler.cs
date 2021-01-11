@@ -18,12 +18,10 @@ namespace Proximity.Diagnostics
 		private readonly TimeSpan[] _Intervals;
 		private readonly Dictionary<TimeSpan, int> _IntervalLookup;
 		private readonly Dictionary<string, Section> _Sections = new Dictionary<string, Section>();
-
-		private readonly SectionState _Blank;
 		//****************************************
 
 		/// <summary>
-		/// Creates a new Profiler with default 0, 15, 5 and 1 minute intervals
+		/// Creates a new Profiler with default 0 (all-time), 15, 5 and 1 minute intervals
 		/// </summary>
 		public Profiler() : this(TimeSpan.Zero, new TimeSpan(0, 15, 0), new TimeSpan(0, 5, 0), new TimeSpan(0, 1, 0))
 		{
@@ -43,13 +41,18 @@ namespace Proximity.Diagnostics
 		/// <param name="intervals">The time intervals to track each value over</param>
 		public Profiler(IEnumerable<TimeSpan> intervals)
 		{
-			_Intervals = intervals.ToArray();
+			_Intervals = (intervals ?? throw new ArgumentNullException(nameof(intervals))).ToArray();
+
+			foreach (var Interval in _Intervals)
+			{
+				if (Interval < TimeSpan.Zero)
+					throw new ArgumentOutOfRangeException(nameof(intervals));
+			}
+
 			_IntervalLookup = _Intervals.Select((interval, index) => (interval, index)).ToDictionary(pair => pair.interval, pair => pair.index);
 
 			_StartTime = new TimeSpan(DateTime.Now.Ticks);
 			_Timer = Stopwatch.StartNew();
-
-			_Blank = new SectionState(_Intervals.Length);
 		}
 
 		//****************************************
@@ -131,21 +134,7 @@ namespace Proximity.Diagnostics
 
 			for (var Index = 0; Index < values.Length; Index++)
 			{
-				var (LastTicks, Current, Previous) = Records[Index];
-				var IntervalTicks = Intervals[Index];
-
-				var NextInterval = LastTicks + IntervalTicks;
-
-				// Determine when the currently active interval ends
-				if (NextInterval > CurrentTicks)
-					// The current interval has yet to elapse, so we return the result from the previous interval
-					values[Index] = Previous;
-				else if (NextInterval + IntervalTicks > CurrentTicks)
-					// The current interval has elapsed, but hasn't rolled over, so we return the result for this interval
-					values[Index] = Current;
-				else
-					// The current interval has elapsed, and the next interval has also elapsed without a roll-over, meaning no events occurred
-					values[Index] = default;
+				values[Index] = GetCurrentValue(Records[Index], CurrentTicks);
 			}
 		}
 
@@ -163,51 +152,51 @@ namespace Proximity.Diagnostics
 			if (!_IntervalLookup.TryGetValue(interval, out var Index))
 				throw new ArgumentOutOfRangeException(nameof(interval));
 
-			var (LastTicks, Current, Previous) = Statistic.Records[Index];
-			var CurrentTicks = GetTicks();
-
-			var NextInterval = LastTicks + interval;
-
-			// Determine when the currently active interval ends
-			if (NextInterval > CurrentTicks)
-				// The current interval has yet to elapse, so we return the result from the previous interval
-				return Previous;
-
-			if (NextInterval + interval > CurrentTicks)
-				// The current interval has elapsed, but hasn't rolled over, so we return the result for this interval
-				return Current;
-
-			// The current interval has elapsed, and the next interval has also elapsed without a roll-over, meaning no events occurred
-			return default;
-		}
-
-		/// <summary>
-		/// Retrieves the active value of a metric
-		/// </summary>
-		/// <param name="name">The metric name to retrieve</param>
-		/// <param name="interval">The time interval we're interested in</param>
-		/// <returns>The active value of the metric in the given time interval</returns>
-		public ProfilerRecord GetLatest(string name, TimeSpan interval)
-		{
-			if (name is null || !_Sections.TryGetValue(name, out var Statistic))
-				throw new ArgumentOutOfRangeException(nameof(name));
-
-			if (!_IntervalLookup.TryGetValue(interval, out var Index))
-				throw new ArgumentOutOfRangeException(nameof(interval));
-
-			var (LastTicks, Current, _) = Statistic.Records[Index];
-			var CurrentTicks = GetTicks();
-
-			var NextInterval = LastTicks + interval;
-
-			if (NextInterval > CurrentTicks)
-				return Current;
-
-			// The current interval has elapsed, so the next interval is zero
-			return default;
+			return GetCurrentValue(Statistic.Records[Index], GetTicks());
 		}
 
 		//****************************************
+
+		private ProfilerRecord GetCurrentValue(in SectionState state, TimeSpan time)
+		{
+			var Wait = new SpinWait();
+
+			SectionState State;
+			ProfilerRecord Current;
+
+			for (; ; Wait.SpinOnce())
+			{
+				State = state; // Can't use Volatile.Read since it needs 'ref', not 'in'
+
+				lock (State)
+				{
+					if (State.IsExpired)
+						continue;
+
+					Current = State.Current;
+
+					break;
+				}
+			}
+
+			var Interval = State.Interval;
+
+			if (Interval == TimeSpan.Zero)
+				return Current;
+
+			var NextInterval = State.Time + Interval;
+
+			// Determine when the currently active interval ends
+			if (NextInterval > time)
+				// The current interval has yet to elapse, so we return the result from the previous interval
+				return State.Previous;
+			else if (NextInterval + Interval > time)
+				// The current interval has elapsed, but hasn't rolled over, so we return the result for this interval
+				return Current;
+			else
+				// The current interval has elapsed, and the next interval has also elapsed without a roll-over, meaning no events occurred
+				return ProfilerRecord.Empty;
+		}
 
 		private TimeSpan GetTicks() => _StartTime + _Timer.Elapsed;
 
@@ -254,14 +243,22 @@ namespace Proximity.Diagnostics
 		{ //****************************************
 			private readonly Profiler _Profiler;
 
-			private SectionState _Records;
+			private readonly SectionState[] _Records;
 			//****************************************
 
 			internal Section(string name, Profiler profiler)
 			{
 				Name = name;
 				_Profiler = profiler;
-				_Records = profiler._Blank;
+
+				var Intervals = profiler._Intervals;
+
+				_Records = new SectionState[Intervals.Length];
+
+				for (var Index = 0; Index < Intervals.Length; Index++)
+				{
+					_Records[Index] = new SectionState(Intervals[Index], TimeSpan.Zero);
+				}
 			}
 
 			//****************************************
@@ -271,122 +268,141 @@ namespace Proximity.Diagnostics
 				var Ticks = _Profiler.GetTicks();
 				var Elapsed = Ticks - startTime;
 
-				SectionState OldRecords;
-
-				do
+				for (var Index = 0; Index < _Records.Length; Index++)
 				{
-					OldRecords = Volatile.Read(ref _Records);
+					SectionState.Finish(ref _Records[Index], Ticks, Elapsed);
 				}
-				while (Interlocked.CompareExchange(ref _Records, OldRecords.Add(Ticks, _Profiler, Elapsed.Ticks), OldRecords) != OldRecords);
 			}
 
-			internal void Reset(TimeSpan ticks)
+			internal void Reset(TimeSpan time)
 			{
-				SectionState OldRecords;
-
-				do
+				for (var Index = 0; Index < _Records.Length; Index++)
 				{
-					OldRecords = Volatile.Read(ref _Records);
+					SectionState.Reset(ref _Records[Index], time);
 				}
-				while (Interlocked.CompareExchange(ref _Records, OldRecords.Reset(ticks, _Profiler), OldRecords) != OldRecords);
 			}
 
 			//****************************************
 
 			public string Name { get; }
 
-			public SectionState Records => Volatile.Read(ref _Records);
+			public ReadOnlySpan<SectionState> Records => _Records;
 		}
 
 		internal sealed class SectionState
 		{ //****************************************
-			private readonly ImmutableArray<TimeSpan> _LastTicks;
-			private readonly ImmutableArray<ProfilerRecord> _Current, _Previous;
+			private readonly TimeSpan _Interval;
+			private readonly TimeSpan _Time;
+
+			private int _IsExpired;
+			private ProfilerRecord _Current;
+			private readonly ProfilerRecord _Previous;
 			//****************************************
 
-			public SectionState(int intervals)
+			public SectionState(TimeSpan interval, TimeSpan time, ProfilerRecord current = default, ProfilerRecord previous = default)
 			{
-				var Blank = ImmutableArray.CreateBuilder<TimeSpan>(intervals);
-				var BlankEntries = ImmutableArray.CreateBuilder<ProfilerRecord>(intervals);
-
-				for (var Index = 0; Index < intervals; Index++)
-				{
-					Blank.Add(TimeSpan.Zero);
-					BlankEntries.Add(ProfilerRecord.Empty);
-				}
-
-				_LastTicks = Blank.ToImmutable();
-				_Current = _Previous = BlankEntries.ToImmutable();
-			}
-
-			private SectionState(ImmutableArray<TimeSpan> lastTicks, ImmutableArray<ProfilerRecord> current, ImmutableArray<ProfilerRecord> previous)
-			{
-				_LastTicks = lastTicks;
+				_Interval = interval;
 				_Current = current;
 				_Previous = previous;
+
+				if (interval == TimeSpan.Zero)
+					_Time = time;
+				else
+					_Time = RoundTo(time, interval);
 			}
 
 			//****************************************
 
-			internal SectionState Add(TimeSpan ticks, Profiler profiler, long elapsed)
+			public TimeSpan Time => _Time;
+
+			public TimeSpan Interval => _Interval;
+
+			public ProfilerRecord Current => _Current;
+
+			public ProfilerRecord Previous => _Previous;
+
+			public bool IsExpired => _IsExpired != 0;
+
+			//****************************************
+
+			internal static void Reset(ref SectionState state, TimeSpan time)
 			{
-				ImmutableArray<TimeSpan>.Builder? LastTicks = null;
-				var Current = _Current.ToBuilder();
-				ImmutableArray<ProfilerRecord>.Builder? Previous = null;
+				var NewState = new SectionState(state.Interval, time);
 
-				var Intervals = profiler._Intervals;
+				Interlocked.Exchange(ref state, NewState);
+			}
 
-				for (var Index = 0; Index < Intervals.Length; Index++)
+			internal static void Finish(ref SectionState state, TimeSpan time, TimeSpan elapsed)
+			{
+				SectionState State;
+				var Elapsed = elapsed.Ticks;
+
+				for (; ; )
 				{
-					var IntervalTicks = Intervals[Index];
-					var IntervalEnds = _LastTicks[Index] + IntervalTicks;
+					State = Volatile.Read(ref state);
 
-					if (IntervalEnds <= ticks)
+					var Interval = State._Interval;
+
+					if (Interval == TimeSpan.Zero)
 					{
-						// This interval has elapsed and needs rolling over
-						if (LastTicks == null)
+						lock (State)
 						{
-							LastTicks = _LastTicks.ToBuilder();
-							Previous = _Previous.ToBuilder();
+							State._Current = State._Current.Add(Elapsed);
 						}
 
-						// Round to the nearest Interval
-						LastTicks[Index] = RoundTo(ticks, IntervalTicks);
-						// If it's been more than one interval since we last ticked over, the previous should be zero
-						Previous![Index] = IntervalEnds + IntervalTicks <= ticks ? ProfilerRecord.Empty : Current[Index];
-						// The current interval peak becomes the value of the previous interval
-						Current[Index] = new ProfilerRecord(1, elapsed, elapsed, elapsed);
+						return;
+					}
+
+					var Finish = State._Time + Interval;
+
+					if (time < Finish)
+					{
+						// Still within the time interval
+						lock (State)
+						{
+							if (!State.IsExpired)
+							{
+								// Not expired, so update it and return
+								State._Current = State._Current.Add(Elapsed);
+
+								return;
+							}
+						}
+
+						// Another thread is performing a replacement, try again
+					}
+					else if (time < Finish + Interval)
+					{
+						// We're within the next time interval, flag the state as expired so we can lock in that interval
+						lock (State)
+						{
+							if (!State.IsExpired)
+							{
+								State._IsExpired = -1;
+
+								var NewState = new SectionState(Interval, time, ProfilerRecord.Empty.Add(Elapsed), State._Current);
+
+								// Replace the current state with a new state
+								if (Interlocked.CompareExchange(ref state, NewState, State) == State)
+									return;
+							}
+						}
+
+						// Another thread is performing a replacement, try again
 					}
 					else
 					{
-						Current[Index] = Current[Index].Add(elapsed);
+						// Two intervals have passed since this state began recording, so we replace with a zero previous record
+						var NewState = new SectionState(Interval, time, ProfilerRecord.Empty.Add(Elapsed));
+
+						// Replace the current state with a new state
+						if (Interlocked.CompareExchange(ref state, NewState, State) == State)
+							return;
+
+						// Another thread is performing a replacement, try again
 					}
 				}
-
-				return new SectionState(LastTicks?.ToImmutable() ?? _LastTicks, Current.ToImmutable(), Previous?.ToImmutable() ?? _Previous);
 			}
-
-			internal SectionState Reset(TimeSpan ticks, Profiler profiler)
-			{
-				// Every Last Tick should be 'now'
-				var LastTicks = ImmutableArray.CreateBuilder<TimeSpan>(_LastTicks.Length);
-				var Intervals = profiler._Intervals;
-
-				for (var Index = 0; Index < Intervals.Length; Index++)
-					LastTicks.Add(RoundTo(ticks, Intervals[Index]));
-
-				var Blank = profiler._Blank;
-
-				return new SectionState(
-					LastTicks.ToImmutable(),
-					Blank._Current,
-					Blank._Previous
-					);
-			}
-
-			//****************************************
-
-			public (TimeSpan ticks, ProfilerRecord current, ProfilerRecord previous) this[int index] => (_LastTicks[index], _Current[index], _Previous[index]);
 
 			//****************************************
 
