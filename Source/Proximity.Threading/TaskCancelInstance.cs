@@ -9,9 +9,9 @@ using System.Threading.Tasks.Sources;
 
 namespace Proximity.Threading
 {
-	internal sealed class TaskCancelInstance<TResult> : BaseCancellable, IValueTaskSource, IValueTaskSource<TResult>
+	internal sealed class TaskCancelInstance<T> : BaseCancellable, IValueTaskSource, IValueTaskSource<T>
 	{ //****************************************
-		private static readonly ConcurrentBag<TaskCancelInstance<TResult>> Instances = new ConcurrentBag<TaskCancelInstance<TResult>>();
+		private static readonly ConcurrentBag<TaskCancelInstance<T>> Instances = new ConcurrentBag<TaskCancelInstance<T>>();
 		//****************************************
 		private Action? _CompleteValueTask;
 		private Action<Task>? _CompleteTask;
@@ -20,11 +20,11 @@ namespace Proximity.Threading
 		private bool _HasResult;
 		private bool _WaitForCompletion;
 
-		private ManualResetValueTaskSourceCore<TResult> _TaskSource = new ManualResetValueTaskSourceCore<TResult>();
+		private ManualResetValueTaskSourceCore<T> _TaskSource = new ManualResetValueTaskSourceCore<T>();
 
 		private Task? _Task;
 		private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _Awaiter;
-		private ConfiguredValueTaskAwaitable<TResult>.ConfiguredValueTaskAwaiter _ResultAwaiter;
+		private ConfiguredValueTaskAwaitable<T>.ConfiguredValueTaskAwaiter _ResultAwaiter;
 		//****************************************
 
 		internal TaskCancelInstance()
@@ -82,7 +82,7 @@ namespace Proximity.Threading
 				_Awaiter.OnCompleted(_CompleteValueTask ??= OnCompleteValueTask);
 		}
 
-		internal void Attach(Task<TResult> task)
+		internal void Attach(Task<T> task)
 		{
 			_HasResult = true;
 			_Task = task;
@@ -91,7 +91,7 @@ namespace Proximity.Threading
 			task.ContinueWith(_CompleteTask ??= OnCompleteTask, Token, TaskContinuationOptions.None, TaskScheduler.Default);
 		}
 
-		internal void Attach(ValueTask<TResult> task)
+		internal void Attach(ValueTask<T> task)
 		{
 			_HasResult = true;
 			_WaitForCompletion = true; // ValueTask needs to wait before it can Release, since we can't unschedule the completion
@@ -124,7 +124,7 @@ namespace Proximity.Threading
 			}
 		}
 
-		TResult IValueTaskSource<TResult>.GetResult(short token)
+		T IValueTaskSource<T>.GetResult(short token)
 		{
 			try
 			{
@@ -204,8 +204,8 @@ namespace Proximity.Threading
 				return;
 
 			// Creating a ValueTask awaiter around the Task is easier than adding special handling for the Task path in UnregisteredCancellation
-			if (_HasResult && task is Task<TResult> ResultTask)
-				_ResultAwaiter = new ValueTask<TResult>(ResultTask).ConfigureAwait(false).GetAwaiter();
+			if (_HasResult && task is Task<T> ResultTask)
+				_ResultAwaiter = new ValueTask<T>(ResultTask).ConfigureAwait(false).GetAwaiter();
 			else
 				_Awaiter = new ValueTask(task).ConfigureAwait(false).GetAwaiter();
 
@@ -232,10 +232,10 @@ namespace Proximity.Threading
 
 		//****************************************
 
-		internal static TaskCancelInstance<TResult> GetOrCreate(CancellationToken token, TimeSpan timeout)
+		internal static TaskCancelInstance<T> GetOrCreate(CancellationToken token, TimeSpan timeout)
 		{
 			if (!Instances.TryTake(out var Instance))
-				Instance = new TaskCancelInstance<TResult>();
+				Instance = new TaskCancelInstance<T>();
 
 			Instance.Initialise(token, timeout);
 

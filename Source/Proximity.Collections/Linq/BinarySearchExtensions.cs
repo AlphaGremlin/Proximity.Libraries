@@ -10,187 +10,352 @@ namespace System.Linq
 	public static class BinarySearchExtensions
 	{
 		/// <summary>
-		/// Searches a list sorted in ascending order, returning the index of the closest value equal to or greater than the target
+		/// Searches a sorted list, returning the index of the given value, or the bitwise complement of the first larger index
 		/// </summary>
-		/// <param name="list">The list to search through. Must be sorted in ascending order</param>
-		/// <param name="targetValue">The target value to search for</param>
-		/// <returns>The index of the nearest value, or -1 if not found</returns>
-		public static int NearestAboveAscending<T>(this IList<T> list, T targetValue) where T : IComparable<T>
-		{ //****************************************
-			int StartIndex = 0, EndIndex = list.Count - 1, CompareResult;
-			//****************************************
+		/// <typeparam name="T">The type of element in the list</typeparam>
+		/// <param name="list">The list to search through. Must be sorted according to the default comparer</param>
+		/// <param name="item">The item to search for</param>
+		/// <returns>A zero or positive integer index into the list, or a negative index representing the bitwise complement of the first larger index</returns>
+		public static int BinarySearch<T>(this IList<T> list, T item) => list.BinarySearch(0, list.Count, item, null);
 
-			if (list.Count == 0)
+		/// <summary>
+		/// Searches a sorted list, returning the index of the given value, or the bitwise complement of the first larger index
+		/// </summary>
+		/// <typeparam name="T">The type of element in the list</typeparam>
+		/// <param name="list">The list to search through. Must be sorted according to the given comparer</param>
+		/// <param name="item">The item to search for</param>
+		/// <param name="comparer">A comparer that describes the sorting of the list. If null, represents the default comparer</param>
+		/// <returns>A zero or positive integer index into the list, or a negative index representing the bitwise complement of the first larger index</returns>
+		public static int BinarySearch<T>(this IList<T> list, T item, IComparer<T>? comparer) => list.BinarySearch(0, list.Count, item, comparer);
+
+		/// <summary>
+		/// Searches a sorted list, returning the index of the given value, or the bitwise complement of the first larger index
+		/// </summary>
+		/// <typeparam name="T">The type of element in the list</typeparam>
+		/// <param name="list">The list to search through. Must be sorted according to the given comparer</param>
+		/// <param name="index">The starting index to search from</param>
+		/// <param name="count">The number of items following the index to search</param>
+		/// <param name="item">The item to search for</param>
+		/// <param name="comparer">A comparer that describes the sorting of the list. If null, represents the default comparer</param>
+		/// <returns>A zero or positive integer index into the list, or a negative index representing the bitwise complement of the first larger index</returns>
+		public static int BinarySearch<T>(this IList<T> list, int index, int count, T item, IComparer<T>? comparer)
+		{
+			if (list is null)
+				throw new ArgumentNullException(nameof(list));
+
+			if (index < 0)
+				throw new ArgumentOutOfRangeException(nameof(index));
+
+			if (count < 0)
+				throw new ArgumentOutOfRangeException(nameof(count));
+
+			if (list.Count - index < count)
+				throw new ArgumentException("Invalid range");
+
+			if (count == 0)
 				return -1;
 
-			while (StartIndex < EndIndex)
+			comparer ??= Comparer<T>.Default;
+
+			int Low = index, High = index + count - 1;
+
+			while (Low <= High)
 			{
-				var MiddleIndex = StartIndex + ((EndIndex - StartIndex) >> 1);
-				CompareResult = list[MiddleIndex].CompareTo(targetValue);
+				var Middle = Low + ((High - Low) >> 1);
+				var Result = comparer.Compare(list[Middle], item);
 
-				//Log.Debug("Check {0}: {1} ({2})", MiddleIndex, Dates[MiddleIndex].Ticks, CompareResult);
-
-				if (CompareResult < 0) // Index is less than the target. The target is somewhere above
-					StartIndex = MiddleIndex + 1;
-				else if (CompareResult > 0) // Index is greater than the target. The target is somewhere below
-					EndIndex = MiddleIndex - 1;
+				if (Result < 0) // Index is less than the target. The target is somewhere above
+					Low = Middle + 1;
+				else if (Result > 0) // Index is greater than the target. The target is somewhere below
+					High = Middle - 1;
 				else // Found the target!
-					return MiddleIndex;
+					return Middle;
 			}
 
-			CompareResult = list[StartIndex].CompareTo(targetValue);
-
-			//Log.Debug("Inexact {0}: {1} ({2})", StartIndex, Dates[StartIndex].Ticks, CompareResult);
-
-			if (CompareResult >= 0) // The current start location is greater than our target, it will do
-				return StartIndex;
-
-			// Start location is less than our target, move one up
-			StartIndex++;
-
-			// Ensure we're still within range
-			if (StartIndex < list.Count)
-				return StartIndex;
-
-			return -1;
+			return ~Low;
 		}
 
 		/// <summary>
-		/// Searches a list sorted in descending order, returning the index of the closest value equal to or greater than the target
+		/// Searches a sorted list, returning the index of the given value, or the bitwise complement of the first larger index
 		/// </summary>
-		/// <param name="list">The list to search through. Must be sorted in descending order</param>
-		/// <param name="targetValue">The target value to search for</param>
-		/// <returns>The index of the nearest value, or -1 if not found</returns>
-		public static int NearestAboveDescending<T>(this IList<T> list, T targetValue) where T : IComparable<T>
-		{ //****************************************
-			int StartIndex = 0, EndIndex = list.Count - 1, CompareResult;
-			//****************************************
+		/// <typeparam name="T">The type of element in the list</typeparam>
+		/// <param name="list">The list to search through. Must be sorted according to the default comparer</param>
+		/// <param name="item">The item to search for</param>
+		/// <returns>A zero or positive integer index into the list, or a negative index representing the bitwise complement of the first larger index</returns>
+		public static int BinarySearch<T>(this IReadOnlyList<T> list, T item) => list.BinarySearch(0, list.Count, item, null);
 
-			if (list.Count == 0)
+		/// <summary>
+		/// Searches a sorted list, returning the index of the given value, or the bitwise complement of the first larger index
+		/// </summary>
+		/// <typeparam name="T">The type of element in the list</typeparam>
+		/// <param name="list">The list to search through. Must be sorted according to the given comparer</param>
+		/// <param name="item">The item to search for</param>
+		/// <param name="comparer">A comparer that describes the sorting of the list. If null, represents the default comparer</param>
+		/// <returns>A zero or positive integer index into the list, or a negative index representing the bitwise complement of the first larger index</returns>
+		public static int BinarySearch<T>(this IReadOnlyList<T> list, T item, IComparer<T>? comparer) => list.BinarySearch(0, list.Count, item, comparer);
+
+		/// <summary>
+		/// Searches a sorted list, returning the index of the given value, or the bitwise complement of the first larger index
+		/// </summary>
+		/// <typeparam name="T">The type of element in the list</typeparam>
+		/// <param name="list">The list to search through. Must be sorted according to the given comparer</param>
+		/// <param name="index">The starting index to search from</param>
+		/// <param name="count">The number of items following the index to search</param>
+		/// <param name="item">The item to search for</param>
+		/// <param name="comparer">A comparer that describes the sorting of the list. If null, represents the default comparer</param>
+		/// <returns>A zero or positive integer index into the list, or a negative index representing the bitwise complement of the first larger index</returns>
+		public static int BinarySearch<T>(this IReadOnlyList<T> list, int index, int count, T item, IComparer<T>? comparer)
+		{
+			if (list is null)
+				throw new ArgumentNullException(nameof(list));
+
+			if (index < 0)
+				throw new ArgumentOutOfRangeException(nameof(index));
+
+			if (count < 0)
+				throw new ArgumentOutOfRangeException(nameof(count));
+
+			if (list.Count - index < count)
+				throw new ArgumentException("Invalid range");
+
+			if (count == 0)
 				return -1;
 
-			while (StartIndex < EndIndex)
+			comparer ??= Comparer<T>.Default;
+
+			int Low = index, High = index + count - 1;
+
+			while (Low <= High)
 			{
-				var MiddleIndex = StartIndex + ((EndIndex - StartIndex) >> 1);
-				CompareResult = list[MiddleIndex].CompareTo(targetValue);
+				var Middle = Low + ((High - Low) >> 1);
+				var Result = comparer.Compare(list[Middle], item);
 
-				//Log.Debug("Check {0}: {1} ({2})", MiddleIndex, Dates[MiddleIndex].Ticks, CompareResult);
-
-				if (CompareResult > 0) // Index is greater than the target. The target is somewhere above
-					StartIndex = MiddleIndex + 1;
-				else if (CompareResult < 0) // Index is less than the target. The target is somewhere below
-					EndIndex = MiddleIndex - 1;
+				if (Result < 0) // Index is less than the target. The target is somewhere above
+					Low = Middle + 1;
+				else if (Result > 0) // Index is greater than the target. The target is somewhere below
+					High = Middle - 1;
 				else // Found the target!
-					return MiddleIndex;
+					return Middle;
 			}
 
-			CompareResult = list[StartIndex].CompareTo(targetValue);
-
-			//Log.Debug("Inexact {0}: {1} ({2})", StartIndex, Dates[StartIndex].Ticks, CompareResult);
-
-			if (CompareResult >= 0) // The current start location is less than our target, it will do
-				return StartIndex;
-
-			// Start location is greater than our target, move one down
-			StartIndex++;
-
-			// Ensure we're still within range
-			if (StartIndex >= 0)
-				return StartIndex;
-
-			return -1;
+			return ~Low;
 		}
 
 		/// <summary>
-		/// Searches a list sorted in ascending order, returning the index of the closest value equal to or less than the target
+		/// Searches a sorted list, returning the index of the given value, or the bitwise complement of the first larger index
 		/// </summary>
-		/// <param name="list">The list to search through. Must be sorted in ascending order</param>
-		/// <param name="targetValue">The target value to search for</param>
-		/// <returns>The index of the nearest value, or -1 if not found</returns>
-		public static int NearestBelowAscending<T>(this IList<T> list, T targetValue) where T : IComparable<T>
-		{ //****************************************
-			int StartIndex = 0, EndIndex = list.Count - 1, CompareResult;
-			//****************************************
+		/// <typeparam name="TOuter">The type of element in the list</typeparam>
+		/// <typeparam name="TInner">The type to sort on</typeparam>
+		/// <param name="list">The list to search through. Must be sorted according to the given selector and comparer</param>
+		/// <param name="index">The starting index to search from</param>
+		/// <param name="count">The number of items following the index to search</param>
+		/// <param name="item">The item to search for</param>
+		/// <param name="selector">A selector to retrieve the value to sort by</param>
+		/// <param name="comparer">A comparer that describes the sorting of the list. If null, represents the default comparer</param>
+		/// <returns>A zero or positive integer index into the list, or a negative index representing the bitwise complement of the first larger index</returns>
+		public static int BinarySearch<TOuter, TInner>(this IReadOnlyList<TOuter> list, int index, int count, TInner item, Func<TOuter, TInner> selector, IComparer<TInner>? comparer)
+		{
+			if (list is null)
+				throw new ArgumentNullException(nameof(list));
 
-			if (list.Count == 0)
+			if (selector is null)
+				throw new ArgumentNullException(nameof(selector));
+
+			if (index < 0)
+				throw new ArgumentOutOfRangeException(nameof(index));
+
+			if (count < 0)
+				throw new ArgumentOutOfRangeException(nameof(count));
+
+			if (list.Count - index < count)
+				throw new ArgumentException("Invalid range");
+
+			if (count == 0)
 				return -1;
 
-			while (StartIndex < EndIndex)
+			comparer ??= Comparer<TInner>.Default;
+
+			int Low = index, High = index + count - 1;
+
+			while (Low <= High)
 			{
-				var MiddleIndex = StartIndex + ((EndIndex - StartIndex) >> 1);
-				CompareResult = list[MiddleIndex].CompareTo(targetValue);
+				var Middle = Low + ((High - Low) >> 1);
+				var Result = comparer.Compare(selector(list[Middle]), item);
 
-				//Log.Debug("Check {0}: {1} ({2})", MiddleIndex, Dates[MiddleIndex].Ticks, CompareResult);
-
-				if (CompareResult < 0) // Index is less than the target. The target is somewhere above
-					StartIndex = MiddleIndex + 1;
-				else if (CompareResult > 0) // Index is greater than the target. The target is somewhere below
-					EndIndex = MiddleIndex - 1;
+				if (Result < 0) // Index is less than the target. The target is somewhere above
+					Low = Middle + 1;
+				else if (Result > 0) // Index is greater than the target. The target is somewhere below
+					High = Middle - 1;
 				else // Found the target!
-					return MiddleIndex;
+					return Middle;
 			}
 
-			CompareResult = list[StartIndex].CompareTo(targetValue);
-
-			//Log.Debug("Inexact {0}: {1} ({2})", StartIndex, Dates[StartIndex].Ticks, CompareResult);
-
-			if (CompareResult <= 0) // The current start location is less than our target, it will do
-				return StartIndex;
-
-			// Start location is greater than our target, move one down
-			StartIndex++;
-
-			// Ensure we're still within range
-			if (StartIndex >= 0)
-				return StartIndex;
-
-			return -1;
+			return ~Low;
 		}
 
 		/// <summary>
-		/// Searches a list sorted in descending order, returning the index of the closest value equal to or less than the target
+		/// Searches a sorted list, returning the index of the closest value equal to or greater than the target
 		/// </summary>
-		/// <param name="list">The list to search through. Must be sorted in descending order</param>
-		/// <param name="targetValue">The target value to search for</param>
+		/// <param name="list">The list to search through. Must be sorted according to the given comparer</param>
+		/// <param name="item">The target value to search for</param>
 		/// <returns>The index of the nearest value, or -1 if not found</returns>
-		public static int NearestBelowDescending<T>(this IList<T> list, T targetValue) where T : IComparable<T>
-		{ //****************************************
-			int StartIndex = 0, EndIndex = list.Count - 1, CompareResult;
-			//****************************************
+		public static int NearestAbove<T>(this IList<T> list, T item) => list.NearestAbove(0, list.Count, item, null);
 
-			if (list.Count == 0)
-				return -1;
+		/// <summary>
+		/// Searches a sorted list, returning the index of the closest value equal to or greater than the target
+		/// </summary>
+		/// <param name="list">The list to search through. Must be sorted according to the given comparer</param>
+		/// <param name="item">The target value to search for</param>
+		/// <param name="comparer">A comparer that describes the sorting of the list. If null, represents the default comparer</param>
+		/// <returns>The index of the nearest value, or -1 if not found</returns>
+		public static int NearestAbove<T>(this IList<T> list, T item, IComparer<T>? comparer) => list.NearestAbove(0, list.Count, item, comparer);
 
-			while (StartIndex < EndIndex)
+		/// <summary>
+		/// Searches a sorted list, returning the index of the closest value equal to or greater than the target
+		/// </summary>
+		/// <param name="list">The list to search through. Must be sorted according to the given comparer</param>
+		/// <param name="index">The starting index to search from</param>
+		/// <param name="count">The number of items following the index to search</param>
+		/// <param name="item">The target value to search for</param>
+		/// <param name="comparer">A comparer that describes the sorting of the list. If null, represents the default comparer</param>
+		/// <returns>The index of the nearest value, or -1 if not found</returns>
+		public static int NearestAbove<T>(this IList<T> list, int index, int count, T item, IComparer<T>? comparer)
+		{
+			var Position = list.BinarySearch(index, count, item, comparer ??= Comparer<T>.Default);
+
+			if (Position > 0)
 			{
-				var MiddleIndex = StartIndex + ((EndIndex - StartIndex) >> 1);
-				CompareResult = list[MiddleIndex].CompareTo(targetValue);
+				Position = ~Position;
 
-				//Log.Debug("Check {0}: {1} ({2})", MiddleIndex, Dates[MiddleIndex].Ticks, CompareResult);
-
-				if (CompareResult > 0) // Index is greater than the target. The target is somewhere above
-					StartIndex = MiddleIndex + 1;
-				else if (CompareResult < 0) // Index is less than the target. The target is somewhere below
-					EndIndex = MiddleIndex - 1;
-				else // Found the target!
-					return MiddleIndex;
+				if (Position == index + count && comparer.Compare(list[index + count - 1], item) < 0)
+					return -1; // The last item in the list is less than our target, so no match
 			}
 
-			CompareResult = list[StartIndex].CompareTo(targetValue);
-
-			//Log.Debug("Inexact {0}: {1} ({2})", StartIndex, Dates[StartIndex].Ticks, CompareResult);
-
-			if (CompareResult <= 0) // The current start location is less than our target, it will do
-				return StartIndex;
-
-			// Start location is greater than our target, move one up
-			StartIndex++;
-
-			// Ensure we're still within range
-			if (StartIndex < list.Count)
-				return StartIndex;
-
-			return -1;
+			return Position;
 		}
+
+		/// <summary>
+		/// Searches a sorted list, returning the index of the closest value equal to or greater than the target
+		/// </summary>
+		/// <param name="list">The list to search through. Must be sorted according to the given comparer</param>
+		/// <param name="item">The target value to search for</param>
+		/// <returns>The index of the nearest value, or -1 if not found</returns>
+		public static int NearestAbove<T>(this IReadOnlyList<T> list, T item) => list.NearestAbove(0, list.Count, item, null);
+
+		/// <summary>
+		/// Searches a sorted list, returning the index of the closest value equal to or greater than the target
+		/// </summary>
+		/// <param name="list">The list to search through. Must be sorted according to the given comparer</param>
+		/// <param name="item">The target value to search for</param>
+		/// <param name="comparer">A comparer that describes the sorting of the list. If null, represents the default comparer</param>
+		/// <returns>The index of the nearest value, or -1 if not found</returns>
+		public static int NearestAbove<T>(this IReadOnlyList<T> list, T item, IComparer<T>? comparer) => list.NearestAbove(0, list.Count, item, comparer);
+
+		/// <summary>
+		/// Searches a sorted list, returning the index of the closest value equal to or greater than the target
+		/// </summary>
+		/// <param name="list">The list to search through. Must be sorted according to the given comparer</param>
+		/// <param name="index">The starting index to search from</param>
+		/// <param name="count">The number of items following the index to search</param>
+		/// <param name="item">The target value to search for</param>
+		/// <param name="comparer">A comparer that describes the sorting of the list. If null, represents the default comparer</param>
+		/// <returns>The index of the nearest value, or -1 if not found</returns>
+		public static int NearestAbove<T>(this IReadOnlyList<T> list, int index, int count, T item, IComparer<T>? comparer)
+		{
+			var Position = list.BinarySearch(index, count, item, comparer ??= Comparer<T>.Default);
+
+			if (Position > 0)
+			{
+				Position = ~Position;
+
+				if (Position == index + count && comparer.Compare(list[index + count - 1], item) < 0)
+					return -1; // The last item in the list is less than our target, so no match
+			}
+
+			return Position;
+		}
+
+		/// <summary>
+		/// Searches a sorted list, returning the index of the closest value equal to or less than the target
+		/// </summary>
+		/// <param name="list">The list to search through. Must be sorted according to the given comparer</param>
+		/// <param name="item">The target value to search for</param>
+		/// <returns>The index of the nearest value, or -1 if not found</returns>
+		public static int NearestBelow<T>(this IList<T> list, T item) => list.NearestBelow(0, list.Count, item, null);
+
+		/// <summary>
+		/// Searches a sorted list, returning the index of the closest value equal to or less than the target
+		/// </summary>
+		/// <param name="list">The list to search through. Must be sorted according to the given comparer</param>
+		/// <param name="item">The target value to search for</param>
+		/// <param name="comparer">A comparer that describes the sorting of the list. If null, represents the default comparer</param>
+		/// <returns>The index of the nearest value, or -1 if not found</returns>
+		public static int NearestBelow<T>(this IList<T> list, T item, IComparer<T>? comparer) => list.NearestBelow(0, list.Count, item, comparer);
+
+		/// <summary>
+		/// Searches a sorted list, returning the index of the closest value equal to or less than the target
+		/// </summary>
+		/// <param name="list">The list to search through. Must be sorted according to the given comparer</param>
+		/// <param name="index">The starting index to search from</param>
+		/// <param name="count">The number of items following the index to search</param>
+		/// <param name="item">The target value to search for</param>
+		/// <param name="comparer">A comparer that describes the sorting of the list. If null, represents the default comparer</param>
+		/// <returns>The index of the nearest value, or -1 if not found</returns>
+		public static int NearestBelow<T>(this IList<T> list, int index, int count, T item, IComparer<T>? comparer)
+		{
+			var Position = list.BinarySearch(index, count, item, comparer ??= Comparer<T>.Default);
+
+			if (Position > 0)
+			{
+				Position = ~Position;
+
+				if (Position == index && comparer.Compare(list[index], item) > 0)
+					return -1; // The first item in the list is greater than our target, so no match
+			}
+
+			return Position;
+		}
+
+		/// <summary>
+		/// Searches a sorted list, returning the index of the closest value equal to or less than the target
+		/// </summary>
+		/// <param name="list">The list to search through. Must be sorted according to the given comparer</param>
+		/// <param name="item">The target value to search for</param>
+		/// <returns>The index of the nearest value, or -1 if not found</returns>
+		public static int NearestBelow<T>(this IReadOnlyList<T> list, T item) => list.NearestBelow(0, list.Count, item, null);
+
+		/// <summary>
+		/// Searches a sorted list, returning the index of the closest value equal to or less than the target
+		/// </summary>
+		/// <param name="list">The list to search through. Must be sorted according to the given comparer</param>
+		/// <param name="item">The target value to search for</param>
+		/// <param name="comparer">A comparer that describes the sorting of the list. If null, represents the default comparer</param>
+		/// <returns>The index of the nearest value, or -1 if not found</returns>
+		public static int NearestBelow<T>(this IReadOnlyList<T> list, T item, IComparer<T>? comparer) => list.NearestBelow(0, list.Count, item, comparer);
+
+		/// <summary>
+		/// Searches a sorted list, returning the index of the closest value equal to or less than the target
+		/// </summary>
+		/// <param name="list">The list to search through. Must be sorted according to the given comparer</param>
+		/// <param name="index">The starting index to search from</param>
+		/// <param name="count">The number of items following the index to search</param>
+		/// <param name="item">The target value to search for</param>
+		/// <param name="comparer">A comparer that describes the sorting of the list. If null, represents the default comparer</param>
+		/// <returns>The index of the nearest value, or -1 if not found</returns>
+		public static int NearestBelow<T>(this IReadOnlyList<T> list, int index, int count, T item, IComparer<T>? comparer)
+		{
+			var Position = list.BinarySearch(index, count, item, comparer ??= Comparer<T>.Default);
+
+			if (Position > 0)
+			{
+				Position = ~Position;
+
+				if (Position == index && comparer.Compare(list[index], item) > 0)
+					return -1; // The first item in the list is greater than our target, so no match
+			}
+
+			return Position;
+		}
+
 	}
 }

@@ -101,7 +101,7 @@ namespace System.Collections.Concurrent
 				{
 					try
 					{
-						var OldValue = (TValue)MyHandle.Target;
+						var OldValue = (TValue?)MyHandle.Target;
 
 						// Yes. If the reference is the same, no need to change anything
 						if (object.ReferenceEquals(OldValue, value))
@@ -155,8 +155,9 @@ namespace System.Collections.Concurrent
 		public TValue AddOrUpdate(TKey key, Func<TKey, TValue> valueCallback, Func<TKey, TValue, TValue> updateCallback)
 		{	//****************************************
 			GCReference NewHandle;
-			
-			TValue OldValue, NewValue;
+
+			TValue? OldValue;
+			TValue NewValue;
 			//****************************************
 			
 			for (; ;)
@@ -166,7 +167,7 @@ namespace System.Collections.Concurrent
 				{
 					try
 					{
-						OldValue = (TValue)MyHandle.Target;
+						OldValue = (TValue?)MyHandle.Target;
 					}
 					catch (InvalidOperationException)
 					{
@@ -241,7 +242,7 @@ namespace System.Collections.Concurrent
 		public TValue AddOrUpdate(TKey key, TValue value, Func<TKey, TValue, TValue> updateCallback)
 		{
 			if (value == null)
-				throw new ArgumentNullException("Cannot add null to a Weak Dictionary");
+				throw new ArgumentNullException(nameof(value), "Cannot add null to a Weak Dictionary");
 			
 			return AddOrUpdate(key, (innerKey) => value, updateCallback);
 		}
@@ -312,7 +313,7 @@ namespace System.Collections.Concurrent
 				{
 					try
 					{
-						var MyValue = (TValue)MyHandle.Target;
+						var MyValue = (TValue?)MyHandle.Target;
 
 						// Yes, does the target still exist?
 						if (MyValue != null)
@@ -407,7 +408,7 @@ namespace System.Collections.Concurrent
 				{
 					try
 					{
-						var MyValue = (TValue)MyHandle.Target;
+						var MyValue = (TValue?)MyHandle.Target;
 
 						// Yes, does the target still exist?
 						if (MyValue != null)
@@ -488,7 +489,7 @@ namespace System.Collections.Concurrent
 		public bool Remove(TKey key, TValue value)
 		{
 			if (value == null)
-				throw new ArgumentNullException("Cannot have a null in a Weak Dictionary");
+				throw new ArgumentNullException(nameof(value), "Cannot have a null in a Weak Dictionary");
 			
 			// Is this key in the dictionary?
 			if (!_Dictionary.TryGetValue(key, out var MyHandle))
@@ -496,7 +497,7 @@ namespace System.Collections.Concurrent
 
 			try
 			{
-				var MyValue = (TValue)MyHandle.Target;
+				var MyValue = (TValue?)MyHandle.Target;
 
 				// Is the referenced value as expected?
 				if (MyValue != value)
@@ -525,17 +526,17 @@ namespace System.Collections.Concurrent
 		public KeyValuePair<TKey, TValue>[] RemoveAll()
 		{	//****************************************
 			var MyValues = new List<KeyValuePair<TKey, TValue>>(_Dictionary.Count);
-			TValue MyValue;
+			TValue? MyValue;
 			//****************************************
 
-			while (_Dictionary.Count > 0)
+			while (!_Dictionary.IsEmpty)
 			{
 				foreach (var MyKey in _Dictionary.Keys)
 				{
 					if (!_Dictionary.TryRemove(MyKey, out var MyHandle))
 						continue;
 
-					MyValue = (TValue)MyHandle.Target;
+					MyValue = (TValue?)MyHandle.Target;
 
 					if (MyValue != null)
 						MyValues.Add(new KeyValuePair<TKey, TValue>(MyKey, MyValue));
@@ -627,7 +628,7 @@ namespace System.Collections.Concurrent
 			try
 			{
 				// Yes, is the reference valid?
-				value = (TValue)MyHandle.Target;
+				value = (TValue?)MyHandle.Target!;
 
 				return value != null;
 			}
@@ -646,11 +647,15 @@ namespace System.Collections.Concurrent
 		/// <param name="key">The key to remove</param>
 		/// <param name="value">The value to remove, if still referenced. Null if the key was not found or was found but the reference expired</param>
 		/// <returns>True if the key was found and still referenced, otherwise false</returns>
-		public bool TryRemove(TKey key, out TValue value)
+		public bool TryRemove(TKey key,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+			out TValue value)
 		{
 			if (_Dictionary.TryRemove(key, out var MyHandle))
 			{
-				value = (TValue)MyHandle.Target;
+				value = (TValue?)MyHandle.Target!;
 				
 				MyHandle.Dispose();
 				
@@ -676,8 +681,9 @@ namespace System.Collections.Concurrent
 			out TValue newValue)
 		{	//****************************************
 			GCReference NewHandle;
-			
-			TValue OldValue, NewValue;
+
+			TValue? OldValue;
+			TValue NewValue;
 			//****************************************
 			
 			for (; ;)
@@ -692,7 +698,7 @@ namespace System.Collections.Concurrent
 
 				try
 				{
-					OldValue = (TValue)MyHandle.Target;
+					OldValue = (TValue?)MyHandle.Target;
 				}
 				catch (InvalidOperationException)
 				{
@@ -712,7 +718,7 @@ namespace System.Collections.Concurrent
 				NewValue = updateCallback(key, OldValue);
 				
 				if (NewValue == null)
-					throw new ArgumentNullException("Cannot add null to a Weak Dictionary");
+					throw new InvalidOperationException("Cannot add null to a Weak Dictionary");
 				
 				// Yes. If the old and new references are the same, no need to change anything
 				// Check now, rather than earlier, so we can return true if it was 'updated' correctly
@@ -754,14 +760,14 @@ namespace System.Collections.Concurrent
 		{	//****************************************
 			GCReference NewHandle;
 			
-			TValue OldValue;
+			TValue? OldValue;
 			//****************************************
 			
 			if (newValue == null)
-				throw new ArgumentNullException("Cannot add null to a Weak Dictionary");
+				throw new ArgumentNullException(nameof(newValue), "Cannot add null to a Weak Dictionary");
 			
 			if (oldValue == null)
-				throw new ArgumentNullException("Cannot have a null in a Weak Dictionary");
+				throw new ArgumentNullException(nameof(oldValue), "Cannot have a null in a Weak Dictionary");
 			
 			for (; ;)
 			{
@@ -771,7 +777,7 @@ namespace System.Collections.Concurrent
 
 				try
 				{
-					OldValue = (TValue)MyHandle.Target;
+					OldValue = (TValue?)MyHandle.Target;
 				}
 				catch (InvalidOperationException)
 				{
@@ -914,7 +920,10 @@ namespace System.Collections.Concurrent
 					try
 					{
 						// Yes, return the reference whether valid or not
-						return (TValue)MyHandle.Target;
+						var Value = (TValue?)MyHandle.Target;
+
+						if (Value != null)
+							return Value;
 					}
 					catch (InvalidOperationException)
 					{
@@ -973,11 +982,11 @@ namespace System.Collections.Concurrent
 					}
 
 					var MyCurrent = _Enumerator.Current;
-					TValue MyValue;
+					TValue? MyValue;
 
 					try
 					{
-						MyValue = (TValue)MyCurrent.Value.Target;
+						MyValue = (TValue?)MyCurrent.Value.Target;
 					}
 					catch (InvalidOperationException)
 					{

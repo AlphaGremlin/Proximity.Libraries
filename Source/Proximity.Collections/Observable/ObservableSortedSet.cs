@@ -113,7 +113,7 @@ namespace System.Collections.Observable
 			//****************************************
 
 			if (items == null)
-				throw new ArgumentNullException("items");
+				throw new ArgumentNullException(nameof(items));
 
 			var NewItems = items.ToArray();
 
@@ -251,7 +251,7 @@ namespace System.Collections.Observable
 		public override void RemoveAt(int index)
 		{
 			if (index < 0 || index >= _Size)
-				throw new ArgumentOutOfRangeException("index");
+				throw new ArgumentOutOfRangeException(nameof(index));
 
 			var Item = _Items[index];
 
@@ -273,7 +273,7 @@ namespace System.Collections.Observable
 		public override void RemoveRange(int index, int count)
 		{
 			if (index < 0 || index + count > _Size)
-				throw new ArgumentOutOfRangeException("index");
+				throw new ArgumentOutOfRangeException(nameof(index));
 
 			var OldItems = new T[count];
 
@@ -315,7 +315,7 @@ namespace System.Collections.Observable
 		protected override T InternalGet(int index)
 		{
 			if (index < 0 || index >= _Size)
-				throw new ArgumentOutOfRangeException("index");
+				throw new ArgumentOutOfRangeException(nameof(index));
 
 			return _Items[index];
 		}
@@ -467,11 +467,11 @@ namespace System.Collections.Observable
 					return;
 
 				if (value < _Size)
-					throw new ArgumentException("value");
+					throw new ArgumentOutOfRangeException(nameof(value));
 
 				if (value == 0)
 				{
-					_Items = new T[0];
+					_Items = Array.Empty<T>();
 
 					return;
 				}

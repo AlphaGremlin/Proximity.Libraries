@@ -217,7 +217,7 @@ namespace System.Collections.Generic
 		public void AddRange(IEnumerable<KeyValuePair<TLeft, TRight>> items)
 		{
 			if (items == null)
-				throw new ArgumentNullException("items");
+				throw new ArgumentNullException(nameof(items));
 
 			// Gather all the items to add, calculating their keys as we go
 			var NewItems = items.Select(pair => new Entry
@@ -528,7 +528,7 @@ namespace System.Collections.Generic
 		/// <param name="item">The element to remove</param>
 		public bool Remove(KeyValuePair<TLeft, TRight> item)
 		{
-			if (item.Key == null || item.Value == null) throw new ArgumentNullException("The left or right values are null", nameof(item));
+			if (item.Key == null || item.Value == null) throw new ArgumentNullException(nameof(item), "The left or right values are null");
 
 			var Index = IndexOf(item);
 
@@ -908,7 +908,7 @@ namespace System.Collections.Generic
 		private bool TryAdd(KeyValuePair<TLeft, TRight> item, bool replace, out int index)
 		{
 			if (item.Key == null || item.Value == null)
-				throw new ArgumentNullException("The key or value are null", nameof(item));
+				throw new ArgumentNullException(nameof(item), "The key or value are null");
 
 			if (_LeftBuckets.Length == 0)
 				EnsureCapacity(0);
@@ -1098,24 +1098,24 @@ namespace System.Collections.Generic
 
 		bool IReadOnlyDictionary<TLeft, TRight>.TryGetValue(TLeft key, out TRight value) => TryGetRight(key, out value!);
 
-		void IList.Insert(int index, object value) => throw new NotSupportedException();
+		void IList.Insert(int index, object? value) => throw new NotSupportedException();
 
 		void IList<KeyValuePair<TLeft, TRight>>.Insert(int index, KeyValuePair<TLeft, TRight> item) => throw new NotSupportedException();
 
 		void ICollection.CopyTo(Array array, int index) => CopyTo((KeyValuePair<TLeft, TRight>[])array, index);
 
-		void IDictionary.Add(object key, object value)
+		void IDictionary.Add(object? key, object? value)
 		{
-			if (!(key is TLeft Left))
+			if (key is not TLeft Left)
 				throw new ArgumentException("Not a supported key", nameof(key));
 
-			if (!(value is TRight Right))
+			if (value is not TRight Right)
 				throw new ArgumentException("Not a supported value", nameof(value));
 
 			Add(Left, Right);
 		}
 
-		bool IDictionary.Contains(object value)
+		bool IDictionary.Contains(object? value)
 		{
 			if (value is KeyValuePair<TLeft, TRight> Pair)
 				return Contains(Pair);
@@ -1126,7 +1126,7 @@ namespace System.Collections.Generic
 			return false;
 		}
 
-		void IDictionary.Remove(object value)
+		void IDictionary.Remove(object? value)
 		{
 			if (value is KeyValuePair<TLeft, TRight> Pair)
 				Remove(Pair);
@@ -1134,7 +1134,7 @@ namespace System.Collections.Generic
 				Remove(new KeyValuePair<TLeft, TRight>(Left, Right));
 		}
 
-		int IList.Add(object value)
+		int IList.Add(object? value)
 		{
 			if (value is KeyValuePair<TLeft, TRight> Pair)
 			{
@@ -1155,7 +1155,7 @@ namespace System.Collections.Generic
 			throw new ArgumentException("Not a supported value", nameof(value));
 		}
 
-		bool IList.Contains(object value)
+		bool IList.Contains(object? value)
 		{
 			if (value is KeyValuePair<TLeft, TRight> Pair)
 				return Contains(Pair);
@@ -1166,7 +1166,7 @@ namespace System.Collections.Generic
 			return false;
 		}
 
-		int IList.IndexOf(object value)
+		int IList.IndexOf(object? value)
 		{
 			if (value is KeyValuePair<TLeft, TRight> Pair)
 				return IndexOf(Pair);
@@ -1177,7 +1177,7 @@ namespace System.Collections.Generic
 			return -1;
 		}
 
-		void IList.Remove(object value)
+		void IList.Remove(object? value)
 		{
 			if (value is KeyValuePair<TLeft, TRight> Pair)
 				Remove(Pair);
@@ -1271,7 +1271,7 @@ namespace System.Collections.Generic
 			set => throw new NotSupportedException();
 		}
 
-		object? IDictionary.this[object key]
+		object? IDictionary.this[object? key]
 		{
 			get
 			{
@@ -1282,10 +1282,10 @@ namespace System.Collections.Generic
 			}
 			set
 			{
-				if (!(key is TLeft Left))
+				if (key is not TLeft Left)
 					throw new ArgumentException("Not a supported key", nameof(key));
 
-				if (!(value is TRight Right))
+				if (value is not TRight Right)
 					throw new ArgumentException("Not a supported value", nameof(value));
 
 				if (!TryAdd(new KeyValuePair<TLeft, TRight>(Left, Right), true, out _))
@@ -1293,7 +1293,7 @@ namespace System.Collections.Generic
 			}
 		}
 
-		object IList.this[int index]
+		object? IList.this[int index]
 		{
 			get => GetByIndex(index);
 			set => throw new NotSupportedException();
@@ -1531,7 +1531,7 @@ namespace System.Collections.Generic
 
 			DictionaryEntry IDictionaryEnumerator.Entry => Current;
 
-			object? IDictionaryEnumerator.Key => _Parent.Current.Key;
+			object IDictionaryEnumerator.Key => _Parent.Current.Key;
 
 			object? IDictionaryEnumerator.Value => _Parent.Current.Value;
 		}

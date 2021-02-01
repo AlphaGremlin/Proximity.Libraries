@@ -22,7 +22,7 @@ namespace Proximity.Collections
 				throw new ArgumentOutOfRangeException(nameof(minimum));
 
 			// Find the next largest prime
-			var Index = Primes.NearestAboveAscending(minimum);
+			var Index = ((IReadOnlyList<int>)Primes).NearestAbove(minimum);
 
 			if (Index >= 0)
 				return Primes[Index];

@@ -53,27 +53,27 @@ namespace System.Collections.ReadOnly
 
 		void ICollection<T>.Add(T item) => throw new NotSupportedException("List is read-only");
 
-		int IList.Add(object value) => throw new NotSupportedException("List is read-only");
+		int IList.Add(object? value) => throw new NotSupportedException("List is read-only");
 
 		void ICollection<T>.Clear() => throw new NotSupportedException("List is read-only");
 
 		void IList.Clear() => throw new NotSupportedException("List is read-only");
 
-		bool IList.Contains(object value) => value is T Item ? Contains(Item) : false;
+		bool IList.Contains(object? value) => value is T Item && Contains(Item);
 
 		void ICollection.CopyTo(Array array, int index) => CopyTo((T[])array, index);
 
 		IEnumerator IEnumerable.GetEnumerator() => _Source.GetEnumerator();
 
-		int IList.IndexOf(object value) => value is T Item ? IndexOf(Item) : -1;
+		int IList.IndexOf(object? value) => value is T Item ? IndexOf(Item) : -1;
 
-		void IList.Insert(int index, object value) => throw new NotSupportedException("List is read-only");
+		void IList.Insert(int index, object? value) => throw new NotSupportedException("List is read-only");
 
 		void IList<T>.Insert(int index, T item) => throw new NotSupportedException("List is read-only");
 
 		bool ICollection<T>.Remove(T item) => throw new NotSupportedException("List is read-only");
 
-		void IList.Remove(object value) => throw new NotSupportedException("List is read-only");
+		void IList.Remove(object? value) => throw new NotSupportedException("List is read-only");
 
 		void IList.RemoveAt(int index) => throw new NotSupportedException("List is read-only");
 
@@ -92,7 +92,7 @@ namespace System.Collections.ReadOnly
 		/// </summary>
 		public int Count => _Source.Count;
 
-		object IList.this[int index]
+		object? IList.this[int index]
 		{
 			get => _Source[index]!;
 			set => throw new NotSupportedException("List is read-only");

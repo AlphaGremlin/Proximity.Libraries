@@ -10,7 +10,7 @@ namespace System.Collections.ReadOnly
 	/// <summary>
 	/// Represents a read-only wrapper around a Dictionary
 	/// </summary>
-	public class ReadOnlyDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IDictionary
+	public class ReadOnlyDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IDictionary where TKey : notnull
 	{	//****************************************
 		private readonly IDictionary<TKey, TValue> _Dictionary;
 		private KeyCollection? _Keys;
@@ -79,7 +79,7 @@ namespace System.Collections.ReadOnly
 
 		void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> item) => throw new NotSupportedException("Dictionary is read-only");
 
-		void IDictionary.Add(object key, object value) => throw new NotSupportedException("Dictionary is read-only");
+		void IDictionary.Add(object? key, object? value) => throw new NotSupportedException("Dictionary is read-only");
 
 		void IDictionary<TKey, TValue>.Add(TKey key, TValue value) => throw new NotSupportedException("Dictionary is read-only");
 
@@ -87,7 +87,7 @@ namespace System.Collections.ReadOnly
 
 		void IDictionary.Clear() => throw new NotSupportedException("Dictionary is read-only");
 
-		bool IDictionary.Contains(object key) => key is TKey Key && ContainsKey(Key);
+		bool IDictionary.Contains(object? key) => key is TKey Key && ContainsKey(Key);
 
 		void ICollection.CopyTo(Array array, int index) => _Dictionary.CopyTo((KeyValuePair<TKey, TValue>[])array, index);
 
@@ -95,7 +95,7 @@ namespace System.Collections.ReadOnly
 
 		bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> item) => throw new NotSupportedException("Dictionary is read-only");
 
-		void IDictionary.Remove(object key) => throw new NotSupportedException("Dictionary is read-only");
+		void IDictionary.Remove(object? key) => throw new NotSupportedException("Dictionary is read-only");
 
 		bool IDictionary<TKey, TValue>.Remove(TKey key) => throw new NotSupportedException("Dictionary is read-only");
 
@@ -145,7 +145,7 @@ namespace System.Collections.ReadOnly
 			set => throw new NotSupportedException("Dictionary is read-only");
 		}
 		
-		object IDictionary.this[object key]
+		object? IDictionary.this[object key]
 		{
 			get => _Dictionary[(TKey)key]!;
 			set => throw new NotSupportedException("Dictionary is read-only");
@@ -270,7 +270,7 @@ namespace System.Collections.ReadOnly
 
 			public object Key => Entry.Key;
 
-			public object Value => Entry.Value;
+			public object? Value => Entry.Value;
 
 			public object Current => _Enumerator.Current;
 		}

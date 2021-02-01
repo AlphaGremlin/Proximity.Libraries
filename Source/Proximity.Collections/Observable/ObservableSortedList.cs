@@ -115,7 +115,7 @@ namespace System.Collections.Observable
 		public override void AddRange(IEnumerable<KeyValuePair<TKey, TValue>> items)
 		{
 			if (items == null)
-				throw new ArgumentNullException("items");
+				throw new ArgumentNullException(nameof(items));
 
 			var NewItems = items.Select(item => new RangeKeyValue(item.Key, item.Value)).ToArray();
 
@@ -287,7 +287,7 @@ namespace System.Collections.Observable
 		/// <param name="key">The key of the element to remove</param>
 		public bool Remove(TKey key)
 		{
-			if (key == null) throw new ArgumentNullException("key");
+			if (key == null) throw new ArgumentNullException(nameof(key));
 
 			var Index = IndexOfKey(key);
 
@@ -306,7 +306,8 @@ namespace System.Collections.Observable
 		/// <inheritdoc />
 		public override bool Remove(KeyValuePair<TKey, TValue> item)
 		{
-			if (item.Key == null) throw new ArgumentNullException("key");
+			if (item.Key == null)
+				throw new ArgumentNullException(nameof(item), "Key is null");
 
 			var Index = IndexOf(item);
 
@@ -388,7 +389,7 @@ namespace System.Collections.Observable
 		public override void RemoveAt(int index)
 		{
 			if (index < 0 || index >= _Size)
-				throw new ArgumentOutOfRangeException("index");
+				throw new ArgumentOutOfRangeException(nameof(index));
 
 			var Key = _Keys[index];
 			var Value = _Values[index];
@@ -413,7 +414,7 @@ namespace System.Collections.Observable
 		public override void RemoveRange(int index, int count)
 		{
 			if (index < 0 || index + count > _Size)
-				throw new ArgumentOutOfRangeException("index");
+				throw new ArgumentOutOfRangeException(nameof(index));
 
 			var OldItems = new KeyValuePair<TKey, TValue>[count];
 
@@ -456,7 +457,7 @@ namespace System.Collections.Observable
 		/// <returns>True if the key was found, otherwise false</returns>
 		public bool TryGetValue(TKey key, out TValue value)
 		{
-			if (key == null) throw new ArgumentNullException("key");
+			if (key == null) throw new ArgumentNullException(nameof(key));
 
 			var Index = IndexOfKey(key);
 
@@ -477,7 +478,7 @@ namespace System.Collections.Observable
 		protected override KeyValuePair<TKey, TValue> InternalGet(int index)
 		{
 			if (index < 0 || index >= _Size)
-				throw new ArgumentOutOfRangeException("index");
+				throw new ArgumentOutOfRangeException(nameof(index));
 
 			return new KeyValuePair<TKey, TValue>(_Keys[index], _Values[index]);
 		}
@@ -492,7 +493,7 @@ namespace System.Collections.Observable
 		protected override void InternalSet(int index, KeyValuePair<TKey, TValue> value)
 		{
 			if (index < 0 || index >= _Size)
-				throw new ArgumentOutOfRangeException("index");
+				throw new ArgumentOutOfRangeException(nameof(index));
 
 			// Are we changing the key?
 			var OldKey = _Keys[index];
@@ -694,12 +695,12 @@ namespace System.Collections.Observable
 					return;
 
 				if (value < _Size)
-					throw new ArgumentException("value");
+					throw new ArgumentOutOfRangeException(nameof(value));
 
 				if (value == 0)
 				{
-					_Keys = new TKey[0];
-					_Values = new TValue[0];
+					_Keys = Array.Empty<TKey>();
+					_Values = Array.Empty<TValue>();
 
 					return;
 				}

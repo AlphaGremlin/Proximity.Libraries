@@ -25,7 +25,7 @@ namespace System.Collections.Observable
 		public void ExceptWith(IEnumerable<T> other)
 		{
 			if (other == null)
-				throw new ArgumentException("other");
+				throw new ArgumentNullException(nameof(other));
 
 			var BitMask = new BitArray(Count);
 
@@ -50,7 +50,7 @@ namespace System.Collections.Observable
 		public void IntersectWith(IEnumerable<T> other)
 		{
 			if (other == null)
-				throw new ArgumentException("other");
+				throw new ArgumentNullException(nameof(other));
 
 			var BitMask = new BitArray(Count, true);
 
@@ -76,13 +76,13 @@ namespace System.Collections.Observable
 		public bool IsProperSubsetOf(IEnumerable<T> other)
 		{
 			if (other == null)
-				throw new ArgumentException("other");
+				throw new ArgumentNullException(nameof(other));
 
 			if (Count == 0)
 				return other.Any(); // For a proper subset, there has to be at least one item in Other that isn't in us
 
 			// If there are less items in the other collection than in us, we cannot be a subset
-			if (other is ICollection<T> && ((ICollection<T>)other).Count < Count)
+			if (other is ICollection<T> OtherCollection && OtherCollection.Count < Count)
 				return false;
 
 			var BitMask = new BitArray(Count, false);
@@ -115,7 +115,7 @@ namespace System.Collections.Observable
 		public bool IsProperSupersetOf(IEnumerable<T> other)
 		{
 			if (other == null)
-				throw new ArgumentException("other");
+				throw new ArgumentNullException(nameof(other));
 
 			// If we're empty, we cannot be a proper superset
 			if (Count == 0)
@@ -164,7 +164,7 @@ namespace System.Collections.Observable
 		public bool IsSubsetOf(IEnumerable<T> other)
 		{
 			if (other == null)
-				throw new ArgumentException("other");
+				throw new ArgumentNullException(nameof(other));
 
 			if (Count == 0)
 				return true;
@@ -200,7 +200,7 @@ namespace System.Collections.Observable
 		public bool IsSupersetOf(IEnumerable<T> other)
 		{
 			if (other == null)
-				throw new ArgumentException("other");
+				throw new ArgumentNullException(nameof(other));
 
 			// If the other collection is empty, we're automatically a superset
 			if (!other.Any())
@@ -230,7 +230,7 @@ namespace System.Collections.Observable
 		public bool Overlaps(IEnumerable<T> other)
 		{
 			if (other == null)
-				throw new ArgumentException("other");
+				throw new ArgumentNullException(nameof(other));
 
 			// If there's no items, we can't overlap
 			if (Count == 0)
@@ -259,7 +259,7 @@ namespace System.Collections.Observable
 		public bool SetEquals(IEnumerable<T> other)
 		{
 			if (other == null)
-				throw new ArgumentException("other");
+				throw new ArgumentNullException(nameof(other));
 
 			// If we've no items, ensure the other collection is also empty
 			if (Count == 0)
@@ -293,7 +293,7 @@ namespace System.Collections.Observable
 		public void SymmetricExceptWith(IEnumerable<T> other)
 		{
 			if (other == null)
-				throw new ArgumentException("other");
+				throw new ArgumentNullException(nameof(other));
 
 			try
 			{

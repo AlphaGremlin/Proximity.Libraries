@@ -14,7 +14,11 @@ namespace System.Collections.Observable
 	/// </summary>
 	/// <typeparam name="T">The type of value within the set</typeparam>
 	public class ObservableSet<T> : ObservableBaseSet<T>, ISet<T>, IList<T>
-	{	//****************************************
+#if !NETSTANDARD
+		, IReadOnlySet<T>
+#endif
+		where T : notnull
+	{ //****************************************
 		private int[] _Keys;
 		private T[] _Values;
 		private int _Size;
@@ -116,7 +120,7 @@ namespace System.Collections.Observable
 			//****************************************
 
 			if (items == null)
-				throw new ArgumentNullException("items");
+				throw new ArgumentNullException(nameof(items));
 
 			var NewItems = new List<T>(items);
 
@@ -220,7 +224,7 @@ namespace System.Collections.Observable
 		public override void RemoveAt(int index)
 		{
 			if (index < 0 || index >= _Size)
-				throw new ArgumentOutOfRangeException("index");
+				throw new ArgumentOutOfRangeException(nameof(index));
 
 			var Item = _Values[index];
 
@@ -243,7 +247,7 @@ namespace System.Collections.Observable
 		public override void RemoveRange(int index, int count)
 		{
 			if (index < 0 || index + count > _Size)
-				throw new ArgumentOutOfRangeException("index");
+				throw new ArgumentOutOfRangeException(nameof(index));
 
 			var OldItems = new T[count];
 
@@ -286,7 +290,7 @@ namespace System.Collections.Observable
 		protected override T InternalGet(int index)
 		{
 			if (index < 0 || index >= _Size)
-				throw new ArgumentOutOfRangeException("index");
+				throw new ArgumentOutOfRangeException(nameof(index));
 
 			return _Values[index];
 		}
@@ -453,12 +457,12 @@ namespace System.Collections.Observable
 					return;
 
 				if (value < _Size)
-					throw new ArgumentException("value");
+					throw new ArgumentOutOfRangeException(nameof(value));
 
 				if (value == 0)
 				{
-					_Keys = new int[0];
-					_Values = new T[0];
+					_Keys = Array.Empty<int>();
+					_Values = Array.Empty<T>();
 
 					return;
 				}

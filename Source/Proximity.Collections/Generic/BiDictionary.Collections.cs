@@ -55,7 +55,7 @@ namespace System.Collections.Generic
 				throw new ArgumentException("Cannot copy to target array");
 			}
 
-			bool IList.Contains(object value)
+			bool IList.Contains(object? value)
 			{
 				if (value is T Item)
 					return Contains(Item);
@@ -63,7 +63,7 @@ namespace System.Collections.Generic
 				return false;
 			}
 
-			int IList.IndexOf(object value)
+			int IList.IndexOf(object? value)
 			{
 				if (value is T Item)
 					return IndexOf(Item);
@@ -75,19 +75,19 @@ namespace System.Collections.Generic
 
 			void ICollection<T>.Add(T item) => throw new NotSupportedException();
 
-			int IList.Add(object item) => throw new NotSupportedException();
+			int IList.Add(object? item) => throw new NotSupportedException();
 
 			void ICollection<T>.Clear() => throw new NotSupportedException();
 
 			void IList.Clear() => throw new NotSupportedException();
 
-			void IList.Insert(int index, object value) => throw new NotSupportedException();
+			void IList.Insert(int index, object? value) => throw new NotSupportedException();
 
 			void IList<T>.Insert(int index, T item) => throw new NotSupportedException();
 
 			bool ICollection<T>.Remove(T item) => throw new NotSupportedException();
 
-			void IList.Remove(object item) => throw new NotSupportedException();
+			void IList.Remove(object? item) => throw new NotSupportedException();
 
 			void IList.RemoveAt(int index) => throw new NotSupportedException();
 

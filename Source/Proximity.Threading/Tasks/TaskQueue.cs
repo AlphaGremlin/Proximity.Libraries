@@ -393,7 +393,7 @@ namespace System.Threading.Tasks
 				{
 					_CanCancel = 1;
 					_Token = token;
-					_Registration = token.Register((state) => ((BaseTask<TResult> )state).Cancel(), this, false);
+					_Registration = token.Register((state) => ((BaseTask<TResult>)state).Cancel(), this, false);
 				}
 				else
 				{

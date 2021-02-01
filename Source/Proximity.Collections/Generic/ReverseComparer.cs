@@ -40,7 +40,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		private protected sealed class GenericComparer<T> : ReverseComparer<T> where T : IComparable<T>
 		{
-			public override int Compare(T x, T y)
+			public override int Compare(T? x, T? y)
 			{
 				if (x == null)
 					return (y == null) ? 0 : 1;
@@ -56,7 +56,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		private protected sealed class ObjectComparer<T> : ReverseComparer<T>
 		{
-			public override int Compare(T x, T y) => Comparer<T>.Default.Compare(y, x);
+			public override int Compare(T? x, T? y) => Comparer<T>.Default.Compare(y!, x!);
 		}
 
 		/// <summary>
@@ -71,7 +71,7 @@ namespace System.Collections.Generic
 
 			//****************************************
 
-			public override int Compare(T x, T y) => _Comparer.Compare(y, x);
+			public override int Compare(T? x, T? y) => _Comparer.Compare(y!, x!);
 		}
 	}
 
@@ -90,11 +90,11 @@ namespace System.Collections.Generic
 		/// <param name="x">The first object to compare</param>
 		/// <param name="y">The second object to compare</param>
 		/// <returns>A signed integer indicating the relative values of x and y</returns>
-		public abstract int Compare(T x, T y);
+		public abstract int Compare(T? x, T? y);
 
 		//****************************************
 
-		int IComparer.Compare(object x, object y)
+		int IComparer.Compare(object? x, object? y)
 		{
 			if (x is null)
 				return (y is null) ? 0 : 1;
@@ -132,7 +132,7 @@ namespace System.Collections.Generic
 			
 			// Does TValue implement the generic IComparable?
 			if (typeof(IComparable<T>).IsAssignableFrom(MyType))
-				return (ReverseComparer<T>)Activator.CreateInstance(typeof(GenericComparer<>).MakeGenericType(MyType));
+				return (ReverseComparer<T>)Activator.CreateInstance(typeof(GenericComparer<>).MakeGenericType(MyType))!;
 			
 			// Is TValue a nullable value?
 			if (MyType.IsGenericType && MyType.GetGenericTypeDefinition() == typeof(Nullable<>))
@@ -141,7 +141,7 @@ namespace System.Collections.Generic
 				
 				// Does the child type implement the generic IComparable?
 				if (typeof(IComparable<>).MakeGenericType(MySubType).IsAssignableFrom(MySubType))
-					return (ReverseComparer<T>)Activator.CreateInstance(typeof(NullableComparer<>).MakeGenericType(MySubType));
+					return (ReverseComparer<T>)Activator.CreateInstance(typeof(NullableComparer<>).MakeGenericType(MySubType))!;
 			}
 			
 			// Nope, just use the default object comparer then

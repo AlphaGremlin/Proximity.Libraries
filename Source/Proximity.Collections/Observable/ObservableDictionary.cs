@@ -13,7 +13,7 @@ namespace System.Collections.Observable
 	/// <summary>
 	/// Implements an Observable Dictionary supporting WPF binding
 	/// </summary>
-	public class ObservableDictionary<TKey, TValue> : ObservableBase<KeyValuePair<TKey, TValue>>, IDictionary<TKey, TValue>, IList<KeyValuePair<TKey, TValue>>, IReadOnlyDictionary<TKey, TValue>
+	public class ObservableDictionary<TKey, TValue> : ObservableBase<KeyValuePair<TKey, TValue>>, IDictionary<TKey, TValue>, IList<KeyValuePair<TKey, TValue>>, IReadOnlyDictionary<TKey, TValue> where TKey : notnull
 	{	//****************************************
 		private const string KeysName = "Keys";
 		private const string ValuesName = "Values";
@@ -168,7 +168,7 @@ namespace System.Collections.Observable
 		public override void AddRange(IEnumerable<KeyValuePair<TKey, TValue>> items)
 		{
 			if (items == null)
-				throw new ArgumentNullException("items");
+				throw new ArgumentNullException(nameof(items));
 
 			// Gather all the items to add, calculating their keys as we go
 			var NewItems = items.Select(pair => new Entry { HashCode = Comparer.GetHashCode(pair.Key) & HashCodeMask, Item = pair }).ToArray();
@@ -367,7 +367,7 @@ namespace System.Collections.Observable
 		/// <param name="key">The key of the element to remove</param>
 		public bool Remove(TKey key)
 		{
-			if (key == null) throw new ArgumentNullException("key");
+			if (key == null) throw new ArgumentNullException(nameof(key));
 
 			var Index = IndexOfKey(key);
 
@@ -382,7 +382,7 @@ namespace System.Collections.Observable
 		/// <inheritdoc />
 		public override bool Remove(KeyValuePair<TKey, TValue> item)
 		{
-			if (item.Key == null) throw new ArgumentNullException("key");
+			if (item.Key == null) throw new ArgumentNullException(nameof(item), "Key is null");
 
 			var Index = IndexOf(item);
 
@@ -570,7 +570,7 @@ namespace System.Collections.Observable
 			var LastIndex = index + count;
 
 			if (index < 0 || LastIndex > _Size)
-				throw new ArgumentOutOfRangeException("index");
+				throw new ArgumentOutOfRangeException(nameof(index));
 
 			// Since a remove does not slide down the values above, and simply relocates the last item,
 			// we need to remove in reverse so we don't accidentally move one of the items we plan to remove
@@ -666,7 +666,7 @@ namespace System.Collections.Observable
 #endif
 			out TValue value)
 		{
-			if (key == null) throw new ArgumentNullException("key");
+			if (key == null) throw new ArgumentNullException(nameof(key));
 
 			var Index = IndexOfKey(key);
 

@@ -17,7 +17,7 @@ namespace System.Collections.Observable
 	/// <remarks>
 	/// <para>This does not support dynamic sorting, so if values are modified outside of this collection and it changes their positioning, data corruption will result</para>
 	/// </remarks>
-	public class ObservableListView<T> : IList<T>, IList, INotifyCollectionChanged, INotifyPropertyChanged, IDisposable, IReadOnlyList<T>
+	public class ObservableListView<T> : IList<T>, IList, INotifyCollectionChanged, INotifyPropertyChanged, IDisposable, IReadOnlyList<T> where T : notnull
 	{	//****************************************
 		private const string CountString = "Count";
 		private const string IndexerName = "Item[]";
@@ -48,7 +48,7 @@ namespace System.Collections.Observable
 		/// </summary>
 		/// <param name="source">The source list to wrap</param>
 		/// <param name="comparison">A delegate to perform the comparison with</param>
-		public ObservableListView(IList<T> source, Comparison<T> comparison) : this(source, new ComparisonComparer<T>(comparison), null, null)
+		public ObservableListView(IList<T> source, Comparison<T> comparison) : this(source, Comparer<T>.Create(comparison), null, null)
 		{
 		}
 
@@ -96,7 +96,7 @@ namespace System.Collections.Observable
 		/// <param name="source">The source list to wrap</param>
 		/// <param name="comparison">A delegate to perform the comparison with</param>
 		/// <param name="filter">A filter to apply to the source list</param>
-		public ObservableListView(IList<T> source, Comparison<T> comparison, Predicate<T>? filter) : this(source, comparison != null ? new ComparisonComparer<T>(comparison) : null, filter, null)
+		public ObservableListView(IList<T> source, Comparison<T> comparison, Predicate<T>? filter) : this(source, comparison != null ? Comparer<T>.Create(comparison) : null, filter, null)
 		{
 		}
 		
@@ -117,7 +117,7 @@ namespace System.Collections.Observable
 		/// <param name="comparison">A delegate to perform the comparison with</param>
 		/// <param name="filter">A filter to apply to the source list</param>
 		/// <param name="maximum">The maximum number of items to show</param>
-		public ObservableListView(IList<T> source, Comparison<T>? comparison, Predicate<T>? filter, int? maximum) : this(source, comparison != null ? new ComparisonComparer<T>(comparison) : null, filter, maximum)
+		public ObservableListView(IList<T> source, Comparison<T>? comparison, Predicate<T>? filter, int? maximum) : this(source, comparison != null ? Comparer<T>.Create(comparison) : null, filter, maximum)
 		{
 		}
 
@@ -187,6 +187,8 @@ namespace System.Collections.Observable
 		{
 			if (_Source is INotifyCollectionChanged CollectionChanged)
 				CollectionChanged.CollectionChanged -= OnSourceChanged;
+
+			GC.SuppressFinalize(this);
 		}
 
 		/// <summary>
@@ -216,13 +218,13 @@ namespace System.Collections.Observable
 
 		void IList<T>.RemoveAt(int index) => throw new NotSupportedException("List is read-only");
 
-		int IList.Add(object item) => throw new NotSupportedException("List is read-only");
+		int IList.Add(object? item) => throw new NotSupportedException("List is read-only");
 
 		void IList.Clear() => throw new NotSupportedException("List is read-only");
 
-		bool IList.Contains(object value) => value is T Value && Contains(Value);
+		bool IList.Contains(object? value) => value is T Value && Contains(Value);
 
-		int IList.IndexOf(object value)
+		int IList.IndexOf(object? value)
 		{
 			if (value is T Value)
 				return IndexOf(Value);
@@ -230,9 +232,9 @@ namespace System.Collections.Observable
 			return -1;
 		}
 
-		void IList.Insert(int index, object item) => throw new NotSupportedException("List is read-only");
+		void IList.Insert(int index, object? item) => throw new NotSupportedException("List is read-only");
 
-		void IList.Remove(object item) => throw new NotSupportedException("List is read-only");
+		void IList.Remove(object? item) => throw new NotSupportedException("List is read-only");
 
 		void IList.RemoveAt(int index) => throw new NotSupportedException("List is read-only");
 
@@ -556,7 +558,7 @@ namespace System.Collections.Observable
 
 		//****************************************
 
-		private void OnSourceChanged(object sender, NotifyCollectionChangedEventArgs e)
+		private void OnSourceChanged(object? sender, NotifyCollectionChangedEventArgs e)
 		{
 			switch (e.Action)
 			{
@@ -575,25 +577,25 @@ namespace System.Collections.Observable
 				break;
 
 			case NotifyCollectionChangedAction.Add:
-				for (var Index = 0; Index < e.NewItems.Count; Index++)
+				for (var Index = 0; Index < e.NewItems!.Count; Index++)
 				{
-					OnAddCollectionItem((T)e.NewItems[Index]);
+					OnAddCollectionItem((T)e.NewItems[Index]!);
 				}
 				break;
 
 			case NotifyCollectionChangedAction.Remove:
-				for (var Index = 0; Index < e.OldItems.Count; Index++)
+				for (var Index = 0; Index < e.OldItems!.Count; Index++)
 				{
-					OnRemoveCollectionItem((T)e.OldItems[Index]);
+					OnRemoveCollectionItem((T)e.OldItems[Index]!);
 				}
 				break;
 
 			case NotifyCollectionChangedAction.Replace:
-				var MinCount = Math.Min(e.OldItems.Count, e.NewItems.Count);
+				var MinCount = Math.Min(e.OldItems!.Count, e.NewItems!.Count);
 
 				for (var Index = 0; Index < MinCount; Index++)
 				{
-					T OldItem = (T)e.OldItems[Index], NewItem = (T)e.NewItems[Index];
+					T OldItem = (T)e.OldItems[Index]!, NewItem = (T)e.NewItems[Index]!;
 
 					// Has the item changed?
 					if (Comparer.Compare(OldItem, NewItem) == 0)
@@ -605,13 +607,13 @@ namespace System.Collections.Observable
 				// Replace may involve removing items
 				for (var Index = MinCount; MinCount < e.OldItems.Count; Index++)
 				{
-					OnRemoveCollectionItem((T)e.OldItems[Index]);
+					OnRemoveCollectionItem((T)e.OldItems[Index]!);
 				}
 
 				// Alternatively, it may involve adding new items
 				for (var Index = MinCount; MinCount < e.NewItems.Count; Index++)
 				{
-					OnAddCollectionItem((T)e.NewItems[Index]);
+					OnAddCollectionItem((T)e.NewItems[Index]!);
 				}
 				break;
 
@@ -658,7 +660,7 @@ namespace System.Collections.Observable
 		private void CheckIndex(int index)
 		{
 			if (index >= _VisibleSize)
-				throw new ArgumentOutOfRangeException("index", "Index is outside the visible range of items");
+				throw new ArgumentOutOfRangeException(nameof(index), "Index is outside the visible range of items");
 		}
 
 		private int GetVisibleCount()
@@ -764,7 +766,7 @@ namespace System.Collections.Observable
 			set => throw new NotSupportedException("List is read-only");
 		}
 
-		object IList.this[int index]
+		object? IList.this[int index]
 		{
 			get { CheckIndex(index); return Items[index]!; }
 			set => throw new NotSupportedException("List is read-only");
@@ -874,11 +876,11 @@ namespace System.Collections.Observable
 
 			//****************************************
 
-			int IComparer<T>.Compare(T x, T y)
+			int IComparer<T>.Compare(T? x, T? y)
 			{
 				// Figure out if our values are filtered
-				var XResult = _Filter(x);
-				var YResult = _Filter(y);
+				var XResult = _Filter(x!);
+				var YResult = _Filter(y!);
 
 				// Are their filtering statuses the same?
 				if (XResult != YResult)
@@ -886,7 +888,7 @@ namespace System.Collections.Observable
 					return XResult ? -1 : 1;
 				
 				// Filtering status is the same. Use the normal comparer
-				return _Comparer.Compare(x, y);
+				return _Comparer.Compare(x!, y!);
 			}
 		}
 	}

@@ -16,12 +16,25 @@ namespace System.Threading.Tasks
 	public static class ValueTaskExtensions
 	{
 		/// <summary>
+		/// Awaits the given ValueTask with minimal allocations
+		/// </summary>
+		/// <param name="task">The task to await and ignore the result of</param>
+		public static void Ignore(this ValueTask task) => ValueTaskIgnore.Ignore(task);
+
+		/// <summary>
+		/// Awaits the given ValueTask with minimal allocations
+		/// </summary>
+		/// <typeparam name="T">The type of result</typeparam>
+		/// <param name="task">The task to await and ignore the result of</param>
+		public static void Ignore<T>(this ValueTask<T> task) => ValueTaskIgnore<T>.Ignore(task);
+
+		/// <summary>
 		/// Interleaves an enumeration of tasks, returning the results in the order they complete
 		/// </summary>
 		/// <param name="source">The enumeration of tasks to interleave</param>
 		/// <param name="token">A cancellation token to cancel the enumeration</param>
 		/// <returns>An enumeration that returns the tasks in order of completion</returns>
-		public static InterleaveValueTaskAsyncEnumerable<TResult> Interleave<TResult>(this IEnumerable<ValueTask<TResult>> source, CancellationToken token = default) => new InterleaveValueTaskAsyncEnumerable<TResult>(source, token);
+		public static InterleaveValueTaskAsyncEnumerable<T> Interleave<T>(this IEnumerable<ValueTask<T>> source, CancellationToken token = default) => new InterleaveValueTaskAsyncEnumerable<T>(source, token);
 
 		/// <summary>
 		/// Interleaves an enumeration of tasks, returning them in the order they complete
@@ -29,7 +42,7 @@ namespace System.Threading.Tasks
 		/// <param name="source">The enumeration of tasks to interleave</param>
 		/// <param name="token">A cancellation token to cancel the enumeration</param>
 		/// <returns>An enumeration that returns the task and the original index of the task in order of completion</returns>
-		public static InterleaveValueTaskIndexAsyncEnumerable<TResult> InterleaveIndex<TResult>(this IEnumerable<ValueTask<TResult>> source, CancellationToken token = default) => new InterleaveValueTaskIndexAsyncEnumerable<TResult>(source, token);
+		public static InterleaveValueTaskIndexAsyncEnumerable<T> InterleaveIndex<T>(this IEnumerable<ValueTask<T>> source, CancellationToken token = default) => new InterleaveValueTaskIndexAsyncEnumerable<T>(source, token);
 
 		/// <summary>
 		/// Wraps the given task, waiting for it to complete or the given token to cancel
@@ -81,7 +94,7 @@ namespace System.Threading.Tasks
 		/// <returns>A task returning the result of the original task, and cancelling if either the original task or the given token cancel</returns>
 		/// <remarks>Will throw any exceptions from the original task, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
-		public static ValueTask<TResult> When<TResult>(this ValueTask<TResult> task, CancellationToken token) => task.When(Timeout.InfiniteTimeSpan, token);
+		public static ValueTask<T> When<T>(this ValueTask<T> task, CancellationToken token) => task.When(Timeout.InfiniteTimeSpan, token);
 
 		/// <summary>
 		/// Wraps the given task, waiting for it to complete or the given timeout to occur
@@ -93,7 +106,7 @@ namespace System.Threading.Tasks
 		/// <remarks>Will throw any exceptions from the original task, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
 		/// <exception cref="TimeoutException">The timeout elapsed</exception>
-		public static ValueTask<TResult> When<TResult>(this ValueTask<TResult> task, int milliseconds, CancellationToken token = default) => task.When(new TimeSpan(milliseconds * TimeSpan.TicksPerMillisecond), token);
+		public static ValueTask<T> When<T>(this ValueTask<T> task, int milliseconds, CancellationToken token = default) => task.When(new TimeSpan(milliseconds * TimeSpan.TicksPerMillisecond), token);
 
 		/// <summary>
 		/// Wraps the given task, waiting for it to complete or the given token to cancel
@@ -105,16 +118,16 @@ namespace System.Threading.Tasks
 		/// <remarks>Will throw any exceptions from the original task, unless the token cancels first. In which case, exceptions will be silently ignored (no UnhandledTaskException).</remarks>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
 		/// <exception cref="TimeoutException">The timeout elapsed</exception>
-		public static ValueTask<TResult> When<TResult>(this ValueTask<TResult> task, TimeSpan timeout, CancellationToken token = default)
+		public static ValueTask<T> When<T>(this ValueTask<T> task, TimeSpan timeout, CancellationToken token = default)
 		{
 			if ((!token.CanBeCanceled && timeout == Timeout.InfiniteTimeSpan) || task.IsCompleted)
 				return task;
 
-			var Instance = TaskCancelInstance<TResult>.GetOrCreate(token, timeout);
+			var Instance = TaskCancelInstance<T>.GetOrCreate(token, timeout);
 
 			Instance.Attach(task);
 
-			return new ValueTask<TResult>(Instance, Instance.Version);
+			return new ValueTask<T>(Instance, Instance.Version);
 		}
 
 		/// <summary>

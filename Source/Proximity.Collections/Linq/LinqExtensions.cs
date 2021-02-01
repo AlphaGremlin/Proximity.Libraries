@@ -232,6 +232,25 @@ namespace System.Linq
 			return source.ToArray();
 		}
 
+#if !NETSTANDARD
+		/// <summary>
+		/// Converts an enumerable to a read-only set
+		/// </summary>
+		/// <typeparam name="T">The type of element</typeparam>
+		/// <param name="source">The enumeration to convert</param>
+		/// <returns>A read-only list</returns>
+		public static IReadOnlySet<T> ToReadOnlySet<T>(this IEnumerable<T> source)
+		{
+			if (source is null)
+				throw new ArgumentNullException(nameof(source));
+
+			if (source is IReadOnlySet<T> ReadOnlySet)
+				return ReadOnlySet;
+
+			return source.ToHashSet();
+		}
+#endif
+
 		/// <summary>
 		/// Converts an enumerable to a queue
 		/// </summary>

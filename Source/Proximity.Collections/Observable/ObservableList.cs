@@ -42,7 +42,7 @@ namespace System.Collections.Observable
 			var AddedItem = false;
 			var StartIndex = Items.Count;
 
-			if (items == null) throw new ArgumentNullException("items");
+			if (items == null) throw new ArgumentNullException(nameof(items));
 
 			foreach (var MyItem in items)
 			{

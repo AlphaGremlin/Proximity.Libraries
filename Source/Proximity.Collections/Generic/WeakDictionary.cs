@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security;
@@ -14,7 +15,7 @@ namespace System.Collections.Generic
 	/// Represents a dictionary that holds only weak references to its values
 	/// </summary>
 	/// <remarks>This class does not implement IDictionary or ICollection, as many of the methods have no meaning until you have strong references to the contents</remarks>
-	public class WeakDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>, IDisposable where TValue : class
+	public class WeakDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>, IDisposable where TKey : notnull where TValue : class
 	{	//****************************************
 		private readonly Dictionary<TKey, GCReference> _Dictionary;
 		private readonly GCHandleType _HandleType;
@@ -87,7 +88,7 @@ namespace System.Collections.Generic
 		public void Add(TKey key, TValue value)
 		{
 			if (value == null)
-				throw new ArgumentNullException("Cannot add null to a Weak Dictionary");
+				throw new ArgumentNullException(nameof(value), "Cannot add null to a Weak Dictionary");
 			
 			// Is this key already in the dictionary?
 			if (_Dictionary.TryGetValue(key, out var MyHandle))
@@ -170,6 +171,8 @@ namespace System.Collections.Generic
 		{
 			foreach (var MyValue in _Dictionary.Values)
 				MyValue.Dispose();
+
+			GC.SuppressFinalize(this);
 		}
 
 		/// <summary>
@@ -206,14 +209,14 @@ namespace System.Collections.Generic
 		public bool Remove(TKey key, TValue value)
 		{
 			if (value == null)
-				throw new ArgumentNullException("Cannot have a null in a Weak Dictionary");
+				throw new ArgumentNullException(nameof(value), "Cannot have a null in a Weak Dictionary");
 
 			// Is this key in the dictionary?
 			if (!_Dictionary.TryGetValue(key, out var MyHandle))
 				return false;
 
 			// Is the referenced value as expected?
-			if ((TValue)MyHandle.Target != value)
+			if ((TValue?)MyHandle.Target != value)
 				return false;
 			
 			_Dictionary.Remove(key); // Should always succeed
@@ -230,7 +233,11 @@ namespace System.Collections.Generic
 		/// <param name="value">Receives the value associated with the key, or null if the key does not exist or the value is no longer available</param>
 		/// <returns>True if the key was found and the value was available, otherwise False</returns>
 		/// <remarks>Does not remove the key if the value is no longer available</remarks>
-		public bool TryGetValue(TKey key, out TValue value)
+		public bool TryGetValue(TKey key,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+			out TValue value)
 		{
 			// Does the item exist in the dictionary?
 			if (!_Dictionary.TryGetValue(key, out var MyHandle))
@@ -241,7 +248,7 @@ namespace System.Collections.Generic
 			}
 			
 			// Yes, is the reference valid?
-			value = (TValue)MyHandle.Target;
+			value = (TValue?)MyHandle.Target!;
 			
 			return value != null;
 		}
@@ -252,7 +259,11 @@ namespace System.Collections.Generic
 		/// <param name="key">The key to remove</param>
 		/// <param name="value">The value to remove, if still referenced. Null if the key was not found or was found but the reference expired</param>
 		/// <returns>True if the key was found and still referenced, otherwise false</returns>
-		public bool TryRemove(TKey key, out TValue value)
+		public bool TryRemove(TKey key,
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+#endif
+			out TValue value)
 		{
 			if (!_Dictionary.TryGetValue(key, out var MyHandle))
 			{
@@ -261,7 +272,7 @@ namespace System.Collections.Generic
 				return false;
 			}
 
-			value = (TValue)MyHandle.Target;
+			value = (TValue?)MyHandle.Target!;
 
 			_Dictionary.Remove(key); // Should always succeed
 
@@ -324,7 +335,10 @@ namespace System.Collections.Generic
 				if (_Dictionary.TryGetValue(key, out var MyHandle))
 				{
 					// Yes, return the reference whether valid or not
-					return (TValue)MyHandle.Target;
+					var Value = (TValue?)MyHandle.Target;
+
+					if (Value != null)
+						return Value;
 				}
 				
 				throw new KeyNotFoundException();
@@ -332,7 +346,7 @@ namespace System.Collections.Generic
 			set
 			{
 				if (value == null)
-					throw new ArgumentNullException("Cannot add null to a Weak Dictionary");
+					throw new ArgumentNullException(nameof(value), "Cannot add null to a Weak Dictionary");
 				
 				// If the key already exists, we need to free the weak reference
 				if (_Dictionary.ContainsKey(key))
@@ -388,11 +402,11 @@ namespace System.Collections.Generic
 					}
 
 					var MyCurrent = _Enumerator.Current;
-					TValue MyValue;
+					TValue? MyValue;
 
 					try
 					{
-						MyValue = (TValue)MyCurrent.Value.Target;
+						MyValue = (TValue?)MyCurrent.Value.Target;
 					}
 					catch (InvalidOperationException)
 					{

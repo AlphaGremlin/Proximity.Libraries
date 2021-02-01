@@ -15,7 +15,7 @@ namespace System.Collections.Generic
 	/// <typeparam name="TKey">The type of key</typeparam>
 	/// <typeparam name="TValue">The type of value</typeparam>
 	/// <remarks>Note that index locations can change in response to Remove operations</remarks>
-	public class IndexedDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IList<KeyValuePair<TKey, TValue>>, IReadOnlyList<KeyValuePair<TKey, TValue>>, IList, IDictionary
+	public class IndexedDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IList<KeyValuePair<TKey, TValue>>, IReadOnlyList<KeyValuePair<TKey, TValue>>, IList, IDictionary where TKey : notnull
 	{ //****************************************
 		private const int HashCodeMask = 0x7FFFFFFF;
 		//****************************************
@@ -143,7 +143,7 @@ namespace System.Collections.Generic
 		public int Add(KeyValuePair<TKey, TValue> item)
 		{
 			if (!TryAdd(item, false, out var Index))
-				throw new ArgumentException(nameof(item));
+				throw new ArgumentException("Key already exists", nameof(item));
 
 			return Index;
 		}
@@ -607,23 +607,23 @@ namespace System.Collections.Generic
 		void IDictionary<TKey, TValue>.Add(TKey key, TValue value)
 		{
 			if (!TryAdd(new KeyValuePair<TKey, TValue>(key, value), false, out _))
-				throw new ArgumentException(nameof(key));
+				throw new ArgumentException("Key already exists", nameof(key));
 		}
 
 		void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> item) => Add(item);
 
-		void IDictionary.Add(object key, object value)
+		void IDictionary.Add(object? key, object? value)
 		{
-			if (!(key is TKey MyKey))
+			if (key is not TKey MyKey)
 				throw new ArgumentException("Not a supported key", nameof(key));
 
-			if (!(value is TValue MyValue))
+			if (value is not TValue MyValue)
 				throw new ArgumentException("Not a supported value", nameof(value));
 
 			Add(new KeyValuePair<TKey, TValue>(MyKey, MyValue));
 		}
 
-		bool IDictionary.Contains(object value)
+		bool IDictionary.Contains(object? value)
 		{
 			if (value is KeyValuePair<TKey, TValue> MyPair)
 				return Contains(MyPair);
@@ -634,7 +634,7 @@ namespace System.Collections.Generic
 			return false;
 		}
 
-		void IDictionary.Remove(object value)
+		void IDictionary.Remove(object? value)
 		{
 			if (value is KeyValuePair<TKey, TValue> MyPair)
 			{
@@ -649,7 +649,7 @@ namespace System.Collections.Generic
 			}
 		}
 
-		int IList.Add(object value)
+		int IList.Add(object? value)
 		{
 			if (value is KeyValuePair<TKey, TValue> MyPair)
 			{
@@ -670,7 +670,7 @@ namespace System.Collections.Generic
 			throw new ArgumentException("Not a supported value", nameof(value));
 		}
 
-		bool IList.Contains(object value)
+		bool IList.Contains(object? value)
 		{
 			if (value is KeyValuePair<TKey, TValue> MyPair)
 				return Contains(MyPair);
@@ -681,7 +681,7 @@ namespace System.Collections.Generic
 			return false;
 		}
 
-		int IList.IndexOf(object value)
+		int IList.IndexOf(object? value)
 		{
 			if (value is KeyValuePair<TKey, TValue> MyPair)
 				return IndexOf(MyPair);
@@ -692,7 +692,7 @@ namespace System.Collections.Generic
 			return -1;
 		}
 
-		void IList.Remove(object value)
+		void IList.Remove(object? value)
 		{
 			if (value is KeyValuePair<TKey, TValue> MyPair)
 			{
@@ -715,7 +715,7 @@ namespace System.Collections.Generic
 
 		IEnumerator IEnumerable.GetEnumerator() => new Enumerator(this);
 
-		void IList.Insert(int index, object value) => throw new NotSupportedException();
+		void IList.Insert(int index, object? value) => throw new NotSupportedException();
 
 		void IList<KeyValuePair<TKey, TValue>>.Insert(int index, KeyValuePair<TKey, TValue> item) => throw new NotSupportedException();
 
@@ -943,11 +943,11 @@ namespace System.Collections.Generic
 
 		bool IList.IsReadOnly => false;
 
-		object? IDictionary.this[object key]
+		object? IDictionary.this[object? key]
 		{
 			get
 			{
-				if (!(key is TKey MyKey))
+				if (key is not TKey MyKey)
 					throw new KeyNotFoundException();
 
 				var Index = IndexOfKey(MyKey);
@@ -959,10 +959,10 @@ namespace System.Collections.Generic
 			}
 			set
 			{
-				if (!(key is TKey MyKey))
+				if (key is not TKey MyKey)
 					throw new ArgumentException("Not a supported key", nameof(key));
 
-				if (!(value is TValue MyValue))
+				if (value is not TValue MyValue)
 					throw new ArgumentException("Not a supported value", nameof(value));
 
 				TryAdd(new KeyValuePair<TKey, TValue>(MyKey, MyValue), true, out _);
@@ -977,7 +977,7 @@ namespace System.Collections.Generic
 			set => throw new NotSupportedException();
 		}
 
-		object IList.this[int index]
+		object? IList.this[int index]
 		{
 			get => GetByIndex(index);
 			set => throw new NotSupportedException();
@@ -1088,7 +1088,7 @@ namespace System.Collections.Generic
 
 			DictionaryEntry IDictionaryEnumerator.Entry => Current;
 
-			object? IDictionaryEnumerator.Key => _Parent.Current.Key;
+			object IDictionaryEnumerator.Key => _Parent.Current.Key;
 
 			object? IDictionaryEnumerator.Value => _Parent.Current.Value;
 		}
@@ -1198,7 +1198,7 @@ namespace System.Collections.Generic
 				throw new ArgumentException("Cannot copy to target array");
 			}
 
-			bool IList.Contains(object value)
+			bool IList.Contains(object? value)
 			{
 				if (value is T Item)
 					return Contains(Item);
@@ -1206,7 +1206,7 @@ namespace System.Collections.Generic
 				return false;
 			}
 
-			int IList.IndexOf(object value)
+			int IList.IndexOf(object? value)
 			{
 				if (value is T Item)
 					return IndexOf(Item);
@@ -1218,19 +1218,19 @@ namespace System.Collections.Generic
 
 			void ICollection<T>.Add(T item) => throw new NotSupportedException();
 
-			int IList.Add(object item) => throw new NotSupportedException();
+			int IList.Add(object? item) => throw new NotSupportedException();
 
 			void ICollection<T>.Clear() => throw new NotSupportedException();
 
 			void IList.Clear() => throw new NotSupportedException();
 
-			void IList.Insert(int index, object value) => throw new NotSupportedException();
+			void IList.Insert(int index, object? value) => throw new NotSupportedException();
 
 			void IList<T>.Insert(int index, T item) => throw new NotSupportedException();
 
 			bool ICollection<T>.Remove(T item) => throw new NotSupportedException();
 
-			void IList.Remove(object item) => throw new NotSupportedException();
+			void IList.Remove(object? item) => throw new NotSupportedException();
 
 			void IList.RemoveAt(int index) => throw new NotSupportedException();
 

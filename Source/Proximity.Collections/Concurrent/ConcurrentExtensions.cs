@@ -23,7 +23,7 @@ namespace System.Collections.Concurrent
 		/// <param name="wasAdded">Set to True if a new value was added, False if the value was retrieved</param>
 		/// <returns>The value associated with key.</returns>
 		/// <remarks>Implements a loop around TryGetValue and TryAdd</remarks>
-		public static TValue GetOrAdd<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, TValue newValue, out bool wasAdded)
+		public static TValue GetOrAdd<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, TValue newValue, out bool wasAdded) where TKey : notnull
 		{	//****************************************
 			TValue OutValue;
 			//****************************************
@@ -54,7 +54,7 @@ namespace System.Collections.Concurrent
 		/// <param name="wasAdded">Set to True if a new value was added, False if the value was retrieved</param>
 		/// <returns>The value associated with key.</returns>
 		/// <remarks>Implements a loop around TryGetValue and TryAdd</remarks>
-		public static TValue GetOrAdd<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, Func<TKey, TValue> valueFactory, out bool wasAdded)
+		public static TValue GetOrAdd<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, Func<TKey, TValue> valueFactory, out bool wasAdded) where TKey : notnull
 		{	//****************************************
 			TValue OutValue;
 			//****************************************
@@ -89,7 +89,7 @@ namespace System.Collections.Concurrent
 		/// <param name="wasAdded">Set to True if a new value was added, False if the value was retrieved</param>
 		/// <returns>The value associated with key.</returns>
 		/// <remarks>Implements a loop around TryGetValue and TryAdd</remarks>
-		public static TValue GetOrAdd<TKey, TArg, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, Func<TKey, TArg, TValue> valueFactory, TArg factoryArgument, out bool wasAdded)
+		public static TValue GetOrAdd<TKey, TArg, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, Func<TKey, TArg, TValue> valueFactory, TArg factoryArgument, out bool wasAdded) where TKey : notnull
 		{ //****************************************
 			TValue OutValue;
 			//****************************************
@@ -123,7 +123,7 @@ namespace System.Collections.Concurrent
 		/// <param name="wasAdded">Receives whether the value was added or updated</param>
 		/// <returns>The value stored in the dictionary</returns>
 		/// <remarks>Implements a loop around TryGetValue, TryUpdate and TryAdd</remarks>
-		public static TValue AddOrUpdate<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, TValue addValue, Func<TKey, TValue, TValue> updateValue, out bool wasAdded)
+		public static TValue AddOrUpdate<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, TValue addValue, Func<TKey, TValue, TValue> updateValue, out bool wasAdded) where TKey : notnull
 		{	//****************************************
 			TValue NewValue;
 			//****************************************
@@ -162,7 +162,7 @@ namespace System.Collections.Concurrent
 		/// <param name="wasAdded">Receives whether the value was added or updated</param>
 		/// <returns>The value stored in the dictionary</returns>
 		/// <remarks>Implements a loop around TryGetValue, TryUpdate and TryAdd</remarks>
-		public static TValue AddOrUpdate<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, Func<TKey, TValue> addValue, Func<TKey, TValue, TValue> updateValue, out bool wasAdded)
+		public static TValue AddOrUpdate<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, Func<TKey, TValue> addValue, Func<TKey, TValue, TValue> updateValue, out bool wasAdded) where TKey : notnull
 		{	//****************************************
 			TValue NewValue;
 			//****************************************
@@ -208,7 +208,7 @@ namespace System.Collections.Concurrent
 		/// <param name="wasAdded">Receives whether the value was added or updated</param>
 		/// <returns>The value stored in the dictionary</returns>
 		/// <remarks>Implements a loop around TryGetValue, TryUpdate and TryAdd</remarks>
-		public static TValue AddOrUpdate<TKey, TValue, TArg>(this ConcurrentDictionary<TKey, TValue> target, TKey key, Func<TKey, TArg, TValue> addValue, Func<TKey, TValue, TArg, TValue> updateValue, TArg factoryArgument, out bool wasAdded)
+		public static TValue AddOrUpdate<TKey, TValue, TArg>(this ConcurrentDictionary<TKey, TValue> target, TKey key, Func<TKey, TArg, TValue> addValue, Func<TKey, TValue, TArg, TValue> updateValue, TArg factoryArgument, out bool wasAdded) where TKey : notnull
 		{ //****************************************
 			TValue NewValue;
 			//****************************************
@@ -253,7 +253,7 @@ namespace System.Collections.Concurrent
 #if !NETSTANDARD2_0
 			[MaybeNullWhen(false)]
 #endif
-			out TValue newValue)
+			out TValue newValue) where TKey : notnull
 		{
 			while (target.TryGetValue(key, out var OldValue))
 			{
@@ -289,7 +289,7 @@ namespace System.Collections.Concurrent
 #if !NETSTANDARD2_0
 			[MaybeNullWhen(false)]
 #endif
-			out TValue newValue)
+			out TValue newValue) where TKey : notnull
 		{
 			while (target.TryGetValue(key, out var OldValue))
 			{
@@ -317,7 +317,7 @@ namespace System.Collections.Concurrent
 		/// <returns>True if the item was removed, False if key was not found, or the value was not as expected</returns>
 		/// <remarks>Wraps calling IDictionary.Remove(KeyValuePair)</remarks>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static bool Remove<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, TValue expectedValue)
+		public static bool Remove<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, TValue expectedValue) where TKey : notnull
 		{
 			return ((IDictionary<TKey, TValue>)target).Remove(new KeyValuePair<TKey, TValue>(key, expectedValue));
 		}

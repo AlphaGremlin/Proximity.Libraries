@@ -11,11 +11,8 @@ namespace System.Collections.Observable
 	/// <summary>
 	/// Provides an observable view of the dictionary's keys and values
 	/// </summary>
-	public abstract class ObservableDictionaryCollection<T> : IList<T>, ICollection<T>, IList, INotifyCollectionChanged, INotifyPropertyChanged, IReadOnlyCollection<T>
-	{	//****************************************
-		private const string CountString = "Count";
-		//****************************************
-
+	public abstract class ObservableDictionaryCollection<T> : IList<T>, ICollection<T>, IList, INotifyCollectionChanged, INotifyPropertyChanged, IReadOnlyList<T>, IReadOnlyCollection<T>
+	{
 		internal ObservableDictionaryCollection()
 		{
 		}
@@ -56,42 +53,42 @@ namespace System.Collections.Observable
 
 		internal void OnCollectionChanged()
 		{
-			OnPropertyChanged(CountString);
+			OnPropertyChanged(nameof(Count));
 
 			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
 		}
 
 		internal void OnCollectionChanged(NotifyCollectionChangedAction action, T changedItem)
 		{
-			OnPropertyChanged(CountString);
+			OnPropertyChanged(nameof(Count));
 
 			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, changedItem));
 		}
 
 		internal void OnCollectionChanged(NotifyCollectionChangedAction action, T changedItem, int index)
 		{
-			OnPropertyChanged(CountString);
+			OnPropertyChanged(nameof(Count));
 
 			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, changedItem, index));
 		}
 
 		internal void OnCollectionChanged(NotifyCollectionChangedAction action, T changedItem, int newIndex, int oldIndex)
 		{
-			OnPropertyChanged(CountString);
+			OnPropertyChanged(nameof(Count));
 
 			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, changedItem, newIndex, oldIndex));
 		}
 
 		internal void OnCollectionChanged(NotifyCollectionChangedAction action, T newItem, T oldItem, int index)
 		{
-			OnPropertyChanged(CountString);
+			OnPropertyChanged(nameof(Count));
 
 			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, newItem, oldItem, index));
 		}
 
 		internal void OnCollectionChanged(NotifyCollectionChangedAction action, IEnumerable<T> newItems)
 		{
-			OnPropertyChanged(CountString);
+			OnPropertyChanged(nameof(Count));
 
 			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, newItems.ToArray()));
 		}
@@ -106,17 +103,17 @@ namespace System.Collections.Observable
 
 		void ICollection<T>.Add(T item) => throw new NotSupportedException("Collection is read-only");
 
-		int IList.Add(object value) => throw new NotSupportedException("Collection is read-only");
+		int IList.Add(object? value) => throw new NotSupportedException("Collection is read-only");
 
 		void ICollection<T>.Clear() => throw new NotSupportedException("Collection is read-only");
 
 		void IList.Clear() => throw new NotSupportedException("Collection is read-only");
 
-		bool IList.Contains(object value) => value is T Value && Contains(Value);
+		bool IList.Contains(object? value) => value is T Value && Contains(Value);
 
 		void ICollection.CopyTo(Array array, int arrayIndex) => InternalCopyTo(array, arrayIndex);
 
-		int IList.IndexOf(object value)
+		int IList.IndexOf(object? value)
 		{
 			if (value is T Value)
 				return IndexOf(Value);
@@ -124,13 +121,13 @@ namespace System.Collections.Observable
 			return -1;
 		}
 
-		void IList.Insert(int index, object value) => throw new NotSupportedException("Collection is read-only");
+		void IList.Insert(int index, object? value) => throw new NotSupportedException("Collection is read-only");
 
 		void IList<T>.Insert(int index, T item) => throw new NotSupportedException("Collection is read-only");
 
 		bool ICollection<T>.Remove(T item) => throw new NotSupportedException("Collection is read-only");
 
-		void IList.Remove(object value) => throw new NotSupportedException("Collection is read-only");
+		void IList.Remove(object? value) => throw new NotSupportedException("Collection is read-only");
 
 		void IList.RemoveAt(int index) => throw new NotSupportedException("Collection is read-only");
 
@@ -178,7 +175,7 @@ namespace System.Collections.Observable
 			set => throw new NotSupportedException("List is read-only");
 		}
 
-		object IList.this[int index]
+		object? IList.this[int index]
 		{
 			get => this[index]!;
 			set => throw new NotSupportedException("List is read-only");

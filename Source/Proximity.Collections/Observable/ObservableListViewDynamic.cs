@@ -7,7 +7,6 @@ using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Security;
 //****************************************
 
 namespace System.Collections.Observable
@@ -135,7 +134,6 @@ namespace System.Collections.Observable
 		//****************************************
 
 		/// <inheritdoc />
-		[SecuritySafeCritical]
 		public override void Dispose()
 		{
 			base.Dispose();
@@ -151,7 +149,6 @@ namespace System.Collections.Observable
 		//****************************************
 
 		/// <inheritdoc />
-		[SecuritySafeCritical]
 		protected override void OnItemsReset(T[] oldItems)
 		{
 			// Unsubscribe from the old items
@@ -172,7 +169,6 @@ namespace System.Collections.Observable
 		}
 
 		/// <inheritdoc />
-		[SecuritySafeCritical]
 		protected override void OnItemAdded(T newItem, int index)
 		{
 			newItem.PropertyChanged += OnChildPropertyChanged;
@@ -181,7 +177,6 @@ namespace System.Collections.Observable
 		}
 
 		/// <inheritdoc />
-		[SecuritySafeCritical]
 		protected override void OnItemRemoved(T oldItem, int index)
 		{
 			oldItem.PropertyChanged -= OnChildPropertyChanged;
@@ -190,7 +185,6 @@ namespace System.Collections.Observable
 		}
 
 		/// <inheritdoc />
-		[SecuritySafeCritical]
 		protected override void OnItemReplaced(T newItem, T oldItem, int index)
 		{
 			_PreviousValues.Add(newItem, _CloneMethod(newItem));
@@ -203,10 +197,9 @@ namespace System.Collections.Observable
 
 		//****************************************
 
-		[SecuritySafeCritical]
-		private void OnChildPropertyChanged(object sender, PropertyChangedEventArgs e)
+		private void OnChildPropertyChanged(object? sender, PropertyChangedEventArgs e)
 		{	//****************************************
-			var CurrentItem = (T)sender;
+			var CurrentItem = (T)sender!;
 			//****************************************
 			
 			// No need to do anything if there's only one item

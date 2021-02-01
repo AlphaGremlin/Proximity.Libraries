@@ -120,7 +120,7 @@ namespace System.Threading
 				// Try and assign a new task
 				var NewWaitTask = Interlocked.CompareExchange(ref _WaitTask, CurrentWaitTask, null);
 
-				// If we got pre-empted, piggyback of the other task
+				// If we got pre-empted, piggyback off the other task
 				if (NewWaitTask != null)
 					return NewWaitTask.Task;
 

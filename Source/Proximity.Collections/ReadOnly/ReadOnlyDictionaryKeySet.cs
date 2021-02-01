@@ -11,7 +11,11 @@ namespace System.Collections.ReadOnly
 	/// Represents a read-only <see cref="ISet{TKey}"/> wrapper around the given Dictionary's keys
 	/// </summary>
 	public class ReadOnlyDictionaryKeySet<TKey, TValue> : ISet<TKey>, IReadOnlyCollection<TKey>, ICollection
-	{	//****************************************
+#if !NETSTANDARD
+		, IReadOnlySet<TKey>
+#endif
+		where TKey : notnull
+	{ //****************************************
 		private readonly IDictionary<TKey, TValue> _Set;
 		private readonly IEqualityComparer<TKey> _Comparer;
 		//****************************************

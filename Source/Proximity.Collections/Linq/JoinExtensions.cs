@@ -68,7 +68,7 @@ namespace System.Linq
 		/// <param name="rightKeySelect">A selector returning the key to join on for the right item</param>
 		/// <param name="resultSelector">A selector combining the two items into a single result</param>
 		/// <returns>An enumeration returning the result of the full outer join</returns>
-		public static IEnumerable<TResult> FullOuterJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IEnumerable<TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TRight, TKey> rightKeySelect, Func<TLeft, TRight, TResult> resultSelector)
+		public static IEnumerable<TResult> FullOuterJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IEnumerable<TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TRight, TKey> rightKeySelect, Func<TLeft, TRight, TResult> resultSelector) where TKey : notnull
 		{
 			return FullOuterJoin(left, right, leftKeySelect, rightKeySelect, resultSelector, default!, default!, null);
 		}
@@ -83,7 +83,7 @@ namespace System.Linq
 		/// <param name="resultSelector">A selector combining the two items into a single result</param>
 		/// <param name="keyComparer">A comparer to use to compare keys</param>
 		/// <returns>An enumeration returning the result of the full outer join</returns>
-		public static IEnumerable<TResult> FullOuterJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IEnumerable<TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TRight, TKey> rightKeySelect, Func<TLeft, TRight, TResult> resultSelector, IEqualityComparer<TKey>? keyComparer)
+		public static IEnumerable<TResult> FullOuterJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IEnumerable<TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TRight, TKey> rightKeySelect, Func<TLeft, TRight, TResult> resultSelector, IEqualityComparer<TKey>? keyComparer) where TKey : notnull
 		{
 			return FullOuterJoin(left, right, leftKeySelect, rightKeySelect, resultSelector, default!, default!, keyComparer);
 		}
@@ -99,7 +99,7 @@ namespace System.Linq
 		/// <param name="defaultLeft">The default for the left item when a match is not found</param>
 		/// <param name="defaultRight">The default for the right item when a match is not found</param>
 		/// <returns>An enumeration returning the result of the full outer join</returns>
-		public static IEnumerable<TResult> FullOuterJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IEnumerable<TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TRight, TKey> rightKeySelect, Func<TLeft, TRight, TResult> resultSelector, TLeft defaultLeft, TRight defaultRight)
+		public static IEnumerable<TResult> FullOuterJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IEnumerable<TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TRight, TKey> rightKeySelect, Func<TLeft, TRight, TResult> resultSelector, TLeft defaultLeft, TRight defaultRight) where TKey : notnull
 		{
 			return FullOuterJoin(left, right, leftKeySelect, rightKeySelect, resultSelector, defaultLeft, defaultRight, null);
 		}
@@ -116,7 +116,7 @@ namespace System.Linq
 		/// <param name="defaultRight">The default for the right item when a match is not found</param>
 		/// <param name="keyComparer">A comparer to use to compare keys</param>
 		/// <returns>An enumeration returning the result of the full outer join</returns>
-		public static IEnumerable<TResult> FullOuterJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IEnumerable<TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TRight, TKey> rightKeySelect, Func<TLeft, TRight, TResult> resultSelector, TLeft defaultLeft, TRight defaultRight, IEqualityComparer<TKey>? keyComparer)
+		public static IEnumerable<TResult> FullOuterJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IEnumerable<TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TRight, TKey> rightKeySelect, Func<TLeft, TRight, TResult> resultSelector, TLeft defaultLeft, TRight defaultRight, IEqualityComparer<TKey>? keyComparer) where TKey : notnull
 		{ //****************************************
 			JoinItem<TLeft>? LeftValue;
 			var LeftLookup = BuildLookup(left, leftKeySelect, keyComparer);
@@ -171,7 +171,7 @@ namespace System.Linq
 		/// <param name="resultSelector">A selector combining the matching items for a key into a single result</param>
 		/// <param name="keyComparer">A comparer to use to compare keys</param>
 		/// <returns>An enumeration returning the result of the grouped full outer join</returns>
-		public static IEnumerable<TResult> FullOuterGroupJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IEnumerable<TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TRight, TKey> rightKeySelect, Func<IEnumerable<TLeft>, IEnumerable<TRight>, TKey, TResult> resultSelector, IEqualityComparer<TKey>? keyComparer)
+		public static IEnumerable<TResult> FullOuterGroupJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IEnumerable<TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TRight, TKey> rightKeySelect, Func<IEnumerable<TLeft>, IEnumerable<TRight>, TKey, TResult> resultSelector, IEqualityComparer<TKey>? keyComparer) where TKey : notnull
 		{ //****************************************
 			var LeftLookup = BuildLookup(left, leftKeySelect, keyComparer);
 			var RightLookup = BuildLookup(right, rightKeySelect, keyComparer);
@@ -212,7 +212,7 @@ namespace System.Linq
 		/// <param name="rightKeySelect">A selector returning the key to join on for the right item</param>
 		/// <param name="resultSelector">A selector combining the two items into a single result</param>
 		/// <returns>An enumeration returning the result of the full outer join</returns>
-		public static IEnumerable<TResult> LeftOuterJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IEnumerable<TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TRight, TKey> rightKeySelect, Func<TLeft, TRight, TResult> resultSelector)
+		public static IEnumerable<TResult> LeftOuterJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IEnumerable<TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TRight, TKey> rightKeySelect, Func<TLeft, TRight, TResult> resultSelector) where TKey : notnull
 		{
 			return LeftOuterJoin(left, right, leftKeySelect, rightKeySelect, resultSelector, default!, null);
 		}
@@ -228,7 +228,7 @@ namespace System.Linq
 		/// <param name="defaultRight">The default for the right item when a match is not found</param>
 		/// <param name="keyComparer">A comparer to use to compare keys</param>
 		/// <returns>An enumeration returning the result of the full outer join</returns>
-		public static IEnumerable<TResult> LeftOuterJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IEnumerable<TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TRight, TKey> rightKeySelect, Func<TLeft, TRight, TResult> resultSelector, TRight defaultRight, IEqualityComparer<TKey>? keyComparer)
+		public static IEnumerable<TResult> LeftOuterJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IEnumerable<TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TRight, TKey> rightKeySelect, Func<TLeft, TRight, TResult> resultSelector, TRight defaultRight, IEqualityComparer<TKey>? keyComparer) where TKey : notnull
 		{ //****************************************
 			var RightLookup = BuildLookup(right, rightKeySelect, keyComparer);
 			//****************************************
@@ -265,7 +265,7 @@ namespace System.Linq
 		/// <param name="rightKeySelect">A selector returning the key to join on for the right item</param>
 		/// <param name="resultSelector">A selector combining the two items into a single result</param>
 		/// <returns>An enumeration returning the result of the full outer join</returns>
-		public static IEnumerable<TResult> RightOuterJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IEnumerable<TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TRight, TKey> rightKeySelect, Func<TLeft, TRight, TResult> resultSelector)
+		public static IEnumerable<TResult> RightOuterJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IEnumerable<TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TRight, TKey> rightKeySelect, Func<TLeft, TRight, TResult> resultSelector) where TKey : notnull
 		{
 			return RightOuterJoin(left, right, leftKeySelect, rightKeySelect, resultSelector, default!, null);
 		}
@@ -281,7 +281,7 @@ namespace System.Linq
 		/// <param name="defaultLeft">The default for the left item when a match is not found</param>
 		/// <param name="keyComparer">A comparer to use to compare keys</param>
 		/// <returns>An enumeration returning the result of the full outer join</returns>
-		public static IEnumerable<TResult> RightOuterJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IEnumerable<TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TRight, TKey> rightKeySelect, Func<TLeft, TRight, TResult> resultSelector, TLeft defaultLeft, IEqualityComparer<TKey>? keyComparer)
+		public static IEnumerable<TResult> RightOuterJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IEnumerable<TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TRight, TKey> rightKeySelect, Func<TLeft, TRight, TResult> resultSelector, TLeft defaultLeft, IEqualityComparer<TKey>? keyComparer) where TKey : notnull
 		{ //****************************************
 			var LeftLookup = BuildLookup(left, leftKeySelect, keyComparer);
 			//****************************************
@@ -311,7 +311,7 @@ namespace System.Linq
 
 		//****************************************
 
-		private static Dictionary<TKey, JoinRoot<TItem>> BuildLookup<TKey, TItem>(IEnumerable<TItem> items, Func<TItem, TKey> keySelector, IEqualityComparer<TKey>? keyComparer)
+		private static Dictionary<TKey, JoinRoot<TItem>> BuildLookup<TKey, TItem>(IEnumerable<TItem> items, Func<TItem, TKey> keySelector, IEqualityComparer<TKey>? keyComparer) where TKey : notnull
 		{ //****************************************
 			var Lookup = new Dictionary<TKey, JoinRoot<TItem>>(keyComparer ?? EqualityComparer<TKey>.Default);
 			//****************************************

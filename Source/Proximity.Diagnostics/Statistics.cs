@@ -46,7 +46,7 @@ namespace Proximity.Diagnostics
 
 			foreach (var Interval in _Intervals)
 			{
-				if (Interval <= TimeSpan.Zero)
+				if (Interval < TimeSpan.Zero)
 					throw new ArgumentOutOfRangeException(nameof(intervals));
 			}
 

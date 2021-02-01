@@ -10,7 +10,7 @@ namespace System.Collections.ReadOnly
 	/// <summary>
 	/// Represents a read-only wrapper around a Dictionary that converts the values
 	/// </summary>
-	public class ReadOnlyDictionaryConverter<TKey, TInput, TOutput> : IDictionary<TKey, TOutput>, ICollection<TOutput>, IReadOnlyCollection<TOutput>, IReadOnlyDictionary<TKey, TOutput>
+	public class ReadOnlyDictionaryConverter<TKey, TInput, TOutput> : IDictionary<TKey, TOutput>, ICollection<TOutput>, IReadOnlyCollection<TOutput>, IReadOnlyDictionary<TKey, TOutput> where TKey : notnull
 	{ //****************************************
 		private readonly ICollection<TKey> _Keys;
 

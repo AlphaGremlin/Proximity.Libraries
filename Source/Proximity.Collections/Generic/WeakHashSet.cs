@@ -47,7 +47,7 @@ namespace System.Collections.Generic
 			Comparer = comparer ?? EqualityComparer<T>.Default;
 			_HandleType = handleType;
 			_Size = 0;
-			_Values = new SetItem[0];
+			_Values = Array.Empty<WeakHashSet<T>.SetItem>();
 		}
 
 		/// <summary>
@@ -76,7 +76,7 @@ namespace System.Collections.Generic
 		public WeakHashSet(IEnumerable<T> collection, IEqualityComparer<T>? comparer, GCHandleType handleType)
 		{
 			if (collection is null)
-				throw new ArgumentNullException("collection", "Collection cannot be null");
+				throw new ArgumentNullException(nameof(collection), "Collection cannot be null");
 
 			Comparer = comparer ?? EqualityComparer<T>.Default;
 			_HandleType = handleType;
@@ -98,7 +98,7 @@ namespace System.Collections.Generic
 		public bool Add(T item)
 		{ //****************************************
 			int Key, Index;
-			T Current;
+			T? Current;
 			//****************************************
 
 			if (item is null)
@@ -118,7 +118,7 @@ namespace System.Collections.Generic
 				{
 					try
 					{
-						Current = (T)_Values[Index].Item.Target;
+						Current = (T?)_Values[Index].Item.Target;
 
 						// Do we match this item?
 						if (Current != null && Comparer.Equals(Current, item))
@@ -328,7 +328,7 @@ namespace System.Collections.Generic
 			{
 				try
 				{
-					var CurrentValue = (T)_Values[Index].Item.Target;
+					var CurrentValue = (T?)_Values[Index].Item.Target;
 
 					if (CurrentValue != null)
 					{
@@ -418,7 +418,7 @@ namespace System.Collections.Generic
 
 			var Key = Comparer.GetHashCode(item);
 			var Index = Array.BinarySearch(_Values, 0, _Size, new SetItem(Key));
-			T Current;
+			T? Current;
 
 			// Is there a matching hash code?
 			if (Index < 0)
@@ -432,7 +432,7 @@ namespace System.Collections.Generic
 			{
 				try
 				{
-					Current = (T)_Values[Index].Item.Target;
+					Current = (T?)_Values[Index].Item.Target;
 
 					// Do we match this item?
 					if (Current != null && Comparer.Equals(Current, item))
@@ -533,11 +533,11 @@ namespace System.Collections.Generic
 					return;
 
 				if (value < _Size)
-					throw new ArgumentException("value");
+					throw new ArgumentOutOfRangeException(nameof(value));
 
 				if (value == 0)
 				{
-					_Values = new SetItem[0];
+					_Values = Array.Empty<WeakHashSet<T>.SetItem>();
 
 					return;
 				}
@@ -600,10 +600,11 @@ namespace System.Collections.Generic
 
 					try
 					{
-						Current = (T)Handle.Item.Target;
+						var Value = (T?)Handle.Item.Target;
 
-						if (Current != null)
+						if (Value != null)
 						{
+							Current = Value;
 							_Index++;
 
 							return true;

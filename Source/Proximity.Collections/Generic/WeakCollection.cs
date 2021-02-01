@@ -106,7 +106,7 @@ namespace System.Collections.Generic
 
 			for (var Index = 0; Index < _Values.Count; Index++)
 			{
-				if ((T)_Values[Index].Target == item)
+				if ((T?)_Values[Index].Target == item)
 					return true;
 			}
 
@@ -158,7 +158,7 @@ namespace System.Collections.Generic
 			while (Index < _Values.Count)
 			{
 				var Handle = _Values[Index];
-				var TargetItem = (T)Handle.Target;
+				var TargetItem = (T?)Handle.Target;
 
 				if (TargetItem == null)
 				{
@@ -255,10 +255,12 @@ namespace System.Collections.Generic
 
 					try
 					{
-						Current = (T)Handle.Target;
+						var Value = (T?)Handle.Target;
 
-						if (Current != null)
+						if (Value != null)
 						{
+							Current = Value;
+
 							_Index++;
 
 							return true;

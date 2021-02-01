@@ -10,6 +10,9 @@ namespace System.Collections.ReadOnly
 	/// Represents a read-only wrapper around a Set
 	/// </summary>
 	public class ReadOnlySet<T> : ISet<T>, IReadOnlyCollection<T>, ICollection
+#if !NETSTANDARD
+		, IReadOnlySet<T>
+#endif
 	{	//****************************************
 		private readonly ISet<T> _Set;
 		//****************************************

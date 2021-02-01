@@ -13,7 +13,7 @@ namespace System.Threading
 	/// </summary>
 	public static class WaitHandleExtensions
 	{ //****************************************
-		private static readonly ConditionalWeakTable<WaitHandle, AsyncWaitHandle> _AsyncWaiters = new ConditionalWeakTable<WaitHandle, AsyncWaitHandle>();
+		private static readonly ConditionalWeakTable<WaitHandle, AsyncHandle> _AsyncHandles = new ConditionalWeakTable<WaitHandle, AsyncHandle>();
 		//****************************************
 
 		/// <summary>
@@ -54,11 +54,12 @@ namespace System.Threading
 			if (timeout == TimeSpan.Zero)
 				throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout must be infinite, or positive");
 
-			// We want to guarantee that only one waiter is associated per WaitHandle.
-			var Handle = _AsyncWaiters.GetValue(waitObject, AsyncWaitHandle.Create);
+			// We want to guarantee that only one AsyncHandle is associated per WaitHandle.
+			// This AsyncHandle will persist for the life of the WaitHandle, until it is disposed
+			var Handle = _AsyncHandles.GetValue(waitObject, AsyncHandle.Create);
 
-			// GetValue may call GetOrCreate multiple times, so we only register the waiter once we have the final result
-			Handle.RegisterWait();
+			// GetValue may call GetOrCreate multiple times, so we only register the handle once we have the final result
+			Handle.Register();
 
 			// To allow each async wait to be cancellable, we need to track them independently
 			var Waiter = AsyncHandleWaiter.GetOrCreate(Handle);
@@ -70,7 +71,7 @@ namespace System.Threading
 
 		//****************************************
 
-		private sealed class AsyncWaitHandle
+		private sealed class AsyncHandle
 		{ //****************************************
 			private readonly WaiterQueue<AsyncHandleWaiter> _Waiters = new WaiterQueue<AsyncHandleWaiter>();
 
@@ -79,14 +80,14 @@ namespace System.Threading
 			private volatile int _HandleState;
 			//****************************************
 
-			private AsyncWaitHandle(WaitHandle waitObject)
+			private AsyncHandle(WaitHandle waitObject)
 			{
 				WaitObject = waitObject;
 			}
 
 			//****************************************
 
-			internal void RegisterWait()
+			internal void Register()
 			{
 				// Ensure the callback is only registered once
 				if (_HandleState != Status.Unregistered || Interlocked.CompareExchange(ref _HandleState, Status.Registered, Status.Unregistered) != Status.Unregistered)
@@ -113,11 +114,11 @@ namespace System.Threading
 
 			//****************************************
 
-			internal static AsyncWaitHandle Create(WaitHandle waitObject) => new AsyncWaitHandle(waitObject);
+			internal static AsyncHandle Create(WaitHandle waitObject) => new AsyncHandle(waitObject);
 
 			//****************************************
 
-			private static void OnWaitForSingleObject(object state, bool timedOut) => ((AsyncWaitHandle)state).CompleteWaiters();
+			private static void OnWaitForSingleObject(object state, bool timedOut) => ((AsyncHandle)state).CompleteWaiters();
 
 			//****************************************
 
@@ -138,7 +139,7 @@ namespace System.Threading
 
 			//****************************************
 
-			internal void Initialise(AsyncWaitHandle handle)
+			internal void Initialise(AsyncHandle handle)
 			{
 				Handle = handle;
 			}
@@ -203,11 +204,11 @@ namespace System.Threading
 
 			//****************************************
 
-			public AsyncWaitHandle? Handle { get; private set; }
+			public AsyncHandle? Handle { get; private set; }
 
 			//****************************************
 
-			internal static AsyncHandleWaiter GetOrCreate(AsyncWaitHandle handle)
+			internal static AsyncHandleWaiter GetOrCreate(AsyncHandle handle)
 			{
 				if (!Instances.TryTake(out var Instance))
 					Instance = new AsyncHandleWaiter();

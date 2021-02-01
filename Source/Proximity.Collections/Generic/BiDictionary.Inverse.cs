@@ -194,24 +194,24 @@ namespace System.Collections.Generic
 
 			bool IReadOnlyDictionary<TRight, TLeft>.TryGetValue(TRight key, out TLeft value) => Inverse.TryGetLeft(key, out value!);
 
-			void IList.Insert(int index, object value) => throw new NotSupportedException();
+			void IList.Insert(int index, object? value) => throw new NotSupportedException();
 
 			void IList<KeyValuePair<TRight, TLeft>>.Insert(int index, KeyValuePair<TRight, TLeft> item) => throw new NotSupportedException();
 
 			void ICollection.CopyTo(Array array, int index) => CopyTo((KeyValuePair<TRight, TLeft>[])array, index);
 
-			void IDictionary.Add(object key, object value)
+			void IDictionary.Add(object? key, object? value)
 			{
-				if (!(key is TRight Right))
+				if (key is not TRight Right)
 					throw new ArgumentException("Not a supported key", nameof(key));
 
-				if (!(value is TLeft Left))
+				if (value is not TLeft Left)
 					throw new ArgumentException("Not a supported value", nameof(value));
 
 				Add(Right, Left);
 			}
 
-			bool IDictionary.Contains(object value)
+			bool IDictionary.Contains(object? value)
 			{
 				if (value is KeyValuePair<TRight, TLeft> Pair)
 					return Contains(Pair);
@@ -224,7 +224,7 @@ namespace System.Collections.Generic
 
 			IDictionaryEnumerator IDictionary.GetEnumerator() => new InverseDictionaryEnumerator(Inverse);
 
-			void IDictionary.Remove(object value)
+			void IDictionary.Remove(object? value)
 			{
 				if (value is KeyValuePair<TRight, TLeft> Pair)
 					Remove(Pair);
@@ -232,7 +232,7 @@ namespace System.Collections.Generic
 					Remove(new KeyValuePair<TRight, TLeft>(Right, Left));
 			}
 
-			int IList.Add(object value)
+			int IList.Add(object? value)
 			{
 				if (value is KeyValuePair<TRight, TLeft> Pair)
 				{
@@ -253,7 +253,7 @@ namespace System.Collections.Generic
 				throw new ArgumentException("Not a supported value", nameof(value));
 			}
 
-			bool IList.Contains(object value)
+			bool IList.Contains(object? value)
 			{
 				if (value is KeyValuePair<TRight, TLeft> Pair)
 					return Contains(Pair);
@@ -264,7 +264,7 @@ namespace System.Collections.Generic
 				return false;
 			}
 
-			int IList.IndexOf(object value)
+			int IList.IndexOf(object? value)
 			{
 				if (value is KeyValuePair<TRight, TLeft> Pair)
 					return IndexOf(Pair);
@@ -275,7 +275,7 @@ namespace System.Collections.Generic
 				return -1;
 			}
 
-			void IList.Remove(object value)
+			void IList.Remove(object? value)
 			{
 				if (value is KeyValuePair<TRight, TLeft> Pair)
 					Remove(Pair);
@@ -349,7 +349,7 @@ namespace System.Collections.Generic
 				set => throw new NotSupportedException();
 			}
 
-			object? IDictionary.this[object key]
+			object? IDictionary.this[object? key]
 			{
 				get
 				{
@@ -360,10 +360,10 @@ namespace System.Collections.Generic
 				}
 				set
 				{
-					if (!(key is TRight Right))
+					if (key is not TRight Right)
 						throw new ArgumentException("Not a supported key", nameof(key));
 
-					if (!(value is TLeft Left))
+					if (value is not TLeft Left)
 						throw new ArgumentException("Not a supported value", nameof(value));
 
 					if (!Inverse.TryAdd(Left, Right))
@@ -371,7 +371,7 @@ namespace System.Collections.Generic
 				}
 			}
 
-			object IList.this[int index]
+			object? IList.this[int index]
 			{
 				get => Swap(Inverse.GetByIndex(index));
 				set => throw new NotSupportedException();
@@ -485,7 +485,7 @@ namespace System.Collections.Generic
 
 			DictionaryEntry IDictionaryEnumerator.Entry => Current;
 
-			object? IDictionaryEnumerator.Key => _Parent.Current.Key;
+			object IDictionaryEnumerator.Key => _Parent.Current.Key;
 
 			object? IDictionaryEnumerator.Value => _Parent.Current.Value;
 		}

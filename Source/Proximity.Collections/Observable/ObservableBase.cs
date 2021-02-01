@@ -16,11 +16,6 @@ namespace System.Collections.Observable
 	public abstract class ObservableBase<T> : IList<T>, IList, INotifyCollectionChanged, INotifyPropertyChanged, IReadOnlyList<T>
 	{
 		/// <summary>
-		/// The name of the Count field
-		/// </summary>
-		protected const string CountFieldName = "Count";
-
-		/// <summary>
 		/// The name of the Indexer
 		/// </summary>
 		protected const string IndexerName = "Item[]";
@@ -60,7 +55,7 @@ namespace System.Collections.Observable
 		{
 			if (_UpdateCount++ == 0)
 			{
-				OnPropertyChanged("IsUpdating");
+				OnPropertyChanged(nameof(IsUpdating));
 
 				HasChanged = false;
 			}
@@ -96,7 +91,7 @@ namespace System.Collections.Observable
 
 			if (--_UpdateCount == 0)
 			{
-				OnPropertyChanged("IsUpdating");
+				OnPropertyChanged(nameof(IsUpdating));
 
 				if (HasChanged)
 					OnCollectionChanged();
@@ -170,18 +165,21 @@ namespace System.Collections.Observable
 
 		IEnumerator<T> IEnumerable<T>.GetEnumerator() => InternalGetEnumerator();
 
-		int IList.Add(object value)
+		int IList.Add(object? value)
 		{
+			if (value is not T Value)
+				throw new ArgumentException("Invalid type", nameof(value));
+
 			var MyCount = Count;
 
-			Add((T)value);
+			Add(Value);
 
 			return MyCount;
 		}
 
-		bool IList.Contains(object value) => value is T Value && Contains(Value);
+		bool IList.Contains(object? value) => value is T Value && Contains(Value);
 
-		int IList.IndexOf(object value)
+		int IList.IndexOf(object? value)
 		{
 			if (value is T Value)
 				return IndexOf(Value);
@@ -189,11 +187,17 @@ namespace System.Collections.Observable
 			return -1;
 		}
 
-		void IList.Insert(int index, object value) => InternalInsert(index, (T)value);
+		void IList.Insert(int index, object? value)
+		{
+			if (value is not T Value)
+				throw new ArgumentException("Invalid type", nameof(value));
+
+			InternalInsert(index, Value);
+		}
 
 		void IList<T>.Insert(int index, T item) => InternalInsert(index, item);
 
-		void IList.Remove(object value)
+		void IList.Remove(object? value)
 		{
 			if (value is T Value)
 				Remove(Value);
@@ -245,7 +249,7 @@ namespace System.Collections.Observable
 		/// </summary>
 		protected virtual void OnPropertyChanged()
 		{
-			OnPropertyChanged(CountFieldName);
+			OnPropertyChanged(nameof(Count));
 			OnPropertyChanged(IndexerName);
 		}
 
@@ -399,10 +403,16 @@ namespace System.Collections.Observable
 
 		T IReadOnlyList<T>.this[int index] => InternalGet(index);
 
-		object IList.this[int index]
+		object? IList.this[int index]
 		{
 			get => InternalGet(index)!;
-			set => InternalSet(index, (T)value);
+			set
+			{
+				if (value is not T Value)
+					throw new ArgumentException("Invalid type", nameof(value));
+
+				InternalSet(index, Value);
+			}
 		}
 
 		bool IList.IsFixedSize => false;
