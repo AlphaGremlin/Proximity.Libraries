@@ -24,7 +24,10 @@ namespace Proximity.Collections
 			// Find the next largest prime
 			var Index = ((IReadOnlyList<int>)Primes).NearestAbove(minimum);
 
-			if (Index >= 0)
+			if (Index < 0)
+				Index = ~Index; // Pick the next larger match
+
+			if (Index < Primes.Length)
 				return Primes[Index];
 
 			// If it's outside our table size, we'll just multiply our maximum prime

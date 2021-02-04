@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -14,6 +15,9 @@ namespace System.Threading.Tasks
 	/// </summary>
 	public readonly struct ValueTaskCompletionSource : IDisposable
 	{ //****************************************
+#if !NETSTANDARD2_0
+		[MaybeNull]
+#endif
 		private readonly ValueTaskCompletionInstance<VoidStruct> _Instance;
 		private readonly short _Token;
 		//****************************************
@@ -59,12 +63,17 @@ namespace System.Threading.Tasks
 		/// <summary>
 		/// Gets the Value Task being completed
 		/// </summary>
-		public ValueTask Task => new ValueTask(_Instance, _Token);
+		public ValueTask Task => _Instance != null ? new ValueTask(_Instance, _Token) : default;
 
 		/// <summary>
 		/// Gets whether the Value Task Completion Source has a result
 		/// </summary>
-		public bool IsCompleted => _Instance.IsCompleted(_Token);
+		public bool IsCompleted => _Instance?.IsCompleted(_Token) ?? false;
+
+		/// <summary>
+		/// Gets whether the completion source is default
+		/// </summary>
+		public bool IsDefault => _Instance == null;
 
 		//****************************************
 
@@ -102,6 +111,9 @@ namespace System.Threading.Tasks
 	/// <typeparam name="TResult">The result type</typeparam>
 	public readonly struct ValueTaskCompletionSource<TResult> : IDisposable
 	{ //****************************************
+#if !NETSTANDARD2_0
+		[MaybeNull]
+#endif
 		private readonly ValueTaskCompletionInstance<TResult> _Instance;
 		private readonly short _Token;
 		//****************************************
@@ -148,11 +160,16 @@ namespace System.Threading.Tasks
 		/// <summary>
 		/// Gets the Value Task being completed
 		/// </summary>
-		public ValueTask<TResult> Task => new ValueTask<TResult>(_Instance, _Token);
+		public ValueTask<TResult> Task => _Instance != null ? new ValueTask<TResult>(_Instance, _Token) : default;
 
 		/// <summary>
 		/// Gets whether the Value Task Completion Source has a result
 		/// </summary>
-		public bool IsCompleted => _Instance.IsCompleted(_Token);
+		public bool IsCompleted => _Instance?.IsCompleted(_Token) ?? false;
+
+		/// <summary>
+		/// Gets whether the completion source is default
+		/// </summary>
+		public bool IsDefault => _Instance == null;
 	}
 }

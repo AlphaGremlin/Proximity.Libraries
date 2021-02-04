@@ -3,11 +3,11 @@
 		<TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
 		<Authors>Daniel Chandler</Authors>
 		<Company>Proximity Interactive</Company>
-		<Copyright>Copyright © Daniel Chandler 2020</Copyright>
+		<Copyright>Copyright © Daniel Chandler 2021</Copyright>
 		<Product>Proximity Threading Utility Library</Product>
-		<Version>1.2.0</Version>
-		<AssemblyVersion>1.2.0.0</AssemblyVersion>
-		<FileVersion>1.2.0.0</FileVersion>
+		<Version>1.3.0</Version>
+		<AssemblyVersion>1.3.0.0</AssemblyVersion>
+		<FileVersion>1.3.0.0</FileVersion>
 		<Description>Threading Utility Library</Description>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -15,8 +15,8 @@
 		<AssemblyOriginatorKeyFile>..\Proximity.snk</AssemblyOriginatorKeyFile>
 		<OutputPath>..\..\Build</OutputPath>
 		<LangVersion>Latest</LangVersion>
-		<PackageProjectUrl>https://github.com/AlphaGremlin/Proximity.Libraries</PackageProjectUrl>
-		<RepositoryUrl></RepositoryUrl>
+		<PackageProjectUrl></PackageProjectUrl>
+		<RepositoryUrl>https://github.com/AlphaGremlin/Proximity.Libraries</RepositoryUrl>
 		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
@@ -24,7 +24,6 @@
 		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.0" />
 	</ItemGroup>
 	<ItemGroup>
-	  <Compile Remove="AsyncKeyedLock.cs" />
 	  <Compile Remove="WaitHandleExtensions.cs" />
 	</ItemGroup>
 	<ItemGroup>

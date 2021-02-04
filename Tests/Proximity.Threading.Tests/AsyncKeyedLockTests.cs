@@ -1,29 +1,24 @@
-﻿/****************************************\
- AsyncKeyedLockTests.cs
- Created: 2016-04-11
-\****************************************/
 using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
-using Proximity.Utility.Threading;
 //****************************************
 
-namespace Proximity.Utility.Tests
+namespace Proximity.Threading.Tests
 {
-	[TestFixture]
+	[TestFixture, Timeout(1000)]
 	public class AsyncKeyedLockTests
 	{
-		[Test, MaxTime(1000)]
+		[Test]
 		public async Task LockNull()
 		{	//****************************************
-			var MyLock = new AsyncKeyedLock<object>();
+			var Lock = new AsyncKeyedLock<object>();
 			//****************************************
 
 			try
 			{
-				await MyLock.Lock(null);
+				await Lock.Lock(null);
 
 				Assert.Fail("Should not reach this point");
 			}
@@ -32,79 +27,79 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test, MaxTime(1000)]
+		[Test]
 		public void LockStruct([Values(-1, 0, 1, int.MaxValue)] int key)
 		{	//****************************************
-			var MyLock = new AsyncKeyedLock<int>();
+			var Lock = new AsyncKeyedLock<int>();
 			//****************************************
 
-			var MyTask = MyLock.Lock(key);
+			var MyTask = Lock.Lock(key);
 
 			//****************************************
 
 			Assert.IsTrue(MyTask.IsCompleted, "Lock did not complete");
-			CollectionAssert.AreEqual(new int[] { key }, MyLock.KeysHeld);
+			CollectionAssert.AreEqual(new [] { key }, Lock.KeysHeld);
 		}
 
-		[Test, MaxTime(1000)]
+		[Test]
 		public void LockClass([Values(typeof(int), typeof(long), typeof(string), typeof(Version))] Type key)
 		{	//****************************************
-			var MyLock = new AsyncKeyedLock<Type>();
+			var Lock = new AsyncKeyedLock<Type>();
 			//****************************************
 
-			var MyTask = MyLock.Lock(key);
+			var MyTask = Lock.Lock(key);
 
 			//****************************************
 
 			Assert.IsTrue(MyTask.IsCompleted, "Lock did not complete");
-			CollectionAssert.AreEqual(new Type[] { key }, MyLock.KeysHeld);
+			CollectionAssert.AreEqual(new [] { key }, Lock.KeysHeld);
 		}
 
-		[Test, MaxTime(1000)]
+		[Test]
 		public void LockTwo([Values(-1, 0, 1)] int first, [Values(-1, 0, 1)] int second)
 		{	//****************************************
-			var MyLock = new AsyncKeyedLock<int>();
+			var Lock = new AsyncKeyedLock<int>();
 			//****************************************
 
-			var MyTask1 = MyLock.Lock(first);
-			var MyTask2 = MyLock.Lock(second);
+			var MyTask1 = Lock.Lock(first);
+			var MyTask2 = Lock.Lock(second);
 
 			//****************************************
 
 			Assert.IsTrue(MyTask1.IsCompleted, "First lock did not complete");
 
 			Assert.AreEqual(first != second, MyTask2.IsCompleted, "Second lock was not as expected");
-			CollectionAssert.Contains(MyLock.KeysHeld, first, "First key missing");
-			CollectionAssert.Contains(MyLock.KeysHeld, second, "Second key missing");
+			CollectionAssert.Contains(Lock.KeysHeld, first, "First key missing");
+			CollectionAssert.Contains(Lock.KeysHeld, second, "Second key missing");
 		}
 
-		[Test, MaxTime(1000)]
+		[Test]
 		public async Task LockRelease()
 		{	//****************************************
-			var MyLock = new AsyncKeyedLock<int>();
+			var Lock = new AsyncKeyedLock<int>();
 			//****************************************
 
-			var MyResult = await MyLock.Lock(42);
+			var MyResult = await Lock.Lock(42);
 
 			MyResult.Dispose();
 
 			//****************************************
 
-			CollectionAssert.IsEmpty(MyLock.KeysHeld);
+			CollectionAssert.IsEmpty(Lock.KeysHeld);
 		}
 
-		[Test, MaxTime(1000)]
+		[Test]
 		public async Task LockCancel()
 		{	//****************************************
-			var MyLock = new AsyncKeyedLock<int>();
-			Task<IDisposable> SecondTask;
+			var Lock = new AsyncKeyedLock<int>();
+			ValueTask<AsyncKeyedLock<int>.Instance> SecondTask;
 			//****************************************
 
-			var FirstLock = await MyLock.Lock(42);
+			var FirstLock = await Lock.Lock(42);
 
 			using (var MySource = new CancellationTokenSource())
 			{
-				SecondTask = MyLock.Lock(42, MySource.Token);
+				SecondTask = Lock.Lock(42, MySource.Token);
 
 				MySource.Cancel();
 			}
@@ -122,50 +117,50 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test, MaxTime(1000)]
+		[Test]
 		public async Task LockNoMaxTime()
 		{	//****************************************
-			var MyLock = new AsyncKeyedLock<int>();
-			Task<IDisposable> SecondTask;
+			var Lock = new AsyncKeyedLock<int>();
+			ValueTask<AsyncKeyedLock<int>.Instance> SecondTask;
 			//****************************************
 
-			using (await MyLock.Lock(42))
+			using (await Lock.Lock(42))
 			{
-				SecondTask = MyLock.Lock(42, TimeSpan.FromMilliseconds(50.0));
+				SecondTask = Lock.Lock(42, TimeSpan.FromMilliseconds(50.0));
 			}
 
 			//****************************************
 
 			(await SecondTask).Dispose();
 
-			CollectionAssert.IsEmpty(MyLock.KeysHeld);
+			CollectionAssert.IsEmpty(Lock.KeysHeld);
 		}
 
-		[Test, MaxTime(1000)]
+		[Test]
 		public async Task LockInstant()
 		{	//****************************************
-			var MyLock = new AsyncKeyedLock<int>();
+			var Lock = new AsyncKeyedLock<int>();
 			//****************************************
 
-			using (await MyLock.Lock(42, TimeSpan.FromMilliseconds(50.0)))
+			using (await Lock.Lock(42, TimeSpan.FromMilliseconds(50.0)))
 			{
 			}
 
 			//****************************************
 
-			CollectionAssert.IsEmpty(MyLock.KeysHeld);
+			CollectionAssert.IsEmpty(Lock.KeysHeld);
 		}
 
-		[Test, MaxTime(1000)]
+		[Test]
 		public async Task LockMaxTime()
 		{	//****************************************
-			var MyLock = new AsyncKeyedLock<int>();
-			Task<IDisposable> SecondTask;
+			var Lock = new AsyncKeyedLock<int>();
+			ValueTask<AsyncKeyedLock<int>.Instance> SecondTask;
 			//****************************************
 
-			using (await MyLock.Lock(42))
+			using (await Lock.Lock(42))
 			{
-				SecondTask = MyLock.Lock(42, TimeSpan.FromMilliseconds(50.0));
+				SecondTask = Lock.Lock(42, TimeSpan.FromMilliseconds(50.0));
 
 				Thread.Sleep(100);
 			}
@@ -178,28 +173,28 @@ namespace Proximity.Utility.Tests
 
 				Assert.Fail("Should not reach this point");
 			}
-			catch (OperationCanceledException)
+			catch (TimeoutException)
 			{
 			}
 		}
 
-		[Test, MaxTime(1000)]
+		[Test]
 		public async Task LockCancelLock()
 		{	//****************************************
-			var MyLock = new AsyncKeyedLock<int>();
-			Task<IDisposable> SecondTask;
+			var Lock = new AsyncKeyedLock<int>();
+			ValueTask<AsyncKeyedLock<int>.Instance> SecondTask;
 			//****************************************
 
-			var FirstLock = await MyLock.Lock(42);
+			var FirstLock = await Lock.Lock(42);
 
 			using (var MySource = new CancellationTokenSource())
 			{
-				SecondTask = MyLock.Lock(42, MySource.Token);
+				SecondTask = Lock.Lock(42, MySource.Token);
 
 				MySource.Cancel();
 			}
 
-			var ThirdLockTask = MyLock.Lock(42);
+			var ThirdLockTask = Lock.Lock(42);
 
 			Assert.IsFalse(ThirdLockTask.IsCompleted, "Third lock completed early");
 
@@ -220,26 +215,26 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test, MaxTime(1000)]
+		[Test]
 		public async Task Dispose()
 		{	//****************************************
-			var MyLock = new AsyncKeyedLock<int>();
+			var Lock = new AsyncKeyedLock<int>();
 			//****************************************
 
-			await MyLock.Dispose();
+			await Lock.DisposeAsync();
 		}
 
-		[Test, MaxTime(1000)]
+		[Test]
 		public async Task DisposeLock()
 		{	//****************************************
-			var MyLock = new AsyncKeyedLock<int>();
+			var Lock = new AsyncKeyedLock<int>();
 			//****************************************
 
-			await MyLock.Dispose();
+			await Lock.DisposeAsync();
 
 			try
 			{
-				await MyLock.Lock(42);
+				await Lock.Lock(42);
 
 				Assert.Fail("Should never reach this point");
 			}
@@ -248,34 +243,34 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test, MaxTime(1000)]
+		[Test]
 		public async Task LockDispose()
 		{	//****************************************
-			var MyLock = new AsyncKeyedLock<int>();
-			Task MyDisposeTask;
+			var Lock = new AsyncKeyedLock<int>();
+			ValueTask MyDisposeTask;
 			//****************************************
 
-			using (await MyLock.Lock(42))
+			using (await Lock.Lock(42))
 			{
-				MyDisposeTask = MyLock.Dispose();
+				MyDisposeTask = Lock.DisposeAsync();
 			}
 
 			await MyDisposeTask;
 		}
 
-		[Test, MaxTime(1000)]
+		[Test]
 		public async Task LockLockDispose()
 		{	//****************************************
-			var MyLock = new AsyncKeyedLock<int>();
-			Task MyDisposeTask;
-			Task<IDisposable> MyInnerTask;
+			var Lock = new AsyncKeyedLock<int>();
+			ValueTask MyDisposeTask;
+			ValueTask<AsyncKeyedLock<int>.Instance> MyInnerTask;
 			//****************************************
 
-			using (await MyLock.Lock(42))
+			using (await Lock.Lock(42))
 			{
-				MyInnerTask = MyLock.Lock(42);
+				MyInnerTask = Lock.Lock(42);
 
-				MyDisposeTask = MyLock.Dispose();
+				MyDisposeTask = Lock.DisposeAsync();
 			}
 
 			await MyDisposeTask;
@@ -293,20 +288,20 @@ namespace Proximity.Utility.Tests
 			}
 		}
 
-		[Test, MaxTime(1000)]
+		[Test]
 		public async Task LockDisposeLock()
 		{	//****************************************
-			var MyLock = new AsyncKeyedLock<int>();
-			Task MyDisposeTask;
+			var Lock = new AsyncKeyedLock<int>();
+			ValueTask MyDisposeTask;
 			//****************************************
 
-			using (await MyLock.Lock(42))
+			using (await Lock.Lock(42))
 			{
-				MyDisposeTask = MyLock.Dispose();
+				MyDisposeTask = Lock.DisposeAsync();
 
 				try
 				{
-					await MyLock.Lock(42);
+					await Lock.Lock(42);
 
 					Assert.Fail("Should never reach this point");
 				}
@@ -321,8 +316,8 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(2000), Repeat(10)]
 		public async Task ConcurrentFast()
 		{	//****************************************
-			var MyLock = new AsyncKeyedLock<int>();
-			int Resource = 0;
+			var Lock = new AsyncKeyedLock<int>();
+			var Resource = 0;
 			//****************************************
 
 			await Task.WhenAll(
@@ -331,7 +326,7 @@ namespace Proximity.Utility.Tests
 					{
 						await Task.Yield(); // Yield, so it doesn't serialise
 
-						using (var MyWait = await MyLock.Lock(count % 10))
+						using (var MyWait = await Lock.Lock(count % 10))
 						{
 							Interlocked.Increment(ref Resource);
 
@@ -346,14 +341,14 @@ namespace Proximity.Utility.Tests
 
 			Assert.AreEqual(100, Resource, "Block not entered");
 
-			CollectionAssert.IsEmpty(MyLock.KeysHeld, "Lock still held");
+			CollectionAssert.IsEmpty(Lock.KeysHeld, "Lock still held");
 		}
 			
-		[Test, MaxTime(1000), Repeat(4)]
+		[Test, Repeat(4)]
 		public async Task ConcurrentSlow()
 		{	//****************************************
-			var MyLock = new AsyncKeyedLock<int>();
-			int Resource = 0;
+			var Lock = new AsyncKeyedLock<int>();
+			var Resource = 0;
 			//****************************************
 
 			await Task.WhenAll(
@@ -365,7 +360,7 @@ namespace Proximity.Utility.Tests
 
 						await Task.Yield(); // Yield, so it doesn't serialise
 
-						using (var MyWait = await MyLock.Lock(count % 10))
+						using (var MyWait = await Lock.Lock(count % 10))
 						{
 							Interlocked.Increment(ref Resource);
 
@@ -380,21 +375,21 @@ namespace Proximity.Utility.Tests
 
 			Assert.AreEqual(100, Resource, "Block not entered");
 
-			CollectionAssert.IsEmpty(MyLock.KeysHeld, "Lock still held");
+			CollectionAssert.IsEmpty(Lock.KeysHeld, "Lock still held");
 		}
 
-		[Test, MaxTime(1000), Repeat(10)]
+		[Test, Repeat(10)]
 		public async Task ConcurrentDispose()
 		{	//****************************************
-			var MyLock = new AsyncKeyedLock<int>();
-			Task MyDisposeTask;
+			var Lock = new AsyncKeyedLock<int>();
+			ValueTask MyDisposeTask;
 			//****************************************
 
-			var WorkTask = ConcurrentLockRelease(MyLock, 42, 0, CancellationToken.None);
+			var WorkTask = ConcurrentLockRelease(Lock, 42, 0, CancellationToken.None);
 
 			await Task.Delay(50);
 
-			MyDisposeTask = MyLock.Dispose();
+			MyDisposeTask = Lock.DisposeAsync();
 
 			try
 			{
@@ -412,14 +407,14 @@ namespace Proximity.Utility.Tests
 		[Test, MaxTime(2000), Repeat(2)]
 		public async Task ConcurrentMany()
 		{	//****************************************
-			var MyLock = new AsyncKeyedLock<int>();
+			var Lock = new AsyncKeyedLock<int>();
 			//****************************************
 
 			using (var MySource = new CancellationTokenSource())
 			{
-				var WorkTask1 = ConcurrentLockRelease(MyLock, 42, 0, MySource.Token);
-				var WorkTask2 = ConcurrentLockRelease(MyLock, 42, 1, MySource.Token);
-				var WorkTask3 = ConcurrentLockRelease(MyLock, 42, 2, MySource.Token);
+				var WorkTask1 = ConcurrentLockRelease(Lock, 42, 0, MySource.Token);
+				var WorkTask2 = ConcurrentLockRelease(Lock, 42, 1, MySource.Token);
+				var WorkTask3 = ConcurrentLockRelease(Lock, 42, 2, MySource.Token);
 
 				await Task.Delay(500);
 
@@ -430,11 +425,11 @@ namespace Proximity.Utility.Tests
 				await WorkTask3;
 			}
 
-			await MyLock.Dispose();
+			await Lock.DisposeAsync();
 
 			//****************************************
 
-			CollectionAssert.IsEmpty(MyLock.KeysHeld);
+			CollectionAssert.IsEmpty(Lock.KeysHeld);
 		}
 
 		//****************************************
