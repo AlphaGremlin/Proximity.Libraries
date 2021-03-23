@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace System.IO
 {
 	/// <summary>
-	/// Provides a stream that writes to a Buffer Writer
+	/// Provides a Stream that writes to a Buffer Writer
 	/// </summary>
 	public sealed class BufferWriterStream : Stream
 	{ //****************************************
@@ -23,7 +23,7 @@ namespace System.IO
 		//****************************************
 
 		/// <summary>
-		/// Creates a Buffer Writer that writes directly to the underlying Buffer Writer
+		/// Creates a Stream that writes directly to the underlying Buffer Writer
 		/// </summary>
 		/// <param name="writer">The Buffer Writer to write to</param>
 		public BufferWriterStream(IBufferWriter<byte> writer)
@@ -33,7 +33,7 @@ namespace System.IO
 		}
 
 		/// <summary>
-		/// Creates a Buffer Writer that writes to the underlying Buffer Writer by requesting a fixed block size
+		/// Creates a Stream that writes to the underlying Buffer Writer by requesting a fixed block size
 		/// </summary>
 		/// <param name="writer">The Buffer Writer to write to</param>
 		/// <param name="blockSize">The block size to request</param>

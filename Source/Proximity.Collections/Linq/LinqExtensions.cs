@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace System.Linq
 {
@@ -196,6 +198,39 @@ namespace System.Linq
 				if (predicate(InRecord, out var OutRecord))
 					yield return resultSelector(InRecord, OutRecord);
 			}
+		}
+
+		/// <summary>
+		/// Converts an IAsyncEnumerable to an array
+		/// </summary>
+		/// <typeparam name="T">The type of element</typeparam>
+		/// <param name="source">The source Async Enumerable to convert</param>
+		/// <param name="token">A cancellation token to abort the operation</param>
+		/// <returns>A ValueTask returning the complete enumerable</returns>
+		public static async ValueTask<T[]> ToArray<T>(this IAsyncEnumerable<T> source, CancellationToken token = default)
+		{
+			var List = new List<T>();
+
+			await foreach (var Item in source.WithCancellation(token))
+			{
+				List.Add(Item);
+			}
+
+			return List.ToArray();
+		}
+
+		/// <summary>
+		/// Converts an IEnumerable to an IAsyncEnumerable
+		/// </summary>
+		/// <typeparam name="T">The type of element</typeparam>
+		/// <param name="source">The source IEnumerable to convert</param>
+		/// <returns>An IAsyncEnumerable that will complete synchronously with the contents of the enumerable</returns>
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+		public static async IAsyncEnumerable<T> ToAsyncEnumerable<T>(this IEnumerable<T> source)
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
+		{
+			foreach (var Result in source)
+				yield return Result;
 		}
 
 		/// <summary>

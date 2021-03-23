@@ -315,6 +315,14 @@ namespace System.Collections.Generic
 		/// <param name="key">The key to lookup</param>
 		/// <param name="value">The value to match</param>
 		/// <returns>The index of the item if found and the value matches, otherwise -1</returns>
+		public int IndexOf(string key, TValue value) => IndexOf(key.AsSpan(), value);
+
+		/// <summary>
+		/// Determines the index of a specific item in the list
+		/// </summary>
+		/// <param name="key">The key to lookup</param>
+		/// <param name="value">The value to match</param>
+		/// <returns>The index of the item if found and the value matches, otherwise -1</returns>
 		public int IndexOf(ReadOnlySpan<char> key, TValue value)
 		{
 			var Index = IndexOfKey(key);
@@ -419,6 +427,14 @@ namespace System.Collections.Generic
 
 			return true;
 		}
+
+		/// <summary>
+		/// Removes an element from the collection
+		/// </summary>
+		/// <param name="key">The element to remove</param>
+		/// <param name="value">The value to remove</param>
+		/// <returns>True if the item was found and removed, otherwise False</returns>
+		public bool Remove(string key, TValue value) => Remove(key.AsSpan(), value);
 
 		/// <summary>
 		/// Removes an element from the collection
