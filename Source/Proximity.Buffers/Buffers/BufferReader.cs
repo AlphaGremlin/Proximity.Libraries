@@ -53,6 +53,7 @@ namespace System.Buffers
 		public void Reset(ReadOnlySequence<T> buffer)
 		{
 			_Buffer = buffer;
+			Position = 0;
 		}
 
 		/// <summary>
@@ -78,6 +79,7 @@ namespace System.Buffers
 			// We allow Advance to move further than what's actually been retrieved.
 			// This allows readers to skip bytes if necessary
 			_OutputUsed = Math.Max(0, _OutputUsed - count);
+			Position += count;
 		}
 
 		/// <summary>
@@ -117,5 +119,12 @@ namespace System.Buffers
 		/// <returns>The requested buffer</returns>
 		/// <remarks>Can be less than requested if the underlying source has ended.</remarks>
 		public ReadOnlySpan<T> GetSpan(int minSize) => GetMemory(minSize).Span;
+
+		//****************************************
+
+		/// <summary>
+		/// Gets the position the next call to <see cref="GetMemory"/> or <see cref="GetSpan"/> will read from
+		/// </summary>
+		public long Position { get; private set; }
 	}
 }

@@ -24,7 +24,7 @@ namespace Proximity.Logging
 
 		static LogManager()
 		{
-			_StartTime = DateTime.Now;
+			_StartTime = DateTime.UtcNow; // Perform calculations in UTC and convert to local for logging/reporting purposes
 			_Timer.Start();
 
 			Default = new LogTarget();
@@ -81,7 +81,7 @@ namespace Proximity.Logging
 
 		//****************************************
 
-		internal static DateTime GetTimestamp() => _StartTime + _Timer.Elapsed;
+		internal static DateTime GetTimestamp() => (_StartTime + _Timer.Elapsed).ToLocalTime();
 
 		//****************************************
 
