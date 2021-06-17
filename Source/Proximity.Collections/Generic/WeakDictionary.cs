@@ -282,11 +282,10 @@ namespace System.Collections.Generic
 		}
 
 		/// <summary>
-		/// Constructs a list of strong references to the values in the dictionary
+		/// Constructs a collection of strong references to the values in the dictionary
 		/// </summary>
-		/// <returns>A list containing all the live values in this dictionary</returns>
-		/// <remarks>Changes made to the returned list will not be reflected in the Weak Dictionary</remarks>
-		public ICollection<TValue> ToStrongValues()
+		/// <returns>A collection containing all the live values in this dictionary</returns>
+		public IReadOnlyCollection<TValue> ToStrongValues()
 		{	//****************************************
 			var Result = new List<TValue>(_Dictionary.Count);
 			//****************************************
@@ -302,7 +301,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <returns>A dictionary containing all the live values in this dictionary</returns>
 		/// <remarks>Changes made to the returned dictionary will not be reflected in the Weak Dictionary</remarks>
-		public IDictionary<TKey, TValue> ToStrong()
+		public IReadOnlyDictionary<TKey, TValue> ToStrong()
 		{	//****************************************
 			var Result = new Dictionary<TKey, TValue>(_Dictionary.Count, _Dictionary.Comparer);
 			//****************************************

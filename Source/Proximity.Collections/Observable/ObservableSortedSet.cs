@@ -15,7 +15,10 @@ namespace System.Collections.Observable
 	/// Provides an Observable Sorted Set supporting BeginUpdate and EndUpdate for batch changes as well as indexed access for optimal data-binding
 	/// </summary>
 	/// <typeparam name="T">The type of value within the set</typeparam>
-	public class ObservableSortedSet<T> : ObservableBaseSet<T>, ISet<T>, IList<T>
+	public class ObservableSortedSet<T> : ObservableBaseSet<T>, ISet<T>
+#if !NETSTANDARD
+		, IReadOnlySet<T>
+#endif
 	{ //****************************************
 		private T[] _Items;
 
@@ -492,12 +495,6 @@ namespace System.Collections.Observable
 		/// </summary>
 		[System.Runtime.CompilerServices.IndexerName("Item")]
 		public T this[int index] => _Items[index];
-
-		T IList<T>.this[int index]
-		{
-			get => _Items[index];
-			set => throw new NotSupportedException("Cannot set by index");
-		}
 
 		//****************************************
 

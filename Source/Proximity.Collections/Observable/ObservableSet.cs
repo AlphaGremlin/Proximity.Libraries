@@ -13,7 +13,7 @@ namespace System.Collections.Observable
 	/// Provides an Observable HashSet supporting BeginUpdate and EndUpdate for batch changes as well as indexed access for optimal data-binding
 	/// </summary>
 	/// <typeparam name="T">The type of value within the set</typeparam>
-	public class ObservableSet<T> : ObservableBaseSet<T>, ISet<T>, IList<T>
+	public class ObservableSet<T> : ObservableBaseSet<T>, ISet<T>
 #if !NETSTANDARD
 		, IReadOnlySet<T>
 #endif
@@ -485,12 +485,6 @@ namespace System.Collections.Observable
 		/// </summary>
 		[System.Runtime.CompilerServices.IndexerName("Item")]
 		public T this[int index] => _Values[index];
-
-		T IList<T>.this[int index]
-		{
-			get => _Values[index];
-			set => throw new NotSupportedException("Cannot set by index");
-		}
 
 		//****************************************
 

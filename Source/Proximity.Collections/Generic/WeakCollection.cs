@@ -182,13 +182,13 @@ namespace System.Collections.Generic
 
 			return false;
 		}
-		
+
 		/// <summary>
-		/// Creates a list of strong references to the contents of the collection
+		/// Creates a collection of strong references to the contents of the collection
 		/// </summary>
-		/// <returns>A list of strong references to the collection</returns>
+		/// <returns>A collection of strong references to the collection</returns>
 		/// <remarks>Will perform a compaction.</remarks>
-		public ICollection<T> ToStrong()
+		public IReadOnlyCollection<T> ToStrong()
 		{	//****************************************
 			var MyList = new List<T>(_Values.Count);
 			//****************************************

@@ -10,6 +10,34 @@ namespace System.Collections.ReadOnly
 	/// <summary>
 	/// Represents a read-only <see cref="ISet{TKey}"/> wrapper around the given Dictionary's keys
 	/// </summary>
+	public static class ReadOnlyDictionaryKeySet
+	{
+		/// <summary>
+		/// Creates a new read-only wrapper around a Dictionary Keys using the default comparer
+		/// </summary>
+		/// <param name="dictionary">The dictionary to provide a read-only set around</param>
+		/// <returns>A read-only Set around the given Dictionary Keys</returns>
+		public static ReadOnlyDictionaryKeySet<TKey, TValue> From<TKey, TValue>(IDictionary<TKey, TValue> dictionary) where TKey : notnull => new ReadOnlyDictionaryKeySet<TKey, TValue>(dictionary);
+
+		/// <summary>
+		/// Creates a new read-only wrapper around a Dictionary Keys
+		/// </summary>
+		/// <param name="dictionary">The dictionary to provide a read-only set around</param>
+		/// <param name="comparer">The comparer to use when performing set comparisons</param>
+		/// <returns>A read-only Set around the given Dictionary Keys</returns>
+		public static ReadOnlyDictionaryKeySet<TKey, TValue> From<TKey, TValue>(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey> comparer) where TKey : notnull => new ReadOnlyDictionaryKeySet<TKey, TValue>(dictionary, comparer);
+
+		/// <summary>
+		/// Creates a new read-only wrapper around a Dictionary Keys using the default comparer
+		/// </summary>
+		/// <param name="dictionary">The dictionary to provide a read-only set around</param>
+		/// <returns>A read-only Set around the given Dictionary Keys</returns>
+		public static ReadOnlyDictionaryKeySet<TKey, TValue> From<TKey, TValue>(Dictionary<TKey, TValue> dictionary) where TKey : notnull => new ReadOnlyDictionaryKeySet<TKey, TValue>(dictionary);
+	}
+
+	/// <summary>
+	/// Represents a read-only <see cref="ISet{TKey}"/> wrapper around the given Dictionary's keys
+	/// </summary>
 	public class ReadOnlyDictionaryKeySet<TKey, TValue> : ISet<TKey>, IReadOnlyCollection<TKey>, ICollection
 #if !NETSTANDARD
 		, IReadOnlySet<TKey>
@@ -78,8 +106,16 @@ namespace System.Collections.ReadOnly
 				return true;
 
 			// If there are less items in the other collection than in us, we cannot be a subset
-			if (other is ICollection<TKey> OtherCollection && OtherCollection.Count < _Set.Count)
-				return false;
+			if (other is ICollection<TKey> OtherCollection)
+			{
+				if (OtherCollection.Count < _Set.Count)
+					return false;
+			}
+			else if (other is IReadOnlyCollection<TKey> OtherReadOnlyCollection)
+			{
+				if (OtherReadOnlyCollection.Count < _Set.Count)
+					return false;
+			}
 
 			var UniqueItems = new HashSet<TKey>(_Comparer);
 
@@ -101,13 +137,9 @@ namespace System.Collections.ReadOnly
 		/// <returns>True if this set is a superset of the collection, otherwise False</returns>
 		public bool IsSupersetOf(IEnumerable<TKey> other)
 		{
-			// If the other collection is empty, we're automatically a superset
-			if (!other.Any())
-				return true;
-
-			// If we're empty, we cannot be a superset, since the other collection has items
+			// If we're empty, we cannot be a superset if the other collection has items
 			if (_Set.Count == 0)
-				return false;
+				return !other.Any();
 
 			// There could be more items in the enumeration, but they might also be duplicates, so we can't rely on comparing sizes
 
@@ -128,7 +160,7 @@ namespace System.Collections.ReadOnly
 		/// <returns>True if this set is a strict superset of the collection, otherwise False</returns>
 		public bool IsProperSupersetOf(IEnumerable<TKey> other)
 		{
-			// If we're empty, we cannot be a proper superset even if the collection is also empty
+			// If we're empty, we cannot be a proper superset even if the other collection is also empty
 			if (_Set.Count == 0)
 				return false;
 
@@ -140,6 +172,11 @@ namespace System.Collections.ReadOnly
 					return true;
 
 				// There could be more items in the enumeration, but they might also be duplicates, so we can't rely on comparing sizes
+			}
+			else if (other is IReadOnlyCollection<TKey> OtherReadOnlyCollection)
+			{
+				if (OtherReadOnlyCollection.Count == 0)
+					return true;
 			}
 			else if (!other.Any())
 			{
@@ -172,9 +209,17 @@ namespace System.Collections.ReadOnly
 				return other.Any(); // For a proper subset, there has to be at least one item in Other that isn't in us
 
 			// If there are less items in the other collection than in us, we cannot be a subset
-			if (other is ICollection<TKey> OtherCollection && OtherCollection.Count < _Set.Count)
-				return false;
-
+			if (other is ICollection<TKey> OtherCollection)
+			{
+				if (OtherCollection.Count < _Set.Count)
+					return false;
+			}
+			else if (other is IReadOnlyCollection<TKey> OtherReadOnlyCollection)
+			{
+				if (OtherReadOnlyCollection.Count < _Set.Count)
+					return false;
+			}
+			
 			var UniqueItems = new HashSet<TKey>(_Comparer);
 			var FoundExtra = false;
 

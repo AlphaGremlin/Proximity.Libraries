@@ -25,7 +25,7 @@ namespace System.Collections.Concurrent
 		/// <remarks>Implements a loop around TryGetValue and TryAdd</remarks>
 		public static TValue GetOrAdd<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, TValue newValue, out bool wasAdded) where TKey : notnull
 		{	//****************************************
-			TValue OutValue;
+			TValue? OutValue;
 			//****************************************
 			
 			while (!target.TryGetValue(key, out OutValue))
@@ -56,7 +56,7 @@ namespace System.Collections.Concurrent
 		/// <remarks>Implements a loop around TryGetValue and TryAdd</remarks>
 		public static TValue GetOrAdd<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, Func<TKey, TValue> valueFactory, out bool wasAdded) where TKey : notnull
 		{	//****************************************
-			TValue OutValue;
+			TValue? OutValue;
 			//****************************************
 			
 			while (!target.TryGetValue(key, out OutValue))
@@ -91,7 +91,7 @@ namespace System.Collections.Concurrent
 		/// <remarks>Implements a loop around TryGetValue and TryAdd</remarks>
 		public static TValue GetOrAdd<TKey, TArg, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, Func<TKey, TArg, TValue> valueFactory, TArg factoryArgument, out bool wasAdded) where TKey : notnull
 		{ //****************************************
-			TValue OutValue;
+			TValue? OutValue;
 			//****************************************
 
 			while (!target.TryGetValue(key, out OutValue))

@@ -301,7 +301,11 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <returns>A set of strong references to the collection</returns>
 		/// <remarks>Will perform a compaction.</remarks>
+#if NETSTANDARD
 		public ISet<T> ToStrong()
+#else
+		public IReadOnlySet<T> ToStrong()
+#endif
 		{ //****************************************
 			var MyList = new HashSet<T>();
 			//****************************************

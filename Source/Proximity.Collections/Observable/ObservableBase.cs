@@ -359,6 +359,25 @@ namespace System.Collections.Observable
 			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, changedItems.ToArray(), startIndex));
 		}
 
+		/// <summary>
+		/// Publishes a <see cref="CollectionChanged"/> bulk Replace notification
+		/// </summary>
+		/// <param name="action">A Replace action</param>
+		/// <param name="newItems">The new items</param>
+		/// <param name="oldItems">The old items</param>
+		/// <param name="index">The index the item is at</param>
+		protected virtual void OnCollectionChanged(NotifyCollectionChangedAction action, IEnumerable<T> newItems, IEnumerable<T> oldItems, int index)
+		{
+			HasChanged = true;
+
+			if (_UpdateCount != 0)
+				return;
+
+			OnPropertyChanged(IndexerName); // Only the indexer has changed, the count is the same
+
+			CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(action, newItems.ToArray(), oldItems.ToArray(), index));
+		}
+
 		//****************************************
 
 		/// <summary>

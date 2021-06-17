@@ -39,20 +39,19 @@ namespace System.Collections.Observable
 		/// <inheritdoc />
 		public override void AddRange(IEnumerable<T> items)
 		{
-			var AddedItem = false;
+			if (items == null)
+				throw new ArgumentNullException(nameof(items));
+
+			var NewItems = new List<T>(items);
+
+			if (NewItems.Count == 0)
+				return;
+
 			var StartIndex = Items.Count;
 
-			if (items == null) throw new ArgumentNullException(nameof(items));
+			Items.AddRange(NewItems);
 
-			foreach (var MyItem in items)
-			{
-				Items.Add(MyItem);
-
-				AddedItem = true;
-			}
-
-			if (AddedItem)
-				OnCollectionChanged(NotifyCollectionChangedAction.Add, items, StartIndex);
+			OnCollectionChanged(NotifyCollectionChangedAction.Add, NewItems, StartIndex);
 		}
 
 		/// <summary>
@@ -104,6 +103,59 @@ namespace System.Collections.Observable
 		/// <param name="index">The index to insert the element</param>
 		/// <param name="item">The element to insert</param>
 		public void Insert(int index, T item) => Insert(index, item, true);
+
+		/// <summary>
+		/// Inserts elements at the specified index
+		/// </summary>
+		/// <param name="index">The index to insert the element</param>
+		/// <param name="items">The elements to insert</param>
+		public void InsertRange(int index, IEnumerable<T> items)
+		{
+			if (items == null)
+				throw new ArgumentNullException(nameof(items));
+
+			var NewItems = new List<T>(items);
+
+			if (NewItems.Count == 0)
+				return;
+
+			Items.InsertRange(index, NewItems);
+
+			OnCollectionChanged(NotifyCollectionChangedAction.Add, NewItems, index);
+		}
+
+		/// <summary>
+		/// Replaces elements at the specified index
+		/// </summary>
+		/// <param name="index">The index to start replacing the elements</param>
+		/// <param name="items">The elements to replace</param>
+		public void ReplaceRange(int index, IEnumerable<T> items)
+		{
+			if (items == null)
+				throw new ArgumentNullException(nameof(items));
+
+			var NewItems = new List<T>(items);
+
+			if (NewItems.Count == 0)
+				return;
+
+			if (index < 0 || index + NewItems.Count > Items.Count)
+				throw new ArgumentOutOfRangeException(nameof(index));
+
+			var OldItems = new T[NewItems.Count];
+
+			var Index = 0;
+			var StartIndex = index;
+
+			foreach (var Item in NewItems)
+			{
+				OldItems[Index++] = Items[index];
+
+				Items[index++] = Item;
+			}
+
+			OnCollectionChanged(NotifyCollectionChangedAction.Replace, OldItems, NewItems, StartIndex);
+		}
 
 		/// <inheritdoc />
 		public override bool Remove(T item)
@@ -179,6 +231,12 @@ namespace System.Collections.Observable
 		/// <inheritdoc />
 		public override void RemoveRange(int index, int count)
 		{
+			if (index < 0 || index >= Items.Count)
+				throw new ArgumentOutOfRangeException(nameof(index));
+
+			if (index < 0 || index + count > Items.Count)
+				throw new ArgumentOutOfRangeException(nameof(count));
+
 			var OldItems = new T[count];
 
 			Items.CopyTo(index, OldItems, 0, count);
