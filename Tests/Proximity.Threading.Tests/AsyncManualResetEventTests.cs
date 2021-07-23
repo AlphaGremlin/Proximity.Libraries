@@ -217,5 +217,65 @@ namespace Proximity.Threading.Tests
 			await Task1;
 			await Task2;
 		}
+
+		[Test]
+		public async Task RepeatedWaitCancel()
+		{
+			var Event = new AsyncManualResetEvent();
+
+			var CancelSource = new CancellationTokenSource();
+
+			var InitialCapacity = Event.Capacity;
+
+			for (var Count = 0; Count < 10000; Count++)
+			{
+				var Task = Event.Wait(CancelSource.Token);
+
+				CancelSource.Cancel();
+
+				try
+				{
+					await Task;
+				}
+				catch (OperationCanceledException)
+				{
+				}
+
+				CancelSource = new CancellationTokenSource();
+			}
+
+			Assert.AreEqual(InitialCapacity, Event.Capacity);
+		}
+
+		[Test]
+		public async Task RepeatedWaitCancelWithWait()
+		{
+			var Event = new AsyncManualResetEvent();
+
+			var CancelSource = new CancellationTokenSource();
+
+			var InitialCapacity = Event.Capacity;
+
+			_ = Event.Wait();
+
+			for (var Count = 0; Count < 10000; Count++)
+			{
+				var Task2 = Event.Wait(CancelSource.Token);
+
+				CancelSource.Cancel();
+
+				try
+				{
+					await Task2;
+				}
+				catch (OperationCanceledException)
+				{
+				}
+
+				CancelSource = new CancellationTokenSource();
+			}
+
+			Assert.AreEqual(InitialCapacity * 2, Event.Capacity);
+		}
 	}
 }

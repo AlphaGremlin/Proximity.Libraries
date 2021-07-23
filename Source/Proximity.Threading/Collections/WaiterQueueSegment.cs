@@ -21,17 +21,18 @@ namespace System.Collections.Concurrent
 		// http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
 
 		/// <summary>The array of items in this queue.  Each slot contains the item in that slot and its "sequence number".</summary>
-		internal readonly Slot[] _slots; // SOS's ThreadPool command depends on this name
+		internal readonly Slot[] Slots;
 		/// <summary>Mask for quickly accessing a position within the queue's array.</summary>
-		internal readonly int _slotsMask;
+		private readonly int _SlotsMask;
 		/// <summary>The head and tail positions, with padding to help avoid false sharing contention.</summary>
 		/// <remarks>Dequeuing happens from the head, enqueuing happens at the tail.</remarks>
-		internal PaddedHeadAndTail _headAndTail; // mutable struct: do not make this readonly
+		internal PaddedHeadAndTail HeadAndTail; // mutable struct: do not make this readonly
 
 		/// <summary>Indicates whether the segment has been marked such that no additional items may be enqueued.</summary>
-		internal bool _frozenForEnqueues;
+		internal bool FrozenForEnqueues;
 		/// <summary>The segment following this one in the queue, or null if this segment is the last in the queue.</summary>
-		internal WaiterQueueSegment<T>? _nextSegment; // SOS's ThreadPool command depends on this name
+		internal WaiterQueueSegment<T>? NextSegment;
+		internal int ErasedCount;
 
 		//****************************************
 
@@ -47,8 +48,8 @@ namespace System.Collections.Concurrent
 
 			// Initialize the slots and the mask.  The mask is used as a way of quickly doing "% _slots.Length",
 			// instead letting us do "& _slotsMask".
-			_slots = new Slot[boundedLength];
-			_slotsMask = boundedLength - 1;
+			Slots = new Slot[boundedLength];
+			_SlotsMask = boundedLength - 1;
 
 			// Initialize the sequence number for each slot.  The sequence number provides a ticket that
 			// allows dequeuers to know whether they can dequeue and enqueuers to know whether they can
@@ -64,9 +65,9 @@ namespace System.Collections.Concurrent
 			// subsequent slots, and to have the first enqueuer take longer, so that the slots for 1, 2, 3, etc.
 			// may have values, but the 0th slot may still be being filled... in that case, TryDequeue will
 			// return false.)
-			for (var i = 0; i < _slots.Length; i++)
+			for (var i = 0; i < Slots.Length; i++)
 			{
-				_slots[i].SequenceNumber = i;
+				Slots[i].SequenceNumber = i;
 			}
 		}
 
@@ -77,7 +78,7 @@ namespace System.Collections.Concurrent
 		/// </summary>
 		/// <remarks>
 		/// When we mark a segment as being frozen for additional enqueues,
-		/// we set the <see cref="_frozenForEnqueues"/> bool, but that's mostly
+		/// we set the <see cref="FrozenForEnqueues"/> bool, but that's mostly
 		/// as a small helper to avoid marking it twice.  The real marking comes
 		/// by modifying the Tail for the segment, increasing it by this
 		/// <see cref="FreezeOffset"/>.  This effectively knocks it off the
@@ -89,26 +90,30 @@ namespace System.Collections.Concurrent
 		/// </remarks>
 		internal void EnsureFrozenForEnqueues() // must only be called while queue's segment lock is held
 		{
-			if (!_frozenForEnqueues) // flag used to ensure we don't increase the Tail more than once if frozen more than once
+			if (!FrozenForEnqueues) // flag used to ensure we don't increase the Tail more than once if frozen more than once
 			{
-				_frozenForEnqueues = true;
-				Interlocked.Add(ref _headAndTail.Tail, FreezeOffset);
+				FrozenForEnqueues = true;
+				Interlocked.Add(ref HeadAndTail.Tail, FreezeOffset);
 			}
 		}
 
 		/// <summary>Tries to dequeue an element from the queue.</summary>
 		/// <param name="item">Receives the dequeued element, which may be null if it was removed</param>
-		internal bool TryDequeue(out T? item)
+		internal bool TryDequeue(
+#if !NETSTANDARD2_0
+			[MaybeNullWhen(false)]
+# endif
+			out T item)
 		{
-			Slot[] slots = _slots;
+			Slot[] slots = Slots;
 
 			// Loop in case of contention...
 			SpinWait spinner = default;
 			while (true)
 			{
 				// Get the head at which to try to dequeue.
-				var currentHead = Volatile.Read(ref _headAndTail.Head);
-				var slotsIndex = currentHead & _slotsMask;
+				var currentHead = Volatile.Read(ref HeadAndTail.Head);
+				var slotsIndex = currentHead & _SlotsMask;
 
 				// Read the sequence number for the head position.
 				var sequenceNumber = Volatile.Read(ref slots[slotsIndex].SequenceNumber);
@@ -126,12 +131,20 @@ namespace System.Collections.Concurrent
 					// but before the Volatile.Write, enqueuers trying to enqueue into this slot would
 					// spin indefinitely.  If this implementation is ever used on such a platform, this
 					// if block should be wrapped in a finally / prepared region.
-					if (Interlocked.CompareExchange(ref _headAndTail.Head, currentHead + 1, currentHead) == currentHead)
+					if (Interlocked.CompareExchange(ref HeadAndTail.Head, currentHead + 1, currentHead) == currentHead)
 					{
 						// Successfully reserved the slot.  Note that after the above CompareExchange, other threads
 						// trying to dequeue from this slot will end up spinning until we do the subsequent Write.
-						item = Interlocked.Exchange(ref slots[slotsIndex].Item, null);
+						item = Interlocked.Exchange(ref slots[slotsIndex].Item, null)!;
+
+						if (item == null)
+							Interlocked.Decrement(ref ErasedCount);
+
 						Volatile.Write(ref slots[slotsIndex].SequenceNumber, currentHead + slots.Length);
+
+						if (item == null)
+							continue; // Dequeued an empty item, so loop and try again
+
 						return true;
 					}
 				}
@@ -144,8 +157,8 @@ namespace System.Collections.Concurrent
 					// this one that are available, but we need to dequeue in order.  So before declaring
 					// failure and that the segment is empty, we check the tail to see if we're actually
 					// empty or if we're just waiting for items in flight or after this one to become available.
-					var frozen = _frozenForEnqueues;
-					var currentTail = Volatile.Read(ref _headAndTail.Tail);
+					var frozen = FrozenForEnqueues;
+					var currentTail = Volatile.Read(ref HeadAndTail.Tail);
 					if (currentTail - currentHead <= 0 || (frozen && (currentTail - FreezeOffset - currentHead <= 0)))
 					{
 						item = default!;
@@ -169,15 +182,15 @@ namespace System.Collections.Concurrent
 #endif
 			out T result)
 		{
-			Slot[] slots = _slots;
+			Slot[] slots = Slots;
 
 			// Loop in case of contention...
 			SpinWait spinner = default;
 			while (true)
 			{
 				// Get the head at which to try to peek.
-				var currentHead = Volatile.Read(ref _headAndTail.Head);
-				var slotsIndex = currentHead & _slotsMask;
+				var currentHead = Volatile.Read(ref HeadAndTail.Head);
+				var slotsIndex = currentHead & _SlotsMask;
 
 				// Read the sequence number for the head position.
 				var sequenceNumber = Volatile.Read(ref slots[slotsIndex].SequenceNumber);
@@ -204,8 +217,9 @@ namespace System.Collections.Concurrent
 					// but before the Volatile.Write, enqueuers trying to enqueue into this slot would
 					// spin indefinitely.  If this implementation is ever used on such a platform, this
 					// if block should be wrapped in a finally / prepared region.
-					if (Interlocked.CompareExchange(ref _headAndTail.Head, currentHead + 1, currentHead) == currentHead)
+					if (Interlocked.CompareExchange(ref HeadAndTail.Head, currentHead + 1, currentHead) == currentHead)
 					{
+						Interlocked.Decrement(ref ErasedCount);
 						// Successfully reserved the slot.  Note that after the above CompareExchange, other threads
 						// trying to dequeue from this slot will end up spinning until we do the subsequent Write.
 						Volatile.Write(ref slots[slotsIndex].SequenceNumber, currentHead + slots.Length);
@@ -222,8 +236,8 @@ namespace System.Collections.Concurrent
 					// this one that are available, but we need to peek in order.  So before declaring
 					// failure and that the segment is empty, we check the tail to see if we're actually
 					// empty or if we're just waiting for items in flight or after this one to become available.
-					bool frozen = _frozenForEnqueues;
-					int currentTail = Volatile.Read(ref _headAndTail.Tail);
+					var frozen = FrozenForEnqueues;
+					var currentTail = Volatile.Read(ref HeadAndTail.Tail);
 					if (currentTail - currentHead <= 0 || (frozen && (currentTail - FreezeOffset - currentHead <= 0)))
 					{
 						result = default!;
@@ -247,15 +261,15 @@ namespace System.Collections.Concurrent
 		/// </summary>
 		internal bool TryEnqueue(T item)
 		{
-			Slot[] slots = _slots;
+			Slot[] slots = Slots;
 
 			// Loop in case of contention...
 			SpinWait spinner = default;
 			while (true)
 			{
 				// Get the tail at which to try to return.
-				var currentTail = Volatile.Read(ref _headAndTail.Tail);
-				var slotsIndex = currentTail & _slotsMask;
+				var currentTail = Volatile.Read(ref HeadAndTail.Tail);
+				var slotsIndex = currentTail & _SlotsMask;
 
 				// Read the sequence number for the tail position.
 				var sequenceNumber = Volatile.Read(ref slots[slotsIndex].SequenceNumber);
@@ -273,7 +287,7 @@ namespace System.Collections.Concurrent
 					// but before the Volatile.Write, other threads will spin trying to access this slot.
 					// If this implementation is ever used on such a platform, this if block should be
 					// wrapped in a finally / prepared region.
-					if (Interlocked.CompareExchange(ref _headAndTail.Tail, currentTail + 1, currentTail) == currentTail)
+					if (Interlocked.CompareExchange(ref HeadAndTail.Tail, currentTail + 1, currentTail) == currentTail)
 					{
 						// Successfully reserved the slot.  Note that after the above CompareExchange, other threads
 						// trying to return will end up spinning until we do the subsequent Write.
@@ -302,42 +316,71 @@ namespace System.Collections.Concurrent
 		{
 			if (head != tail && head != tail - FreezeOffset)
 			{
-				head &= _slotsMask;
-				tail &= _slotsMask;
+				head &= _SlotsMask;
+				tail &= _SlotsMask;
 
-				return head < tail ? tail - head : _slots.Length - head + tail;
+				return head < tail ? tail - head : Slots.Length - head + tail;
 			}
 
 			return 0;
 		}
 
-		/// <summary>Gets the item stored in the <paramref name="i"/>th entry.</summary>
-		internal bool TryGetItem(int i, out T? result)
+		/// <summary>Tries to erase an element from the queue.</summary>
+		/// <param name="item">The element to erase</param>
+		internal bool TryErase(T item)
 		{
-			// If the expected sequence number is not yet written, we're still waiting for an enqueuer to finish storing it. Ignore it, since we only care about items that are already written
-			if ((_slots[i].SequenceNumber & _slotsMask) != ((i + 1) & _slotsMask))
+			Slot[] slots = Slots;
+
+			// What is the current head? We scan backwards, until we find it or we hit the tail
+			var currentHead = Volatile.Read(ref HeadAndTail.Head);
+			// Since the item we want to erase should already be inside, if we hit the tail that means
+			// it's already been erased or dequeued
+			var currentTail = Volatile.Read(ref HeadAndTail.Tail);
+
+			while (true)
 			{
-				result = null!;
+				// Get the head at which to try to start examining.
+				var slotsIndex = currentHead & _SlotsMask;
 
-				return false;
+				// If we've reached the tail, we've run through the whole segment and not found the item
+				// because it was never there, or because someone dequeued it first
+				if (currentHead >= currentTail)
+					return false;
+
+				// If this item is our target, replace it with null
+				if (Interlocked.CompareExchange(ref slots[slotsIndex].Item, null, item) == item)
+				{
+					Interlocked.Increment(ref ErasedCount);
+
+					if (Volatile.Read(ref HeadAndTail.Head) == currentHead)
+					{
+						// We're (still) the head of the segment. Do a fake dequeue
+						if (Interlocked.CompareExchange(ref HeadAndTail.Head, currentHead + 1, currentHead) == currentHead)
+						{
+							// Successfully reserved the slot.  Note that after the above CompareExchange, other threads
+							// trying to dequeue from this slot will end up spinning until we do the subsequent Write.
+							Interlocked.Decrement(ref ErasedCount);
+							Volatile.Write(ref slots[slotsIndex].SequenceNumber, currentHead + slots.Length);
+						}
+						// If it fails, someone else did the dequeue, so we just continue
+					}
+					// If we're not the head, this segment may end up filling with erased items we can't free the slots for.
+					// This makes the worst case scenario one entire segment per live item
+
+					return true;
+				}
+
+				currentHead++;
 			}
-
-			// Return the value from the slot.
-			result = _slots[i].Item;
-
-			return true;
 		}
-
-		/// <summary>Erases the item stored in the <paramref name="i"/>th entry.</summary>
-		internal bool Erase(int i) => Interlocked.Exchange(ref _slots[i].Item, null) != null;
 
 		//****************************************
 
 		/// <summary>Gets the number of elements this segment can store.</summary>
-		internal int Capacity => _slots.Length;
+		internal int Capacity => Slots.Length;
 
 		/// <summary>Gets the "freeze offset" for this segment.</summary>
-		internal int FreezeOffset => _slots.Length * 2;
+		internal int FreezeOffset => Slots.Length * 2;
 
 		//****************************************
 

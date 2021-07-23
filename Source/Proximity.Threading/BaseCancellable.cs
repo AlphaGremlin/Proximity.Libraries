@@ -43,6 +43,26 @@ namespace Proximity.Threading
 			return new TimeoutException();
 		}
 
+		protected bool TryCreateCancellationException(
+#if !NETSTANDARD
+			[MaybeNullWhen(false)]
+#endif
+			out Exception exception)
+		{
+			// This token is the one we were given
+			// If it's not cancelled, that means the timeout was triggered
+			if (_Token.IsCancellationRequested)
+			{
+				// Either we have no timeout set, or it was the underlying token (if any) that cancelled
+				exception = new OperationCanceledException(_Token);
+				return true;
+			}
+
+			// The timeout was triggered
+			exception = null!;
+			return false;
+		}
+
 		//****************************************
 
 		protected void RegisterCancellation(CancellationToken token, TimeSpan timeout)

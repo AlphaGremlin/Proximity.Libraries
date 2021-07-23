@@ -40,36 +40,31 @@ namespace System.Collections.Concurrent
 
 			for (; ;)
 			{
-				WaiterQueueSegment<T> tail = _Tail;
+				var Tail = _Tail;
 
 				// Try to append to the existing tail.
-				if (tail.TryEnqueue(item))
+				if (Tail.TryEnqueue(item))
 					return;
 
 				// If we were unsuccessful, take the lock so that we can compare and manipulate
-				// the tail.  Assuming another enqueuer hasn't already added a new segment,
+				// the tail. Assuming another enqueuer hasn't already added a new segment,
 				// do so, then loop around to try enqueueing again.
 				lock (_CrossSegmentLock)
 				{
-					if (tail == _Tail)
+					if (Tail == _Tail)
 					{
 						// Make sure no one else can enqueue to this segment.
-						tail.EnsureFrozenForEnqueues();
+						Tail.EnsureFrozenForEnqueues();
 
 						// We determine the new segment's length based on the old length.
 						// In general, we double the size of the segment, to make it less likely
-						// that we'll need to grow again.  However, if the tail segment is marked
-						// as preserved for observation, something caused us to avoid reusing this
-						// segment, and if that happens a lot and we grow, we'll end up allocating
-						// lots of wasted space.  As such, in such situations we reset back to the
-						// initial segment length; if these observations are happening frequently,
-						// this will help to avoid wasted memory, and if they're not, we'll
-						// relatively quickly grow again to a larger size.
-						var nextSize = Math.Min(tail.Capacity * 2, MaxSegmentLength);
+						// that we'll need to grow again.  However, if the tail segment has a majority
+						// of erased items, we leave the size as-is.
+						var nextSize = (Tail.ErasedCount > Tail.Capacity / 2) ? Tail.Capacity : Math.Min(Tail.Capacity * 2, MaxSegmentLength);
 						var newTail = new WaiterQueueSegment<T>(nextSize);
 
 						// Hook up the new tail.
-						tail._nextSegment = newTail;
+						Tail.NextSegment = newTail;
 						_Tail = newTail;
 					}
 				}
@@ -102,17 +97,12 @@ namespace System.Collections.Concurrent
 
 				// Try to take.  If we're successful, we're done.
 				if (head.TryDequeue(out result!))
-				{
-					if (result != null)
-						return true;
-
-					continue;
-				}
+					return true;
 
 				// Check to see whether this segment is the last. If it is, we can consider
 				// this to be a moment-in-time empty condition (even though between the TryDequeue
 				// check and this check, another item could have arrived).
-				if (head._nextSegment == null)
+				if (head.NextSegment == null)
 					return false;
 
 				// At this point we know that head.Next != null, which means
@@ -120,7 +110,7 @@ namespace System.Collections.Concurrent
 				// the time that we ran TryDequeue and checked for a next segment,
 				// another item could have been added.  Try to dequeue one more time
 				// to confirm that the segment is indeed empty.
-				Debug.Assert(head._frozenForEnqueues);
+				Debug.Assert(head.FrozenForEnqueues);
 				if (head.TryDequeue(out result!))
 				{
 					if (result != null)
@@ -134,7 +124,7 @@ namespace System.Collections.Concurrent
 				lock (_CrossSegmentLock)
 				{
 					if (head == _Head)
-						_Head = head._nextSegment;
+						_Head = head.NextSegment;
 				}
 			}
 		}
@@ -147,70 +137,24 @@ namespace System.Collections.Concurrent
 		/// <remarks>Uses reference-equality</remarks>
 		public bool Erase(T item)
 		{
-			SnapForObservation(out var Head, out var HeadHead, out var Tail, out var TailTail);
+			// Get the current head
+			var Segment = _Head;
 
-			// Head segment. We've already marked it as not accepting any more enqueues, so its tail position is fixed
-			var HeadTail = (Head == Tail ? TailTail : Volatile.Read(ref Head._headAndTail.Tail)) - Head.FreezeOffset;
-
-			if (HeadHead < HeadTail)
+			// Scan through until we hit the tail
+			for (; ; )
 			{
-				HeadHead &= Head._slotsMask;
-				HeadTail &= Head._slotsMask;
+				// Try to take.  If we're successful, we're done.
+				if (Segment.TryErase(item))
+					return true;
 
-				if (HeadHead < HeadTail)
-				{
-					for (var Index = HeadHead; Index < HeadTail; Index++)
-					{
-						if (Head.TryGetItem(Index, out var Item) && ReferenceEquals(Item, item) && Head.Erase(Index))
-							return true;
-					}
-				}
-				else
-				{
-					for (var Index = HeadHead; Index < Head._slots.Length; Index++)
-					{
-						if (Head.TryGetItem(Index, out var Item) && ReferenceEquals(Item, item) && Head.Erase(Index))
-							return true;
-					}
+				// Check to see whether this segment is the last. If it is, we can consider
+				// this to be a moment-in-time empty condition (even though between the TryDequeue
+				// check and this check, another item could have arrived).
+				if (Segment.NextSegment == null)
+					return false;
 
-					for (var Index = 0; Index < HeadTail; Index++)
-					{
-						if (Head.TryGetItem(Index, out var Item) && ReferenceEquals(Item, item) && Head.Erase(Index))
-							return true;
-					}
-				}
+				Segment = Segment.NextSegment;
 			}
-
-			// We've enumerated the head.  If the tail is the same, we're done.
-			if (Head != Tail)
-			{
-				// Each segment between head and tail, not including head and tail.  Since there were
-				// segments before these, for our purposes we consider it to start at the 0th element.
-				for (var Segment = Head._nextSegment!; Segment != Tail; Segment = Segment._nextSegment!)
-				{
-					Debug.Assert(Segment._frozenForEnqueues, "Would have had to be frozen for enqueues as it's intermediate");
-
-					var SegmentTail = Segment._headAndTail.Tail - Segment.FreezeOffset;
-
-					for (var Index = 0; Index < SegmentTail; Index++)
-					{
-						if (Segment.TryGetItem(Index, out var Item) && ReferenceEquals(Item, item) && Segment.Erase(Index))
-							return true;
-					}
-				}
-
-				// Enumerate the tail.  Since there were segments before this, we can just start at
-				// its beginning, and iterate until the tail we already grabbed.
-				TailTail -= Tail.FreezeOffset;
-
-				for (var Index = 0; Index < TailTail; Index++)
-				{
-					if (Tail.TryGetItem(Index, out var Item) && ReferenceEquals(Item, item) && Tail.Erase(Index))
-						return true;
-				}
-			}
-
-			return false;
 		}
 
 		/// <summary>Attempts to retrieve the value for the first element in the queue.</summary>
@@ -230,7 +174,7 @@ namespace System.Collections.Concurrent
 				// Grab the next segment from this one, before we peek.
 				// This is to be able to see whether the value has changed
 				// during the peek operation.
-				WaiterQueueSegment<T>? next = Volatile.Read(ref s._nextSegment);
+				WaiterQueueSegment<T>? next = Volatile.Read(ref s.NextSegment);
 
 				// Peek at the segment.  If we find an element, we're done.
 				if (s.TryPeek(out result!))
@@ -243,10 +187,10 @@ namespace System.Collections.Concurrent
 					// If prior to the peek there was already a next segment, then
 					// during the peek no additional items could have been enqueued
 					// to it and we can just move on to check the next segment.
-					Debug.Assert(next == s._nextSegment);
+					Debug.Assert(next == s.NextSegment);
 					s = next;
 				}
-				else if (Volatile.Read(ref s._nextSegment) == null)
+				else if (Volatile.Read(ref s.NextSegment) == null)
 				{
 					// The next segment is null.  Nothing more to peek at.
 					break;
@@ -272,37 +216,6 @@ namespace System.Collections.Concurrent
 		//****************************************
 
 		/// <summary>
-		/// Gets the head and tail information of the current contents of the queue.
-		/// After this call returns, the specified region can be enumerated without receiving new items, though old ones may be cleared
-		/// </summary>
-		private void SnapForObservation(out WaiterQueueSegment<T> head, out int headHead, out WaiterQueueSegment<T> tail, out int tailTail)
-		{
-			lock (_CrossSegmentLock) // _head and _tail may only change while the lock is held.
-			{
-				// Snap the head and tail
-				head = _Head;
-				tail = _Tail;
-
-				// Mark them and all segments in between as preserving, and ensure no additional items
-				// can be added to the tail.
-				for (var s = head; ; s = s._nextSegment!)
-				{
-					if (s == tail)
-						break;
-					Debug.Assert(s._frozenForEnqueues); // any non-tail should already be marked
-				}
-				tail.EnsureFrozenForEnqueues(); // we want to prevent the tailTail from moving
-
-				// At this point, none of the existing segments can have new items enqueued.
-
-				headHead = Volatile.Read(ref head._headAndTail.Head);
-				tailTail = Volatile.Read(ref tail._headAndTail.Tail);
-			}
-		}
-
-		//****************************************
-
-		/// <summary>
 		/// Gets a value that indicates whether the <see cref="WaiterQueue{T}"/> is empty.
 		/// </summary>
 		/// <value>true if the <see cref="WaiterQueue{T}"/> is empty; otherwise, false.</value>
@@ -319,7 +232,7 @@ namespace System.Collections.Concurrent
 					// Grab the next segment from this one, before we peek.
 					// This is to be able to see whether the value has changed
 					// during the peek operation.
-					var next = Volatile.Read(ref Current._nextSegment);
+					var next = Volatile.Read(ref Current.NextSegment);
 
 					// Peek at the segment.  If we find an element, we're done.
 					if (Current.TryPeek(out _))
@@ -332,10 +245,10 @@ namespace System.Collections.Concurrent
 						// If prior to the peek there was already a next segment, then
 						// during the peek no additional items could have been enqueued
 						// to it and we can just move on to check the next segment.
-						Debug.Assert(next == Current._nextSegment);
+						Debug.Assert(next == Current.NextSegment);
 						Current = next;
 					}
-					else if (Volatile.Read(ref Current._nextSegment) == null)
+					else if (Volatile.Read(ref Current.NextSegment) == null)
 					{
 						// The next segment is null.  Nothing more to peek at.
 						return true;
@@ -375,8 +288,8 @@ namespace System.Collections.Concurrent
 					// Capture the head and tail, as well as the head's head and tail.
 					var head = _Head;
 					var tail = _Tail;
-					var headHead = Volatile.Read(ref head._headAndTail.Head);
-					var headTail = Volatile.Read(ref head._headAndTail.Tail);
+					var headHead = Volatile.Read(ref head.HeadAndTail.Head);
+					var headTail = Volatile.Read(ref head.HeadAndTail.Tail);
 
 					if (head == tail)
 					{
@@ -387,24 +300,24 @@ namespace System.Collections.Concurrent
 						// dequeued between the reads.)
 						if (head == _Head &&
 								tail == _Tail &&
-								headHead == Volatile.Read(ref head._headAndTail.Head) &&
-								headTail == Volatile.Read(ref head._headAndTail.Tail))
+								headHead == Volatile.Read(ref head.HeadAndTail.Head) &&
+								headTail == Volatile.Read(ref head.HeadAndTail.Tail))
 						{
 							return head.GetCount(headHead, headTail);
 						}
 					}
-					else if (head._nextSegment == tail)
+					else if (head.NextSegment == tail)
 					{
 						// There were two segments in the queue.  Get the positions from the tail, and as above,
 						// if the captured values match the previous reads, return the sum of the counts from both segments.
-						var tailHead = Volatile.Read(ref tail._headAndTail.Head);
-						var tailTail = Volatile.Read(ref tail._headAndTail.Tail);
+						var tailHead = Volatile.Read(ref tail.HeadAndTail.Head);
+						var tailTail = Volatile.Read(ref tail.HeadAndTail.Tail);
 						if (head == _Head &&
 								tail == _Tail &&
-								headHead == Volatile.Read(ref head._headAndTail.Head) &&
-								headTail == Volatile.Read(ref head._headAndTail.Tail) &&
-								tailHead == Volatile.Read(ref tail._headAndTail.Head) &&
-								tailTail == Volatile.Read(ref tail._headAndTail.Tail))
+								headHead == Volatile.Read(ref head.HeadAndTail.Head) &&
+								headTail == Volatile.Read(ref head.HeadAndTail.Tail) &&
+								tailHead == Volatile.Read(ref tail.HeadAndTail.Head) &&
+								tailTail == Volatile.Read(ref tail.HeadAndTail.Tail))
 						{
 							return head.GetCount(headHead, headTail) + tail.GetCount(tailHead, tailTail);
 						}
@@ -423,12 +336,12 @@ namespace System.Collections.Concurrent
 							{
 								// Get the positions from the tail, and as above, if the captured values match the previous reads,
 								// we can use the values to compute the count of the head and tail segments.
-								var tailHead = Volatile.Read(ref tail._headAndTail.Head);
-								var tailTail = Volatile.Read(ref tail._headAndTail.Tail);
-								if (headHead == Volatile.Read(ref head._headAndTail.Head) &&
-										headTail == Volatile.Read(ref head._headAndTail.Tail) &&
-										tailHead == Volatile.Read(ref tail._headAndTail.Head) &&
-										tailTail == Volatile.Read(ref tail._headAndTail.Tail))
+								var tailHead = Volatile.Read(ref tail.HeadAndTail.Head);
+								var tailTail = Volatile.Read(ref tail.HeadAndTail.Tail);
+								if (headHead == Volatile.Read(ref head.HeadAndTail.Head) &&
+										headTail == Volatile.Read(ref head.HeadAndTail.Tail) &&
+										tailHead == Volatile.Read(ref tail.HeadAndTail.Head) &&
+										tailTail == Volatile.Read(ref tail.HeadAndTail.Tail))
 								{
 									// We got stable values for the head and tail segments, so we can just compute the sizes
 									// based on those and add them. Note that this and the below additions to count may overflow: previous
@@ -442,10 +355,10 @@ namespace System.Collections.Concurrent
 									// With the cross-segment lock held, we're guaranteed that all of these internal segments are
 									// consistent, as the head and tail segment can't be changed while we're holding the lock, and
 									// dequeueing and enqueueing can only be done from the head and tail segments, which these aren't.
-									for (var s = head._nextSegment!; s != tail; s = s._nextSegment!)
+									for (var s = head.NextSegment!; s != tail; s = s.NextSegment!)
 									{
-										Debug.Assert(s._frozenForEnqueues, "Internal segment must be frozen as there's a following segment.");
-										count += s._headAndTail.Tail - s.FreezeOffset;
+										Debug.Assert(s.FrozenForEnqueues, "Internal segment must be frozen as there's a following segment.");
+										count += s.HeadAndTail.Tail - s.FreezeOffset;
 									}
 
 									return count;
@@ -458,6 +371,23 @@ namespace System.Collections.Concurrent
 					// Spin and try again.
 					spinner.SpinOnce();
 				}
+			}
+		}
+
+		public int Capacity
+		{
+			get
+			{
+				var Segment = _Head;
+
+				var Total = Segment.Capacity;
+
+				for (Segment = Segment.NextSegment; Segment != null; Segment = Segment.NextSegment)
+				{
+					Total += Segment.Capacity;
+				}
+
+				return Total;
 			}
 		}
 	}

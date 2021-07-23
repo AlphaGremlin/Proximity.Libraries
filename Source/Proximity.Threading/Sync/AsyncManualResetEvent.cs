@@ -83,7 +83,7 @@ namespace System.Threading
 		/// <param name="token">A cancellation token to abort waiting</param>
 		/// <returns>A task that completes when the event has been set</returns>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
-		public ValueTask Wait(CancellationToken token = default) => Wait(Timeout.InfiniteTimeSpan, token);
+		public ValueTask<bool> Wait(CancellationToken token = default) => Wait(Timeout.InfiniteTimeSpan, token);
 
 		/// <summary>
 		/// Waits for the event to become set, or if set return immediately
@@ -92,18 +92,17 @@ namespace System.Threading
 		/// <param name="token">A cancellation token to abort waiting</param>
 		/// <returns>A task that completes when the event has been set</returns>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
-		/// <exception cref="TimeoutException">The timeout elapsed</exception>
-		public ValueTask Wait(TimeSpan timeout, CancellationToken token = default)
+		public ValueTask<bool> Wait(TimeSpan timeout, CancellationToken token = default)
 		{
 			if (GetIsSet())
-				return default;
+				return new ValueTask<bool>(true);
 
 			if (_State == State.Disposed)
 				throw new ObjectDisposedException(nameof(AsyncAutoResetEvent), "Event has been disposed of");
 
 			var Instance = ManualResetInstance.GetOrCreate(this, GetIsSet());
 
-			var ValueTask = new ValueTask(Instance, Instance.Version);
+			var ValueTask = new ValueTask<bool>(Instance, Instance.Version);
 
 			if (!ValueTask.IsCompleted)
 			{
@@ -170,30 +169,17 @@ namespace System.Threading
 
 			//****************************************
 
-			try
+			lock (Instance)
 			{
-				lock (Instance)
-				{
-					// Queue this inside the lock, so Pulse cannot execute until we've reached Wait
-					Instance.OnCompleted((state) => { lock (state!) Monitor.Pulse(state); }, Instance, Instance.Version, ValueTaskSourceOnCompletedFlags.None);
+				// Queue this inside the lock, so Pulse cannot execute until we've reached Wait
+				Instance.OnCompleted(PulseCompleted, Instance, Instance.Version, ValueTaskSourceOnCompletedFlags.None);
 
-					// Wait for a definitive result
-					Monitor.Wait(Instance);
-				}
-
-				// Result retrieved, now check if we were cancelled
-				Instance.GetResult(Instance.Version);
-
-				return true;
+				// Wait for a definitive result
+				Monitor.Wait(Instance);
 			}
-			catch
-			{
-				// We may get a cancel or dispose exception
-				if (!token.IsCancellationRequested)
-					return false; // If it's not the original token, we cancelled due to a Timeout. Return false
 
-				throw; // Throw the cancellation
-			}
+			// Result retrieved, now check if we were cancelled
+			return Instance.GetResult(Instance.Version);
 		}
 
 		//****************************************
@@ -218,9 +204,21 @@ namespace System.Threading
 		/// </summary>
 		public int WaitingCount => _Waiters.Count;
 
+		internal int Capacity => _Waiters.Capacity;
+
 		//****************************************
 
-		private sealed class ManualResetInstance : BaseCancellable, IValueTaskSource
+		private static void PulseCompleted(object? state)
+		{
+			lock (state!)
+			{
+				Monitor.Pulse(state);
+			}
+		}
+
+		//****************************************
+
+		private sealed class ManualResetInstance : BaseCancellable, IValueTaskSource<bool>
 		{ //****************************************
 			private static readonly ConcurrentBag<ManualResetInstance> Instances = new ConcurrentBag<ManualResetInstance>();
 			//****************************************
@@ -312,8 +310,11 @@ namespace System.Threading
 
 				Owner!._Waiters.Erase(this);
 
-				// The cancellation token was raised
-				_TaskSource.SetException(CreateCancellationException());
+				// The cancellation token was raised, or we timed out
+				if (TryCreateCancellationException(out var Exception))
+					_TaskSource.SetException(Exception);
+				else
+					_TaskSource.SetResult(false);
 			}
 
 			protected override void UnregisteredCancellation()
@@ -325,20 +326,20 @@ namespace System.Threading
 					break;
 
 				case Status.Set:
-					_TaskSource.SetResult(default);
+					_TaskSource.SetResult(true);
 					break;
 				}
 			}
 
-			ValueTaskSourceStatus IValueTaskSource.GetStatus(short token) => _TaskSource.GetStatus(token);
+			ValueTaskSourceStatus IValueTaskSource<bool>.GetStatus(short token) => _TaskSource.GetStatus(token);
 
 			public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
 
-			public void GetResult(short token)
+			public bool GetResult(short token)
 			{
 				try
 				{
-					_TaskSource.GetResult(token);
+					return _TaskSource.GetResult(token);
 				}
 				finally
 				{

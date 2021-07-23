@@ -89,29 +89,28 @@ namespace System.Threading
 		/// Waits for the event to become set, or unsets it and returns immediately
 		/// </summary>
 		/// <param name="token">A cancellation token to abort waiting</param>
-		/// <returns>A task that completes when the event has been set</returns>
+		/// <returns>A task that returns true when the event has been set</returns>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
-		public ValueTask Wait(CancellationToken token = default) => Wait(Timeout.InfiniteTimeSpan, token);
+		public ValueTask<bool> Wait(CancellationToken token = default) => Wait(Timeout.InfiniteTimeSpan, token);
 
 		/// <summary>
 		/// Waits for the event to become set, or unsets it and returns immediately
 		/// </summary>
 		/// <param name="timeout">The amount of time to wait for the event to be set</param>
 		/// <param name="token">A cancellation token to abort waiting</param>
-		/// <returns>A task that completes when the event has been set</returns>
+		/// <returns>A task that returns true when the event has been set, false if a timeout occurred</returns>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
-		/// <exception cref="TimeoutException">The timeout elapsed</exception>
-		public ValueTask Wait(TimeSpan timeout, CancellationToken token = default)
+		public ValueTask<bool> Wait(TimeSpan timeout, CancellationToken token = default)
 		{
 			if (TryReset())
-				return default;
+				return new ValueTask<bool>(true);
 
 			if (_State == State.Disposed)
 				throw new ObjectDisposedException(nameof(AsyncAutoResetEvent), "Event has been disposed of");
 
 			var Instance = AutoResetInstance.GetOrCreate(this, token, timeout);
 
-			var ValueTask = new ValueTask(Instance, Instance.Version);
+			var ValueTask = new ValueTask<bool>(Instance, Instance.Version);
 
 			_Waiters.Enqueue(Instance);
 
@@ -142,7 +141,6 @@ namespace System.Threading
 		/// <param name="token">A cancellation token that can be used to abort waiting on the event</param>
 		/// <returns>True if the event was set, otherwise False due to timeout or disposal</returns>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
-		/// <exception cref="TimeoutException">The timeout elapsed</exception>
 		public bool TryWait(TimeSpan timeout, CancellationToken token = default)
 		{
 			// First up, try and reset the event if possible
@@ -169,30 +167,17 @@ namespace System.Threading
 
 			//****************************************
 
-			try
+			lock (Instance)
 			{
-				lock (Instance)
-				{
-					// Queue this inside the lock, so Pulse cannot execute until we've reached Wait
-					Instance.OnCompleted((state) => { lock (state!) Monitor.Pulse(state); }, Instance, Instance.Version, ValueTaskSourceOnCompletedFlags.None);
+				// Queue this inside the lock, so Pulse cannot execute until we've reached Wait
+				Instance.OnCompleted(PulseCompleted, Instance, Instance.Version, ValueTaskSourceOnCompletedFlags.None);
 
-					// Wait for a definitive result
-					Monitor.Wait(Instance);
-				}
-
-				// Result retrieved, now check if we were cancelled
-				Instance.GetResult(Instance.Version);
-
-				return true;
+				// Wait for a definitive result
+				Monitor.Wait(Instance);
 			}
-			catch
-			{
-				// We may get a cancel or dispose exception
-				if (!token.IsCancellationRequested)
-					return false; // If it's not the original token, we cancelled due to a Timeout. Return false
 
-				throw; // Throw the cancellation
-			}
+			// Result retrieved, now check if we were cancelled
+			return Instance.GetResult(Instance.Version);
 		}
 
 		//****************************************
@@ -219,13 +204,23 @@ namespace System.Threading
 
 		//****************************************
 
-		private sealed class AutoResetInstance : BaseCancellable, IValueTaskSource
+		private static void PulseCompleted(object? state)
+		{
+			lock (state!)
+			{
+				Monitor.Pulse(state);
+			}
+		}
+
+		//****************************************
+
+		private sealed class AutoResetInstance : BaseCancellable, IValueTaskSource<bool>
 		{ //****************************************
 			private static readonly ConcurrentBag<AutoResetInstance> Instances = new ConcurrentBag<AutoResetInstance>();
 			//****************************************
 			private volatile int _InstanceState;
 
-			private ManualResetValueTaskSourceCore<VoidStruct> _TaskSource = new ManualResetValueTaskSourceCore<VoidStruct>();
+			private ManualResetValueTaskSourceCore<bool> _TaskSource = new ManualResetValueTaskSourceCore<bool>();
 			//****************************************
 
 			internal AutoResetInstance() => _TaskSource.RunContinuationsAsynchronously = true;
@@ -297,8 +292,11 @@ namespace System.Threading
 
 				Owner!._Waiters.Erase(this);
 
-				// The cancellation token was raised
-				_TaskSource.SetException(CreateCancellationException());
+				// The cancellation token was raised, or we timed out
+				if (TryCreateCancellationException(out var Exception))
+					_TaskSource.SetException(Exception);
+				else
+					_TaskSource.SetResult(false);
 			}
 
 			protected override void UnregisteredCancellation()
@@ -310,20 +308,20 @@ namespace System.Threading
 					break;
 
 				case Status.Held:
-					_TaskSource.SetResult(default);
+					_TaskSource.SetResult(true);
 					break;
 				}
 			}
 
-			ValueTaskSourceStatus IValueTaskSource.GetStatus(short token) => _TaskSource.GetStatus(token);
+			ValueTaskSourceStatus IValueTaskSource<bool>.GetStatus(short token) => _TaskSource.GetStatus(token);
 
 			public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
 
-			public void GetResult(short token)
+			public bool GetResult(short token)
 			{
 				try
 				{
-					_TaskSource.GetResult(token);
+					return _TaskSource.GetResult(token);
 				}
 				finally
 				{
