@@ -24,24 +24,17 @@ namespace System.Text
 			if (content.IsEmpty)
 				return builder;
 
-			var OutBuffer = ArrayPool<char>.Shared.Rent(1024 * 2);
+			using var OutBuffer = AutoArrayPool<char>.Shared.Rent(1024 * 2);
 
-			try
+			while (!content.IsEmpty)
 			{
-				while (!content.IsEmpty)
-				{
-					var MaxCopy = Math.Min(content.Length, OutBuffer.Length);
+				var MaxCopy = Math.Min(content.Length, OutBuffer.Array.Length);
 
-					content.Slice(0, MaxCopy).CopyTo(OutBuffer);
+				content.Slice(0, MaxCopy).CopyTo(OutBuffer);
 
-					builder.Append(OutBuffer, 0, MaxCopy);
+				builder.Append(OutBuffer, 0, MaxCopy);
 
-					content = content.Slice(MaxCopy);
-				}
-			}
-			finally
-			{
-				ArrayPool<char>.Shared.Return(OutBuffer);
+				content = content.Slice(MaxCopy);
 			}
 
 			return builder;
@@ -81,44 +74,35 @@ namespace System.Text
 		public static StringBuilder Append(this StringBuilder builder, ReadOnlySequence<byte> sequence, Encoding encoding)
 		{
 			var RemainingBytes = sequence.Length;
-			char[]? OutBuffer = null;
 
-			try
+			using var OutBuffer = AutoArrayPool<char>.Shared.Rent(1024 * 2);
+
+			var Decoder = encoding.GetDecoder();
+
+			foreach (var MySegment in sequence)
 			{
-				OutBuffer = ArrayPool<char>.Shared.Rent(1024 * 2);
+				var InBuffer = MySegment.Span;
+				bool IsCompleted;
 
-				var Decoder = encoding.GetDecoder();
-
-				foreach (var MySegment in sequence)
+				do
 				{
-					var InBuffer = MySegment.Span;
-					bool IsCompleted;
+					// Decode the bytes into our char array
+					Decoder.Convert(
+						InBuffer,
+						OutBuffer,
+						RemainingBytes == InBuffer.Length,
+						out var BytesRead, out var WrittenChars, out IsCompleted
+						);
 
-					do
-					{
-						// Decode the bytes into our char array
-						Decoder.Convert(
-							InBuffer,
-							OutBuffer,
-							RemainingBytes == InBuffer.Length,
-							out var BytesRead, out var WrittenChars, out IsCompleted
-							);
+					builder.Append(OutBuffer, 0, WrittenChars);
 
-						builder.Append(OutBuffer, 0, WrittenChars);
+					RemainingBytes -= BytesRead;
 
-						RemainingBytes -= BytesRead;
+					InBuffer = InBuffer.Slice(BytesRead);
 
-						InBuffer = InBuffer.Slice(BytesRead);
-
-						// Loop while there are more bytes unread, or there are no bytes left but there's still data to flush
-					}
-					while (!InBuffer.IsEmpty || (RemainingBytes == 0 && !IsCompleted));
+					// Loop while there are more bytes unread, or there are no bytes left but there's still data to flush
 				}
-			}
-			finally
-			{
-				if (OutBuffer != null)
-					ArrayPool<char>.Shared.Return(OutBuffer);
+				while (!InBuffer.IsEmpty || (RemainingBytes == 0 && !IsCompleted));
 			}
 
 			return builder;

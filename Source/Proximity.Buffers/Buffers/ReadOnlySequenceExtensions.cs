@@ -967,19 +967,12 @@ namespace System.Buffers
 			if (sequence.IsSingleSegment)
 				return sequence.First.StartsWith(value, encoding, comparisonType);
 
-			var OutBuffer = ArrayPool<char>.Shared.Rent((int)sequence.Length);
+			using var OutBuffer = AutoArrayPool<char>.Shared.Rent((int)sequence.Length);
 
-			try
-			{
-				// Decode only as much as we need to verify the value
-				var OutChars = encoding.GetChars(sequence, OutBuffer);
+			// Decode only as much as we need to verify the value
+			var OutChars = encoding.GetChars(sequence, OutBuffer);
 
-				return new ReadOnlySpan<char>(OutBuffer, 0, OutChars).StartsWith(value, comparisonType);
-			}
-			finally
-			{
-				ArrayPool<char>.Shared.Return(OutBuffer);
-			}
+			return new ReadOnlySpan<char>(OutBuffer, 0, OutChars).StartsWith(value, comparisonType);
 		}
 
 		/// <summary>

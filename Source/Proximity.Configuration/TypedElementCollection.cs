@@ -57,11 +57,30 @@ namespace Proximity.Configuration
 			foreach (var Node in RawElement.DescendantNodes().OfType<XText>().Where(text => string.IsNullOrWhiteSpace(text.Value)).ToArray())
 				Node.Remove();
 
-			var NewElement = new TValue
+			var NewElement = new TValue { RawElement = RawElement };
+
+			// Filter to just the properties already defined. There will be at least one (Type)
+			var SourceElement = new XElement(RawElement.Name);
+			var TargetProperties = NewElement.ElementInformation.Properties;
+
+			foreach (var Attribute in RawElement.Attributes())
 			{
-				Type = TypeName,
-				RawElement = RawElement
-			};
+				if (TargetProperties[Attribute.Name.LocalName] != null)
+					SourceElement.Add(new XAttribute(Attribute));
+			}
+
+			foreach (var Element in RawElement.Elements())
+			{
+				if (TargetProperties[Element.Name.LocalName] != null)
+					SourceElement.Add(new XElement(Element));
+			}
+
+			// Deserialise the filtered property values, so they're available on the base class
+			using var Reader = SourceElement.CreateReader();
+
+			Reader.Read();
+
+			NewElement.Deserialise(Reader, false);
 
 			_Items.Add(NewElement);
 

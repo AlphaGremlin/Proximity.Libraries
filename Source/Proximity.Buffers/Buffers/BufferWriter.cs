@@ -182,27 +182,12 @@ namespace System.Buffers
 		/// <summary>
 		/// Gets a <see cref="ReadOnlyMemory{T}"/> containing all written data
 		/// </summary>
-		/// <returns>A single buffer containing all written data</returns>
+		/// <returns>A rented buffer containing all written data</returns>
 		/// <remarks>Will avoid allocations/copying if possible. The buffer will become invalid after <see cref="O:Reset"/> is called.</remarks>
 		public ReadOnlyMemory<T> ToMemory()
 		{
-			if (_HeadSegment == null)
-			{
-				// Is there any data in this Writer?
-				if (_CurrentOffset == 0)
-					return ReadOnlyMemory<T>.Empty;
-
-				// Yes, so return just that
-				return _CurrentBuffer.Slice(0, _CurrentOffset);
-			}
-
-			// We have a head segment. Is there any outstanding data?
-			if (_CurrentOffset == 0)
-			{
-				// No. If we're just a head, return that directly
-				if (_HeadSegment == _TailSegment)
-					return _HeadSegment.Memory;
-			}
+			if (TryGetMemory(out var Memory))
+				return Memory.ToArray();
 
 			var BufferLength = (int)Length;
 
@@ -210,7 +195,7 @@ namespace System.Buffers
 			var Buffer = _Pool.Rent(BufferLength);
 
 			// Copy our current chain of buffers into it
-			new ReadOnlySequence<T>(_HeadSegment, 0, _TailSegment!, _TailSegment!.Memory.Length).CopyTo(Buffer);
+			new ReadOnlySequence<T>(_HeadSegment!, 0, _TailSegment!, _TailSegment!.Memory.Length).CopyTo(Buffer);
 
 			// Copy the final segment (if any)
 			if (_CurrentOffset > 0)
@@ -227,29 +212,30 @@ namespace System.Buffers
 		}
 
 		/// <summary>
+		/// Gets a <see cref="ArraySegment{T}"/> containing all written data
+		/// </summary>
+		/// <returns>A rented buffer containing all written data</returns>
+		/// <remarks>Will avoid allocations/copying if possible. The buffer will become invalid after <see cref="O:Reset"/> is called.</remarks>
+		public ArraySegment<T> ToArraySegment()
+		{
+			var Memory = ToMemory();
+
+			if (MemoryMarshal.TryGetArray(Memory, out var Segment))
+				return Segment;
+
+			// Should never happen
+			return new ArraySegment<T>(Memory.ToArray());
+		}
+
+		/// <summary>
 		/// Gets an array containing all written data
 		/// </summary>
 		/// <returns>A single array containing all written data</returns>
-		/// <remarks>The buffer is not rented from the array pool.</remarks>
+		/// <remarks>The buffer is not rented from the array pool. Does not 'finish' the final segment, so writing can potentially continue without allocating/renting.</remarks>
 		public T[] ToArray()
 		{
-			if (_HeadSegment == null)
-			{
-				// Is there any data in this Writer?
-				if (_CurrentOffset == 0)
-					return Array.Empty<T>();
-
-				// Yes, so return just that
-				return _CurrentBuffer.Slice(0, _CurrentOffset).ToArray();
-			}
-
-			// We have a head segment. Is there any outstanding data?
-			if (_CurrentOffset == 0)
-			{
-				// No. If we're just a head, return that directly
-				if (_HeadSegment == _TailSegment)
-					return _HeadSegment.Memory.ToArray();
-			}
+			if (TryGetMemory(out var Memory))
+				return Memory.ToArray();
 
 			var BufferLength = (int)Length;
 
@@ -257,13 +243,46 @@ namespace System.Buffers
 			var Buffer = new T[BufferLength];
 
 			// Copy our current chain of buffers into it
-			new ReadOnlySequence<T>(_HeadSegment, 0, _TailSegment!, _TailSegment!.Memory.Length).CopyTo(Buffer);
+			new ReadOnlySequence<T>(_HeadSegment!, 0, _TailSegment!, _TailSegment!.Memory.Length).CopyTo(Buffer);
 
 			// Copy the final segment (if any)
 			if (_CurrentOffset > 0)
 				_CurrentBuffer.Slice(0, _CurrentOffset).CopyTo(Buffer.AsMemory((int)_TailSegment.RunningIndex + _TailSegment.Memory.Length));
 
 			return Buffer;
+		}
+
+		//****************************************
+
+		private bool TryGetMemory(out ReadOnlyMemory<T> memory)
+		{
+			if (_HeadSegment == null)
+			{
+				// Is there any data in this Writer?
+				if (_CurrentOffset == 0)
+					memory = ReadOnlyMemory<T>.Empty;
+				else
+				// Yes, so return just that
+					memory = _CurrentBuffer.Slice(0, _CurrentOffset);
+
+				return true;
+			}
+
+			// We have a head segment. Is there any outstanding data?
+			if (_CurrentOffset == 0)
+			{
+				// No. If we're just a head, return that directly
+				if (_HeadSegment == _TailSegment)
+				{
+					memory = _HeadSegment.Memory;
+
+					return true;
+				}
+			}
+
+			memory = default;
+
+			return false;
 		}
 
 		//****************************************

@@ -105,18 +105,12 @@ namespace System
 				throw new ArgumentException(nameof(value));
 
 			var Length = encoding.GetCharCount(source.Span);
-			var OutBuffer = ArrayPool<char>.Shared.Rent(Length);
 
-			try
-			{
-				var OutChars = encoding.GetChars(source.Span, OutBuffer);
+			using var OutBuffer = AutoArrayPool<char>.Shared.Rent(Length);
 
-				return new ReadOnlySpan<char>(OutBuffer, 0, OutChars).IndexOf(value, comparisonType);
-			}
-			finally
-			{
-				ArrayPool<char>.Shared.Return(OutBuffer);
-			}
+			var OutChars = encoding.GetChars(source.Span, OutBuffer);
+
+			return new ReadOnlySpan<char>(OutBuffer, 0, OutChars).IndexOf(value, comparisonType);
 		}
 
 		/// <summary>
@@ -222,19 +216,12 @@ namespace System
 			if (source.Length > MaxLength)
 				source = source.Slice(0, MaxLength);
 
-			var OutBuffer = ArrayPool<char>.Shared.Rent(source.Length);
+			using var OutBuffer = AutoArrayPool<char>.Shared.Rent(source.Length);
 
-			try
-			{
-				// Decode only as much as we need to verify the source starts with our value (or doesn't)
-				var OutChars = encoding.GetChars(source.Span, OutBuffer);
+			// Decode only as much as we need to verify the source starts with our value (or doesn't)
+			var OutChars = encoding.GetChars(source.Span, OutBuffer);
 
-				return new ReadOnlySpan<char>(OutBuffer, 0, OutChars).StartsWith(value, comparisonType);
-			}
-			finally
-			{
-				ArrayPool<char>.Shared.Return(OutBuffer);
-			}
+			return new ReadOnlySpan<char>(OutBuffer, 0, OutChars).StartsWith(value, comparisonType);
 		}
 
 		/// <summary>

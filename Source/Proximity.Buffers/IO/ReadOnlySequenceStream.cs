@@ -56,30 +56,20 @@ namespace System.IO
 #endif
 			void CopyTo(Stream destination, int bufferSize)
 		{
-			byte[]? Buffer = null;
+			using var Buffer = AutoArrayPool<byte>.Shared.Rent(bufferSize);
 
-			try
+			for (; ; )
 			{
-				Buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+				var ReadBytes = Read(Buffer);
 
-				for (; ; )
-				{
-					var ReadBytes = Read(Buffer);
-
-					if (ReadBytes == 0)
-						break;
+				if (ReadBytes == 0)
+					break;
 
 #if NETSTANDARD2_0
-					destination.Write(Buffer, 0, ReadBytes);
+				destination.Write(Buffer, 0, ReadBytes);
 #else
-					destination.Write(Buffer.AsSpan(0, ReadBytes));
+				destination.Write(Buffer.AsSpan(0, ReadBytes));
 #endif
-				}
-			}
-			finally
-			{
-				if (Buffer != null)
-					ArrayPool<byte>.Shared.Return(Buffer);
 			}
 		}
 
@@ -92,30 +82,20 @@ namespace System.IO
 #endif
 			async Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
 		{
-			byte[]? Buffer = null;
+			using var Buffer = AutoArrayPool<byte>.Shared.Rent(bufferSize);
 
-			try
+			for (; ; )
 			{
-				Buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+				var ReadBytes = Read(Buffer);
 
-				for (; ; )
-				{
-					var ReadBytes = Read(Buffer);
-
-					if (ReadBytes == 0)
-						break;
+				if (ReadBytes == 0)
+					break;
 
 #if NETSTANDARD2_0
-					await destination.WriteAsync(Buffer, 0, ReadBytes);
+				await destination.WriteAsync(Buffer, 0, ReadBytes);
 #else
-					await destination.WriteAsync(Buffer.AsMemory(0, ReadBytes));
+				await destination.WriteAsync(Buffer.AsMemory(0, ReadBytes), cancellationToken);
 #endif
-				}
-			}
-			finally
-			{
-				if (Buffer != null)
-					ArrayPool<byte>.Shared.Return(Buffer);
 			}
 		}
 
@@ -213,7 +193,7 @@ namespace System.IO
 				SeekOrigin.Begin => Position = offset,
 				SeekOrigin.Current => Position += offset,
 				SeekOrigin.End => Position = _Sequence.Length + offset,
-				_ => throw new ArgumentException(nameof(origin)),
+				_ => throw new ArgumentOutOfRangeException(nameof(origin)),
 			};
 		}
 

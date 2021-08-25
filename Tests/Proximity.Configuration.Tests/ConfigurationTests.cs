@@ -23,7 +23,7 @@ namespace Proximity.Configuration.Tests
 		private const string RawStringSection = @"<?xml version=""1.0"" encoding=""utf-8""?>
 <configuration>
     <configSections>
-        <section name=""Test"" type=""Proximity.Utility.Tests.ConfigurationTests+StringElementSection, Proximity.Utility.Tests"" allowExeDefinition=""MachineToRoamingUser"" />
+        <section name=""Test"" type=""Proximity.Configuration.Tests.ConfigurationTests+StringElementSection, Proximity.Configuration.Tests"" allowExeDefinition=""MachineToRoamingUser"" />
     </configSections>
     <Test>
         <Text>{text}</Text>
@@ -33,7 +33,7 @@ namespace Proximity.Configuration.Tests
 		private const string RawStringCollectionSection = @"<?xml version=""1.0"" encoding=""utf-8""?>
 <configuration>
     <configSections>
-        <section name=""Test"" type=""Proximity.Utility.Tests.ConfigurationTests+StringCollectionSection, Proximity.Utility.Tests"" allowExeDefinition=""MachineToRoamingUser"" />
+        <section name=""Test"" type=""Proximity.Configuration.Tests.ConfigurationTests+StringCollectionSection, Proximity.Configuration.Tests"" allowExeDefinition=""MachineToRoamingUser"" />
     </configSections>
     <Test>
         <Text>{text}
@@ -52,33 +52,45 @@ namespace Proximity.Configuration.Tests
 		private const string RawTypedPropertySection = @"<?xml version=""1.0"" encoding=""utf-8""?>
 <configuration>
     <configSections>
-        <section name=""Test"" type=""Proximity.Utility.Tests.ConfigurationTests+TypedPropertyTestSection, Proximity.Utility.Tests"" allowExeDefinition=""MachineToRoamingUser"" />
+        <section name=""Test"" type=""Proximity.Configuration.Tests.ConfigurationTests+TypedPropertyTestSection, Proximity.Configuration.Tests"" allowExeDefinition=""MachineToRoamingUser"" />
     </configSections>
     <Test>
-        <Property Type=""Proximity.Utility.Tests.ConfigurationTests+SubTypedTestElement, Proximity.Utility.Tests"" Value=""1"" />
+        <Property Type=""Proximity.Configuration.Tests.ConfigurationTests+SubTypedTestElement, Proximity.Configuration.Tests"" Value=""1"" />
     </Test>
 </configuration>";
 
 		private const string RawTypedCollectionSection = @"<?xml version=""1.0"" encoding=""utf-8""?>
 <configuration>
     <configSections>
-        <section name=""Test"" type=""Proximity.Utility.Tests.ConfigurationTests+TypedCollectionTestSection, Proximity.Utility.Tests"" allowExeDefinition=""MachineToRoamingUser"" />
+        <section name=""Test"" type=""Proximity.Configuration.Tests.ConfigurationTests+TypedTestCollectionSection, Proximity.Configuration.Tests"" allowExeDefinition=""MachineToRoamingUser"" />
     </configSections>
     <Test>
         <Collection>
-            <add Type=""Proximity.Utility.Tests.ConfigurationTests+SubTypedTestElement, Proximity.Utility.Tests"" Value=""1"" />
-            <add Type=""Proximity.Utility.Tests.ConfigurationTests+SubTypedTestElement2, Proximity.Utility.Tests"" Value=""2"">
+            <add Type=""Proximity.Configuration.Tests.ConfigurationTests+SubTypedTestElement, Proximity.Configuration.Tests"" Value=""1"" />
+            <add Type=""Proximity.Configuration.Tests.ConfigurationTests+SubTypedTestElement2, Proximity.Configuration.Tests"" Value=""2"">
                 <Child Value=""3"" />
             </add>
-            <add Type=""Proximity.Utility.Tests.ConfigurationTests+SubTypedTestElement3, Proximity.Utility.Tests"">
+            <add Type=""Proximity.Configuration.Tests.ConfigurationTests+SubTypedTestElement3, Proximity.Configuration.Tests"">
                 <Child>3</Child>
             </add>
-            <add Type=""Proximity.Utility.Tests.ConfigurationTests+SubTypedTestElement4, Proximity.Utility.Tests"">
+            <add Type=""Proximity.Configuration.Tests.ConfigurationTests+SubTypedTestElement4, Proximity.Configuration.Tests"">
                 <Children>
                     <add>4</add>
                     <add>5</add>
                 </Children>
             </add>
+        </Collection>
+    </Test>
+</configuration>";
+
+		private const string RawTypedWithPropertyCollectionSection = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<configuration>
+    <configSections>
+        <section name=""Test"" type=""Proximity.Configuration.Tests.ConfigurationTests+TypedWithPropertyTestCollectionSection, Proximity.Configuration.Tests"" allowExeDefinition=""MachineToRoamingUser"" />
+    </configSections>
+    <Test>
+        <Collection>
+            <add Type=""Proximity.Configuration.Tests.ConfigurationTests+SubTypedWithPropertyTestElement, Proximity.Configuration.Tests"" Value=""1"" SubValue=""2"" />
         </Collection>
     </Test>
 </configuration>";
@@ -313,7 +325,7 @@ namespace Proximity.Configuration.Tests
 		{
 			var RawXML = @"
 	<Test>
-		<Property Type=""Proximity.Utility.Tests.ConfigurationTests+SubTypedTestElement, Proximity.Utility.Tests"" Value=""1"" />
+		<Property Type=""Proximity.Configuration.Tests.ConfigurationTests+SubTypedTestElement, Proximity.Configuration.Tests"" Value=""1"" />
 	</Test>";
 
 			var MySection = TypedPropertyTestSection.FromString(RawXML);
@@ -331,7 +343,7 @@ namespace Proximity.Configuration.Tests
 		{
 			var RawXML = @"
 	<Test>
-		<Property Type=""Proximity.Utility.Tests.ConfigurationTests+SubTypedTestElement2, Proximity.Utility.Tests"" Value=""1""><Child Value=""2"" /></Property>
+		<Property Type=""Proximity.Configuration.Tests.ConfigurationTests+SubTypedTestElement2, Proximity.Configuration.Tests"" Value=""1""><Child Value=""2"" /></Property>
 	</Test>";
 
 			var MySection = TypedPropertyTestSection.FromString(RawXML);
@@ -353,7 +365,7 @@ namespace Proximity.Configuration.Tests
 		{
 			var RawXML = @"
 	<Test>
-		<Property Type=""Proximity.Utility.Tests.ConfigurationTests+SubTypedTestElement2, Proximity.Utility.Tests"" Value=""1"">
+		<Property Type=""Proximity.Configuration.Tests.ConfigurationTests+SubTypedTestElement2, Proximity.Configuration.Tests"" Value=""1"">
 			<Child      Value=""2""        />      
 		</Property>
 	</Test>";
@@ -408,11 +420,11 @@ namespace Proximity.Configuration.Tests
 			var RawXML = @"
 	<Test>
 		<Collection>
-			<add Type=""Proximity.Utility.Tests.ConfigurationTests+SubTypedTestElement, Proximity.Utility.Tests"" Value=""1"" />
+			<add Type=""Proximity.Configuration.Tests.ConfigurationTests+SubTypedTestElement, Proximity.Configuration.Tests"" Value=""1"" />
 		</Collection>
 	</Test>";
 
-			var MySection = TypedCollectionTestSection.FromString(RawXML);
+			var MySection = TypedTestCollectionSection.FromString(RawXML);
 
 			Assert.IsNotNull(MySection.Collection);
 			Assert.AreEqual(1, MySection.Collection.Count);
@@ -440,7 +452,7 @@ namespace Proximity.Configuration.Tests
 
 				var MyConfig = ConfigurationManager.OpenMappedExeConfiguration(MyMap, ConfigurationUserLevel.None);
 
-				var MySection = (TypedCollectionTestSection)MyConfig.GetSection("Test");
+				var MySection = (TypedTestCollectionSection)MyConfig.GetSection("Test");
 
 				Assert.IsNotNull(MySection.Collection);
 				Assert.AreEqual(4, MySection.Collection.Count);
@@ -490,6 +502,69 @@ namespace Proximity.Configuration.Tests
 				Assert.IsNotNull(SubTypedElement4.Children);
 				Assert.AreEqual(2, SubTypedElement4.Children.Count);
 				CollectionAssert.AreEqual(new[] { "4", "5" }, SubTypedElement4.Children.Select(child => child.Content));
+			}
+			finally
+			{
+				File.Delete(Temp1);
+			}
+		}
+
+		[Test]
+		public void ReadTypedWithPropertyCollection()
+		{
+			var RawXML = @"
+	<Test>
+		<Collection>
+			<add Type=""Proximity.Configuration.Tests.ConfigurationTests+SubTypedWithPropertyTestElement, Proximity.Configuration.Tests"" Value=""1"" SubValue=""2"" />
+		</Collection>
+	</Test>";
+
+			var MySection = TypedWithPropertyTestCollectionSection.FromString(RawXML);
+
+			Assert.IsNotNull(MySection.Collection);
+			Assert.AreEqual(1, MySection.Collection.Count);
+
+			var FirstItem = MySection.Collection.First();
+
+			Assert.AreEqual("1", FirstItem.Value);
+
+			var RealElement = FirstItem.Populate<TypedWithPropertyTestElement>(Type.GetType(FirstItem.Type));
+
+			Assert.IsInstanceOf(typeof(SubTypedWithPropertyTestElement), RealElement);
+			Assert.AreEqual("1", RealElement.Value);
+			Assert.AreEqual("2", ((SubTypedWithPropertyTestElement)RealElement).SubValue);
+		}
+
+		[Test]
+		public void ReadTypedWithPropertyCollectionSection()
+		{
+			var MyMap = new ExeConfigurationFileMap();
+
+			var Temp1 = Path.GetTempFileName();
+
+			try
+			{
+				MyMap.ExeConfigFilename = Temp1;
+
+				File.WriteAllText(Temp1, RawTypedWithPropertyCollectionSection);
+
+				var MyConfig = ConfigurationManager.OpenMappedExeConfiguration(MyMap, ConfigurationUserLevel.None);
+
+				var MySection = (TypedWithPropertyTestCollectionSection)MyConfig.GetSection("Test");
+
+				Assert.IsNotNull(MySection.Collection);
+				Assert.AreEqual(1, MySection.Collection.Count);
+
+
+				var FirstItem = MySection.Collection.First();
+
+				Assert.AreEqual("1", FirstItem.Value);
+
+				var RealElement = FirstItem.Populate<TypedWithPropertyTestElement>(Type.GetType(FirstItem.Type));
+
+				Assert.IsInstanceOf(typeof(SubTypedWithPropertyTestElement), RealElement);
+				Assert.AreEqual("1", RealElement.Value);
+				Assert.AreEqual("2", ((SubTypedWithPropertyTestElement)RealElement).SubValue);
 			}
 			finally
 			{
@@ -625,6 +700,26 @@ namespace Proximity.Configuration.Tests
 		{
 		}
 
+		public class TypedWithPropertyTestElement : TypedElement
+		{
+			[ConfigurationProperty("Value", IsRequired = false)]
+			public string Value
+			{
+				get => (string)base["Value"];
+				set => base["Value"] = value;
+			}
+		}
+
+		public class SubTypedWithPropertyTestElement : TypedWithPropertyTestElement
+		{
+			[ConfigurationProperty("SubValue", IsRequired = false)]
+			public string SubValue
+			{
+				get => (string)base["SubValue"];
+				set => base["SubValue"] = value;
+			}
+		}
+
 		public class SubTypedTestElement : TypedTestElement
 		{
 			[ConfigurationProperty("Value", IsRequired = false)]
@@ -696,16 +791,16 @@ namespace Proximity.Configuration.Tests
 			}
 		}
 
-		public class TypedCollectionTestSection : ConfigurationSection
+		public class TypedTestCollectionSection : ConfigurationSection
 		{
-			public static TypedCollectionTestSection FromString(string rawXml)
+			public static TypedTestCollectionSection FromString(string rawXml)
 			{
 				using var MyStream = new StringReader(rawXml);
 				using var MyReader = XmlReader.Create(MyStream);
 
 				MyReader.Read();
 
-				var MySection = new TypedCollectionTestSection();
+				var MySection = new TypedTestCollectionSection();
 
 				MySection.DeserializeSection(MyReader);
 
@@ -720,7 +815,35 @@ namespace Proximity.Configuration.Tests
 			}
 		}
 
+		public class TypedWithPropertyTestCollectionSection : ConfigurationSection
+		{
+			public static TypedWithPropertyTestCollectionSection FromString(string rawXml)
+			{
+				using var MyStream = new StringReader(rawXml);
+				using var MyReader = XmlReader.Create(MyStream);
+
+				MyReader.Read();
+
+				var MySection = new TypedWithPropertyTestCollectionSection();
+
+				MySection.DeserializeSection(MyReader);
+
+				return MySection;
+			}
+
+			[ConfigurationProperty("Collection", IsRequired = false, IsDefaultCollection = false)]
+			public TypedWithPropertyTestCollection Collection
+			{
+				get => (TypedWithPropertyTestCollection)base["Collection"];
+				set => base["Collection"] = value;
+			}
+		}
+
 		public class TypedTestCollection : TypedElementCollection<TypedTestElement>
+		{
+		}
+
+		public class TypedWithPropertyTestCollection : TypedElementCollection<TypedWithPropertyTestElement>
 		{
 		}
 	}
