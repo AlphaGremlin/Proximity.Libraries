@@ -25,7 +25,7 @@ namespace Proximity.Collections.Immutable
 		/// </summary>
 		/// <param name="item">The item to add to the stack</param>
 		/// <returns>An Immutable Counted Queue populated with the given item</returns>
-		public static ImmutableCountedQueue<T> Create<T>(T item) => new ImmutableCountedQueue<T>(ImmutableStack<T>.Empty.Push(item), ImmutableStack<T>.Empty, 1);
+		public static ImmutableCountedQueue<T> Create<T>(T item) => new(ImmutableStack<T>.Empty.Push(item), ImmutableStack<T>.Empty, 1);
 
 		/// <summary>
 		/// Creates a new Immutable Counted Queue populated with an array of items
@@ -179,7 +179,7 @@ namespace Proximity.Collections.Immutable
 		/// Gets an enumerator for the queue
 		/// </summary>
 		/// <returns>An enumerator for the current state of the queue</returns>
-		public Enumerator GetEnumerator() => new Enumerator(this);
+		public Enumerator GetEnumerator() => new(this);
 
 		/// <summary>
 		/// Retrieves the first item in the queue

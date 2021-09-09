@@ -14,7 +14,7 @@ namespace System.Threading
 	/// </summary>
 	public sealed class AsyncAutoResetEvent : IDisposable
 	{ //****************************************
-		private readonly WaiterQueue<AutoResetInstance> _Waiters = new WaiterQueue<AutoResetInstance>();
+		private readonly WaiterQueue<AutoResetInstance> _Waiters = new();
 
 		private int _State;
 		//****************************************
@@ -216,11 +216,11 @@ namespace System.Threading
 
 		private sealed class AutoResetInstance : BaseCancellable, IValueTaskSource<bool>
 		{ //****************************************
-			private static readonly ConcurrentBag<AutoResetInstance> Instances = new ConcurrentBag<AutoResetInstance>();
+			private static readonly ConcurrentBag<AutoResetInstance> Instances = new();
 			//****************************************
 			private volatile int _InstanceState;
 
-			private ManualResetValueTaskSourceCore<bool> _TaskSource = new ManualResetValueTaskSourceCore<bool>();
+			private ManualResetValueTaskSourceCore<bool> _TaskSource = new();
 			//****************************************
 
 			internal AutoResetInstance() => _TaskSource.RunContinuationsAsynchronously = true;

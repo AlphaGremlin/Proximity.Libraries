@@ -12,7 +12,7 @@ namespace Proximity.Configuration
 	/// </summary>
 	public class ConfigurationTextElement : ConfigurationElement
 	{	//****************************************
-		private static readonly ConfigurationProperty _ContentProperty = new ConfigurationProperty("__Content", typeof(string));
+		private static readonly ConfigurationProperty _ContentProperty = new("__Content", typeof(string));
 		//****************************************
 		
 		/// <summary>
@@ -92,7 +92,7 @@ namespace Proximity.Configuration
 	/// </summary>
 	public class ConfigurationTextElement<T> : ConfigurationElement
 	{	//****************************************
-		private static readonly ConfigurationProperty _ContentProperty = new ConfigurationProperty("__Content", typeof(T));
+		private static readonly ConfigurationProperty _ContentProperty = new("__Content", typeof(T));
 		private static readonly TypeConverter _Converter = TypeDescriptor.GetConverter(typeof(T));
 		//****************************************
 		

@@ -292,7 +292,7 @@ namespace System.Collections.Generic
 		/// Gets an enumerator for this Dictionary
 		/// </summary>
 		/// <returns>An Enumerator to enumerate the contents of the Dictionary</returns>
-		public Enumerator GetEnumerator() => new Enumerator(this);
+		public Enumerator GetEnumerator() => new(this);
 
 		/// <summary>
 		/// Determines the index of a specific item in the list
@@ -721,10 +721,10 @@ namespace System.Collections.Generic
 
 		void IDictionary.Add(object key, object? value)
 		{
-			if (!(key is string MyKey))
+			if (key is not string MyKey)
 				throw new ArgumentException("Not a supported key", nameof(key));
 
-			if (!(value is TValue MyValue))
+			if (value is not TValue MyValue)
 				throw new ArgumentException("Not a supported value", nameof(value));
 
 			Add(new KeyValuePair<string, TValue>(MyKey, MyValue));
@@ -1090,10 +1090,10 @@ namespace System.Collections.Generic
 			}
 			set
 			{
-				if (!(key is string MyKey))
+				if (key is not string MyKey)
 					throw new ArgumentException("Not a supported key", nameof(key));
 
-				if (!(value is TValue MyValue))
+				if (value is not TValue MyValue)
 					throw new ArgumentException("Not a supported value", nameof(value));
 
 				TryAdd(new KeyValuePair<string, TValue>(MyKey, MyValue), true, out _);
@@ -1188,7 +1188,7 @@ namespace System.Collections.Generic
 			/// <inheritdoc />
 			public KeyValuePair<string, TValue> Current => _Current;
 
-			KeyValuePair<ReadOnlyMemory<char>, TValue> IEnumerator<KeyValuePair<ReadOnlyMemory<char>, TValue>>.Current => new KeyValuePair<ReadOnlyMemory<char>, TValue>(_Current.Key.AsMemory(), _Current.Value);
+			KeyValuePair<ReadOnlyMemory<char>, TValue> IEnumerator<KeyValuePair<ReadOnlyMemory<char>, TValue>>.Current => new(_Current.Key.AsMemory(), _Current.Value);
 
 			object IEnumerator.Current => Current;
 		}
@@ -1457,7 +1457,7 @@ namespace System.Collections.Generic
 			}
 
 			/// <inheritdoc />
-			public new KeyEnumerator GetEnumerator() => new KeyEnumerator(Parent);
+			public new KeyEnumerator GetEnumerator() => new(Parent);
 
 			/// <inheritdoc />
 			public override int IndexOf(string item) => Parent.IndexOfKey(item.AsSpan());
@@ -1516,7 +1516,7 @@ namespace System.Collections.Generic
 			}
 
 			/// <inheritdoc />
-			public new ValueEnumerator GetEnumerator() => new ValueEnumerator(Parent);
+			public new ValueEnumerator GetEnumerator() => new(Parent);
 
 			/// <inheritdoc />
 			public override int IndexOf(TValue item) => Parent.IndexOfValue(item);

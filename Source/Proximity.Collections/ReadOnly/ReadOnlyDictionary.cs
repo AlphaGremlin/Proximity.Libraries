@@ -266,7 +266,7 @@ namespace System.Collections.ReadOnly
 
 			//****************************************
 
-			public DictionaryEntry Entry => new DictionaryEntry(_Enumerator.Current.Key, _Enumerator.Current.Value);
+			public DictionaryEntry Entry => new(_Enumerator.Current.Key, _Enumerator.Current.Value);
 
 			public object Key => Entry.Key;
 

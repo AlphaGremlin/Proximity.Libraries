@@ -23,7 +23,7 @@ namespace Proximity.Diagnostics
 
 		//****************************************
 
-		internal ProfilerRecord Add(long elapsed) => new ProfilerRecord(Samples + 1, _Elapsed + elapsed, Math.Min(_Minimum, elapsed), Math.Max(_Maximum, elapsed));
+		internal ProfilerRecord Add(long elapsed) => new(Samples + 1, _Elapsed + elapsed, Math.Min(_Minimum, elapsed), Math.Max(_Maximum, elapsed));
 
 		//****************************************
 
@@ -35,17 +35,17 @@ namespace Proximity.Diagnostics
 		/// <summary>
 		/// Gets the total amount of time elapsed in this interval
 		/// </summary>
-		public TimeSpan Elapsed => new TimeSpan(_Elapsed);
+		public TimeSpan Elapsed => new(_Elapsed);
 
 		/// <summary>
 		/// Gets the largest sample in this interval
 		/// </summary>
-		public TimeSpan Maximum => new TimeSpan(_Maximum);
+		public TimeSpan Maximum => new(_Maximum);
 
 		/// <summary>
 		/// Gets the smallest sample in this interval
 		/// </summary>
-		public TimeSpan Minimum => new TimeSpan(_Minimum);
+		public TimeSpan Minimum => new(_Minimum);
 
 		//****************************************
 

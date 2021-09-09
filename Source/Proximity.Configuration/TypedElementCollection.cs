@@ -15,7 +15,7 @@ namespace Proximity.Configuration
 	/// </summary>
 	public class TypedElementCollection<TValue> : ConfigurationElement, ICollection<TValue> where TValue : TypedElement, new()
 	{	//****************************************
-		private readonly List<TValue> _Items = new List<TValue>();
+		private readonly List<TValue> _Items = new();
 		//****************************************
 
 		/// <inheritdoc />

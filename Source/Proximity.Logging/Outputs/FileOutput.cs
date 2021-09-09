@@ -18,7 +18,7 @@ namespace Proximity.Logging.Outputs
 	/// </summary>
 	public abstract class FileOutput : LogOutput
 	{	//****************************************
-		private readonly AsyncCollection<FullLogEntry> _Entries = new AsyncCollection<FullLogEntry>();
+		private readonly AsyncCollection<FullLogEntry> _Entries = new();
 		private Task _LogTask;
 		
 		private FileStream _Stream;

@@ -7,7 +7,7 @@ namespace Proximity.Buffers
 {
 	internal sealed class DummyPool<T> : ArrayPool<T>
 	{
-		internal static new readonly DummyPool<T> Shared = new DummyPool<T>();
+		internal static new readonly DummyPool<T> Shared = new();
 
 		//****************************************
 

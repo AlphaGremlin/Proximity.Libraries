@@ -17,7 +17,7 @@ namespace System.Collections.Observable
 	/// <typeparam name="T">The type of the values in the list</typeparam>
 	public class ObservableListViewDynamic<T> : ObservableListView<T> where T : class, INotifyPropertyChanged
 	{ //****************************************
-		private readonly ConditionalWeakTable<T, T> _PreviousValues = new ConditionalWeakTable<T, T>();
+		private readonly ConditionalWeakTable<T, T> _PreviousValues = new();
 
 		private readonly Func<T, T> _CloneMethod;
 		//****************************************

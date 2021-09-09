@@ -17,7 +17,7 @@ namespace Proximity.Diagnostics
 
 		private readonly TimeSpan[] _Intervals;
 		private readonly Dictionary<TimeSpan, int> _IntervalLookup;
-		private readonly Dictionary<string, Section> _Sections = new Dictionary<string, Section>();
+		private readonly Dictionary<string, Section> _Sections = new();
 		//****************************************
 
 		/// <summary>

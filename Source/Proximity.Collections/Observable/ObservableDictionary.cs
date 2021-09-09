@@ -292,7 +292,7 @@ namespace System.Collections.Observable
 		/// Returns an enumerator that iterates through the collection
 		/// </summary>
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
-		public KeyValueEnumerator GetEnumerator() => new KeyValueEnumerator(this);
+		public KeyValueEnumerator GetEnumerator() => new(this);
 
 		/// <inheritdoc />
 		public override int IndexOf(KeyValuePair<TKey, TValue> item)
@@ -1116,7 +1116,7 @@ namespace System.Collections.Observable
 			}
 
 			/// <inheritdoc />
-			public new KeyEnumerator GetEnumerator() => new KeyEnumerator(_Parent);
+			public new KeyEnumerator GetEnumerator() => new(_Parent);
 
 			/// <inheritdoc />
 			public override int IndexOf(TKey item) => _Parent.IndexOfKey(item);
@@ -1207,7 +1207,7 @@ namespace System.Collections.Observable
 			}
 
 			/// <inheritdoc />
-			public new ValueEnumerator GetEnumerator() => new ValueEnumerator(_Parent);
+			public new ValueEnumerator GetEnumerator() => new(_Parent);
 
 			/// <inheritdoc />
 			public override int IndexOf(TValue item) => _Parent.IndexOfValue(item);

@@ -29,7 +29,7 @@ namespace System.Threading.Tasks.Interleave
 		/// </summary>
 		/// <param name="cancellationToken">A cancellation token to abort enumeration</param>
 		/// <returns>An async enumerator returning the tasks in the order of completion</returns>
-		public InterleaveTaskIndexAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) => new InterleaveTaskIndexAsyncEnumerator<T>(_Source, _Token, cancellationToken);
+		public InterleaveTaskIndexAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) => new(_Source, _Token, cancellationToken);
 
 		//****************************************
 

@@ -13,12 +13,12 @@ namespace System.Threading
 	{
 		internal sealed class LockUpgradeInstance : BaseCancellable, ILockWaiter, IValueTaskSource<bool>
 		{ //****************************************
-			private static readonly ConcurrentBag<LockUpgradeInstance> Instances = new ConcurrentBag<LockUpgradeInstance>();
+			private static readonly ConcurrentBag<LockUpgradeInstance> Instances = new();
 			//****************************************
 			private volatile int _InstanceState;
 			private bool _IsFirst;
 
-			private ManualResetValueTaskSourceCore<bool> _TaskSource = new ManualResetValueTaskSourceCore<bool>();
+			private ManualResetValueTaskSourceCore<bool> _TaskSource = new();
 			//****************************************
 
 			internal LockUpgradeInstance() => _TaskSource.RunContinuationsAsynchronously = true;

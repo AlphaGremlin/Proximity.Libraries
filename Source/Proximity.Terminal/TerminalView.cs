@@ -12,7 +12,7 @@ namespace Proximity.Terminal
 	/// </summary>
 	public sealed class TerminalView : TerminalRouter, ITerminal, ITerminalListener
 	{ //****************************************
-		private readonly HashSet<LogLevel> _IsEnabled = new HashSet<LogLevel>();
+		private readonly HashSet<LogLevel> _IsEnabled = new();
 		//****************************************
 
 		/// <summary>
@@ -146,7 +146,7 @@ namespace Proximity.Terminal
 
 		private sealed class NullScope : IDisposable
 		{
-			internal static readonly NullScope Default = new NullScope();
+			internal static readonly NullScope Default = new();
 
 			void IDisposable.Dispose()
 			{

@@ -14,7 +14,7 @@ namespace System.Threading
 	/// </summary>
 	public sealed class AsyncManualResetEvent : IDisposable
 	{ //****************************************
-		private readonly WaiterQueue<ManualResetInstance> _Waiters = new WaiterQueue<ManualResetInstance>();
+		private readonly WaiterQueue<ManualResetInstance> _Waiters = new();
 
 		private int _State;
 		//****************************************
@@ -220,11 +220,11 @@ namespace System.Threading
 
 		private sealed class ManualResetInstance : BaseCancellable, IValueTaskSource<bool>
 		{ //****************************************
-			private static readonly ConcurrentBag<ManualResetInstance> Instances = new ConcurrentBag<ManualResetInstance>();
+			private static readonly ConcurrentBag<ManualResetInstance> Instances = new();
 			//****************************************
 			private volatile int _InstanceState;
 
-			private ManualResetValueTaskSourceCore<bool> _TaskSource = new ManualResetValueTaskSourceCore<bool>();
+			private ManualResetValueTaskSourceCore<bool> _TaskSource = new();
 			//****************************************
 
 			internal ManualResetInstance() => _TaskSource.RunContinuationsAsynchronously = true;

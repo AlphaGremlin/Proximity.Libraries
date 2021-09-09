@@ -208,7 +208,7 @@ namespace System.Buffers
 #if !NETSTANDARD
 		private protected sealed class StringOrdinalComparer : BlockEqualityComparer<char>
 		{ //****************************************
-			internal static readonly StringOrdinalComparer Ordinal = new StringOrdinalComparer();
+			internal static readonly StringOrdinalComparer Ordinal = new();
 			//****************************************
 
 			private StringOrdinalComparer()
@@ -225,11 +225,11 @@ namespace System.Buffers
 
 		private protected sealed class StringEqualityComparer : BlockEqualityComparer<char>
 		{ //****************************************
-			internal static readonly StringEqualityComparer OrdinalIgnoreCase = new StringEqualityComparer(StringComparison.OrdinalIgnoreCase);
-			internal static readonly StringEqualityComparer CurrentCulture = new StringEqualityComparer(StringComparison.CurrentCulture);
-			internal static readonly StringEqualityComparer CurrentCultureIgnoreCase = new StringEqualityComparer(StringComparison.CurrentCultureIgnoreCase);
-			internal static readonly StringEqualityComparer InvariantCulture = new StringEqualityComparer(StringComparison.InvariantCulture);
-			internal static readonly StringEqualityComparer InvariantCultureIgnoreCase = new StringEqualityComparer(StringComparison.InvariantCultureIgnoreCase);
+			internal static readonly StringEqualityComparer OrdinalIgnoreCase = new(StringComparison.OrdinalIgnoreCase);
+			internal static readonly StringEqualityComparer CurrentCulture = new(StringComparison.CurrentCulture);
+			internal static readonly StringEqualityComparer CurrentCultureIgnoreCase = new(StringComparison.CurrentCultureIgnoreCase);
+			internal static readonly StringEqualityComparer InvariantCulture = new(StringComparison.InvariantCulture);
+			internal static readonly StringEqualityComparer InvariantCultureIgnoreCase = new(StringComparison.InvariantCultureIgnoreCase);
 			//****************************************
 			private readonly StringComparison _Comparison;
 			//****************************************

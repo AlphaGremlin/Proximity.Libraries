@@ -9,9 +9,9 @@ namespace System.Threading.Tasks
 {
 	internal sealed class ValueTaskCompletionInstance<TResult> : BaseCancellable, IValueTaskSource, IValueTaskSource<TResult>
 	{ //****************************************
-		private static readonly ConcurrentBag<ValueTaskCompletionInstance<TResult>> Instances = new ConcurrentBag<ValueTaskCompletionInstance<TResult>>();
+		private static readonly ConcurrentBag<ValueTaskCompletionInstance<TResult>> Instances = new();
 		//****************************************
-		private ManualResetValueTaskSourceCore<TResult> _TaskSource = new ManualResetValueTaskSourceCore<TResult>();
+		private ManualResetValueTaskSourceCore<TResult> _TaskSource = new();
 
 		private volatile int _InstanceState;
 

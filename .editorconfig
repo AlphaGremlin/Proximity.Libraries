@@ -53,6 +53,12 @@ csharp_style_var_when_type_is_apparent = true:suggestion
 insert_final_newline=true
 trim_trailing_whitespace=true
 
+# IDE0057: Use range operator
+csharp_style_prefer_range_operator = false
+
+# IDE0056: Use index operator
+csharp_style_prefer_index_operator = false
+
 [*.{cs,vb}]
 dotnet_sort_system_directives_first = true
 

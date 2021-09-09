@@ -15,11 +15,11 @@ namespace System.Threading
 	{
 		internal sealed class LockInstance : BaseCancellable, ILockWaiter, IValueTaskSource<Instance>
 		{ //****************************************
-			private static readonly ConcurrentBag<LockInstance> Instances = new ConcurrentBag<LockInstance>();
+			private static readonly ConcurrentBag<LockInstance> Instances = new();
 			//****************************************
 			private volatile int _InstanceState;
 
-			private ManualResetValueTaskSourceCore<Instance> _TaskSource = new ManualResetValueTaskSourceCore<Instance>();
+			private ManualResetValueTaskSourceCore<Instance> _TaskSource = new();
 			//****************************************
 
 			internal LockInstance() => _TaskSource.RunContinuationsAsynchronously = true;

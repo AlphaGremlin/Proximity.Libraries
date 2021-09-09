@@ -56,6 +56,6 @@ namespace Proximity.Logging
 
 		//****************************************
 
-		internal static readonly LogSection Null = new LogSection(null, null, 0);
+		internal static readonly LogSection Null = new(null, null, 0);
 	}
 }

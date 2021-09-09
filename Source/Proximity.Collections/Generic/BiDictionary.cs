@@ -383,7 +383,7 @@ namespace System.Collections.Generic
 		/// Returns an enumerator that iterates through the collection
 		/// </summary>
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
-		public Enumerator GetEnumerator() => new Enumerator(this);
+		public Enumerator GetEnumerator() => new(this);
 
 		/// <summary>
 		/// Determines the index of a specific item in the list
@@ -1409,7 +1409,7 @@ namespace System.Collections.Generic
 			public int PreviousLeftIndex, PreviousRightIndex;
 			public int LeftHashCode, RightHashCode;
 			public KeyValuePair<TLeft, TRight> Item;
-			public KeyValuePair<TRight, TLeft> InverseItem => new KeyValuePair<TRight, TLeft>(Right, Left);
+			public KeyValuePair<TRight, TLeft> InverseItem => new(Right, Left);
 			public TLeft Left => Item.Key;
 			public TRight Right => Item.Value;
 		}

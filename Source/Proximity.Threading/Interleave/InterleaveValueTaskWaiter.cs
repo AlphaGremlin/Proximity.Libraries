@@ -9,7 +9,7 @@ namespace System.Threading.Tasks.Interleave
 {
 	internal sealed class InterleaveValueTaskWaiter<T>
 	{ //****************************************
-		private static readonly ConcurrentBag<InterleaveValueTaskWaiter<T>> Waiters = new ConcurrentBag<InterleaveValueTaskWaiter<T>>();
+		private static readonly ConcurrentBag<InterleaveValueTaskWaiter<T>> Waiters = new();
 		//****************************************
 		private readonly Action _Continue;
 

@@ -8,7 +8,7 @@ namespace System.Threading.Tasks
 {
 	internal sealed class ValueTaskIgnore
 	{ //****************************************
-		private static readonly ConcurrentBag<ValueTaskIgnore> Instances = new ConcurrentBag<ValueTaskIgnore>();
+		private static readonly ConcurrentBag<ValueTaskIgnore> Instances = new();
 		//****************************************
 		private readonly Action _Continue;
 
@@ -59,7 +59,7 @@ namespace System.Threading.Tasks
 
 	internal sealed class ValueTaskIgnore<T>
 	{ //****************************************
-		private static readonly ConcurrentBag<ValueTaskIgnore<T>> Instances = new ConcurrentBag<ValueTaskIgnore<T>>();
+		private static readonly ConcurrentBag<ValueTaskIgnore<T>> Instances = new();
 		//****************************************
 		private readonly Action _Continue;
 

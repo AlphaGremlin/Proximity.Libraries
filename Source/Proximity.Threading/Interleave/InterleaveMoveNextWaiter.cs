@@ -10,9 +10,9 @@ namespace System.Threading.Tasks.Interleave
 {
 	internal sealed class InterleaveMoveNextWaiter : IValueTaskSource<bool>
 	{ //****************************************
-		private static readonly ConcurrentBag<InterleaveMoveNextWaiter> Waiters = new ConcurrentBag<InterleaveMoveNextWaiter>();
+		private static readonly ConcurrentBag<InterleaveMoveNextWaiter> Waiters = new();
 		//****************************************
-		private ManualResetValueTaskSourceCore<bool> _TaskSource = new ManualResetValueTaskSourceCore<bool>();
+		private ManualResetValueTaskSourceCore<bool> _TaskSource = new();
 
 		private IInterleaveAsyncEnumerator? _Enumerator;
 		//****************************************

@@ -15,9 +15,9 @@ namespace System.Collections.Concurrent
 	{
 		private sealed class CollectionAddInstance : IValueTaskSource<bool>
 		{ //****************************************
-			private static readonly ConcurrentBag<CollectionAddInstance> Instances = new ConcurrentBag<CollectionAddInstance>();
+			private static readonly ConcurrentBag<CollectionAddInstance> Instances = new();
 			//**************************************** //****************************************
-			private ManualResetValueTaskSourceCore<bool> _TaskSource = new ManualResetValueTaskSourceCore<bool>();
+			private ManualResetValueTaskSourceCore<bool> _TaskSource = new();
 
 			private readonly Action _OnTookSlot;
 
@@ -116,9 +116,9 @@ namespace System.Collections.Concurrent
 
 		private sealed class CollectionAddManyInstance : BaseCancellable, IValueTaskSource<bool>
 		{ //****************************************
-			private static readonly ConcurrentBag<CollectionAddManyInstance> Instances = new ConcurrentBag<CollectionAddManyInstance>();
+			private static readonly ConcurrentBag<CollectionAddManyInstance> Instances = new();
 			//**************************************** //****************************************
-			private ManualResetValueTaskSourceCore<bool> _TaskSource = new ManualResetValueTaskSourceCore<bool>();
+			private ManualResetValueTaskSourceCore<bool> _TaskSource = new();
 
 			private readonly Action _OnTookSlot;
 
@@ -287,9 +287,9 @@ namespace System.Collections.Concurrent
 
 		private sealed class CollectionTakeInstance : IValueTaskSource<T>
 		{ //****************************************
-			private static readonly ConcurrentBag<CollectionTakeInstance> Instances = new ConcurrentBag<CollectionTakeInstance>();
+			private static readonly ConcurrentBag<CollectionTakeInstance> Instances = new();
 			//****************************************
-			private ManualResetValueTaskSourceCore<T> _TaskSource = new ManualResetValueTaskSourceCore<T>();
+			private ManualResetValueTaskSourceCore<T> _TaskSource = new();
 			private readonly Action _OnTookItem;
 
 			private ConfiguredValueTaskAwaitable<bool>.ConfiguredValueTaskAwaiter _Awaiter;

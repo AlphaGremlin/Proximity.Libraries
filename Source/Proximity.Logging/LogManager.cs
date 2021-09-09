@@ -18,14 +18,14 @@ namespace Proximity.Logging
 	/// </summary>
 	public static class LogManager
 	{ //****************************************
-		private readonly static Stopwatch _Timer = new Stopwatch();
-		private readonly static DateTime _StartTime;
+		private readonly static Stopwatch Timer = new();
+		private readonly static DateTime AppStartTime;
 		//****************************************
 
 		static LogManager()
 		{
-			_StartTime = DateTime.UtcNow; // Perform calculations in UTC and convert to local for logging/reporting purposes
-			_Timer.Start();
+			AppStartTime = DateTime.UtcNow; // Perform calculations in UTC and convert to local for logging/reporting purposes
+			Timer.Start();
 
 			Default = new LogTarget();
 		}
@@ -81,7 +81,7 @@ namespace Proximity.Logging
 
 		//****************************************
 
-		internal static DateTime GetTimestamp() => (_StartTime + _Timer.Elapsed).ToLocalTime();
+		internal static DateTime GetTimestamp() => (AppStartTime + Timer.Elapsed).ToLocalTime();
 
 		//****************************************
 

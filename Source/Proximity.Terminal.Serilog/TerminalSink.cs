@@ -75,7 +75,7 @@ namespace Proximity.Terminal.Serilog
 
 		private readonly struct EmitterTarget
 		{ //****************************************
-			private static readonly ConcurrentBag<EmitterTarget> Instances = new ConcurrentBag<EmitterTarget>();
+			private static readonly ConcurrentBag<EmitterTarget> Instances = new();
 			//****************************************
 
 			private EmitterTarget(BufferWriter<char> buffer, CharTextWriter writer)

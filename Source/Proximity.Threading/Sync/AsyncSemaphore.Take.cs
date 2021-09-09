@@ -11,11 +11,11 @@ namespace System.Threading
 	{
 		internal sealed class SemaphoreInstance : BaseCancellable, IValueTaskSource<Instance>
 		{ //****************************************
-			private static readonly ConcurrentBag<SemaphoreInstance> Instances = new ConcurrentBag<SemaphoreInstance>();
+			private static readonly ConcurrentBag<SemaphoreInstance> Instances = new();
 			//****************************************
 			private volatile int _InstanceState;
 
-			private ManualResetValueTaskSourceCore<Instance> _TaskSource = new ManualResetValueTaskSourceCore<Instance>();
+			private ManualResetValueTaskSourceCore<Instance> _TaskSource = new();
 			//****************************************
 
 			internal SemaphoreInstance() => _TaskSource.RunContinuationsAsynchronously = true;

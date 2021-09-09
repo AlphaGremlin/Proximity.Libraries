@@ -152,7 +152,7 @@ namespace System.Collections.Generic
 			}
 
 			/// <inheritdoc/>
-			public new LeftEnumerator GetEnumerator() => new LeftEnumerator(Dictionary);
+			public new LeftEnumerator GetEnumerator() => new(Dictionary);
 
 			/// <inheritdoc/>
 			public override int IndexOf(TLeft item) => Dictionary.IndexOfLeft(item);
@@ -191,7 +191,7 @@ namespace System.Collections.Generic
 			}
 
 			/// <inheritdoc/>
-			public new RightEnumerator GetEnumerator() => new RightEnumerator(Dictionary);
+			public new RightEnumerator GetEnumerator() => new(Dictionary);
 
 			/// <inheritdoc/>
 			public override int IndexOf(TRight item) => Dictionary.IndexOfRight(item);

@@ -19,8 +19,8 @@ namespace Proximity.Logging
 	/// </summary>
 	public sealed class LogTarget
 	{ //****************************************
-		private readonly List<LogOutput> _Outputs = new List<LogOutput>();
-		private readonly AsyncLocal<ImmutableCountedStack<LogSection>> _Context = new AsyncLocal<ImmutableCountedStack<LogSection>>();
+		private readonly List<LogOutput> _Outputs = new();
+		private readonly AsyncLocal<ImmutableCountedStack<LogSection>> _Context = new();
 		//****************************************
 
 		/// <summary>
@@ -195,7 +195,7 @@ namespace Proximity.Logging
 		/// <summary>
 		/// Gets a logger targeting this Log Target
 		/// </summary>
-		public Logger Logger => new Logger(this);
+		public Logger Logger => new(this);
 
 		/// <summary>
 		/// Gets whether the log target is active

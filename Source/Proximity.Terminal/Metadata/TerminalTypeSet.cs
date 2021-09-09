@@ -12,7 +12,7 @@ namespace Proximity.Terminal.Metadata
 	/// </summary>
 	public sealed class TerminalTypeSet : IComparable<TerminalTypeSet>
 	{ //****************************************
-		private readonly StringKeyDictionary<TerminalTypeInstance> _Instances = new StringKeyDictionary<TerminalTypeInstance>(StringComparison.OrdinalIgnoreCase);
+		private readonly StringKeyDictionary<TerminalTypeInstance> _Instances = new(StringComparison.OrdinalIgnoreCase);
 		private TerminalTypeInstance? _Default;
 
 		//****************************************

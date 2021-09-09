@@ -16,8 +16,8 @@ namespace System.Threading
 	/// </summary>
 	public sealed partial class AsyncSwitchLock : IAsyncDisposable, IDisposable
 	{ //****************************************
-		private readonly WaiterQueue<LockInstance> _LeftWaiters = new WaiterQueue<LockInstance>();
-		private readonly WaiterQueue<LockInstance> _RightWaiters = new WaiterQueue<LockInstance>();
+		private readonly WaiterQueue<LockInstance> _LeftWaiters = new();
+		private readonly WaiterQueue<LockInstance> _RightWaiters = new();
 
 		private LockDisposer? _Disposer;
 		

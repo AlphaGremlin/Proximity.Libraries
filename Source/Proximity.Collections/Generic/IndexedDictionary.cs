@@ -276,7 +276,7 @@ namespace System.Collections.Generic
 		/// Gets an enumerator for this Dictionary
 		/// </summary>
 		/// <returns>An Enumerator to enumerate the contents of the Dictionary</returns>
-		public Enumerator GetEnumerator() => new Enumerator(this);
+		public Enumerator GetEnumerator() => new(this);
 
 		/// <summary>
 		/// Determines the index of a specific item in the list
@@ -1303,7 +1303,7 @@ namespace System.Collections.Generic
 			}
 
 			/// <inheritdoc />
-			public new KeyEnumerator GetEnumerator() => new KeyEnumerator(Parent);
+			public new KeyEnumerator GetEnumerator() => new(Parent);
 
 			/// <inheritdoc />
 			public override int IndexOf(TKey item) => Parent.IndexOfKey(item);
@@ -1347,7 +1347,7 @@ namespace System.Collections.Generic
 			}
 
 			/// <inheritdoc />
-			public new ValueEnumerator GetEnumerator() => new ValueEnumerator(Parent);
+			public new ValueEnumerator GetEnumerator() => new(Parent);
 
 			/// <inheritdoc />
 			public override int IndexOf(TValue item) => Parent.IndexOfValue(item);

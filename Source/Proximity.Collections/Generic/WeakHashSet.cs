@@ -243,7 +243,7 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
 		/// <remarks>Will perform a compaction. May not be identical between enumerations</remarks>
-		public Enumerator GetEnumerator() => new Enumerator(this);
+		public Enumerator GetEnumerator() => new(this);
 
 		/// <summary>
 		/// Removes an element from the collection

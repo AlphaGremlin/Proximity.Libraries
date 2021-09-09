@@ -47,6 +47,9 @@ namespace Proximity.Buffers.Tests
 		}
 
 		[Test]
+		[TestCase(1024, 30)]
+		[TestCase(3000, 30)]
+		[TestCase(3000, 31)]
 		[TestCase(1024, 32)]
 		[TestCase(1024 * 4, 1024)]
 		[TestCase(1024, 200)]
@@ -60,7 +63,97 @@ namespace Proximity.Buffers.Tests
 
 					var Contents = Writer.GetSpan(NextBlockSize);
 
-					Contents.Fill(1);
+					Contents.Slice(0, NextBlockSize).Fill(1);
+
+					Writer.Advance(NextBlockSize);
+				}
+
+				Assert.AreEqual(totalBytes, Writer.Length);
+
+				var Sequence = Writer.ToSequence();
+
+				Assert.AreEqual(totalBytes, Sequence.Length);
+			}
+		}
+
+		[Test]
+		[TestCase(1024, 30)]
+		[TestCase(3000, 30)]
+		[TestCase(3000, 31)]
+		[TestCase(1024, 32)]
+		[TestCase(1024 * 4, 1024)]
+		[TestCase(1024, 200)]
+		public void BlocksApproximate(int totalBytes, int blockSize)
+		{
+			using (var Writer = new BufferWriter<byte>())
+			{
+				for (var Index = 0; Index < totalBytes; Index += blockSize)
+				{
+					var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
+
+					var Contents = Writer.GetSpan(NextBlockSize);
+
+					Contents.Slice(0, NextBlockSize).Fill(1);
+
+					Writer.Advance(NextBlockSize);
+				}
+
+				Assert.AreEqual(totalBytes, Writer.Length);
+
+				var Sequence = Writer.ToSequence();
+
+				Assert.AreEqual(totalBytes, Sequence.Length);
+			}
+		}
+
+		[Test]
+		[TestCase(1024, 30)]
+		[TestCase(3000, 30)]
+		[TestCase(3000, 31)]
+		[TestCase(1024, 32)]
+		[TestCase(1024 * 4, 1024)]
+		[TestCase(1024, 200)]
+		public void BlocksSmallMinimum(int totalBytes, int blockSize)
+		{
+			using (var Writer = new BufferWriter<byte>(ExactPool<byte>.Shared, 1))
+			{
+				for (var Index = 0; Index < totalBytes; Index += blockSize)
+				{
+					var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
+
+					var Contents = Writer.GetSpan(NextBlockSize);
+
+					Contents.Slice(0, NextBlockSize).Fill(1);
+
+					Writer.Advance(NextBlockSize);
+				}
+
+				Assert.AreEqual(totalBytes, Writer.Length);
+
+				var Sequence = Writer.ToSequence();
+
+				Assert.AreEqual(totalBytes, Sequence.Length);
+			}
+		}
+
+		[Test]
+		[TestCase(1024, 30)]
+		[TestCase(3000, 30)]
+		[TestCase(3000, 31)]
+		[TestCase(1024, 32)]
+		[TestCase(1024 * 4, 1024)]
+		[TestCase(1024, 200)]
+		public void BlocksSmallMinimumApproximate(int totalBytes, int blockSize)
+		{
+			using (var Writer = new BufferWriter<byte>(ArrayPool<byte>.Shared, 1))
+			{
+				for (var Index = 0; Index < totalBytes; Index += blockSize)
+				{
+					var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
+
+					var Contents = Writer.GetSpan(NextBlockSize);
+
+					Contents.Slice(0, NextBlockSize).Fill(1);
 
 					Writer.Advance(NextBlockSize);
 				}

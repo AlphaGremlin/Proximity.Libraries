@@ -18,7 +18,7 @@ namespace Proximity.Diagnostics
 
 		private readonly TimeSpan[] _Intervals;
 		private readonly Dictionary<TimeSpan, int> _IntervalLookup;
-		private readonly Dictionary<string, Statistic> _Statistics = new Dictionary<string, Statistic>();
+		private readonly Dictionary<string, Statistic> _Statistics = new();
 		//****************************************
 
 		/// <summary>
@@ -300,7 +300,7 @@ namespace Proximity.Diagnostics
 		/// <summary>
 		/// Gets the time the statistics were last reset
 		/// </summary>
-		public DateTime LastReset => new DateTime(_StartTime.Ticks, DateTimeKind.Local);
+		public DateTime LastReset => new(_StartTime.Ticks, DateTimeKind.Local);
 
 		/// <summary>
 		/// Gets the registered statistic names

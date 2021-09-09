@@ -18,7 +18,7 @@ namespace Proximity.Terminal.Logging
 
 		//****************************************
 		private readonly LogTarget _Target;
-		private readonly HashSet<LogLevel> _IsEnabled = new HashSet<LogLevel>();
+		private readonly HashSet<LogLevel> _IsEnabled = new();
 		//****************************************
 
 		/// <summary>

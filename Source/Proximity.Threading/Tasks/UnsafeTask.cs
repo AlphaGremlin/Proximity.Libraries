@@ -73,7 +73,7 @@ namespace System.Threading.Tasks
 		/// Yields the thread in an unsafe way, breaking the execution context
 		/// </summary>
 		/// <returns>An awaitable that when awaited, continues in an unsafe context</returns>
-		public static UnsafeYieldAwaitable Yield() => new UnsafeYieldAwaitable();
+		public static UnsafeYieldAwaitable Yield() => new();
 
 		//****************************************
 

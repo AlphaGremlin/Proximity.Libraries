@@ -79,7 +79,7 @@ namespace Proximity.Configuration
 		/// Returns an enumerator that iterates through the collection
 		/// </summary>
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
-		public new ConfigurationEnumerator<T> GetEnumerator() => new ConfigurationEnumerator<T>(this);
+		public new ConfigurationEnumerator<T> GetEnumerator() => new(this);
 
 		/// <summary>
 		/// Copies the elements of the collection to a given array, starting at a specified index

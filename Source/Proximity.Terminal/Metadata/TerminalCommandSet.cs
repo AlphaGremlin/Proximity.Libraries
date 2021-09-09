@@ -13,7 +13,7 @@ namespace Proximity.Terminal.Metadata
 	/// </summary>
 	public sealed class TerminalCommandSet : IComparable<TerminalCommandSet>
 	{ //****************************************
-		private readonly List<TerminalCommand> _Commands = new List<TerminalCommand>();
+		private readonly List<TerminalCommand> _Commands = new();
 		//****************************************
 		
 		internal TerminalCommandSet(string name)

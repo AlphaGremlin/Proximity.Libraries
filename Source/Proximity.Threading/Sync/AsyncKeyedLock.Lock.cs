@@ -13,11 +13,11 @@ namespace System.Threading
 	{
 		internal sealed class KeyedLockInstance : BaseCancellable, IValueTaskSource<Instance>
 		{ //****************************************
-			private static readonly ConcurrentBag<KeyedLockInstance> Instances = new ConcurrentBag<KeyedLockInstance>();
+			private static readonly ConcurrentBag<KeyedLockInstance> Instances = new();
 			//****************************************
 			private volatile int _InstanceState;
 
-			private ManualResetValueTaskSourceCore<Instance> _TaskSource = new ManualResetValueTaskSourceCore<Instance>();
+			private ManualResetValueTaskSourceCore<Instance> _TaskSource = new();
 			//****************************************
 
 			internal KeyedLockInstance() => _TaskSource.RunContinuationsAsynchronously = true;

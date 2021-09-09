@@ -16,8 +16,8 @@ namespace System.Threading
 	/// </summary>
 	public sealed partial class AsyncReadWriteLock : IDisposable, IAsyncDisposable
 	{ //****************************************
-		private readonly WaiterQueue<ILockWaiter> _Writers = new WaiterQueue<ILockWaiter>();
-		private readonly WaiterQueue<ILockWaiter> _Readers = new WaiterQueue<ILockWaiter>();
+		private readonly WaiterQueue<ILockWaiter> _Writers = new();
+		private readonly WaiterQueue<ILockWaiter> _Readers = new();
 
 		private LockDisposer? _Disposer;
 

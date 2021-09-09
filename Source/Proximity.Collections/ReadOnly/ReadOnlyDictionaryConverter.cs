@@ -135,7 +135,7 @@ namespace System.Collections.ReadOnly
 		/// Returns an enumerator that iterates through the collection
 		/// </summary>
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
-		public ChildPairEnumerator GetEnumerator() => new ChildPairEnumerator(this);
+		public ChildPairEnumerator GetEnumerator() => new(this);
 
 		/// <summary>
 		/// Gets the value associated with the specified key

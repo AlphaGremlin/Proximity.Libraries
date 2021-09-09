@@ -11,12 +11,12 @@ namespace System.Threading
 {
 	internal sealed class AsyncCounterDecrement : BaseCancellable, IValueTaskSource, IValueTaskSource<int>, IValueTaskSource<bool>
 	{ //****************************************
-		private static readonly ConcurrentBag<AsyncCounterDecrement> Instances = new ConcurrentBag<AsyncCounterDecrement>();
+		private static readonly ConcurrentBag<AsyncCounterDecrement> Instances = new();
 		//****************************************
 		private volatile int _InstanceState;
 		private int _Maximum;
 
-		private ManualResetValueTaskSourceCore<int> _TaskSource = new ManualResetValueTaskSourceCore<int>();
+		private ManualResetValueTaskSourceCore<int> _TaskSource = new();
 		//****************************************
 
 		internal AsyncCounterDecrement() => _TaskSource.RunContinuationsAsynchronously = true;

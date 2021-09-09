@@ -34,7 +34,7 @@ namespace Proximity.Configuration
 		/// </summary>
 		public decimal MinValue
 		{
-			get => new decimal(_Min);
+			get => new(_Min);
 			set
 			{
 				if (MaxValue < value)
@@ -49,7 +49,7 @@ namespace Proximity.Configuration
 		/// </summary>
 		public decimal MaxValue
 		{
-			get => new decimal(_Max);
+			get => new(_Max);
 			set
 			{
 				if (MinValue > value)

@@ -15,7 +15,7 @@ namespace System.Threading.Tasks
 	/// </summary>
 	public sealed class TaskQueue
 	{ //****************************************
-		private static readonly BaseTask CompleteStreamTask = new BaseTask();
+		private static readonly BaseTask CompleteStreamTask = new();
 		//****************************************
 		private BaseTask _NextTask = CompleteStreamTask;
 
@@ -306,7 +306,7 @@ namespace System.Threading.Tasks
 			private TaskQueue? _Stream;
 			private BaseTask? _NextTask;
 
-			private ManualResetValueTaskSourceCore<TResult> _TaskSource = new ManualResetValueTaskSourceCore<TResult>();
+			private ManualResetValueTaskSourceCore<TResult> _TaskSource = new();
 
 			private CancellationToken _Token;
 			private CancellationTokenRegistration _Registration;
@@ -510,17 +510,17 @@ namespace System.Threading.Tasks
 
 			//****************************************
 
-			public ValueTask Task => new ValueTask(this, TaskToken);
+			public ValueTask Task => new(this, TaskToken);
 		}
 
 		private abstract class BaseValueTaskSource<TResult> : BaseTask<TResult>, IValueTaskSource<TResult>
 		{
-			public ValueTask<TResult> Task => new ValueTask<TResult>(this, TaskToken);
+			public ValueTask<TResult> Task => new(this, TaskToken);
 		}
 
 		private sealed class NullTask : BaseValueTaskSource
 		{ //****************************************
-			private readonly static ConcurrentBag<NullTask> Cache = new ConcurrentBag<NullTask>();
+			private readonly static ConcurrentBag<NullTask> Cache = new();
 			//****************************************
 
 			public override BaseTask Execute() => SwitchToSucceeded();
@@ -542,7 +542,7 @@ namespace System.Threading.Tasks
 
 		private sealed class ActionTask : BaseValueTaskSource
 		{ //****************************************
-			private readonly static ConcurrentBag<ActionTask> Cache = new ConcurrentBag<ActionTask>();
+			private readonly static ConcurrentBag<ActionTask> Cache = new();
 			//****************************************
 			private Action? _Action;
 			//****************************************
@@ -588,7 +588,7 @@ namespace System.Threading.Tasks
 
 		private sealed class ActionTask<TValue> : BaseValueTaskSource
 		{ //****************************************
-			private readonly static ConcurrentBag<ActionTask<TValue>> Cache = new ConcurrentBag<ActionTask<TValue>>();
+			private readonly static ConcurrentBag<ActionTask<TValue>> Cache = new();
 			//****************************************
 			private Action<TValue>? _Action;
 			private TValue _Value = default!;
@@ -637,7 +637,7 @@ namespace System.Threading.Tasks
 
 		private sealed class WrappedTask : BaseValueTaskSource
 		{ //****************************************
-			private readonly static ConcurrentBag<WrappedTask> Cache = new ConcurrentBag<WrappedTask>();
+			private readonly static ConcurrentBag<WrappedTask> Cache = new();
 			//****************************************
 			private readonly Action _ContinueWrappedTask;
 
@@ -714,7 +714,7 @@ namespace System.Threading.Tasks
 
 		private sealed class WrappedTask<TValue> : BaseValueTaskSource
 		{ //****************************************
-			private readonly static ConcurrentBag<WrappedTask<TValue>> Cache = new ConcurrentBag<WrappedTask<TValue>>();
+			private readonly static ConcurrentBag<WrappedTask<TValue>> Cache = new();
 			//****************************************
 			private readonly Action _ContinueWrappedTask;
 
@@ -794,7 +794,7 @@ namespace System.Threading.Tasks
 
 		private sealed class WrappedValueTask : BaseValueTaskSource
 		{ //****************************************
-			private readonly static ConcurrentBag<WrappedValueTask> Cache = new ConcurrentBag<WrappedValueTask>();
+			private readonly static ConcurrentBag<WrappedValueTask> Cache = new();
 			//****************************************
 			private readonly Action _ContinueWrappedTask;
 
@@ -874,7 +874,7 @@ namespace System.Threading.Tasks
 
 		private sealed class WrappedValueTask<TValue> : BaseValueTaskSource
 		{ //****************************************
-			private readonly static ConcurrentBag<WrappedValueTask<TValue>> Cache = new ConcurrentBag<WrappedValueTask<TValue>>();
+			private readonly static ConcurrentBag<WrappedValueTask<TValue>> Cache = new();
 			//****************************************
 			private readonly Action _ContinueWrappedTask;
 
@@ -955,7 +955,7 @@ namespace System.Threading.Tasks
 
 		private sealed class FuncTask<TResult> : BaseValueTaskSource<TResult>
 		{ //****************************************
-			private readonly static ConcurrentBag<FuncTask<TResult>> Cache = new ConcurrentBag<FuncTask<TResult>>();
+			private readonly static ConcurrentBag<FuncTask<TResult>> Cache = new();
 			//****************************************
 			private Func<TResult>? _Func;
 			//****************************************
@@ -1000,7 +1000,7 @@ namespace System.Threading.Tasks
 
 		private sealed class FuncTask<TValue, TResult> : BaseValueTaskSource<TResult>
 		{ //****************************************
-			private readonly static ConcurrentBag<FuncTask<TValue, TResult>> Cache = new ConcurrentBag<FuncTask<TValue, TResult>>();
+			private readonly static ConcurrentBag<FuncTask<TValue, TResult>> Cache = new();
 			//****************************************
 			private Func<TValue, TResult>? _Func;
 			private TValue _Value = default!;
@@ -1048,7 +1048,7 @@ namespace System.Threading.Tasks
 
 		private sealed class WrappedFuncTask<TResult> : BaseValueTaskSource<TResult>
 		{ //****************************************
-			private readonly static ConcurrentBag<WrappedFuncTask<TResult>> Cache = new ConcurrentBag<WrappedFuncTask<TResult>>();
+			private readonly static ConcurrentBag<WrappedFuncTask<TResult>> Cache = new();
 			//****************************************
 			private readonly Action _ContinueWrappedTask;
 
@@ -1124,7 +1124,7 @@ namespace System.Threading.Tasks
 
 		private sealed class WrappedFuncTask<TValue, TResult> : BaseValueTaskSource<TResult>
 		{ //****************************************
-			private readonly static ConcurrentBag<WrappedFuncTask<TValue, TResult>> Cache = new ConcurrentBag<WrappedFuncTask<TValue, TResult>>();
+			private readonly static ConcurrentBag<WrappedFuncTask<TValue, TResult>> Cache = new();
 			//****************************************
 			private readonly Action _ContinueWrappedTask;
 
@@ -1203,7 +1203,7 @@ namespace System.Threading.Tasks
 
 		private sealed class WrappedFuncValueTask<TResult> : BaseValueTaskSource<TResult>
 		{ //****************************************
-			private readonly static ConcurrentBag<WrappedFuncValueTask<TResult>> Cache = new ConcurrentBag<WrappedFuncValueTask<TResult>>();
+			private readonly static ConcurrentBag<WrappedFuncValueTask<TResult>> Cache = new();
 			//****************************************
 			private readonly Action _ContinueWrappedTask;
 
@@ -1279,7 +1279,7 @@ namespace System.Threading.Tasks
 
 		private sealed class WrappedFuncValueTask<TValue, TResult> : BaseValueTaskSource<TResult>
 		{ //****************************************
-			private readonly static ConcurrentBag<WrappedFuncValueTask<TValue, TResult>> Cache = new ConcurrentBag<WrappedFuncValueTask<TValue, TResult>>();
+			private readonly static ConcurrentBag<WrappedFuncValueTask<TValue, TResult>> Cache = new();
 			//****************************************
 			private readonly Action _ContinueWrappedTask;
 

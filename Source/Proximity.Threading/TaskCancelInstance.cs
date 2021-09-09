@@ -11,7 +11,7 @@ namespace Proximity.Threading
 {
 	internal sealed class TaskCancelInstance<T> : BaseCancellable, IValueTaskSource, IValueTaskSource<T>
 	{ //****************************************
-		private static readonly ConcurrentBag<TaskCancelInstance<T>> Instances = new ConcurrentBag<TaskCancelInstance<T>>();
+		private static readonly ConcurrentBag<TaskCancelInstance<T>> Instances = new();
 		//****************************************
 		private Action? _CompleteValueTask;
 		private Action<Task>? _CompleteTask;
@@ -20,7 +20,7 @@ namespace Proximity.Threading
 		private bool _HasResult;
 		private bool _WaitForCompletion;
 
-		private ManualResetValueTaskSourceCore<T> _TaskSource = new ManualResetValueTaskSourceCore<T>();
+		private ManualResetValueTaskSourceCore<T> _TaskSource = new();
 
 		private Task? _Task;
 		private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _Awaiter;

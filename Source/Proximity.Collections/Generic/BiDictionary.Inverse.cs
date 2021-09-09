@@ -66,7 +66,7 @@ namespace System.Collections.Generic
 			}
 
 			/// <inheritdoc/>
-			public InverseEnumerator GetEnumerator() => new InverseEnumerator(Inverse);
+			public InverseEnumerator GetEnumerator() => new(Inverse);
 
 			/// <summary>
 			/// Determines the index of a specific item in the list
@@ -384,10 +384,10 @@ namespace System.Collections.Generic
 			//****************************************
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			private static KeyValuePair<TRight, TLeft> Swap(KeyValuePair<TLeft, TRight> item) => new KeyValuePair<TRight, TLeft>(item.Value, item.Key);
+			private static KeyValuePair<TRight, TLeft> Swap(KeyValuePair<TLeft, TRight> item) => new(item.Value, item.Key);
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			private static KeyValuePair<TLeft, TRight> Swap(KeyValuePair<TRight, TLeft> item) => new KeyValuePair<TLeft, TRight>(item.Value, item.Key);
+			private static KeyValuePair<TLeft, TRight> Swap(KeyValuePair<TRight, TLeft> item) => new(item.Value, item.Key);
 		}
 
 		/// <summary>

@@ -179,7 +179,7 @@ namespace System.Collections.Generic
 		/// Returns an enumerator that iterates through the live values in the dictionary
 		/// </summary>
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
-		public Enumerator GetEnumerator() => new Enumerator(_Dictionary);
+		public Enumerator GetEnumerator() => new(_Dictionary);
 
 		/// <summary>
 		/// Removes a pair from the dictionary

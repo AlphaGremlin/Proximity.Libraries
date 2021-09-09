@@ -16,13 +16,13 @@ namespace System.Collections.Concurrent
 	/// </summary>
 	internal sealed class AsyncCollectionTakeAny<T> : BaseCancellable, IValueTaskSource<CollectionTakeResult<T>>
 	{ //****************************************
-		private static readonly ConcurrentBag<AsyncCollectionTakeAny<T>> Instances = new ConcurrentBag<AsyncCollectionTakeAny<T>>();
-		private static readonly ConcurrentBag<PeekTakeWaiter> Waiters = new ConcurrentBag<PeekTakeWaiter>();
+		private static readonly ConcurrentBag<AsyncCollectionTakeAny<T>> Instances = new();
+		private static readonly ConcurrentBag<PeekTakeWaiter> Waiters = new();
 		//****************************************
 		private int _InstanceState;
 		private int _IsStarted;
 
-		private ManualResetValueTaskSourceCore<CollectionTakeResult<T>> _TaskSource = new ManualResetValueTaskSourceCore<CollectionTakeResult<T>>();
+		private ManualResetValueTaskSourceCore<CollectionTakeResult<T>> _TaskSource = new();
 
 		private AsyncCollection<T>? _SourceCollection;
 		private int _OutstandingCounters;

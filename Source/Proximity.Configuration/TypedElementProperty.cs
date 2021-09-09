@@ -15,7 +15,7 @@ namespace Proximity.Configuration
 	/// <remarks>Allows using a Typed Element as a property rather than a collection. Adding properties to this class is not supported</remarks>
 	public class TypedElementProperty<T> : ConfigurationElement where T : TypedElement, new()
 	{
-		private static readonly ConfigurationProperty ContentProperty = new ConfigurationProperty("__Content", typeof(T));
+		private static readonly ConfigurationProperty ContentProperty = new("__Content", typeof(T));
 
 		/// <summary>
 		/// Creates a new Configuration Element that contains a single Typed Element

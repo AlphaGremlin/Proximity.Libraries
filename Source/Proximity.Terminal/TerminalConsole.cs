@@ -68,13 +68,13 @@ namespace Proximity.Terminal
 
 		private sealed class TerminalInstance : ITerminalListener
 		{ //****************************************
-			private readonly AsyncCollection<ConsoleRecord?> _ConsoleOutput = new AsyncCollection<ConsoleRecord?>(128);
+			private readonly AsyncCollection<ConsoleRecord?> _ConsoleOutput = new(128);
 
-			private readonly CancellationTokenSource _TokenSource = new CancellationTokenSource();
+			private readonly CancellationTokenSource _TokenSource = new();
 			private readonly ConsoleColor _InitialColour;
 			private Thread? _TerminalThread;
 
-			private readonly StringBuilder _Output = new StringBuilder();
+			private readonly StringBuilder _Output = new();
 			private readonly StringBuilder? _InputLine;
 			private readonly List<string>? _CommandHistory;
 			private int _CommandHistoryIndex, _InputIndex, _InputTop;

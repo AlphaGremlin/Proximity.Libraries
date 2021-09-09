@@ -9,7 +9,7 @@ namespace Proximity.Terminal
 	/// </summary>
 	public sealed class TerminalHistory : ITerminalListener
 	{ //****************************************
-		private readonly List<ConsoleRecord> _History = new List<ConsoleRecord>();
+		private readonly List<ConsoleRecord> _History = new();
 		//****************************************
 
 		/// <summary>

@@ -14,7 +14,7 @@ namespace Proximity.Configuration
 	/// </summary>
 	public class AssemblyElementCollection<TValue> : ConfigurationElement, ICollection<TValue> where TValue : AssemblyElement, new()
 	{	//****************************************
-		private readonly List<TValue> _Items = new List<TValue>();
+		private readonly List<TValue> _Items = new();
 		//****************************************
 		
 		/// <summary>

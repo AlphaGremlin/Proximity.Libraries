@@ -183,7 +183,7 @@ namespace System.IO
 #if !NETSTANDARD2_0
 			override
 #endif
-			ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) => new ValueTask<int>(Read(buffer.Span));
+			ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) => new(Read(buffer.Span));
 
 		/// <inheritdoc />
 		public override long Seek(long offset, SeekOrigin origin)

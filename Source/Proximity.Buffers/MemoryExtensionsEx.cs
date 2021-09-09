@@ -187,7 +187,7 @@ namespace System
 		/// <param name="separator">The separator to split on</param>
 		/// <param name="omitEmpty">Whether to omit empty items</param>
 		/// <returns>An enumerable that returns multiple sequences based on the split</returns>
-		public static SplitSingleEnumerator<T> Split<T>(this ReadOnlySpan<T> sequence, T separator, bool omitEmpty = false) where T : IEquatable<T> => new SplitSingleEnumerator<T>(sequence, separator, omitEmpty);
+		public static SplitSingleEnumerator<T> Split<T>(this ReadOnlySpan<T> sequence, T separator, bool omitEmpty = false) where T : IEquatable<T> => new(sequence, separator, omitEmpty);
 
 		/// <summary>
 		/// Splits a sequence based on a separator without allocations
@@ -197,7 +197,7 @@ namespace System
 		/// <param name="separator">The separator to split on</param>
 		/// <param name="omitEmpty">Whether to omit empty items</param>
 		/// <returns>An enumerable that returns multiple sequences based on the split</returns>
-		public static SplitEnumerator<T> Split<T>(this ReadOnlySpan<T> sequence, ReadOnlySpan<T> separator, bool omitEmpty = false) where T : IEquatable<T> => new SplitEnumerator<T>(sequence, separator, omitEmpty);
+		public static SplitEnumerator<T> Split<T>(this ReadOnlySpan<T> sequence, ReadOnlySpan<T> separator, bool omitEmpty = false) where T : IEquatable<T> => new(sequence, separator, omitEmpty);
 
 		/// <summary>
 		/// Compares the start of a byte memory block against a character span

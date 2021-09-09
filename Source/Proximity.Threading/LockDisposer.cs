@@ -9,7 +9,7 @@ namespace Proximity.Threading
 {
 	internal sealed class LockDisposer : IValueTaskSource
 	{ //****************************************
-		private ManualResetValueTaskSourceCore<VoidStruct> _TaskSource = new ManualResetValueTaskSourceCore<VoidStruct>();
+		private ManualResetValueTaskSourceCore<VoidStruct> _TaskSource = new();
 
 		private int _IsDisposed;
 		//****************************************

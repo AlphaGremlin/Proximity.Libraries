@@ -11,8 +11,8 @@ namespace Proximity.Terminal.Metadata
 	/// </summary>
 	public sealed class TerminalType
 	{//****************************************
-		private readonly StringKeyDictionary<TerminalCommandSet> _Commands = new StringKeyDictionary<TerminalCommandSet>(StringComparison.OrdinalIgnoreCase);
-		private readonly StringKeyDictionary<TerminalVariable> _Variables = new StringKeyDictionary<TerminalVariable>(StringComparison.OrdinalIgnoreCase);
+		private readonly StringKeyDictionary<TerminalCommandSet> _Commands = new(StringComparison.OrdinalIgnoreCase);
+		private readonly StringKeyDictionary<TerminalVariable> _Variables = new(StringComparison.OrdinalIgnoreCase);
 		//****************************************
 		
 		internal TerminalType(TerminalRegistry registry, Type type, TerminalProviderAttribute provider)

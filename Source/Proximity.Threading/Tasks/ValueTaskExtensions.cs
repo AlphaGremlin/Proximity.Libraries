@@ -34,7 +34,7 @@ namespace System.Threading.Tasks
 		/// <param name="source">The enumeration of tasks to interleave</param>
 		/// <param name="token">A cancellation token to cancel the enumeration</param>
 		/// <returns>An enumeration that returns the tasks in order of completion</returns>
-		public static InterleaveValueTaskAsyncEnumerable<T> Interleave<T>(this IEnumerable<ValueTask<T>> source, CancellationToken token = default) => new InterleaveValueTaskAsyncEnumerable<T>(source, token);
+		public static InterleaveValueTaskAsyncEnumerable<T> Interleave<T>(this IEnumerable<ValueTask<T>> source, CancellationToken token = default) => new(source, token);
 
 		/// <summary>
 		/// Interleaves an enumeration of tasks, returning them in the order they complete
@@ -42,7 +42,7 @@ namespace System.Threading.Tasks
 		/// <param name="source">The enumeration of tasks to interleave</param>
 		/// <param name="token">A cancellation token to cancel the enumeration</param>
 		/// <returns>An enumeration that returns the task and the original index of the task in order of completion</returns>
-		public static InterleaveValueTaskIndexAsyncEnumerable<T> InterleaveIndex<T>(this IEnumerable<ValueTask<T>> source, CancellationToken token = default) => new InterleaveValueTaskIndexAsyncEnumerable<T>(source, token);
+		public static InterleaveValueTaskIndexAsyncEnumerable<T> InterleaveIndex<T>(this IEnumerable<ValueTask<T>> source, CancellationToken token = default) => new(source, token);
 
 		/// <summary>
 		/// Wraps the given task, waiting for it to complete or the given token to cancel
@@ -219,7 +219,7 @@ namespace System.Threading.Tasks
 		/// <param name="task">The first task to wait on</param>
 		/// <param name="tasks">The second and subsequent tasks to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public static ValueTaskMultiWaiter ThenWaitOn(this ValueTask task, params ValueTask[] tasks) => new ValueTaskMultiWaiter(ImmutableStack<ValueTask>.Empty.Push(task).Push(tasks, out _));
+		public static ValueTaskMultiWaiter ThenWaitOn(this ValueTask task, params ValueTask[] tasks) => new(ImmutableStack<ValueTask>.Empty.Push(task).Push(tasks, out _));
 
 		/// <summary>
 		/// Waits on two or more <see cref="ValueTask"/> instances
@@ -227,7 +227,7 @@ namespace System.Threading.Tasks
 		/// <param name="tasks">The first tasks to wait on</param>
 		/// <param name="task">The last task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public static ValueTaskMultiWaiter ThenWaitOn(this IEnumerable<ValueTask> tasks, ValueTask task) => new ValueTaskMultiWaiter(ImmutableStack<ValueTask>.Empty.Push(tasks, out _).Push(task));
+		public static ValueTaskMultiWaiter ThenWaitOn(this IEnumerable<ValueTask> tasks, ValueTask task) => new(ImmutableStack<ValueTask>.Empty.Push(tasks, out _).Push(task));
 
 		/// <summary>
 		/// Waits on two or more <see cref="ValueTask"/> instances
@@ -235,7 +235,7 @@ namespace System.Threading.Tasks
 		/// <param name="tasks">The first tasks to wait on</param>
 		/// <param name="tasks2">The following tasks to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public static ValueTaskMultiWaiter ThenWaitOn(this IEnumerable<ValueTask> tasks, IEnumerable<ValueTask> tasks2) => new ValueTaskMultiWaiter(ImmutableStack<ValueTask>.Empty.Push(tasks, out _).Push(tasks2, out _));
+		public static ValueTaskMultiWaiter ThenWaitOn(this IEnumerable<ValueTask> tasks, IEnumerable<ValueTask> tasks2) => new(ImmutableStack<ValueTask>.Empty.Push(tasks, out _).Push(tasks2, out _));
 
 		/// <summary>
 		/// Waits on two or more <see cref="ValueTask{T}"/> instances
@@ -243,7 +243,7 @@ namespace System.Threading.Tasks
 		/// <param name="task">The first task to wait on</param>
 		/// <param name="tasks">The second and subsequent tasks to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public static ValueTaskMultiWaiter<T> ThenWaitOn<T>(this ValueTask<T> task, params ValueTask<T>[] tasks) => new ValueTaskMultiWaiter<T>(ImmutableStack<ValueTask<T>>.Empty.Push(task).Push(tasks, out var Count), Count + 1);
+		public static ValueTaskMultiWaiter<T> ThenWaitOn<T>(this ValueTask<T> task, params ValueTask<T>[] tasks) => new(ImmutableStack<ValueTask<T>>.Empty.Push(task).Push(tasks, out var Count), Count + 1);
 
 		/// <summary>
 		/// Waits on two or more <see cref="ValueTask{T}"/> instances
@@ -251,7 +251,7 @@ namespace System.Threading.Tasks
 		/// <param name="tasks">The first tasks to wait on</param>
 		/// <param name="task">The last task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public static ValueTaskMultiWaiter<T> ThenWaitOn<T>(this IEnumerable<ValueTask<T>> tasks, ValueTask<T> task) => new ValueTaskMultiWaiter<T>(ImmutableStack<ValueTask<T>>.Empty.Push(tasks, out var Count).Push(task), Count + 1);
+		public static ValueTaskMultiWaiter<T> ThenWaitOn<T>(this IEnumerable<ValueTask<T>> tasks, ValueTask<T> task) => new(ImmutableStack<ValueTask<T>>.Empty.Push(tasks, out var Count).Push(task), Count + 1);
 
 		/// <summary>
 		/// Waits on two or more <see cref="ValueTask{T}"/> instances
@@ -259,7 +259,7 @@ namespace System.Threading.Tasks
 		/// <param name="tasks">The first tasks to wait on</param>
 		/// <param name="tasks2">The following tasks to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public static ValueTaskMultiWaiter<T> ThenWaitOn<T>(this IEnumerable<ValueTask<T>> tasks, IEnumerable<ValueTask<T>> tasks2) => new ValueTaskMultiWaiter<T>(ImmutableStack<ValueTask<T>>.Empty.Push(tasks, out var Count1).Push(tasks2, out var Count2), Count1 + Count2);
+		public static ValueTaskMultiWaiter<T> ThenWaitOn<T>(this IEnumerable<ValueTask<T>> tasks, IEnumerable<ValueTask<T>> tasks2) => new(ImmutableStack<ValueTask<T>>.Empty.Push(tasks, out var Count1).Push(tasks2, out var Count2), Count1 + Count2);
 
 		/*
 		public static void Wait(this ValueTask task, CancellationToken token = default)
@@ -296,7 +296,7 @@ namespace System.Threading.Tasks
 		/// <param name="task">The Task to transform</param>
 		/// <returns>The resulting ValueTask</returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static ValueTask AsValueTask(this Task task) => new ValueTask(task);
+		public static ValueTask AsValueTask(this Task task) => new(task);
 
 		/// <summary>
 		/// Transforms a Task with a result to a ValueTask
@@ -305,7 +305,7 @@ namespace System.Threading.Tasks
 		/// <param name="task">The Task to transform</param>
 		/// <returns>The resulting ValueTask</returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static ValueTask<TResult> AsValueTask<TResult>(this Task<TResult> task) => new ValueTask<TResult>(task);
+		public static ValueTask<TResult> AsValueTask<TResult>(this Task<TResult> task) => new(task);
 
 		//****************************************
 

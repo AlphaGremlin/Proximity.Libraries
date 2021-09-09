@@ -333,7 +333,7 @@ namespace System.IO
 
 #if !NETSTANDARD2_0
 		/// <inheritdoc />
-		public override ValueTask<int> ReadAsync(Memory<char> buffer, CancellationToken token = default) => new ValueTask<int>(Read(buffer.Span));
+		public override ValueTask<int> ReadAsync(Memory<char> buffer, CancellationToken token = default) => new(Read(buffer.Span));
 #endif
 
 		/// <inheritdoc />
@@ -341,7 +341,7 @@ namespace System.IO
 
 #if !NETSTANDARD2_0
 		/// <inheritdoc />
-		public override ValueTask<int> ReadBlockAsync(Memory<char> buffer, CancellationToken token = default) => new ValueTask<int>(Read(buffer.Span));
+		public override ValueTask<int> ReadBlockAsync(Memory<char> buffer, CancellationToken token = default) => new(Read(buffer.Span));
 #endif
 
 		/// <inheritdoc />

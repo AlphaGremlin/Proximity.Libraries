@@ -85,11 +85,11 @@ namespace System.Buffers
 
 		private protected sealed class StringComparer : BlockComparer<char>
 		{ //****************************************
-			internal static readonly StringComparer OrdinalIgnoreCase = new StringComparer(StringComparison.OrdinalIgnoreCase);
-			internal static readonly StringComparer CurrentCulture = new StringComparer(StringComparison.CurrentCulture);
-			internal static readonly StringComparer CurrentCultureIgnoreCase = new StringComparer(StringComparison.CurrentCultureIgnoreCase);
-			internal static readonly StringComparer InvariantCulture = new StringComparer(StringComparison.InvariantCulture);
-			internal static readonly StringComparer InvariantCultureIgnoreCase = new StringComparer(StringComparison.InvariantCultureIgnoreCase);
+			internal static readonly StringComparer OrdinalIgnoreCase = new(StringComparison.OrdinalIgnoreCase);
+			internal static readonly StringComparer CurrentCulture = new(StringComparison.CurrentCulture);
+			internal static readonly StringComparer CurrentCultureIgnoreCase = new(StringComparison.CurrentCultureIgnoreCase);
+			internal static readonly StringComparer InvariantCulture = new(StringComparison.InvariantCulture);
+			internal static readonly StringComparer InvariantCultureIgnoreCase = new(StringComparison.InvariantCultureIgnoreCase);
 			//****************************************
 			private readonly StringComparison _Comparison;
 			//****************************************

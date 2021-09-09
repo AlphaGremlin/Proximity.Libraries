@@ -19,7 +19,7 @@ namespace System.Threading.Tasks
 		/// <param name="task1">The first task to wait on</param>
 		/// <param name="task2">The second task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public static ValueTaskWaiter2 ThenWaitOn(this ValueTask task1, ValueTask task2) => new ValueTaskWaiter2(task1, task2);
+		public static ValueTaskWaiter2 ThenWaitOn(this ValueTask task1, ValueTask task2) => new(task1, task2);
 
 		/// <summary>
 		/// Waits on two or more <see cref="ValueTask"/> instances
@@ -27,7 +27,7 @@ namespace System.Threading.Tasks
 		/// <param name="task1">The first task to wait on</param>
 		/// <param name="task2">The second task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public static ValueTaskWaiter2<T1> ThenWaitOn<T1>(this ValueTask<T1> task1, ValueTask task2) => new ValueTaskWaiter2<T1>(task1, task2);
+		public static ValueTaskWaiter2<T1> ThenWaitOn<T1>(this ValueTask<T1> task1, ValueTask task2) => new(task1, task2);
 
 		/// <summary>
 		/// Waits on two or more <see cref="ValueTask"/> instances
@@ -35,7 +35,7 @@ namespace System.Threading.Tasks
 		/// <param name="task1">The first task to wait on</param>
 		/// <param name="task2">The second task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public static ValueTaskWaiter2B<T2> ThenWaitOn<T2>(this ValueTask task1, ValueTask<T2> task2) => new ValueTaskWaiter2B<T2>(task1, task2);
+		public static ValueTaskWaiter2B<T2> ThenWaitOn<T2>(this ValueTask task1, ValueTask<T2> task2) => new(task1, task2);
 
 		/// <summary>
 		/// Waits on two or more <see cref="ValueTask"/> instances
@@ -43,7 +43,7 @@ namespace System.Threading.Tasks
 		/// <param name="task1">The first task to wait on</param>
 		/// <param name="task2">The second task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public static ValueTaskWaiter2<T1, T2> ThenWaitOn<T1, T2>(this ValueTask<T1> task1, ValueTask<T2> task2) => new ValueTaskWaiter2<T1, T2>(task1, task2);
+		public static ValueTaskWaiter2<T1, T2> ThenWaitOn<T1, T2>(this ValueTask<T1> task1, ValueTask<T2> task2) => new(task1, task2);
 	}
 
 	/// <summary>
@@ -60,14 +60,14 @@ namespace System.Threading.Tasks
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter3 Then(ValueTask task) => new ValueTaskWaiter3(Task1, Task2, task);
+		public ValueTaskWaiter3 Then(ValueTask task) => new(Task1, Task2, task);
 
 		/// <summary>
 		/// Adds a <see cref="ValueTask{T}"/> to the waiter
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter3C<T3> Then<T3>(ValueTask<T3> task) => new ValueTaskWaiter3C<T3>(Task1, Task2, task);
+		public ValueTaskWaiter3C<T3> Then<T3>(ValueTask<T3> task) => new(Task1, Task2, task);
 
 		/// <summary>
 		/// Gets an awaiter for the supplied tasks
@@ -130,14 +130,14 @@ namespace System.Threading.Tasks
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter3<T1> Then(ValueTask task) => new ValueTaskWaiter3<T1>(Task1, Task2, task);
+		public ValueTaskWaiter3<T1> Then(ValueTask task) => new(Task1, Task2, task);
 
 		/// <summary>
 		/// Adds a <see cref="ValueTask{T2}"/> to the waiter
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter3A<T1, T3> Then<T3>(ValueTask<T3> task) => new ValueTaskWaiter3A<T1, T3>(Task1, Task2, task);
+		public ValueTaskWaiter3A<T1, T3> Then<T3>(ValueTask<T3> task) => new(Task1, Task2, task);
 
 		/// <summary>
 		/// Gets an awaiter for the supplied tasks
@@ -203,14 +203,14 @@ namespace System.Threading.Tasks
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter3B<T2> Then(ValueTask task) => new ValueTaskWaiter3B<T2>(Task1, Task2, task);
+		public ValueTaskWaiter3B<T2> Then(ValueTask task) => new(Task1, Task2, task);
 
 		/// <summary>
 		/// Adds a <see cref="ValueTask{T2}"/> to the waiter
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter3B<T2, T3> Then<T3>(ValueTask<T3> task) => new ValueTaskWaiter3B<T2, T3>(Task1, Task2, task);
+		public ValueTaskWaiter3B<T2, T3> Then<T3>(ValueTask<T3> task) => new(Task1, Task2, task);
 
 		/// <summary>
 		/// Gets an awaiter for the supplied tasks
@@ -276,14 +276,14 @@ namespace System.Threading.Tasks
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter3<T1,T2> Then(ValueTask task) => new ValueTaskWaiter3<T1, T2>(Task1, Task2, task);
+		public ValueTaskWaiter3<T1,T2> Then(ValueTask task) => new(Task1, Task2, task);
 
 		/// <summary>
 		/// Adds a <see cref="ValueTask{T3}"/> to the waiter
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskWaiter3<T1, T2, T3> Then<T3>(ValueTask<T3> task) => new ValueTaskWaiter3<T1, T2, T3>(Task1, Task2, task);
+		public ValueTaskWaiter3<T1, T2, T3> Then<T3>(ValueTask<T3> task) => new(Task1, Task2, task);
 
 		/// <summary>
 		/// Gets an awaiter for the supplied tasks
@@ -350,7 +350,7 @@ namespace System.Threading.Tasks
 		/// </summary>
 		/// <param name="task">The task to wait on</param>
 		/// <returns>A new waiter that waits on all the supplied tasks</returns>
-		public ValueTaskMultiWaiter Then(ValueTask task) => new ValueTaskMultiWaiter(ImmutableStack.Create(Task1, Task2, Task3, task));
+		public ValueTaskMultiWaiter Then(ValueTask task) => new(ImmutableStack.Create(Task1, Task2, Task3, task));
 
 		/// <summary>
 		/// Gets an awaiter for the supplied tasks

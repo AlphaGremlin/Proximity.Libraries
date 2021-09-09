@@ -26,7 +26,7 @@ namespace System.Collections.Immutable
 		/// </summary>
 		/// <param name="item">The item to add to the stack</param>
 		/// <returns>An Immutable Counted Stack populated with the given item</returns>
-		public static ImmutableCountedStack<T> Create<T>(T item) => new ImmutableCountedStack<T>(item, ImmutableCountedStack<T>.Empty, 1);
+		public static ImmutableCountedStack<T> Create<T>(T item) => new(item, ImmutableCountedStack<T>.Empty, 1);
 
 		/// <summary>
 		/// Creates a new Immutable Counted Stack populated with an array of items
@@ -119,7 +119,7 @@ namespace System.Collections.Immutable
 		/// <summary>
 		/// An empty immutable counted stack
 		/// </summary>
-		public static readonly ImmutableCountedStack<T> Empty = new ImmutableCountedStack<T>(default!, null, 0);
+		public static readonly ImmutableCountedStack<T> Empty = new(default!, null, 0);
 
 		//****************************************
 		private readonly T _Head;
@@ -166,7 +166,7 @@ namespace System.Collections.Immutable
 		/// Retrieves an enumerator for this stack
 		/// </summary>
 		/// <returns>The requested enumerator</returns>
-		public Enumerator GetEnumerator() => new Enumerator(this);
+		public Enumerator GetEnumerator() => new(this);
 
 		/// <summary>
 		/// Peeks at the top item on the stack
@@ -215,7 +215,7 @@ namespace System.Collections.Immutable
 		/// </summary>
 		/// <param name="item">The item to push</param>
 		/// <returns>The stack with the new top item</returns>
-		public ImmutableCountedStack<T> Push(T item) => new ImmutableCountedStack<T>(item, this, Count + 1);
+		public ImmutableCountedStack<T> Push(T item) => new(item, this, Count + 1);
 
 		/// <summary>
 		/// Retrieves the top item on the stack, if able

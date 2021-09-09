@@ -14,7 +14,7 @@ namespace System.IO
 	{ //****************************************
 		private const int MinimumReadSize = 16;
 		//****************************************
-		private int? _BlockSize;
+		private readonly int? _BlockSize;
 		private ReadOnlyMemory<byte> _Buffer;
 		private int _BufferRead;
 
@@ -57,6 +57,8 @@ namespace System.IO
 
 					_BufferRead = 0;
 				}
+
+				_Position = 0;
 			}
 		}
 
@@ -93,6 +95,7 @@ namespace System.IO
 			{
 				Reader.Advance(_BufferRead);
 
+				_Position += _BufferRead;
 				_BufferRead = 0;
 			}
 
@@ -179,6 +182,7 @@ namespace System.IO
 			{
 				Reader.Advance(_BufferRead);
 
+				_Position += _BufferRead;
 				_BufferRead = 0;
 			}
 
@@ -210,7 +214,7 @@ namespace System.IO
 		/// <inheritdoc />
 		public override long Position
 		{
-			get => _Position;
+			get => _Position + _BufferRead;
 			set => throw new NotSupportedException();
 		}
 	}

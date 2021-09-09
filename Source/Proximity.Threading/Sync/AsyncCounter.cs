@@ -17,8 +17,8 @@ namespace System.Threading
 	/// </summary>
 	public sealed class AsyncCounter : IDisposable
 	{ //****************************************
-		private readonly WaiterQueue<AsyncCounterDecrement> _Waiters = new WaiterQueue<AsyncCounterDecrement>();
-		private readonly WaiterQueue<AsyncCounterDecrement> _PeekWaiters = new WaiterQueue<AsyncCounterDecrement>();
+		private readonly WaiterQueue<AsyncCounterDecrement> _Waiters = new();
+		private readonly WaiterQueue<AsyncCounterDecrement> _PeekWaiters = new();
 
 		private int _CurrentCount;
 

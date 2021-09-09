@@ -18,7 +18,7 @@ namespace System.Threading
 	/// </summary>
 	public sealed partial class AsyncSemaphore : IDisposable, IAsyncDisposable
 	{ //****************************************
-		private readonly WaiterQueue<SemaphoreInstance> _Waiters = new WaiterQueue<SemaphoreInstance>();
+		private readonly WaiterQueue<SemaphoreInstance> _Waiters = new();
 		private int _MaxCount, _CurrentCount;
 
 		private LockDisposer? _Disposer;

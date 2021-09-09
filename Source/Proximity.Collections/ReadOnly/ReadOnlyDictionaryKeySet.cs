@@ -17,7 +17,7 @@ namespace System.Collections.ReadOnly
 		/// </summary>
 		/// <param name="dictionary">The dictionary to provide a read-only set around</param>
 		/// <returns>A read-only Set around the given Dictionary Keys</returns>
-		public static ReadOnlyDictionaryKeySet<TKey, TValue> From<TKey, TValue>(IDictionary<TKey, TValue> dictionary) where TKey : notnull => new ReadOnlyDictionaryKeySet<TKey, TValue>(dictionary);
+		public static ReadOnlyDictionaryKeySet<TKey, TValue> From<TKey, TValue>(IDictionary<TKey, TValue> dictionary) where TKey : notnull => new(dictionary);
 
 		/// <summary>
 		/// Creates a new read-only wrapper around a Dictionary Keys
@@ -25,14 +25,14 @@ namespace System.Collections.ReadOnly
 		/// <param name="dictionary">The dictionary to provide a read-only set around</param>
 		/// <param name="comparer">The comparer to use when performing set comparisons</param>
 		/// <returns>A read-only Set around the given Dictionary Keys</returns>
-		public static ReadOnlyDictionaryKeySet<TKey, TValue> From<TKey, TValue>(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey> comparer) where TKey : notnull => new ReadOnlyDictionaryKeySet<TKey, TValue>(dictionary, comparer);
+		public static ReadOnlyDictionaryKeySet<TKey, TValue> From<TKey, TValue>(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey> comparer) where TKey : notnull => new(dictionary, comparer);
 
 		/// <summary>
 		/// Creates a new read-only wrapper around a Dictionary Keys using the default comparer
 		/// </summary>
 		/// <param name="dictionary">The dictionary to provide a read-only set around</param>
 		/// <returns>A read-only Set around the given Dictionary Keys</returns>
-		public static ReadOnlyDictionaryKeySet<TKey, TValue> From<TKey, TValue>(Dictionary<TKey, TValue> dictionary) where TKey : notnull => new ReadOnlyDictionaryKeySet<TKey, TValue>(dictionary);
+		public static ReadOnlyDictionaryKeySet<TKey, TValue> From<TKey, TValue>(Dictionary<TKey, TValue> dictionary) where TKey : notnull => new(dictionary);
 	}
 
 	/// <summary>

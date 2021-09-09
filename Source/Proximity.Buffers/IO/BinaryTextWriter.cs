@@ -8,8 +8,6 @@ using System.Threading.Tasks;
 using System.Buffers;
 using System.Threading;
 
-#pragma warning disable IDE0060 // Remove unused parameter
-
 namespace System.IO
 {
 	/// <summary>

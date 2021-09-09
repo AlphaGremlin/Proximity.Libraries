@@ -16,13 +16,13 @@ namespace System.Threading
 	/// </summary>
 	internal sealed class AsyncCounterDecrementAny : BaseCancellable, IValueTaskSource<AsyncCounter>
 	{ //****************************************
-		private static readonly ConcurrentBag<AsyncCounterDecrementAny> Instances = new ConcurrentBag<AsyncCounterDecrementAny>();
-		private static readonly ConcurrentBag<PeekDecrementWaiter> Waiters = new ConcurrentBag<PeekDecrementWaiter>();
+		private static readonly ConcurrentBag<AsyncCounterDecrementAny> Instances = new();
+		private static readonly ConcurrentBag<PeekDecrementWaiter> Waiters = new();
 		//****************************************
 		private int _InstanceState;
 		private int _IsStarted;
 
-		private ManualResetValueTaskSourceCore<AsyncCounter> _TaskSource = new ManualResetValueTaskSourceCore<AsyncCounter>();
+		private ManualResetValueTaskSourceCore<AsyncCounter> _TaskSource = new();
 
 		private int _OutstandingCounters;
 		private AsyncCounter? _WinningCounter;

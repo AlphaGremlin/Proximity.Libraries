@@ -14,19 +14,19 @@ namespace Proximity.Terminal
 	/// </summary>
 	public sealed class TerminalRegistry
 	{	//****************************************
-		private readonly object _LockObject = new object();
+		private readonly object _LockObject = new();
 		
 		// Global Commands and Variables
-		private readonly StringKeyDictionary<TerminalCommandSet> _Commands = new StringKeyDictionary<TerminalCommandSet>(StringComparison.OrdinalIgnoreCase);
-		private readonly StringKeyDictionary<TerminalVariable> _Variables = new StringKeyDictionary<TerminalVariable>(StringComparison.OrdinalIgnoreCase);
+		private readonly StringKeyDictionary<TerminalCommandSet> _Commands = new(StringComparison.OrdinalIgnoreCase);
+		private readonly StringKeyDictionary<TerminalVariable> _Variables = new(StringComparison.OrdinalIgnoreCase);
 		
 		// Maps Types to Terminal Types
-		private readonly ConcurrentDictionary<Type, TerminalType> _Types = new ConcurrentDictionary<Type, TerminalType>();
+		private readonly ConcurrentDictionary<Type, TerminalType> _Types = new();
 		
 		// Maps Type Names to Terminal Type Sets
-		private readonly StringKeyDictionary<TerminalTypeSet> _TypeSets = new StringKeyDictionary<TerminalTypeSet>(StringComparison.OrdinalIgnoreCase);
+		private readonly StringKeyDictionary<TerminalTypeSet> _TypeSets = new(StringComparison.OrdinalIgnoreCase);
 
-		private readonly ConcurrentDictionary<TerminalType, TerminalTypeInstance> _DefaultInstances = new ConcurrentDictionary<TerminalType, TerminalTypeInstance>();
+		private readonly ConcurrentDictionary<TerminalType, TerminalTypeInstance> _DefaultInstances = new();
 		//****************************************
 
 		/// <summary>
@@ -397,6 +397,6 @@ namespace Proximity.Terminal
 		/// <summary>
 		/// A global registry of terminal provider instances
 		/// </summary>
-		public static readonly TerminalRegistry Global = new TerminalRegistry();
+		public static readonly TerminalRegistry Global = new();
 	}
 }

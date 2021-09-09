@@ -108,7 +108,7 @@ namespace System.Threading.Tasks
 		/// <param name="source">The enumeration of tasks to interleave</param>
 		/// <param name="token">A cancellation token to cancel the enumeration</param>
 		/// <returns>An enumeration that returns the tasks in order of completion</returns>
-		public static InterleaveTaskAsyncEnumerable<TResult> Interleave<TResult>(this IEnumerable<Task<TResult>> source, CancellationToken token = default) => new InterleaveTaskAsyncEnumerable<TResult>(source, token);
+		public static InterleaveTaskAsyncEnumerable<TResult> Interleave<TResult>(this IEnumerable<Task<TResult>> source, CancellationToken token = default) => new(source, token);
 
 		/// <summary>
 		/// Interleaves an enumeration of tasks, returning them in the order they complete
@@ -116,6 +116,6 @@ namespace System.Threading.Tasks
 		/// <param name="source">The enumeration of tasks to interleave</param>
 		/// <param name="token">A cancellation token to cancel the enumeration</param>
 		/// <returns>An enumeration that returns the task and the original index of the task in order of completion</returns>
-		public static InterleaveTaskIndexAsyncEnumerable<TResult> InterleaveIndex<TResult>(this IEnumerable<Task<TResult>> source, CancellationToken token = default) => new InterleaveTaskIndexAsyncEnumerable<TResult>(source, token);
+		public static InterleaveTaskIndexAsyncEnumerable<TResult> InterleaveIndex<TResult>(this IEnumerable<Task<TResult>> source, CancellationToken token = default) => new(source, token);
 	}
 }
