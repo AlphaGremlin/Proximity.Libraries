@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 #pragma warning disable IDE0060 // Remove unused parameter
 
-namespace Proximity.Buffers.IO
+namespace System.IO
 {
 	/// <summary>
 	/// Provides a read-only stream over a <see cref="IReadOnlyList{Byte}"/>

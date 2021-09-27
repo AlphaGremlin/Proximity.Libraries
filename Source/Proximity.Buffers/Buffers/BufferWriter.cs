@@ -47,6 +47,9 @@ namespace System.Buffers
 		/// <remarks>If <paramref name="pool"/> is null, does not use pooled arrays. Useful when the Sequence will exist outside the lifetime of the writer and cannot be disposed</remarks>
 		public BufferWriter(ArrayPool<T>? pool, int minBlockSize)
 		{
+			if (minBlockSize <= 0)
+				throw new ArgumentOutOfRangeException(nameof(minBlockSize));
+
 			_Pool = pool ?? DummyPool<T>.Shared;
 			_MinimumBlockSize = minBlockSize;
 		}
@@ -65,6 +68,99 @@ namespace System.Buffers
 				throw new ArgumentOutOfRangeException(nameof(count));
 
 			_CurrentOffset += count;
+		}
+
+		/// <summary>
+		/// Flushes the Buffer Writer, returning all current buffers as an <see cref="AutoSequence{T}"/> and resetting the writer
+		/// </summary>
+		/// <returns>An <see cref="AutoSequence{T}"/> returning the current state of the Buffer Writer</returns>
+		/// <remarks>The Buffer Writer will be empty after this call, and can be safely written without affecting the result. Buffers will not be copied, and can be released using <see cref="AutoSequence{T}"/></remarks>
+		public AutoSequence<T> Flush() => Flush(false);
+
+		/// <summary>
+		/// Flushes the Buffer Writer, returning all current buffers as an <see cref="AutoSequence{T}"/> and resetting the writer
+		/// </summary>
+		/// <param name="clearBuffers">True to clear the buffers when the <see cref="AutoSequence{T}"/> is disposed</param>
+		/// <returns>An <see cref="AutoSequence{T}"/> returning the current state of the Buffer Writer</returns>
+		/// <remarks>The Buffer Writer will be empty after this call, and can be safely written without affecting the result. Buffers will not be copied, and can be released using <see cref="AutoSequence{T}"/></remarks>
+		public AutoSequence<T> Flush(bool clearBuffers)
+		{
+			if (_HeadSegment == null)
+			{
+				// Is there any data in this Writer?
+				if (_CurrentOffset == 0)
+					return new AutoSequence<T>(ReadOnlySequence<T>.Empty, null, _Pool, clearBuffers);
+
+				// Create a new head segment to hold the data
+				_HeadSegment = _TailSegment = new BufferSegment(_CurrentBuffer.Slice(0, _CurrentOffset), 0);
+			}
+			// We have a head segment. Is there any outstanding data?
+			else if (_CurrentOffset > 0)
+			{
+				// Add a new tail segment
+				var OldTail = _TailSegment!;
+
+				_TailSegment = new BufferSegment(_CurrentBuffer.Slice(0, _CurrentOffset), OldTail.RunningIndex + OldTail.Memory.Length);
+
+				OldTail.JoinTo(_TailSegment);
+			}
+
+			var Sequence = new AutoSequence<T>(new ReadOnlySequence<T>(_HeadSegment, 0, _TailSegment!, _TailSegment!.Memory.Length), _HeadSegment, _Pool, clearBuffers);
+
+			// Release the current buffers into the hands of the AutoSequence
+			_CurrentBuffer = Memory<T>.Empty;
+			_CurrentOffset = 0;
+			_TailSegment = _HeadSegment = null;
+
+			return Sequence;
+		}
+
+		/// <summary>
+		/// Flushes the Buffer Writer, returning the current buffer (if possible) as an <see cref="AutoArraySegment{T}"/> and resetting the writer
+		/// </summary>
+		/// <returns>A single array segment containing all written data</returns>
+		/// <remarks>The Buffer Writer will be empty after this call, and can be safely written without affecting the result. Buffers will not be copied if the writer has only used a single array, and can be released using <see cref="AutoArraySegment{T}"/></remarks>
+		public AutoArraySegment<T> FlushArray() => FlushArray(false);
+
+		/// <summary>
+		/// Flushes the Buffer Writer, returning the current buffer (if possible) as an <see cref="AutoArraySegment{T}"/> and resetting the writer
+		/// </summary>
+		/// <param name="clearBuffers">True to clear the buffers when the <see cref="AutoArraySegment{T}"/> is disposed</param>
+		/// <returns>A single array segment containing all written data</returns>
+		/// <remarks>The Buffer Writer will be empty after this call, and can be safely written without affecting the result. Buffers will not be copied if the writer has only used a single array, and can be released using <see cref="AutoArraySegment{T}"/></remarks>
+		public AutoArraySegment<T> FlushArray(bool clearBuffers)
+		{
+			if (TryGetMemory(out var Memory))
+			{
+				if (MemoryMarshal.TryGetArray(Memory, out var Segment))
+				{
+					var Result = AutoArraySegment.Over(Segment, _Pool);
+
+					// Release the current buffer into the hands of the AutoSequence
+					_CurrentBuffer = Memory<T>.Empty;
+					_CurrentOffset = 0;
+					_TailSegment = _HeadSegment = null;
+
+					return Result;
+				}
+
+				// Should never happen
+			}
+
+			// More than one buffer is in use, so we need to copy to a single segment
+			var BufferLength = (int)Length;
+			var Buffer = _Pool.Rent(BufferLength);
+
+			// Copy our current chain of buffers into it
+			new ReadOnlySequence<T>(_HeadSegment!, 0, _TailSegment!, _TailSegment!.Memory.Length).CopyTo(Buffer);
+
+			// Copy the final segment (if any)
+			if (_CurrentOffset > 0)
+				_CurrentBuffer.Slice(0, _CurrentOffset).CopyTo(Buffer.AsMemory((int)_TailSegment.RunningIndex + _TailSegment.Memory.Length));
+
+			Reset(clearBuffers); // Reset the writer
+
+			return AutoArraySegment.Over(new ArraySegment<T>(Buffer, 0, BufferLength), _Pool);
 		}
 
 		/// <summary>
@@ -110,8 +206,8 @@ namespace System.Buffers
 			if (_CurrentBuffer.IsEmpty)
 				_CurrentBuffer = _Pool.Rent(Math.Max(sizeHint, _MinimumBlockSize));
 
-			// Can we honour the requested size?
-			if (sizeHint > _CurrentBuffer.Length - _CurrentOffset)
+			// Can we honour the requested size? If they ask for zero, we only allocate another segment once the current one is completely full
+			if (sizeHint > _CurrentBuffer.Length - _CurrentOffset || (sizeHint == 0 && _CurrentBuffer.Length == _CurrentOffset))
 			{
 				// Not enough buffer space, allocate a segment to store the existing buffer
 				if (_TailSegment == null)
@@ -250,6 +346,34 @@ namespace System.Buffers
 				_CurrentBuffer.Slice(0, _CurrentOffset).CopyTo(Buffer.AsMemory((int)_TailSegment.RunningIndex + _TailSegment.Memory.Length));
 
 			return Buffer;
+		}
+
+		/// <summary>
+		/// Gets an array segment containing all written data with automated disposal
+		/// </summary>
+		/// <returns>A single array segment containing all written data</returns>
+		/// <remarks>The buffer is rented from the array pool. Does not 'finish' the final segment, so writing can potentially continue without allocating/renting.</remarks>
+		public AutoArraySegment<T> ToAutoArray()
+		{
+			// Grab a buffer that represents the entire contents of this Writer
+			var BufferLength = (int)Length;
+			var Buffer = _Pool.Rent(BufferLength);
+
+			if (TryGetMemory(out var Memory))
+			{
+				Memory.CopyTo(Buffer);
+			}
+			else
+			{
+				// Copy our current chain of buffers into it
+				new ReadOnlySequence<T>(_HeadSegment!, 0, _TailSegment!, _TailSegment!.Memory.Length).CopyTo(Buffer);
+
+				// Copy the final segment (if any)
+				if (_CurrentOffset > 0)
+					_CurrentBuffer.Slice(0, _CurrentOffset).CopyTo(Buffer.AsMemory((int)_TailSegment.RunningIndex + _TailSegment.Memory.Length));
+			}
+
+			return AutoArraySegment.Over(new ArraySegment<T>(Buffer, 0, BufferLength), _Pool);
 		}
 
 		//****************************************

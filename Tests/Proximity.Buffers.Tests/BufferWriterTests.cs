@@ -12,12 +12,11 @@ namespace Proximity.Buffers.Tests
 		[Test]
 		public void Empty()
 		{
-			using (var Writer = new BufferWriter<byte>(ExactPool<byte>.Shared))
-			{
-				var Sequence = Writer.ToSequence();
+			using var Writer = new BufferWriter<byte>(ExactPool<byte>.Shared);
 
-				Assert.IsTrue(Sequence.IsEmpty);
-			}
+			var Sequence = Writer.ToSequence();
+
+			Assert.IsTrue(Sequence.IsEmpty);
 		}
 
 		[Test]
@@ -27,23 +26,22 @@ namespace Proximity.Buffers.Tests
 		[TestCase(1024)]
 		public void SingleByte(int totalBytes)
 		{
-			using (var Writer = new BufferWriter<byte>(ExactPool<byte>.Shared))
+			using var Writer = new BufferWriter<byte>(ExactPool<byte>.Shared);
+
+			for (var Index = 0; Index < totalBytes; Index++)
 			{
-				for (var Index = 0; Index < totalBytes; Index++)
-				{
-					var Contents = Writer.GetSpan(1);
+				var Contents = Writer.GetSpan(1);
 
-					Contents[0] = 1;
+				Contents[0] = 1;
 
-					Writer.Advance(1);
-				}
-
-				Assert.AreEqual(totalBytes, Writer.Length);
-
-				var Sequence = Writer.ToSequence();
-
-				Assert.AreEqual(totalBytes, Sequence.Length);
+				Writer.Advance(1);
 			}
+
+			Assert.AreEqual(totalBytes, Writer.Length);
+
+			var Sequence = Writer.ToSequence();
+
+			Assert.AreEqual(totalBytes, Sequence.Length);
 		}
 
 		[Test]
@@ -55,25 +53,24 @@ namespace Proximity.Buffers.Tests
 		[TestCase(1024, 200)]
 		public void Blocks(int totalBytes, int blockSize)
 		{
-			using (var Writer = new BufferWriter<byte>(ExactPool<byte>.Shared))
+			using var Writer = new BufferWriter<byte>(ExactPool<byte>.Shared);
+
+			for (var Index = 0; Index < totalBytes; Index += blockSize)
 			{
-				for (var Index = 0; Index < totalBytes; Index += blockSize)
-				{
-					var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
+				var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
 
-					var Contents = Writer.GetSpan(NextBlockSize);
+				var Contents = Writer.GetSpan(NextBlockSize);
 
-					Contents.Slice(0, NextBlockSize).Fill(1);
+				Contents.Slice(0, NextBlockSize).Fill(1);
 
-					Writer.Advance(NextBlockSize);
-				}
-
-				Assert.AreEqual(totalBytes, Writer.Length);
-
-				var Sequence = Writer.ToSequence();
-
-				Assert.AreEqual(totalBytes, Sequence.Length);
+				Writer.Advance(NextBlockSize);
 			}
+
+			Assert.AreEqual(totalBytes, Writer.Length);
+
+			var Sequence = Writer.ToSequence();
+
+			Assert.AreEqual(totalBytes, Sequence.Length);
 		}
 
 		[Test]
@@ -85,25 +82,24 @@ namespace Proximity.Buffers.Tests
 		[TestCase(1024, 200)]
 		public void BlocksApproximate(int totalBytes, int blockSize)
 		{
-			using (var Writer = new BufferWriter<byte>())
+			using var Writer = new BufferWriter<byte>();
+
+			for (var Index = 0; Index < totalBytes; Index += blockSize)
 			{
-				for (var Index = 0; Index < totalBytes; Index += blockSize)
-				{
-					var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
+				var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
 
-					var Contents = Writer.GetSpan(NextBlockSize);
+				var Contents = Writer.GetSpan(NextBlockSize);
 
-					Contents.Slice(0, NextBlockSize).Fill(1);
+				Contents.Slice(0, NextBlockSize).Fill(1);
 
-					Writer.Advance(NextBlockSize);
-				}
-
-				Assert.AreEqual(totalBytes, Writer.Length);
-
-				var Sequence = Writer.ToSequence();
-
-				Assert.AreEqual(totalBytes, Sequence.Length);
+				Writer.Advance(NextBlockSize);
 			}
+
+			Assert.AreEqual(totalBytes, Writer.Length);
+
+			var Sequence = Writer.ToSequence();
+
+			Assert.AreEqual(totalBytes, Sequence.Length);
 		}
 
 		[Test]
@@ -115,25 +111,24 @@ namespace Proximity.Buffers.Tests
 		[TestCase(1024, 200)]
 		public void BlocksSmallMinimum(int totalBytes, int blockSize)
 		{
-			using (var Writer = new BufferWriter<byte>(ExactPool<byte>.Shared, 1))
+			using var Writer = new BufferWriter<byte>(ExactPool<byte>.Shared, 1);
+
+			for (var Index = 0; Index < totalBytes; Index += blockSize)
 			{
-				for (var Index = 0; Index < totalBytes; Index += blockSize)
-				{
-					var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
+				var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
 
-					var Contents = Writer.GetSpan(NextBlockSize);
+				var Contents = Writer.GetSpan(NextBlockSize);
 
-					Contents.Slice(0, NextBlockSize).Fill(1);
+				Contents.Slice(0, NextBlockSize).Fill(1);
 
-					Writer.Advance(NextBlockSize);
-				}
-
-				Assert.AreEqual(totalBytes, Writer.Length);
-
-				var Sequence = Writer.ToSequence();
-
-				Assert.AreEqual(totalBytes, Sequence.Length);
+				Writer.Advance(NextBlockSize);
 			}
+
+			Assert.AreEqual(totalBytes, Writer.Length);
+
+			var Sequence = Writer.ToSequence();
+
+			Assert.AreEqual(totalBytes, Sequence.Length);
 		}
 
 		[Test]
@@ -145,25 +140,24 @@ namespace Proximity.Buffers.Tests
 		[TestCase(1024, 200)]
 		public void BlocksSmallMinimumApproximate(int totalBytes, int blockSize)
 		{
-			using (var Writer = new BufferWriter<byte>(ArrayPool<byte>.Shared, 1))
+			using var Writer = new BufferWriter<byte>(ArrayPool<byte>.Shared, 1);
+
+			for (var Index = 0; Index < totalBytes; Index += blockSize)
 			{
-				for (var Index = 0; Index < totalBytes; Index += blockSize)
-				{
-					var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
+				var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
 
-					var Contents = Writer.GetSpan(NextBlockSize);
+				var Contents = Writer.GetSpan(NextBlockSize);
 
-					Contents.Slice(0, NextBlockSize).Fill(1);
+				Contents.Slice(0, NextBlockSize).Fill(1);
 
-					Writer.Advance(NextBlockSize);
-				}
-
-				Assert.AreEqual(totalBytes, Writer.Length);
-
-				var Sequence = Writer.ToSequence();
-
-				Assert.AreEqual(totalBytes, Sequence.Length);
+				Writer.Advance(NextBlockSize);
 			}
+
+			Assert.AreEqual(totalBytes, Writer.Length);
+
+			var Sequence = Writer.ToSequence();
+
+			Assert.AreEqual(totalBytes, Sequence.Length);
 		}
 	}
 }
