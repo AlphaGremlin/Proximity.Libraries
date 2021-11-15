@@ -70,7 +70,7 @@ namespace System.Collections.ReadOnly
 		/// <param name="value">When complete, contains the value associed with the given key, otherwise the default value for the type</param>
 		/// <returns>True if the key was found, otherwise false</returns>
 		public bool TryGetValue(TKey key,
-#if !NETSTANDARD
+#if !NETSTANDARD && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out TValue value) => _Dictionary.TryGetValue(key, out value);

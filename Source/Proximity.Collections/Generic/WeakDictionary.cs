@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using System.Collections.ReadOnly;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -234,7 +234,7 @@ namespace System.Collections.Generic
 		/// <returns>True if the key was found and the value was available, otherwise False</returns>
 		/// <remarks>Does not remove the key if the value is no longer available</remarks>
 		public bool TryGetValue(TKey key,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out TValue value)
@@ -260,7 +260,7 @@ namespace System.Collections.Generic
 		/// <param name="value">The value to remove, if still referenced. Null if the key was not found or was found but the reference expired</param>
 		/// <returns>True if the key was found and still referenced, otherwise false</returns>
 		public bool TryRemove(TKey key,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out TValue value)
@@ -293,7 +293,11 @@ namespace System.Collections.Generic
 			foreach (var MyPair in this)
 				Result.Add(MyPair.Value);
 
+#if NET40
+			return new ReadOnlyCollection<TValue>(Result);
+#else
 			return Result;
+#endif
 		}
 
 		/// <summary>
@@ -309,7 +313,11 @@ namespace System.Collections.Generic
 			foreach (var Pair in this)
 				Result.Add(Pair.Key, Pair.Value);
 
+#if NET40
+			return new ReadOnlyDictionary<TKey, TValue>(Result);
+#else
 			return Result;
+#endif
 		}
 
 		//****************************************

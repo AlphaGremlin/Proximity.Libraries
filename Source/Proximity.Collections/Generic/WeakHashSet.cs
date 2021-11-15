@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.ReadOnly;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security;
@@ -47,7 +48,7 @@ namespace System.Collections.Generic
 			Comparer = comparer ?? EqualityComparer<T>.Default;
 			_HandleType = handleType;
 			_Size = 0;
-			_Values = Array.Empty<WeakHashSet<T>.SetItem>();
+			_Values = Empty.Array<WeakHashSet<T>.SetItem>();
 		}
 
 		/// <summary>
@@ -315,7 +316,11 @@ namespace System.Collections.Generic
 				MyList.Add(MyItem);
 			}
 
+#if NET40
+			return new ReadOnlySet<T>(MyList);
+#else
 			return MyList;
+#endif
 		}
 
 		/// <summary>
@@ -541,7 +546,7 @@ namespace System.Collections.Generic
 
 				if (value == 0)
 				{
-					_Values = Array.Empty<WeakHashSet<T>.SetItem>();
+					_Values = Empty.Array<WeakHashSet<T>.SetItem>();
 
 					return;
 				}

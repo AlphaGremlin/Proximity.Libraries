@@ -20,7 +20,7 @@ namespace System.Collections.Generic
 		/// <summary>
 		/// Provides access to the bi-directional dictionary with the left/right reversed
 		/// </summary>
-		public sealed class InverseDictionary : IDictionary<TRight, TLeft>, IReadOnlyBiDictionary<TRight, TLeft>, IList<KeyValuePair<TRight, TLeft>>, IReadOnlyList<KeyValuePair<TRight, TLeft>>, IList, IDictionary
+		public sealed class InverseDictionary : IDictionary<TRight, TLeft>, IReadOnlyBiDictionary<TRight, TLeft>, IList<KeyValuePair<TRight, TLeft>>, IList, IDictionary, IReadOnlyList<KeyValuePair<TRight, TLeft>>
 		{
 			internal InverseDictionary(BiDictionary<TLeft, TRight> dictionary)
 			{
@@ -158,7 +158,7 @@ namespace System.Collections.Generic
 			/// <param name="left">Receives the Left of the removed item</param>
 			/// <returns>True if the item was removed, otherwise False</returns>
 			public bool TryRemove(TRight right,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out TLeft left)
@@ -383,10 +383,14 @@ namespace System.Collections.Generic
 
 			//****************************************
 
+#if !NET40
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
 			private static KeyValuePair<TRight, TLeft> Swap(KeyValuePair<TLeft, TRight> item) => new(item.Value, item.Key);
 
+#if !NET40
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
 			private static KeyValuePair<TLeft, TRight> Swap(KeyValuePair<TRight, TLeft> item) => new(item.Value, item.Key);
 		}
 

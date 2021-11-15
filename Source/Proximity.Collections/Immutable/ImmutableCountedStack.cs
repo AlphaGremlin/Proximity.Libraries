@@ -1,3 +1,4 @@
+#if !NET40
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -6,7 +7,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Serialization;
 using System.Security;
 using System.Threading;
-//****************************************
 
 namespace System.Collections.Immutable
 {
@@ -86,7 +86,7 @@ namespace System.Collections.Immutable
 		/// <param name="item">A variable that receives the popped item</param>
 		/// <returns>True if an item was popped, or False if the stack was empty</returns>
 		public static bool TryPop<T>(ref ImmutableCountedStack<T> stack,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out T item)
@@ -223,7 +223,7 @@ namespace System.Collections.Immutable
 		/// <param name="item">A reference that receives the top item</param>
 		/// <returns>True if an item was found on the top of the stack, otherwise False</returns>
 		public bool TryPeek(
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out T item)
@@ -344,3 +344,4 @@ namespace System.Collections.Immutable
 		}
 	}
 }
+#endif

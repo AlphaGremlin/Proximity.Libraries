@@ -612,7 +612,7 @@ namespace System.Collections.Concurrent
 		/// <returns>True if the key was found and the value was available, otherwise False</returns>
 		/// <remarks>Does not remove the key if the value is no longer available</remarks>
 		public bool TryGetValue(TKey key,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out TValue value)
@@ -648,7 +648,7 @@ namespace System.Collections.Concurrent
 		/// <param name="value">The value to remove, if still referenced. Null if the key was not found or was found but the reference expired</param>
 		/// <returns>True if the key was found and still referenced, otherwise false</returns>
 		public bool TryRemove(TKey key,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out TValue value)
@@ -675,7 +675,7 @@ namespace System.Collections.Concurrent
 		/// <param name="newValue">Receives the new value if the dictionary was updated</param>
 		/// <returns>True if the item was updated, False if it does not exist or the reference expired</returns>
 		public bool TryUpdate(TKey key, Func<TKey, TValue, TValue> updateCallback,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out TValue newValue)

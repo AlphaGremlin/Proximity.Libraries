@@ -62,8 +62,8 @@ namespace System.Collections.Generic
 
 			if (capacity == 0)
 			{
-				_Buckets = Array.Empty<int>();
-				_Entries = Array.Empty<Entry>();
+				_Buckets = Empty.Array<int>();
+				_Entries = Empty.Array<Entry>();
 			}
 			else
 			{
@@ -560,7 +560,7 @@ namespace System.Collections.Generic
 
 		/// <inheritdoc />
 		public bool TryGetValue(TKey key,
-#if !NETSTANDARD
+#if !NETSTANDARD && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out TValue value)
@@ -584,7 +584,7 @@ namespace System.Collections.Generic
 		/// <param name="value">Receives the value of the removed item</param>
 		/// <returns>True if the item was removed, otherwise False</returns>
 		public bool TryRemove(TKey key,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out TValue value)

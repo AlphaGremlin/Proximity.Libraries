@@ -286,7 +286,7 @@ namespace System.Collections.Observable
 		/// </summary>
 		/// <param name="index">The index to retrieve</param>
 		/// <returns>They key/value pair at the requested index</returns>
-		public KeyValuePair<TKey, TValue> Get(int index) => GetByIndex(index);
+		public KeyValuePair<TKey, TValue> Get(int index) => GetByIndexValidated(index);
 
 		/// <summary>
 		/// Returns an enumerator that iterates through the collection
@@ -635,7 +635,7 @@ namespace System.Collections.Observable
 		/// <param name="actualKey">The key already in the collection, or the given key if not found</param>
 		/// <returns>True if an equal key was found, otherwise False</returns>
 		public bool TryGetKey(TKey equalKey,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out TKey actualKey)
@@ -661,7 +661,7 @@ namespace System.Collections.Observable
 		/// <param name="value">When complete, contains the value associed with the given key, otherwise the default value for the type</param>
 		/// <returns>True if the key was found, otherwise false</returns>
 		public bool TryGetValue(TKey key,
-#if !NETSTANDARD
+#if !NETSTANDARD && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out TValue value)
@@ -688,7 +688,7 @@ namespace System.Collections.Observable
 		/// <param name="value">Receives the value of the removed item</param>
 		/// <returns>True if the item was removed, otherwise False</returns>
 		public bool TryRemove(TKey key,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out TValue value)
@@ -816,6 +816,14 @@ namespace System.Collections.Observable
 
 		private ref KeyValuePair<TKey, TValue> GetByIndex(int index)
 		{
+			if (_ShiftIndex.HasValue && index >= _ShiftIndex.Value)
+				index++;
+
+			return ref _Entries[index].Item;
+		}
+
+		private ref KeyValuePair<TKey, TValue> GetByIndexValidated(int index)
+		{
 			if (index >= _Size || index < 0)
 				throw new ArgumentOutOfRangeException(nameof(index));
 
@@ -897,7 +905,7 @@ namespace System.Collections.Observable
 		}
 
 		/// <inheritdoc />
-		protected override KeyValuePair<TKey, TValue> InternalGet(int index) => GetByIndex(index);
+		protected override KeyValuePair<TKey, TValue> InternalGet(int index) => GetByIndexValidated(index);
 
 		/// <inheritdoc />
 		protected override IEnumerator<KeyValuePair<TKey, TValue>> InternalGetEnumerator() => new KeyValueEnumerator(this);
@@ -908,7 +916,7 @@ namespace System.Collections.Observable
 		/// <inheritdoc />
 		protected override void InternalSet(int index, KeyValuePair<TKey, TValue> value)
 		{
-			ref var Entry = ref GetByIndex(index);
+			ref var Entry = ref GetByIndexValidated(index);
 			var OldValue = Entry;
 			
 			if (!Equals(OldValue.Key, value.Key))
@@ -1294,7 +1302,7 @@ namespace System.Collections.Observable
 					return false;
 				}
 
-				Current = _Parent._Entries[_Index++].Item;
+				Current = _Parent.GetByIndex(_Index++);
 
 				return true;
 			}
@@ -1356,7 +1364,7 @@ namespace System.Collections.Observable
 					return false;
 				}
 
-				Current = _Parent._Entries[_Index++].Key;
+				Current = _Parent.GetByIndex(_Index++).Key;
 
 				return true;
 			}
@@ -1418,7 +1426,7 @@ namespace System.Collections.Observable
 					return false;
 				}
 
-				Current = _Parent._Entries[_Index++].Value;
+				Current = _Parent.GetByIndex(_Index++).Value;
 
 				return true;
 			}

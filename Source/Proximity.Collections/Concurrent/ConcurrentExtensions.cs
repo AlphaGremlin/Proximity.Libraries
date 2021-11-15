@@ -250,7 +250,7 @@ namespace System.Collections.Concurrent
 		/// <returns>True if the item was updated, False if it does not exist</returns>
 		/// <remarks>Implements a loop around TryGetValue and TryUpdate</remarks>
 		public static bool TryUpdate<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, Func<TKey, TValue, TValue> update,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out TValue newValue) where TKey : notnull
@@ -286,7 +286,7 @@ namespace System.Collections.Concurrent
 		/// <returns>True if the item was updated, False if it does not exist</returns>
 		/// <remarks>Implements a loop around TryGetValue and TryUpdate</remarks>
 		public static bool TryUpdate<TKey, TValue, TArg>(this ConcurrentDictionary<TKey, TValue> target, TKey key, Func<TKey, TValue, TArg, TValue> updateValue, TArg factoryArgument,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out TValue newValue) where TKey : notnull
@@ -316,7 +316,9 @@ namespace System.Collections.Concurrent
 		/// <param name="expectedValue">The expected item in the dictionary</param>
 		/// <returns>True if the item was removed, False if key was not found, or the value was not as expected</returns>
 		/// <remarks>Wraps calling IDictionary.Remove(KeyValuePair)</remarks>
+#if !NET40
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+#endif
 		public static bool Remove<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> target, TKey key, TValue expectedValue) where TKey : notnull
 		{
 			return ((IDictionary<TKey, TValue>)target).Remove(new KeyValuePair<TKey, TValue>(key, expectedValue));
@@ -335,7 +337,7 @@ namespace System.Collections.Concurrent
 		/// <returns>True if the key/value pair was updated or removed, False if it could not be found</returns>
 		/// <exception cref="System.ArgumentNullException"><paramref name="key"/> is a null reference (Nothing in Visual Basic).</exception>
 		public static bool UpdateOrRemove<TKey, TValue>(this ConcurrentDictionary<TKey, TValue> dictionary, TKey key, Func<TKey, TValue, TValue> updateValueFactory, Func<TKey, TValue, bool> removeWhen,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out TValue value) where TKey : notnull
@@ -394,9 +396,9 @@ namespace System.Collections.Concurrent
 		/// <returns>True if the key/value pair was updated or removed, False if it could not be found</returns>
 		/// <exception cref="System.ArgumentNullException"><paramref name="key"/> is a null reference (Nothing in Visual Basic).</exception>
 		public static bool UpdateOrRemove<TKey, TValue, TArg>(this ConcurrentDictionary<TKey, TValue> dictionary, TKey key, Func<TKey, TValue, TArg, TValue> updateValueFactory, Func<TKey, TValue, bool> removeWhen, TArg factoryArgument,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 			[MaybeNullWhen(false)]
-# endif
+#endif
 			out TValue value) where TKey : notnull
 		{
 			if (dictionary == null)

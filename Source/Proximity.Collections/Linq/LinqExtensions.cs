@@ -1,5 +1,7 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ReadOnly;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Threading;
@@ -16,7 +18,7 @@ namespace System.Linq
 	/// <param name="output">The output value</param>
 	/// <returns>True to select this value, otherwise False</returns>
 	public delegate bool SelectWherePredicate<in TInput, TOutput>(TInput input,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 		[MaybeNullWhen(false)]
 #endif
 		out TOutput output);
@@ -48,7 +50,12 @@ namespace System.Linq
 
 				if (CurrentChunk.Count == size)
 				{
+#if NET40
+					yield return new ReadOnlyList<T>(CurrentChunk);
+#else
+
 					yield return CurrentChunk;
+#endif
 
 					CurrentChunk = null;
 				}
@@ -56,7 +63,14 @@ namespace System.Linq
 
 			// Return any partial chunk
 			if (CurrentChunk != null)
+			{
+#if NET40
+				yield return new ReadOnlyList<T>(CurrentChunk);
+#else
+
 				yield return CurrentChunk;
+#endif
+			}
 		}
 
 		/// <summary>
@@ -84,7 +98,12 @@ namespace System.Linq
 				{
 					HasYielded = true;
 
+#if NET40
+					yield return new ReadOnlyList<T>(CurrentChunk);
+#else
+
 					yield return CurrentChunk;
+#endif
 
 					CurrentChunk = null;
 				}
@@ -92,76 +111,7 @@ namespace System.Linq
 
 			// If we haven't returned a single chunk, return an empty one
 			if (!HasYielded)
-				yield return Array.Empty<T>();
-		}
-
-		/// <summary>
-		/// Splits an enumeration into chunks of equal or lesser size
-		/// </summary>
-		/// <typeparam name="T">The enumeration element type</typeparam>
-		/// <param name="source">The source enumeration</param>
-		/// <param name="size">The size of each chunk</param>
-		/// <returns>An enumeration of lists where each chunk is at most <paramref name="size"/> length</returns>
-		/// <remarks>If <paramref name="source"/> yields no results, no chunks are returned</remarks>
-		public static async IAsyncEnumerable<IReadOnlyList<T>> Chunk<T>(this IAsyncEnumerable<T> source, int size)
-		{
-			List<T>? CurrentChunk = null;
-
-			await foreach (var Item in source)
-			{
-				if (CurrentChunk == null)
-					// Creating a new List after each yield prevents unexpected behaviour when saving the results of Chunk() (such as calling .ToArray())
-					CurrentChunk = new List<T>(size);
-
-				CurrentChunk.Add(Item);
-
-				if (CurrentChunk.Count == size)
-				{
-					yield return CurrentChunk;
-
-					CurrentChunk = null;
-				}
-			}
-
-			// Return any partial chunk
-			if (CurrentChunk != null)
-				yield return CurrentChunk;
-		}
-
-		/// <summary>
-		/// Splits an enumeration into chunks of equal or lesser size
-		/// </summary>
-		/// <typeparam name="T">The enumeration element type</typeparam>
-		/// <param name="source">The source enumeration</param>
-		/// <param name="size">The size of each chunk</param>
-		/// <returns>An enumeration of lists where each chunk is at most <paramref name="size"/> length</returns>
-		/// <remarks>If <paramref name="source"/> yields no results, a single empty chunk is returned</remarks>
-		public static async IAsyncEnumerable<IReadOnlyList<T>> ChunkOrDefault<T>(this IAsyncEnumerable<T> source, int size)
-		{
-			var HasYielded = false;
-			List<T>? CurrentChunk = null;
-
-			await foreach (var Item in source)
-			{
-				if (CurrentChunk == null)
-					// Creating a new List after each yield prevents unexpected behaviour when saving the results of Chunk() (such as calling .ToArray())
-					CurrentChunk = new List<T>(size);
-
-				CurrentChunk.Add(Item);
-
-				if (CurrentChunk.Count == size)
-				{
-					HasYielded = true;
-
-					yield return CurrentChunk;
-
-					CurrentChunk = null;
-				}
-			}
-
-			// If we haven't returned a single chunk, return an empty one
-			if (!HasYielded)
-				yield return Array.Empty<T>();
+				yield return Empty.ReadOnlyList<T>();
 		}
 
 		/// <summary>
@@ -201,39 +151,6 @@ namespace System.Linq
 		}
 
 		/// <summary>
-		/// Converts an IAsyncEnumerable to an array
-		/// </summary>
-		/// <typeparam name="T">The type of element</typeparam>
-		/// <param name="source">The source Async Enumerable to convert</param>
-		/// <param name="token">A cancellation token to abort the operation</param>
-		/// <returns>A ValueTask returning the complete enumerable</returns>
-		public static async ValueTask<T[]> ToArray<T>(this IAsyncEnumerable<T> source, CancellationToken token = default)
-		{
-			var List = new List<T>();
-
-			await foreach (var Item in source.WithCancellation(token))
-			{
-				List.Add(Item);
-			}
-
-			return List.ToArray();
-		}
-
-		/// <summary>
-		/// Converts an IEnumerable to an IAsyncEnumerable
-		/// </summary>
-		/// <typeparam name="T">The type of element</typeparam>
-		/// <param name="source">The source IEnumerable to convert</param>
-		/// <returns>An IAsyncEnumerable that will complete synchronously with the contents of the enumerable</returns>
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-		public static async IAsyncEnumerable<T> ToAsyncEnumerable<T>(this IEnumerable<T> source)
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
-		{
-			foreach (var Result in source)
-				yield return Result;
-		}
-
-		/// <summary>
 		/// Converts an enumerable to a read-only collection
 		/// </summary>
 		/// <typeparam name="T">The type of element</typeparam>
@@ -244,10 +161,14 @@ namespace System.Linq
 			if (source is null)
 				throw new ArgumentNullException(nameof(source));
 
-			if (source is IReadOnlyCollection<T> ReadOnlyList)
-				return ReadOnlyList;
+			if (source is IReadOnlyCollection<T> ReadOnlyCollection)
+				return ReadOnlyCollection;
 
+#if NET40
+			return new ReadOnlyCollection<T>(source.ToArray());
+#else
 			return source.ToArray();
+#endif
 		}
 
 		/// <summary>
@@ -264,10 +185,14 @@ namespace System.Linq
 			if (source is IReadOnlyList<T> ReadOnlyList)
 				return ReadOnlyList;
 
+#if NET40
+			return new ReadOnlyList<T>(source.ToArray());
+#else
 			return source.ToArray();
+#endif
 		}
 
-#if !NETSTANDARD
+#if !NETSTANDARD && !NET40
 		/// <summary>
 		/// Converts an enumerable to a read-only set
 		/// </summary>

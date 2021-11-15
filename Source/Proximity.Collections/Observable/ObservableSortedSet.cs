@@ -445,7 +445,7 @@ namespace System.Collections.Observable
 		/// <summary>
 		/// Gets the minimum value in the sorted set
 		/// </summary>
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 		[MaybeNull]
 #endif
 		public T Min => (_Size == 0) ? default! : _Items[0];
@@ -453,7 +453,7 @@ namespace System.Collections.Observable
 		/// <summary>
 		/// Gets the maximum value in the sorted set
 		/// </summary>
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 		[MaybeNull]
 #endif
 		public T Max => (_Size == 0) ? default! : _Items[_Size - 1];
@@ -474,7 +474,7 @@ namespace System.Collections.Observable
 
 				if (value == 0)
 				{
-					_Items = Array.Empty<T>();
+					_Items = Empty.Array<T>();
 
 					return;
 				}

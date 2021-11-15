@@ -1,10 +1,10 @@
+#if !NET40
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Security;
 using System.Threading;
-//****************************************
 
 namespace System.Collections.Immutable
 {
@@ -62,3 +62,4 @@ namespace System.Collections.Immutable
 		}
 	}
 }
+#endif

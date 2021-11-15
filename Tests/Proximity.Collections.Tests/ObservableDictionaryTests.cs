@@ -631,6 +631,30 @@ namespace Proximity.Collections.Tests
 		}
 
 		[Test()]
+		public void EnumerateDuringRemove()
+		{
+			var MyRecords = new ObservableDictionary<int, int>(3);
+
+			MyRecords[10] = 42;
+			MyRecords[11] = 43;
+			MyRecords[12] = 44;
+
+			KeyValuePair<int, int>[] Snapshot = null;
+
+			MyRecords.CollectionChanged += (sender, e) =>
+			{
+				if (e.Action == NotifyCollectionChangedAction.Remove)
+					Snapshot = MyRecords.ToArray();
+			};
+
+			MyRecords.Remove(11);
+
+			Assert.IsNotNull(Snapshot);
+
+			CollectionAssert.AreEquivalent(MyRecords, Snapshot);
+		}
+
+		[Test()]
 		public void IndexOf()
 		{	//****************************************
 			var MyRecords = new ObservableDictionary<int, int>();

@@ -48,7 +48,7 @@ namespace System.Collections.Observable
 		/// </summary>
 		/// <param name="source">The source list to wrap</param>
 		/// <param name="comparison">A delegate to perform the comparison with</param>
-		public ObservableListView(IList<T> source, Comparison<T> comparison) : this(source, Comparer<T>.Create(comparison), null, null)
+		public ObservableListView(IList<T> source, Comparison<T> comparison) : this(source, DelegateComparer.Create(comparison), null, null)
 		{
 		}
 
@@ -96,7 +96,7 @@ namespace System.Collections.Observable
 		/// <param name="source">The source list to wrap</param>
 		/// <param name="comparison">A delegate to perform the comparison with</param>
 		/// <param name="filter">A filter to apply to the source list</param>
-		public ObservableListView(IList<T> source, Comparison<T> comparison, Predicate<T>? filter) : this(source, comparison != null ? Comparer<T>.Create(comparison) : null, filter, null)
+		public ObservableListView(IList<T> source, Comparison<T> comparison, Predicate<T>? filter) : this(source, comparison != null ? DelegateComparer.Create(comparison) : null, filter, null)
 		{
 		}
 		
@@ -117,7 +117,7 @@ namespace System.Collections.Observable
 		/// <param name="comparison">A delegate to perform the comparison with</param>
 		/// <param name="filter">A filter to apply to the source list</param>
 		/// <param name="maximum">The maximum number of items to show</param>
-		public ObservableListView(IList<T> source, Comparison<T>? comparison, Predicate<T>? filter, int? maximum) : this(source, comparison != null ? Comparer<T>.Create(comparison) : null, filter, maximum)
+		public ObservableListView(IList<T> source, Comparison<T>? comparison, Predicate<T>? filter, int? maximum) : this(source, comparison != null ? DelegateComparer.Create(comparison) : null, filter, maximum)
 		{
 		}
 

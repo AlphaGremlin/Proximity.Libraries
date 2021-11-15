@@ -12,7 +12,7 @@ namespace System.Buffers
 	/// <typeparam name="T">The type of sequence element</typeparam>
 	public sealed class BufferReader<T> : IBufferReader<T>, IDisposable
 	{ //****************************************
-		private ReadOnlySequence<T> _Buffer;
+		private ReadOnlySequence<T> _Buffer, _OriginalBuffer;
 		private T[]? _OutputBuffer;
 		private int _OutputUsed;
 		//****************************************
@@ -21,18 +21,16 @@ namespace System.Buffers
 		/// Creates a new Buffer Reader
 		/// </summary>
 		/// <param name="buffer">The buffer to read from</param>
-		public BufferReader(T[] buffer)
+		public BufferReader(T[] buffer) : this(new ReadOnlySequence<T>(buffer))
 		{
-			_Buffer = new ReadOnlySequence<T>(buffer);
 		}
 
 		/// <summary>
 		/// Creates a new Buffer Reader
 		/// </summary>
 		/// <param name="buffer">The buffer to read from</param>
-		public BufferReader(ReadOnlyMemory<T> buffer)
+		public BufferReader(ReadOnlyMemory<T> buffer) : this(new ReadOnlySequence<T>(buffer))
 		{
-			_Buffer = new ReadOnlySequence<T>(buffer);
 		}
 
 		/// <summary>
@@ -41,7 +39,7 @@ namespace System.Buffers
 		/// <param name="buffer">The buffer to read from</param>
 		public BufferReader(ReadOnlySequence<T> buffer)
 		{
-			_Buffer = buffer;
+			_Buffer = _OriginalBuffer = buffer;
 		}
 
 		//****************************************
@@ -52,8 +50,30 @@ namespace System.Buffers
 		/// <param name="buffer">The buffer to read from</param>
 		public void Reset(ReadOnlySequence<T> buffer)
 		{
-			_Buffer = buffer;
+			_Buffer = _OriginalBuffer = buffer;
 			Position = 0;
+			_OutputUsed = 0;
+		}
+
+		/// <summary>
+		/// Restarts the reader from the start of the buffer
+		/// </summary>
+		public void Restart()
+		{
+			_Buffer = _OriginalBuffer;
+			Position = 0;
+			_OutputUsed = 0;
+		}
+
+		/// <summary>
+		/// Restarts the reader from the given offset in the buffer
+		/// </summary>
+		/// <param name="position">The position into the buffer to start from</param>
+		public void Restart(long position)
+		{
+			_Buffer = _OriginalBuffer.Slice(position);
+			Position = position;
+			_OutputUsed = 0;
 		}
 
 		/// <summary>
@@ -65,6 +85,10 @@ namespace System.Buffers
 
 			if (Buffer != null)
 				ArrayPool<T>.Shared.Return(Buffer);
+
+			_Buffer = _OriginalBuffer = ReadOnlySequence<T>.Empty;
+			_OutputUsed = 0;
+			Position = 0;
 		}
 
 		/// <summary>

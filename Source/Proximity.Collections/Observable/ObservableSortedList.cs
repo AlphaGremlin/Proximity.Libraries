@@ -699,8 +699,8 @@ namespace System.Collections.Observable
 
 				if (value == 0)
 				{
-					_Keys = Array.Empty<TKey>();
-					_Values = Array.Empty<TValue>();
+					_Keys = Empty.Array<TKey>();
+					_Values = Empty.Array<TValue>();
 
 					return;
 				}

@@ -1,3 +1,4 @@
+#if !NET40
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -7,7 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 
-namespace Proximity.Collections.Immutable
+namespace System.Collections.Immutable
 {
 	/// <summary>
 	/// Provides utility methods for creating <see cref="ImmutableCountedQueue{T}"/>
@@ -84,7 +85,7 @@ namespace Proximity.Collections.Immutable
 		/// <param name="item">A variable that receives the dequeued item</param>
 		/// <returns>True if an item was dequeued, or False if the queue was empty</returns>
 		public static bool TryDequeue<T>(ref ImmutableCountedQueue<T> queue,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out T item)
@@ -199,7 +200,7 @@ namespace Proximity.Collections.Immutable
 		/// <param name="value">Receives the first item in the queue, if any</param>
 		/// <returns>True if the queue has one item, otherwise False</returns>
 		public bool TryPeek(
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out T value)
@@ -347,3 +348,4 @@ namespace Proximity.Collections.Immutable
 		}
 	}
 }
+#endif

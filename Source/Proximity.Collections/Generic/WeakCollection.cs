@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using System.Collections.ReadOnly;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security;
@@ -198,7 +198,11 @@ namespace System.Collections.Generic
 				MyList.Add(MyItem);
 			}
 
+#if NET40
+			return new ReadOnlyCollection<T>(MyList);
+#else
 			return MyList;
+#endif
 		}
 
 		//****************************************

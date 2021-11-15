@@ -76,6 +76,7 @@ namespace System.Threading
 		public ValueTask<Instance> Lock(TKey key, TimeSpan timeout, CancellationToken token = default)
 		{ //****************************************
 			ImmutableList<KeyedLockInstance> NewValue;
+			var AppliedCancellation = false;
 			//****************************************
 
 			if (key == null)
@@ -92,6 +93,20 @@ namespace System.Threading
 			{
 				if (_Locks.TryGetValue(key, out var OldValue))
 				{
+					if (AppliedCancellation)
+					{
+						if (!NewInstance.IsPending)
+							// Cancelled while trying to queue
+							return new ValueTask<Instance>(NewInstance, NewInstance.Version);
+					}
+					else
+					{
+						// We must have cancellation applied before adding to the queue
+						NewInstance.ApplyCancellation(token, timeout);
+
+						AppliedCancellation = true;
+					}
+
 					// Add ourselves to the lock queue
 					NewValue = OldValue.Add(NewInstance);
 
@@ -118,10 +133,6 @@ namespace System.Threading
 					if (!NewInstance.TrySwitchToCompleted())
 						Release(key);
 				}
-
-				// We're waiting, so make sure we handle cancellation
-				if (!ValueTask.IsCompleted)
-					NewInstance.ApplyCancellation(token, timeout);
 			}
 			else
 			{

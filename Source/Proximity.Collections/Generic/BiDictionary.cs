@@ -793,7 +793,7 @@ namespace System.Collections.Generic
 		/// <param name="left">When complete, contains the Left associated with the given Right, otherwise the default value for the type</param>
 		/// <returns>True if the Right was found, otherwise false</returns>
 		public bool TryGetLeft(TRight right,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out TLeft left)
@@ -821,7 +821,7 @@ namespace System.Collections.Generic
 		/// <param name="right">When complete, contains the Right associated with the given Left, otherwise the default value for the type</param>
 		/// <returns>True if the Left was found, otherwise false</returns>
 		public bool TryGetRight(TLeft left,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out TRight right)
@@ -848,7 +848,7 @@ namespace System.Collections.Generic
 		/// <param name="right">Receives the value of the removed item</param>
 		/// <returns>True if the item was removed, otherwise False</returns>
 		public bool TryRemove(TLeft left,
-#if !NETSTANDARD2_0
+#if !NETSTANDARD2_0 && !NET40
 			[MaybeNullWhen(false)]
 #endif
 			out TRight right)

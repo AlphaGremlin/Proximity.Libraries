@@ -461,8 +461,8 @@ namespace System.Collections.Observable
 
 				if (value == 0)
 				{
-					_Keys = Array.Empty<int>();
-					_Values = Array.Empty<T>();
+					_Keys = Empty.Array<int>();
+					_Values = Empty.Array<T>();
 
 					return;
 				}
