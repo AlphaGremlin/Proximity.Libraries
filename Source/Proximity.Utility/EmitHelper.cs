@@ -17,7 +17,7 @@ namespace Proximity.Utility
 	/// <summary>
 	/// Provides services for rapidly emitting dynamic code
 	/// </summary>
-	[SecurityCritical]
+	
 	public class EmitHelper
 	{	//****************************************
 		private ILGenerator _Generator;

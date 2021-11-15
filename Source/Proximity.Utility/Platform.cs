@@ -19,7 +19,7 @@ namespace Proximity.Utility
 	/// <summary>
 	/// Manages Platform-Specific tasks
 	/// </summary>
-	[SecurityCritical]
+	
 	public static class Platform
 	{	//****************************************
 		[DllImport("kernel32.dll", EntryPoint = "LoadLibrary", CharSet = CharSet.Ansi), SuppressUnmanagedCodeSecurity()]
@@ -278,9 +278,9 @@ namespace Proximity.Utility
 			{
 				return Assembly.LoadFrom(FileName);
 			}
-			catch (Exception ex)
+			catch (Exception)
 			{
-				Log.Critical("Failed to load Platform Specific Assembly {0}: {1}", FileName, ex.Message);
+				//Log.Critical("Failed to load Platform Specific Assembly {0}: {1}", FileName, ex.Message);
 				
 				return null;
 			}

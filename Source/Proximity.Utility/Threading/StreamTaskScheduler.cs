@@ -10,7 +10,6 @@ using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Proximity.Utility;
-using Proximity.Utility.Collections;
 //****************************************
 
 namespace Proximity.Utility.Threading
@@ -18,7 +17,7 @@ namespace Proximity.Utility.Threading
 	/// <summary>
 	/// Implements a Task Scheduler that executes queued tasks on the ThreadPool in their order of queueing
 	/// </summary>
-	[SecurityCritical]
+	
 	public sealed class StreamTaskScheduler : TaskScheduler
 	{	//****************************************
 		[ThreadStatic()] private bool _IsThreadProcessing;
@@ -37,7 +36,7 @@ namespace Proximity.Utility.Threading
 		//****************************************
 		
 		/// <inheritdoc />
-		[SecurityCritical]
+		
 		protected override void QueueTask(Task task)
 		{
 			lock (_Tasks)
@@ -54,7 +53,7 @@ namespace Proximity.Utility.Threading
 		}
 		
 		/// <inheritdoc />
-		[SecurityCritical]
+		
 		protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
 		{
 			// Ensure we're within the Processing Loop
@@ -70,7 +69,7 @@ namespace Proximity.Utility.Threading
 		}
 		
 		/// <inheritdoc />
-		[SecurityCritical]
+		
 		protected override bool TryDequeue(Task task)
 		{
 			lock (_Tasks)
@@ -80,7 +79,7 @@ namespace Proximity.Utility.Threading
 		}
 		
 		/// <inheritdoc />
-		[SecurityCritical]
+		
 		protected override IEnumerable<Task> GetScheduledTasks()
 		{	//****************************************
 			bool LockTaken = false;
@@ -145,7 +144,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		public override int MaximumConcurrencyLevel
 		{
-			[SecuritySafeCritical]
+			
 			get { return 1; }
 		}
 	}

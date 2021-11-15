@@ -14,7 +14,7 @@ namespace Proximity.Utility.Events
 	/// <summary>
 	/// Provides Weak Delegate services optimised for the EventHandler model
 	/// </summary>
-	[SecurityCritical]
+	
 	public static class WeakEventDelegate
 	{
 		// IOS is statically compiled and doesn't do JIT, so we can't make generic types from reflection
@@ -176,7 +176,7 @@ namespace Proximity.Utility.Events
 				_Unsubscribe = unsubscribe;
 			}
 
-			[SecuritySafeCritical]
+			
 			~EventDelegate()
 			{
 				if (_Target.IsAllocated)
@@ -185,7 +185,7 @@ namespace Proximity.Utility.Events
 			
 			//****************************************
 
-			[SecurityCritical]
+			
 			public void Handler(object sender, TEventArgs e)
 			{	//****************************************
 				var MyTarget = _Target.Target;
@@ -216,17 +216,17 @@ namespace Proximity.Utility.Events
 			
 			public object Target
 			{
-				[SecurityCritical]
+				
 				get { return _Target.Target; }
 			}
 			
 			public MethodInfo Method
 			{
 #if NETSTANDARD1_3
-				[SecurityCritical]
+				
 				get { return _Method; }
 #else
-				[SecurityCritical]
+				
 				get { return _Handler.Method; }
 #endif
 			}

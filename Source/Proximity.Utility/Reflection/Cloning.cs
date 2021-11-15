@@ -20,7 +20,7 @@ namespace Proximity.Utility.Reflection
 	/// <summary>
 	/// Provides methods for cloning objects
 	/// </summary>
-	[SecuritySafeCritical]
+	
 	public static class Cloning
 	{
 		/// <summary>
@@ -29,7 +29,7 @@ namespace Proximity.Utility.Reflection
 		/// <param name="input">The object to clone</param>
 		/// <returns>A copy of the provided object</returns>
 		/// <remarks>Supports Arrays, as a type-safe Array.Clone. Input must not be a derived type of TObject. Use CloneDynamic if so.</remarks>
-		[SecuritySafeCritical]
+		
 		public static TObject Clone<TObject>(TObject input) where TObject : class
 		{
 			return Cloning<TObject>.Clone(input);
@@ -41,7 +41,7 @@ namespace Proximity.Utility.Reflection
 		/// <param name="input">The object to clone</param>
 		/// <returns>A copy of the provided object</returns>
 		/// <remarks>Does not support Arrays. Use where the input is likely to be a derived type of TObject</remarks>
-		[SecuritySafeCritical]
+		
 		public static TObject CloneDynamic<TObject>(TObject input) where TObject : class
 		{
 			var CloneType = typeof(Cloning<>).MakeGenericType(input.GetType());
@@ -55,7 +55,7 @@ namespace Proximity.Utility.Reflection
 		/// <param name="source">The object to read from</param>
 		/// <param name="target">The object to write to</param>
 		/// <remarks>Does not support Arrays, and ignores read-only (initonly) fields</remarks>
-		[SecuritySafeCritical]
+		
 		public static void CloneTo<TObject>(TObject source, TObject target) where TObject : class
 		{
 			Cloning<TObject>.CloneTo(source, target);
@@ -67,7 +67,7 @@ namespace Proximity.Utility.Reflection
 		/// <param name="source">The object to read from</param>
 		/// <param name="target">The object to write to. Must be the same type as the source</param>
 		/// <remarks>Does not support Arrays. Use where the input is likely to be a derived type of TObject</remarks>
-		[SecuritySafeCritical]
+		
 		public static void CloneToDynamic<TObject>(TObject source, TObject target) where TObject : class
 		{
 			if (source.GetType() != target.GetType())
@@ -84,7 +84,7 @@ namespace Proximity.Utility.Reflection
 		/// <param name="input">The object to clone</param>
 		/// <returns>A copy of the provided object</returns>
 		/// <remarks>Supports <see cref="OnSerializingAttribute" />, <see cref="OnDeserializingAttribute" />, <see cref="OnDeserializedAttribute" /> and <see cref="OnSerializedAttribute" /></remarks>
-		[SecuritySafeCritical]
+		
 		public static TObject CloneSmart<TObject>(TObject input) where TObject : class
 		{
 			return Cloning<TObject>.GetCloneSmart()(input);
@@ -94,7 +94,7 @@ namespace Proximity.Utility.Reflection
 	/// <summary>
 	/// Provides methods for cloning objects
 	/// </summary>
-	[SecurityCritical]
+	
 	internal static class Cloning<TObject> where TObject : class
 	{	//****************************************
 		private static Func<TObject, TObject> _CloneMethod, _SmartCloneMethod;

@@ -26,7 +26,7 @@ namespace Proximity.Utility.Threading
 		/// <summary>
 		/// Creates a new dedicated thread scheduler
 		/// </summary>
-		[SecuritySafeCritical]
+		
 		public DedicatedThreadScheduler()
 		{
 			_Tasks = new BlockingCollection<Task>();
@@ -40,7 +40,7 @@ namespace Proximity.Utility.Threading
 		/// Creates a new dedicated thread scheduler with a specified name
 		/// </summary>
 		/// <param name="name">The name to assign to the new Thread</param>
-		[SecuritySafeCritical]
+		
 		public DedicatedThreadScheduler(string name)
 		{
 			_Tasks = new BlockingCollection<Task>();
@@ -57,7 +57,7 @@ namespace Proximity.Utility.Threading
 		/// Queues a Task on this Scheduler
 		/// </summary>
 		/// <param name="task">The task to execute</param>
-		[SecurityCritical]
+		
 		protected override void QueueTask(Task task)
 		{
 			_Tasks.Add(task);
@@ -67,7 +67,7 @@ namespace Proximity.Utility.Threading
 		/// Gets an enumerable of the currently scheduled tasks
 		/// </summary>
 		/// <returns>An enumerable of the currently scheduled tasks</returns>
-		[SecurityCritical]
+		
 		protected override IEnumerable<Task> GetScheduledTasks()
 		{
 			return _Tasks.ToArray();
@@ -79,7 +79,7 @@ namespace Proximity.Utility.Threading
 		/// <param name="task">The task to be executed.</param>
 		/// <param name="taskWasPreviouslyQueued">Whether the task was previously queued.</param>
 		/// <returns>True if the task was successfully inlined, otherwise False.</returns>
-		[SecurityCritical]
+		
 		protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
 		{
 			return Thread.CurrentThread == _Thread && TryExecuteTask(task);
@@ -88,7 +88,7 @@ namespace Proximity.Utility.Threading
 		/// <summary>
 		/// Blocks until all tasks have completed and disables adding more tasks
 		/// </summary>
-		[SecuritySafeCritical]
+		
 		public void Dispose()
 		{
 			if (_Tasks != null)
@@ -104,7 +104,7 @@ namespace Proximity.Utility.Threading
 
 		//****************************************
 		
-		[SecurityCritical]
+		
 		private void ConsumeTasks(object state)
 		{
 			foreach (var MyTask in _Tasks.GetConsumingEnumerable())
@@ -118,7 +118,7 @@ namespace Proximity.Utility.Threading
 		/// </summary>
 		public override int MaximumConcurrencyLevel
 		{
-			[SecuritySafeCritical]
+			
 			get { return 1; }
 		}
 	}

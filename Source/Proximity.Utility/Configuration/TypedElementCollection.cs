@@ -61,7 +61,7 @@ namespace Proximity.Utility.Configuration
 		}
 		
 		/// <inheritdoc />
-		[SecuritySafeCritical]
+		
 		protected sealed override bool OnDeserializeUnrecognizedElement(string elementName, XmlReader reader)
 		{	//****************************************
 			string TypeName = reader.GetAttribute("Type");
@@ -141,7 +141,7 @@ namespace Proximity.Utility.Configuration
 		/// </summary>
 		/// <param name="typeName">The name of the type</param>
 		/// <returns>A .Net Type, or null if the name could not be resolved</returns>
-		[SecurityCritical]
+		
 		protected virtual Type ResolveType(string typeName)
 		{
 			return Type.GetType(typeName);

@@ -17,7 +17,7 @@ namespace Proximity.Utility.Net
 	/// Provides a SocketAsyncEventArgs that can be awaited
 	/// </summary>
 	/// <remarks>Based on the code by Stephen Taub at http://blogs.msdn.com/b/pfxteam/archive/2011/12/15/10248293.aspx</remarks>
-	[SecuritySafeCritical]
+	
 	public sealed class SocketAwaitableEventArgs : SocketAsyncEventArgs, INotifyCompletion
 	{	//****************************************
 		private readonly static Action HasCompleted = () => { };
@@ -359,7 +359,7 @@ namespace Proximity.Utility.Net
 		//****************************************
 
 		/// <inheritdoc />
-		[SecuritySafeCritical]
+		
 		protected override void OnCompleted(SocketAsyncEventArgs e)
 		{
 			// Try and retrieve our continuation or, if it's null, set it to HasCompleted so if/when a continuation is set, we'll call it

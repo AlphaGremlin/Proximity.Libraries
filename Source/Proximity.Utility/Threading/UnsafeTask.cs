@@ -16,7 +16,7 @@ namespace Proximity.Utility.Threading
 	/// <summary>
 	/// Provides methods for queueing a task on the ThreadPool without the call context
 	/// </summary>
-	[SecurityCritical]
+	
 	public static class UnsafeTask
 	{
 		/// <summary>
@@ -179,7 +179,7 @@ namespace Proximity.Utility.Threading
 			{
 			}
 
-			[SecuritySafeCritical]
+			
 			void INotifyCompletion.OnCompleted(Action continuation)
 			{
 				throw new SecurityException("Cannot yield unsafe");
@@ -189,7 +189,7 @@ namespace Proximity.Utility.Threading
 			/// Queues the continuation on the threadpool in an unsafe manner
 			/// </summary>
 			/// <param name="continuation">The continuation to queue</param>
-			[SecurityCritical]
+			
 			public void UnsafeOnCompleted(Action continuation)
 			{
 				ThreadPool.UnsafeQueueUserWorkItem(OnContinue, continuation);

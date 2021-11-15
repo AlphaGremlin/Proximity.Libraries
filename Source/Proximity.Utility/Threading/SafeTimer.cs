@@ -9,7 +9,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Proximity.Utility;
-using Proximity.Utility.Collections;
 //****************************************
 
 namespace Proximity.Utility.Threading

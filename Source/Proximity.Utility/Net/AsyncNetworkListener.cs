@@ -19,7 +19,7 @@ namespace Proximity.Utility.Net
 	/// <summary>
 	/// Provides a base class for async socket listeners
 	/// </summary>
-	[SecuritySafeCritical]
+	
 	public sealed class AsyncNetworkListener : IDisposable
 	{	//****************************************
 		private readonly Socket _Socket;
@@ -64,7 +64,7 @@ namespace Proximity.Utility.Net
 		
 		//****************************************
 
-		[SecuritySafeCritical]
+		
 		private void AcceptConnection(bool inComplete)
 		{
 			while (_IsListening)

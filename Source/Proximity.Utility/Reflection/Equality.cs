@@ -15,7 +15,7 @@ namespace Proximity.Utility.Reflection
 	/// <summary>
 	/// Provides method for performing value comparisons of objects
 	/// </summary>
-	[SecuritySafeCritical]
+	
 	public static class Equality<TObject> where TObject : class
 	{	//****************************************
 		private static Func<TObject, TObject, bool> _SimpleEqualsMethod;

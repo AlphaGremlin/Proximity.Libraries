@@ -248,7 +248,7 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 
-		[SecuritySafeCritical]
+		
 		private void ReleaseLeft()
 		{	//****************************************
 			TaskCompletionSource<VoidStruct> NextTask;
@@ -302,7 +302,7 @@ namespace Proximity.Utility.Threading
 			MyWaiter.SetResult(VoidStruct.Empty);
 		}
 
-		[SecuritySafeCritical]
+		
 		private void ReleaseRight()
 		{	//****************************************
 			TaskCompletionSource<VoidStruct> NextTask;
@@ -348,7 +348,7 @@ namespace Proximity.Utility.Threading
 #endif
 		}
 
-		[SecuritySafeCritical]
+		
 		private void CancelLeft(AsyncSwitchLeftInstance instance)
 		{	//****************************************
 			TaskCompletionSource<VoidStruct> NextRight= null;
@@ -391,7 +391,7 @@ namespace Proximity.Utility.Threading
 			ReleaseLeft();
 		}
 
-		[SecuritySafeCritical]
+		
 		private void CancelRight(AsyncSwitchRightInstance instance)
 		{	//****************************************
 			TaskCompletionSource<VoidStruct> NextLeft = null;

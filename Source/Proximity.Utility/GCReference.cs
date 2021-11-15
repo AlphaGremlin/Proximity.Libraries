@@ -17,7 +17,7 @@ namespace Proximity.Utility
 	/// <summary>
 	/// Provides a WeakReference-style self-cleanup class that also accepts a GCHandleType
 	/// </summary>
-	[SecuritySafeCritical]
+	
 	public sealed class GCReference : IDisposable
 	{	//****************************************
 		private GCHandle _Handle;
@@ -29,7 +29,7 @@ namespace Proximity.Utility
 		/// </summary>
 		/// <param name="target">The target object</param>
 		/// <param name="handleType">The type of GC Handle</param>
-		[SecuritySafeCritical]
+		
 		public GCReference(object target, GCHandleType handleType)
 		{
 			_Handle = GCHandle.Alloc(target, handleType);
@@ -40,7 +40,7 @@ namespace Proximity.Utility
 		/// <summary>
 		/// Finalise the GC Reference, disposing of the GCHandle if it has not been disposed of
 		/// </summary>
-		[SecuritySafeCritical]
+		
 		~GCReference()
 		{
 			if (Interlocked.Exchange(ref _IsDisposed, 1) == 0)
@@ -52,7 +52,7 @@ namespace Proximity.Utility
 		/// <summary>
 		/// Disposes of the GC Reference in a deterministic manner
 		/// </summary>
-		[SecuritySafeCritical]
+		
 		public void Dispose()
 		{
 			if (Interlocked.Exchange(ref _IsDisposed, 1) == 0)
@@ -68,7 +68,7 @@ namespace Proximity.Utility
 		/// </summary>
 		public object Target
 		{
-			[SecuritySafeCritical]
+			
 			get { return _Handle.Target; }
 		}
 
@@ -77,7 +77,7 @@ namespace Proximity.Utility
 		/// </summary>
 		public bool IsAlive
 		{
-			[SecuritySafeCritical]
+			
 			get { return _Handle.IsAllocated && _Handle.Target != null; }
 		}
 	}

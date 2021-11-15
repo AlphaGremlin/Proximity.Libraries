@@ -20,7 +20,7 @@ namespace Proximity.Utility.Net
 	/// <summary>
 	/// Provides a NetworkStream-esque interface that uses SocketAwaitable and tasks
 	/// </summary>
-	[SecuritySafeCritical]
+	
 	internal sealed class AsyncNetworkStream : Stream
 	{	//****************************************
 		private readonly static ConcurrentStack<SmartEventArgs> _ArgsPool = new ConcurrentStack<SmartEventArgs>();
@@ -906,7 +906,7 @@ namespace Proximity.Utility.Net
 			}
 		}
 
-		[SecuritySafeCritical]
+		
 		internal sealed class SmartEventArgs : SocketAsyncEventArgs
 		{	//****************************************
 			private readonly static Action HasCompleted = () => { };
@@ -957,7 +957,7 @@ namespace Proximity.Utility.Net
 				ThreadPool.QueueUserWorkItem((state) => ((Action)state)(), continuation); // 1 allocation
 			}
 
-			[SecuritySafeCritical]
+			
 			protected override void OnCompleted(SocketAsyncEventArgs e)
 			{
 				// Set our continuation to HasCompleted, and return what was previously there

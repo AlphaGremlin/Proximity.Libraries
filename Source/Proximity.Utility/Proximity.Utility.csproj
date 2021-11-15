@@ -7,8 +7,8 @@
     <Copyright>Copyright © Daniel Chandler 2018</Copyright>
     <Product>Proximity Utility Library</Product>
     <AssemblyVersion>18.0.0.0</AssemblyVersion>
-    <FileVersion>18.0.2.0</FileVersion>
-    <Version>18.0.2</Version>
+    <FileVersion>18.0.3.0</FileVersion>
+    <Version>18.0.3</Version>
     <Description>Proximity Utility Library</Description>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -17,16 +17,10 @@
     <OutputPath>..\..\Build\Proximity.Utility</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Remove="Collections\ObservableSortedSubset.cs" />
     <Compile Remove="Diagnostics\ExceptionExtensions.cs" />
-    <Compile Remove="Logging\Outputs\XmlFileOutput.cs" />
-    <Compile Remove="Logging\Outputs\XmlFileOutputElement.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Collections\ObservableSortedSubset.cs" />
     <None Include="Diagnostics\ExceptionExtensions.cs" />
-    <None Include="Logging\Outputs\XmlFileOutput.cs" />
-    <None Include="Logging\Outputs\XmlFileOutputElement.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net462'">
     <PackageReference Include="System.Configuration.ConfigurationManager">

@@ -259,7 +259,7 @@ namespace Proximity.Utility.Threading
 		
 		//****************************************
 
-		[SecuritySafeCritical]
+		
 		private void ReleaseRead()
 		{	//****************************************
 			TaskCompletionSource<IDisposable> NextTask = null;
@@ -352,7 +352,7 @@ namespace Proximity.Utility.Threading
 			}
 		}
 
-		[SecuritySafeCritical]
+		
 		private void ReleaseWrite(bool onThreadPool)
 		{	//****************************************
 			TaskCompletionSource<IDisposable> NextRelease = null;
