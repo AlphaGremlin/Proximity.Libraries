@@ -10,6 +10,7 @@ namespace System.Buffers
 	/// Provides a buffer reader reading from a <see cref="ReadOnlySequence{T}"/> or compatible
 	/// </summary>
 	/// <typeparam name="T">The type of sequence element</typeparam>
+	/// <remarks>When requesting 0-size blocks, we guarantee to not allocate any temporary buffers, and thus does not require <see cref="Dispose"/> to be called.</remarks>
 	public sealed class BufferReader<T> : IBufferReader<T>, IDisposable
 	{ //****************************************
 		private ReadOnlySequence<T> _Buffer, _OriginalBuffer;
@@ -97,6 +98,9 @@ namespace System.Buffers
 		/// <param name="count">The number of elements to advance over</param>
 		public void Advance(int count)
 		{
+			if (count == 0)
+				return;
+
 			// No going backwards
 			_Buffer = _Buffer.Slice(count);
 
@@ -117,6 +121,7 @@ namespace System.Buffers
 			if (minSize > _Buffer.Length)
 				minSize = (int)_Buffer.Length;
 
+			// A 0-size block will always match this, so we never allocate
 			if (_Buffer.First.Length >= minSize)
 				return _Buffer.First;
 

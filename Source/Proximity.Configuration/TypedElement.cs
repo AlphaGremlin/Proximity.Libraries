@@ -145,14 +145,14 @@ namespace Proximity.Configuration
 		public string Type
 		{
 			get => (string)base["Type"];
-			internal set => base["Type"] = value;
+			set => base["Type"] = value;
 		}
 
 		/// <summary>
 		/// Gets the Type of the Instance this Typed Element refers to
 		/// </summary>
 		/// <remarks>Can be null if no TypedElementAttribute was found</remarks>
-		public Type? InstanceType { get; private set; }
+		public Type? InstanceType { get; set; }
 
 		internal XElement? RawElement { get; set; }
 	}

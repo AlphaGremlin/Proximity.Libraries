@@ -19,13 +19,13 @@ namespace System.Collections.ReadOnly
 		/// Creates a new read-only wrapper around a collection
 		/// </summary>
 		/// <param name="source">The collection to wrap</param>
-		public ReadOnlyCollectionDowncast(IList<TDerived> source)
+		public ReadOnlyCollectionDowncast(ICollection<TDerived> source)
 		{
 			_Source = source;
 		}
-		
+
 		//****************************************
-		
+
 		/// <summary>
 		/// Determines whether the collection contains a specific item
 		/// </summary>

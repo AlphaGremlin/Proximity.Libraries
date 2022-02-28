@@ -7,18 +7,49 @@ using System.Text;
 namespace System.Buffers
 {
 	/// <summary>
+	/// Provides disposal over an <see cref="System.ArraySegment{T}"/> rented from an <see cref="ArrayPool{T}"/>
+	/// </summary>
+	public static class AutoSequence
+	{
+		/// <summary>
+		/// Converts an <see cref="AutoArray{T}"/> into an AutoSequence
+		/// </summary>
+		/// <typeparam name="T">The type of array element</typeparam>
+		/// <param name="array">The auto-rented array</param>
+		/// <returns>An <see cref="AutoSequence{T}"/> providing automated disposal of the rented array</returns>
+		/// <remarks>The original array must not be disposed of</remarks>
+		public static AutoSequence<T> From<T>(AutoArray<T> array) => From(array.AsMemory(), array.Pool, array.WillClear);
+
+		/// <summary>
+		/// Converts an <see cref="AutoArray{T}"/> into an AutoSequence
+		/// </summary>
+		/// <typeparam name="T">The type of array element</typeparam>
+		/// <param name="array">The auto-rented array</param>
+		/// <returns>An <see cref="AutoSequence{T}"/> providing automated disposal of the rented array</returns>
+		/// <remarks>The original array must not be disposed of</remarks>
+		public static AutoSequence<T> From<T>(AutoArraySegment<T> array) => From(array.AsMemory(), array.Pool, array.WillClear);
+
+		//****************************************
+
+		private static AutoSequence<T> From<T>(ReadOnlyMemory<T> segment, ArrayPool<T> pool, bool willClear) => new(new ReadOnlySequence<T>(segment), pool, willClear);
+
+		//****************************************
+
+		private sealed class AutoSegment<T> : ReadOnlySequenceSegment<T>
+		{
+			internal AutoSegment(ReadOnlyMemory<T> memory) => Memory = memory;
+		}
+	}
+
+	/// <summary>
 	/// Provides disposal over a <see cref="ReadOnlySequence{T}"/> with buffers rented from an <see cref="ArrayPool{T}"/>
 	/// </summary>
 	/// <typeparam name="T">The type of array element</typeparam>
 	public readonly struct AutoSequence<T> : IDisposable
-	{ //****************************************
-		private readonly ReadOnlySequenceSegment<T>? _Head;
-		//****************************************
-
-		internal AutoSequence(ReadOnlySequence<T> sequence, ReadOnlySequenceSegment<T>? head, ArrayPool<T> pool, bool willClear = false)
+	{
+		internal AutoSequence(ReadOnlySequence<T> sequence, ArrayPool<T> pool, bool willClear = false)
 		{
 			Sequence = sequence;
-			_Head = head;
 			Pool = pool;
 			WillClear = willClear;
 		}
@@ -30,14 +61,10 @@ namespace System.Buffers
 		/// </summary>
 		public void Dispose()
 		{
-			var Segment = _Head;
-
-			while (Segment != null)
+			foreach (var Memory in Sequence)
 			{
-				if (MemoryMarshal.TryGetArray(Segment.Memory, out var Buffer))
+				if (MemoryMarshal.TryGetArray(Memory, out var Buffer))
 					Pool.Return(Buffer.Array!, WillClear);
-
-				Segment = Segment.Next;
 			}
 		}
 

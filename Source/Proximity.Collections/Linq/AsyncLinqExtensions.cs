@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 #if !NET40
-namespace Proximity.Collections.Linq
+namespace System.Linq
 {
 	/// <summary>
 	/// Provides useful Linq-style methods for Async operations

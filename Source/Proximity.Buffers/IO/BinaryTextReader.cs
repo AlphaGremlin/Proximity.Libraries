@@ -19,10 +19,8 @@ namespace System.IO
 		private const int MinBufferSize = 128;
 		private const int DefaultBufferSize = 1024;
 		//****************************************
-		private readonly ReadOnlySequence<byte> _Initial;
-
-		private ReadOnlySequence<byte> _Remainder;
-		private SequencePosition _Position;
+		private readonly IBufferReader<byte> _Reader;
+		private long _Position;
 
 		private Decoder _Decoder;
 		private char[] _Buffer;
@@ -189,13 +187,51 @@ namespace System.IO
 		/// <param name="encoding">The encoding of the text in the byte array</param>
 		/// <param name="detectEncoding">Whether to detect the encoding using the preamble</param>
 		/// <param name="bufferSize">The buffer size to use when reading the text</param>
-		public BinaryTextReader(ReadOnlySequence<byte> sequence, Encoding encoding, bool detectEncoding, int bufferSize) : base()
+		public BinaryTextReader(ReadOnlySequence<byte> sequence, Encoding encoding, bool detectEncoding, int bufferSize) : this(new BufferReader<byte>(sequence), encoding, detectEncoding, bufferSize)
+		{
+			// The BufferReader will never be disposed of, but as long as we use the 0 read, it will never rent any buffers and thus should be safe
+		}
+
+		/// <summary>
+		/// Creates a new Binary Text Reader with auto-detected encoding
+		/// </summary>
+		/// <param name="reader">The buffer reader to read from</param>
+		public BinaryTextReader(IBufferReader<byte> reader) : this(reader, Encoding.UTF8, true, DefaultBufferSize)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Binary Text Reader
+		/// </summary>
+		/// <param name="reader">The buffer reader to read from</param>
+		/// <param name="encoding">The encoding of the text in the byte array</param>
+		public BinaryTextReader(IBufferReader<byte> reader, Encoding encoding) : this(reader, encoding, true, DefaultBufferSize)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Binary Text Reader
+		/// </summary>
+		/// <param name="reader">The buffer reader to read from</param>
+		/// <param name="encoding">The encoding of the text in the byte array</param>
+		/// <param name="detectEncoding">Whether to detect the encoding using the preamble</param>
+		public BinaryTextReader(IBufferReader<byte> reader, Encoding encoding, bool detectEncoding) : this(reader, encoding, detectEncoding, DefaultBufferSize)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new Binary Text Reader
+		/// </summary>
+		/// <param name="reader">The buffer reader to read from</param>
+		/// <param name="encoding">The encoding of the text in the byte array</param>
+		/// <param name="detectEncoding">Whether to detect the encoding using the preamble</param>
+		/// <param name="bufferSize">The buffer size to use when reading the text</param>
+		public BinaryTextReader(IBufferReader<byte> reader, Encoding encoding, bool detectEncoding, int bufferSize) : base()
 		{
 			if (bufferSize < MinBufferSize)
 				bufferSize = MinBufferSize;
 
-			_Initial = _Remainder = sequence;
-			_Position = sequence.Start;
+			_Reader = reader;
 
 			Encoding = encoding;
 			_Decoder = encoding.GetDecoder();
@@ -270,59 +306,50 @@ namespace System.IO
 			if (_CheckPreamble)
 				CheckPreamble();
 
-			if (_DetectEncoding && _Remainder.Length >= 2)
+			if (_DetectEncoding)
 				DetectEncoding();
 
+			ReadOnlySpan<byte> InBuffer;
 			var OutBuffer = _Buffer.AsSpan(0, _Buffer.Length);
-			var RemainingBytes = _Remainder.Length;
-			var ReadBytes = 0;
+			bool IsCompleted;
 
-			// Keep trying to read until we fill the buffer, or the source sequence runs out
-			foreach (var Segment in _Remainder)
+			// Keep trying to read until we fill the buffer, or the source reader runs out
+			do
 			{
-				var InBuffer = Segment.Span;
-				bool IsCompleted;
+				InBuffer = _Reader.GetSpan(0);
 
-				do
+				// Decode the bytes into our char buffer
+				_Decoder.Convert(
+					InBuffer,
+					OutBuffer,
+					InBuffer.IsEmpty,
+					out var BytesRead, out var WrittenChars, out IsCompleted
+					);
+
+				var ReadLength = Math.Min(WrittenChars, buffer.Length);
+
+				OutBuffer.Slice(0, ReadLength).CopyTo(buffer);
+
+				buffer = buffer.Slice(ReadLength);
+
+				CharsWritten += ReadLength;
+				_Position += BytesRead;
+
+				_Reader.Advance(BytesRead);
+
+				if (buffer.IsEmpty)
 				{
-					// Decode the bytes into our char buffer
-					_Decoder.Convert(
-						InBuffer,
-						OutBuffer,
-						RemainingBytes == InBuffer.Length,
-						out var BytesRead, out var WrittenChars, out IsCompleted
-						);
+					// Buffer is filled. Save any data left over for the next read operation
+					_BufferIndex = ReadLength;
+					_BufferLength = WrittenChars - ReadLength;
 
-					var ReadLength = Math.Min(WrittenChars, buffer.Length);
-
-					OutBuffer.Slice(0, ReadLength).CopyTo(buffer);
-
-					buffer = buffer.Slice(ReadLength);
-
-					CharsWritten += ReadLength;
-					ReadBytes += BytesRead;
-					RemainingBytes -= BytesRead;
-
-					if (buffer.IsEmpty)
-					{
-						// Buffer is filled. Save any data left over for the next read operation
-						_BufferIndex = ReadLength;
-						_BufferLength = WrittenChars - ReadLength;
-
-						CompleteRead(ReadBytes);
-
-						return CharsWritten;
-					}
-
-					// Buffer is empty, but we have more space to fill, continue
-					InBuffer = InBuffer.Slice(BytesRead);
-
-					// Loop while there are more bytes unread, or there are no bytes left but there's still data to flush
+					return CharsWritten;
 				}
-				while (!InBuffer.IsEmpty || (RemainingBytes == 0 && !IsCompleted));
-			}
 
-			CompleteRead(ReadBytes);
+				// Loop while there are more bytes unread, or there are no bytes left but there's still data to flush
+			}
+			while (!InBuffer.IsEmpty || !IsCompleted);
+
 			_BufferLength = 0;
 
 			return CharsWritten;
@@ -425,30 +452,34 @@ namespace System.IO
 		/// <inheritdoc />
 		public override string ReadToEnd()
 		{
-			var MyBuilder = new StringBuilder(Encoding.GetMaxCharCount((int)_Remainder.Length));
+			var Builder = new StringBuilder();
 
 			if (_BufferLength != 0)
 			{
-				MyBuilder.Append(_Buffer, _BufferIndex, _BufferLength);
+				Builder.Append(_Buffer, _BufferIndex, _BufferLength);
 			}
 
 			while (FillBuffer())
 			{
-				MyBuilder.Append(_Buffer, _BufferIndex, _BufferLength);
+				Builder.Append(_Buffer, _BufferIndex, _BufferLength);
 			}
 
-			return MyBuilder.ToString();
+			return Builder.ToString();
 		}
 
 		/// <inheritdoc />
 		public override Task<string> ReadToEndAsync() => Task.FromResult(ReadToEnd());
 
 		/// <summary>
-		/// Resets the reader to the start
+		/// Resets the reader to the start, if supported
 		/// </summary>
 		public void Reset()
 		{
-			_Remainder = _Initial;
+			if (_Reader is not BufferReader<byte> BufferReader)
+				throw new NotSupportedException();
+
+			BufferReader.Restart();
+
 			_BufferIndex = 0;
 			_BufferLength = 0;
 			_Decoder = Encoding.GetDecoder();
@@ -457,81 +488,59 @@ namespace System.IO
 
 		//****************************************
 
-		private void CompleteRead(int bytesRead)
-		{
-			if (bytesRead > 0)
-			{
-				_Position = _Remainder.GetPosition(bytesRead);
-
-				_Remainder = _Remainder.Slice(_Position);
-			}
-		}
-
 		private bool FillBuffer()
 		{
 			if (_CheckPreamble)
 				CheckPreamble();
 
-			if (_DetectEncoding && _Remainder.Length >= 2)
+			if (_DetectEncoding)
 				DetectEncoding();
 
 			//****************************************
 
+			ReadOnlySpan<byte> InBuffer;
 			var OutBuffer = _Buffer.AsSpan();
-			var RemainingBytes = _Remainder.Length;
-			var ReadBytes = 0;
+			bool IsCompleted;
 
 			_BufferIndex = 0;
 			_BufferLength = 0;
 
 			// Keep trying to read until we fill the buffer, or the source sequence runs out
-			foreach (var Segment in _Remainder)
+			do
 			{
-				var InBuffer = Segment.Span;
-				bool IsCompleted;
+				InBuffer = _Reader.GetSpan(0);
 
-				do
-				{
-					// Decode the bytes into our char buffer
-					_Decoder.Convert(
-						InBuffer,
-						OutBuffer,
-						RemainingBytes == InBuffer.Length,
-						out var BytesRead, out var WrittenChars, out IsCompleted
-						);
+				// Decode the bytes into our char buffer
+				_Decoder.Convert(
+					InBuffer,
+					OutBuffer,
+					InBuffer.IsEmpty,
+					out var BytesRead, out var WrittenChars, out IsCompleted
+					);
 
-					_BufferLength += WrittenChars;
+				_BufferLength += WrittenChars;
+				_Position += BytesRead;
 
-					OutBuffer = OutBuffer.Slice(WrittenChars);
-					ReadBytes += BytesRead;
-					RemainingBytes -= BytesRead;
+				OutBuffer = OutBuffer.Slice(WrittenChars);
 
-					if (OutBuffer.IsEmpty)
-					{
-						// Buffer is filled. Record what we read
-						CompleteRead(ReadBytes);
+				_Reader.Advance(BytesRead);
 
-						return true;
-					}
+				if (OutBuffer.IsEmpty)
+					return true;// Buffer is filled, complete
 
-					// We have more space to fill, continue
-					InBuffer = InBuffer.Slice(BytesRead);
-
-					// Loop while there are more bytes unread, or there are no bytes left but there's still data to flush
-				}
-				while (!InBuffer.IsEmpty || (RemainingBytes == 0 && !IsCompleted));
+				// Loop while there are more bytes unread, or there are no bytes left but there's still data to flush
 			}
-
-			// No more data to read
-			CompleteRead(ReadBytes);
+			while (!InBuffer.IsEmpty || !IsCompleted);
 
 			return _BufferLength != 0;
 		}
 
 		private void CheckPreamble()
 		{
+			var InBuffer = _Reader.GetSpan(_Preamble.Length);
+
 			// Do we have enough bytes for a Preamble?
-			if (_Remainder.Length < _Preamble.Length)
+			if (InBuffer.Length < _Preamble.Length)
 			{
 				// No, so assume there isn't one
 				_CheckPreamble = false;
@@ -540,28 +549,46 @@ namespace System.IO
 			}
 
 			// Match the bytes in our input against the Preamble
-			_CheckPreamble = _Remainder.StartsWith(_Preamble);
-
-			if (_CheckPreamble)
+			if (InBuffer.StartsWith(_Preamble))
 			{
 				// Success. Skip over the Preamble
-				_Remainder = _Remainder.Slice(_Preamble.Length);
-
-				_CheckPreamble = false;
+				_Position += _Preamble.Length;
+				_Reader.Advance(_Preamble.Length);
 			}
+			else
+			{
+				// No preamble, finish the read without making progress
+				_Reader.Advance(0);
+			}
+
+			_CheckPreamble = false;
 		}
 
 		private void DetectEncoding()
-		{	//****************************************
-			var PreambleLength = 0;
-			var TotalLength = _Remainder.LengthMinimum(4);
-			var FirstByte = _Remainder.Get(0);
-			var SecondByte = _Remainder.Get(1);
-			var ThirdByte = TotalLength >= 3 ? _Remainder.Get(2) : (byte)0;
-			var FourthByte = TotalLength >= 4 ? _Remainder.Get(3) : (byte)0;
-			//****************************************
+		{
+			var InBuffer = _Reader.GetSpan(4);
 
 			_DetectEncoding = false;
+
+			// Is there enough space for a byte-order mark?
+			if (InBuffer.Length < 2)
+			{
+				_Reader.Advance(0);
+
+				return;
+			}
+
+			//****************************************
+
+			var TotalLength = Math.Min(InBuffer.Length, 4);
+			var FirstByte = InBuffer[0];
+			var SecondByte = InBuffer[1];
+			var ThirdByte = TotalLength >= 3 ? InBuffer[2] : (byte)0;
+			var FourthByte = TotalLength >= 4 ? InBuffer[3] : (byte)0;
+
+			var PreambleLength = 0;
+
+			//****************************************
 
 			// Detect big-endian Unicode
 			if (FirstByte == 0xFE && SecondByte == 0xFF)
@@ -603,14 +630,16 @@ namespace System.IO
 
 			//****************************************
 
+			// Skip over the Preamble, if any
+			_Position += PreambleLength;
+			_Reader.Advance(PreambleLength);
+
 			if (PreambleLength != 0)
 			{
+				// Prepare the appropriate encoding if we have a preamble
 				_Decoder = Encoding.GetDecoder();
 				_Preamble = Encoding.GetPreamble();
 				_Buffer = new char[Encoding.GetMaxCharCount(_BufferSize)];
-
-				// Skip over the Preamble
-				_Remainder = _Remainder.Slice(PreambleLength);
 			}
 		}
 
@@ -620,18 +649,7 @@ namespace System.IO
 		/// Gets the position we're reading from in the source Sequence
 		/// </summary>
 		/// <remarks>Due to buffering, this may not reflect the position of the most recent character</remarks>
-		public long Position => _Initial.Slice(0, _Position).Length;
-
-		/// <summary>
-		/// Gets the sequence position we're reading from in the source Sequence
-		/// </summary>
-		/// <remarks>Due to buffering, this may not reflect the position of the most recent character</remarks>
-		public SequencePosition SequencePosition => _Position;
-
-		/// <summary>
-		/// Gets the number of remaining bytes to read from the source Sequence
-		/// </summary>
-		public long BytesLeft => _Remainder.Length;
+		public long Position => _Position;
 
 		/// <summary>
 		/// Gets the Encoding being used to decode the source Sequence

@@ -89,7 +89,7 @@ namespace System.Buffers
 			{
 				// Is there any data in this Writer?
 				if (_CurrentOffset == 0)
-					return new AutoSequence<T>(ReadOnlySequence<T>.Empty, null, _Pool, clearBuffers);
+					return new AutoSequence<T>(ReadOnlySequence<T>.Empty, _Pool, clearBuffers);
 
 				// Create a new head segment to hold the data
 				_HeadSegment = _TailSegment = new BufferSegment(_CurrentBuffer.Slice(0, _CurrentOffset), 0);
@@ -105,7 +105,7 @@ namespace System.Buffers
 				OldTail.JoinTo(_TailSegment);
 			}
 
-			var Sequence = new AutoSequence<T>(new ReadOnlySequence<T>(_HeadSegment, 0, _TailSegment!, _TailSegment!.Memory.Length), _HeadSegment, _Pool, clearBuffers);
+			var Sequence = new AutoSequence<T>(new ReadOnlySequence<T>(_HeadSegment, 0, _TailSegment!, _TailSegment!.Memory.Length), _Pool, clearBuffers);
 
 			// Release the current buffers into the hands of the AutoSequence
 			_CurrentBuffer = Memory<T>.Empty;
@@ -376,6 +376,84 @@ namespace System.Buffers
 			return AutoArraySegment.Over(new ArraySegment<T>(Buffer, 0, BufferLength), _Pool);
 		}
 
+		/// <summary>
+		/// Discards data written to the start of the buffer
+		/// </summary>
+		/// <param name="length">The amount of data to discard</param>
+		public void TrimStart(int length) => TrimStart(length, false);
+
+		/// <summary>
+		/// Discards data written to the start of the buffer
+		/// </summary>
+		/// <param name="length">The amount of data to discard</param>
+		/// <param name="clearBuffers">True to clear released buffers</param>
+		public void TrimStart(int length, bool clearBuffers)
+		{
+			var Length = this.Length;
+
+			if (length > Length)
+				throw new ArgumentOutOfRangeException(nameof(length));
+
+			if (length == Length)
+			{
+				Reset();
+
+				return;
+			}
+
+			if (_HeadSegment != null)
+			{
+				var RemovedLength = 0;
+
+				// Remove segments until we find one longer than Length, or we run out of segments
+				while (_HeadSegment.Memory.Length < length)
+				{
+					var OldLength = _HeadSegment.Memory.Length;
+
+					length -= OldLength;
+					RemovedLength += OldLength;
+
+					if (MemoryMarshal.TryGetArray(_HeadSegment.Memory, out var MyBuffer))
+						_Pool.Return(MyBuffer.Array!, clearBuffers);
+
+					_HeadSegment = (BufferSegment)_HeadSegment.Next;
+
+					if (_HeadSegment == null)
+						break;
+				}
+
+				var NextSegment = _HeadSegment;
+
+				if (NextSegment != null)
+				{
+					// Correct the remainder on the header
+					NextSegment.CorrectMemory(length);
+					NextSegment.CorrectRunningIndex(RemovedLength);
+					NextSegment = (BufferSegment)NextSegment.Next;
+
+					// Correct the Running Index on subsequent entries
+					while (NextSegment != null)
+					{
+						NextSegment.CorrectRunningIndex(length + RemovedLength);
+
+						NextSegment = (BufferSegment)NextSegment.Next;
+					}
+
+					return;
+				}
+
+				// We removed all saved segments, leaving only the contents of the current buffer
+			}
+
+			// We could copy internally to the buffer, but it's faster to just ignore the data already written
+			// If we're clearing the buffers, also clear the data we're ignoring
+			if (clearBuffers)
+				_CurrentBuffer.Slice(0, length).Span.Clear();
+
+			_CurrentBuffer = _CurrentBuffer.Slice(length);
+			_CurrentOffset -= length;
+		}
+
 		//****************************************
 
 		private bool TryGetMemory(out ReadOnlyMemory<T> memory)
@@ -432,6 +510,14 @@ namespace System.Buffers
 			{
 				Next = segment;
 			}
+
+			internal void CorrectRunningIndex(int length)
+			{
+				if (RunningIndex >= length)
+					RunningIndex -= length;
+			}
+
+			internal void CorrectMemory(int offset) => Memory = Memory.Slice(offset);
 		}
 	}
 }

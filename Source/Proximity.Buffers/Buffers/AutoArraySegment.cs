@@ -11,6 +11,33 @@ namespace System.Buffers
 	public static class AutoArraySegment
 	{
 		/// <summary>
+		/// Converts an <see cref="AutoArray{T}"/> to an <see cref="AutoArraySegment{T}"/>
+		/// </summary>
+		/// <typeparam name="T">The type of array element</typeparam>
+		/// <param name="array">The AutoArray to conver</param>
+		/// <returns>An <see cref="AutoArraySegment{T}"/> representing the given array</returns>
+		public static AutoArraySegment<T> From<T>(AutoArray<T> array) => new(new ArraySegment<T>(array.Array), array.Pool, array.WillClear);
+
+		/// <summary>
+		/// Converts an <see cref="AutoArray{T}"/> to an <see cref="AutoArraySegment{T}"/>
+		/// </summary>
+		/// <typeparam name="T">The type of array element</typeparam>
+		/// <param name="array">The AutoArray to conver</param>
+		/// <param name="start">The starting offset of the segment</param>
+		/// <returns>An <see cref="AutoArraySegment{T}"/> representing the given array and range</returns>
+		public static AutoArraySegment<T> From<T>(AutoArray<T> array, int start) => new(new ArraySegment<T>(array.Array, start, array.Array.Length - start), array.Pool, array.WillClear);
+
+		/// <summary>
+		/// Converts an <see cref="AutoArray{T}"/> to an <see cref="AutoArraySegment{T}"/>
+		/// </summary>
+		/// <typeparam name="T">The type of array element</typeparam>
+		/// <param name="array">The AutoArray to conver</param>
+		/// <param name="start">The starting offset of the segment</param>
+		/// <param name="count">The length of the segment</param>
+		/// <returns>An <see cref="AutoArraySegment{T}"/> representing the given array and range</returns>
+		public static AutoArraySegment<T> From<T>(AutoArray<T> array, int start, int count) => new(new ArraySegment<T>(array.Array, start, count), array.Pool, array.WillClear);
+
+		/// <summary>
 		/// Wraps a previously rented array with an <see cref="AutoArraySegment{T}"/>
 		/// </summary>
 		/// <typeparam name="T">The type of array element</typeparam>

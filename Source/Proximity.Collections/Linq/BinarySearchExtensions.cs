@@ -223,7 +223,7 @@ namespace System.Linq
 		{
 			var Position = list.BinarySearch(index, count, item, comparer ??= Comparer<T>.Default);
 
-			if (Position > 0)
+			if (Position < 0)
 			{
 				Position = ~Position;
 
@@ -264,7 +264,7 @@ namespace System.Linq
 		{
 			var Position = list.BinarySearch(index, count, item, comparer ??= Comparer<T>.Default);
 
-			if (Position > 0)
+			if (Position < 0)
 			{
 				Position = ~Position;
 
@@ -305,7 +305,7 @@ namespace System.Linq
 		{
 			var Position = list.BinarySearch(index, count, item, comparer ??= Comparer<T>.Default);
 
-			if (Position > 0)
+			if (Position < 0)
 			{
 				Position = ~Position;
 
@@ -346,7 +346,7 @@ namespace System.Linq
 		{
 			var Position = list.BinarySearch(index, count, item, comparer ??= Comparer<T>.Default);
 
-			if (Position > 0)
+			if (Position < 0)
 			{
 				Position = ~Position;
 

@@ -231,6 +231,13 @@ namespace System.Collections.Observable
 		}
 
 		/// <summary>
+		/// Gets the key/value pair at the given index
+		/// </summary>
+		/// <param name="index">The index to retrieve</param>
+		/// <returns>They key/value pair at the requested index</returns>
+		public KeyValuePair<TKey, TValue> Get(int index) => InternalGet(index);
+
+		/// <summary>
 		/// Returns an enumerator that iterates through the collection
 		/// </summary>
 		/// <returns>An enumerator that can be used to iterate through the collection</returns>
