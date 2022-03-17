@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using Microsoft.Extensions.Logging;
 
 namespace Proximity.Terminal
@@ -13,6 +14,10 @@ namespace Proximity.Terminal
 	public sealed class TerminalView : TerminalRouter, ITerminal, ITerminalListener
 	{ //****************************************
 		private readonly HashSet<LogLevel> _IsEnabled = new();
+
+		private readonly IDisposable _HighlightScope, _IndentScope;
+		private readonly AsyncLocal<TerminalHighlight?> _CurrentHighlight = new AsyncLocal<TerminalHighlight?>();
+		private readonly AsyncLocal<int> _CurrentIndent = new AsyncLocal<int>();
 		//****************************************
 
 		/// <summary>
@@ -46,11 +51,34 @@ namespace Proximity.Terminal
 		{
 			Registries = registries.ToArray();
 			SetMinimum(LogLevel.Trace);
+
+			_HighlightScope = new HighlightScope(this);
+			_IndentScope = new IndentScope(this, 1);
 		}
 
 		//****************************************
 
-		IDisposable ILogger.BeginScope<TState>(TState state) => NullScope.Default;
+		IDisposable ILogger.BeginScope<TState>(TState state)
+		{
+			if (typeof(TState) == typeof(TerminalHighlight))
+			{
+				_CurrentHighlight.Value = (TerminalHighlight)(object)state;
+
+				return _HighlightScope;
+			}
+
+			if (typeof(TState) == typeof(TerminalIndent))
+			{
+				var Levels = ((TerminalIndent)(object)state).Levels;
+
+				var PreviousLevels = 
+				_CurrentIndent.Value = Levels;
+
+				return Levels == 1 ? _IndentScope : new IndentScope(this, Levels);
+			}
+
+			return NullScope.Default;
+		}
 
 		/// <summary>
 		/// Resets the minimum enabled log level
@@ -108,7 +136,11 @@ namespace Proximity.Terminal
 			if (string.IsNullOrEmpty(Message) && exception == null)
 				return;
 
-			var Record = new ConsoleRecord(DateTimeOffset.Now, logLevel, Message, exception: exception);
+			var Record = new ConsoleRecord(
+				DateTimeOffset.Now, logLevel, Message,
+				_CurrentIndent.Value, _CurrentHighlight.Value,
+				exception
+				);
 
 			((ITerminalListener)this).Log(Record);
 		}
@@ -150,6 +182,41 @@ namespace Proximity.Terminal
 
 			void IDisposable.Dispose()
 			{
+			}
+		}
+
+		private sealed class HighlightScope : IDisposable
+		{ //****************************************
+			private readonly TerminalView _View;
+			//****************************************
+
+			internal HighlightScope(TerminalView view) => _View = view;
+
+			//****************************************
+
+			void IDisposable.Dispose() => _View._CurrentHighlight.Value = null;
+		}
+
+		private sealed class IndentScope : IDisposable
+		{ //****************************************
+			private readonly TerminalView _View;
+			private readonly int _Levels;
+			//****************************************
+
+			internal IndentScope(TerminalView view, int levels)
+			{
+				_View = view;
+				_Levels = levels;
+			}
+
+			//****************************************
+
+			void IDisposable.Dispose()
+			{
+				var IndentLocal = _View._CurrentIndent;
+
+				if (IndentLocal.Value >= _Levels)
+					IndentLocal.Value -= _Levels;
 			}
 		}
 	}

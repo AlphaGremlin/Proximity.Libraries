@@ -416,7 +416,7 @@ namespace System.Buffers
 					if (MemoryMarshal.TryGetArray(_HeadSegment.Memory, out var MyBuffer))
 						_Pool.Return(MyBuffer.Array!, clearBuffers);
 
-					_HeadSegment = (BufferSegment)_HeadSegment.Next;
+					_HeadSegment = (BufferSegment?)_HeadSegment.Next;
 
 					if (_HeadSegment == null)
 						break;
@@ -429,14 +429,14 @@ namespace System.Buffers
 					// Correct the remainder on the header
 					NextSegment.CorrectMemory(length);
 					NextSegment.CorrectRunningIndex(RemovedLength);
-					NextSegment = (BufferSegment)NextSegment.Next;
+					NextSegment = (BufferSegment?)NextSegment.Next;
 
 					// Correct the Running Index on subsequent entries
 					while (NextSegment != null)
 					{
 						NextSegment.CorrectRunningIndex(length + RemovedLength);
 
-						NextSegment = (BufferSegment)NextSegment.Next;
+						NextSegment = (BufferSegment?)NextSegment.Next;
 					}
 
 					return;

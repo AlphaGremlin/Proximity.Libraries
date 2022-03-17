@@ -184,13 +184,13 @@ namespace Proximity.Terminal
 						else
 						{
 							// If we're echoing a command, ignore it if this is disabled
-							if (Record.Scope == TerminalScope.ConsoleCommand && !Theme.EchoCommands)
+							if (Record.Highlight == TerminalHighlight.ConsoleCommand && !Theme.EchoCommands)
 								continue;
 
 							if (!IsRedirected)
-								Console.ForegroundColor = Theme.GetColour(Record.Severity, Record.Scope);
+								Console.ForegroundColor = Theme.GetColour(Record.Severity, Record.Highlight);
 
-							if (Record.Scope == TerminalScope.ConsoleCommand)
+							if (Record.Highlight == TerminalHighlight.ConsoleCommand)
 							{
 								// We're echoing a command, put the prompt before it (no indentation)
 								Console.WriteLine("{0}{1}", Theme.Prompt, Record.Text);
@@ -295,57 +295,13 @@ namespace Proximity.Terminal
 
 				//****************************************
 
-				if (inputVisible)
-				{
-					HideInputArea();
-					inputVisible = false;
-				}
-
 				if (keyData.Key != ConsoleKey.Tab)
 					_PartialCommand = null;
 
-				var Width = Console.BufferWidth;
+				var BufferWidth = Console.BufferWidth;
 
 				switch (keyData.Key)
 				{
-				case ConsoleKey.UpArrow:
-					if (keyData.Modifiers.HasFlag(ConsoleModifiers.Control))
-					{
-						if (_InputIndex >= Width - 2)
-							_InputIndex -= Width;
-						else
-							_InputIndex = 0;
-					}
-					else if (_CommandHistoryIndex < _CommandHistory.Count - 1)
-					{
-						_CommandHistoryIndex++;
-
-						_InputLine.Length = 0;
-						_InputLine.Append(_CommandHistory[_CommandHistoryIndex]);
-						_InputIndex = _InputLine.Length;
-					}
-					break;
-
-				case ConsoleKey.DownArrow:
-					if (keyData.Modifiers.HasFlag(ConsoleModifiers.Control))
-					{
-						if (_InputIndex < Width - 2)
-							_InputIndex = Math.Min(_InputIndex + Width, _InputLine.Length);
-						else
-							_InputIndex = _InputLine.Length;
-					}
-					else if (_CommandHistoryIndex >= 0)
-					{
-						_CommandHistoryIndex--;
-
-						_InputLine.Length = 0;
-						if (_CommandHistoryIndex != -1)
-							_InputLine.Append(_CommandHistory[_CommandHistoryIndex]);
-
-						_InputIndex = _InputLine.Length;
-					}
-					break;
-
 				case ConsoleKey.LeftArrow:
 					if (_InputIndex > 0)
 					{
@@ -354,6 +310,9 @@ namespace Proximity.Terminal
 						else
 							_InputIndex--;
 					}
+
+					if (inputVisible)
+						RepositionCursor(BufferWidth);
 					break;
 
 				case ConsoleKey.RightArrow:
@@ -369,6 +328,79 @@ namespace Proximity.Terminal
 						else
 							_InputIndex++;
 					}
+
+					if (inputVisible)
+						RepositionCursor(BufferWidth);
+					break;
+
+				case ConsoleKey.Home:
+					_InputIndex = 0;
+
+					if (inputVisible)
+						RepositionCursor(BufferWidth);
+					break;
+
+				case ConsoleKey.End:
+					_InputIndex = _InputLine.Length;
+
+					if (inputVisible)
+						RepositionCursor(BufferWidth);
+					break;
+
+				case ConsoleKey.UpArrow:
+					if (keyData.Modifiers.HasFlag(ConsoleModifiers.Control))
+					{
+						if (_InputIndex >= BufferWidth - 2)
+							_InputIndex -= BufferWidth;
+						else
+							_InputIndex = 0;
+
+						if (inputVisible)
+							RepositionCursor(BufferWidth);
+					}
+					else if (_CommandHistoryIndex < _CommandHistory.Count - 1)
+					{
+						if (inputVisible)
+						{
+							HideInputArea();
+							inputVisible = false;
+						}
+
+						_CommandHistoryIndex++;
+
+						_InputLine.Length = 0;
+						_InputLine.Append(_CommandHistory[_CommandHistoryIndex]);
+						_InputIndex = _InputLine.Length;
+					}
+					break;
+
+				case ConsoleKey.DownArrow:
+					if (keyData.Modifiers.HasFlag(ConsoleModifiers.Control))
+					{
+						if (_InputIndex < BufferWidth - 2)
+							_InputIndex = Math.Min(_InputIndex + BufferWidth, _InputLine.Length);
+						else
+							_InputIndex = _InputLine.Length;
+
+						if (inputVisible)
+							RepositionCursor(BufferWidth);
+					}
+					else if (_CommandHistoryIndex >= 0)
+					{
+						if (inputVisible)
+						{
+							HideInputArea();
+							inputVisible = false;
+						}
+
+						_CommandHistoryIndex--;
+
+						_InputLine.Length = 0;
+						if (_CommandHistoryIndex != -1)
+							_InputLine.Append(_CommandHistory[_CommandHistoryIndex]);
+
+						_InputIndex = _InputLine.Length;
+					}
 					break;
 
 				case ConsoleKey.Tab:
@@ -380,21 +412,25 @@ namespace Proximity.Terminal
 					if (string.IsNullOrEmpty(NewCommand)) // No matching commands
 						break;
 
+					if (inputVisible)
+					{
+						HideInputArea();
+						inputVisible = false;
+					}
+
 					_InputLine.Length = 0;
 					_InputLine.Append(NewCommand);
 
 					_InputIndex = _InputLine.Length;
 					break;
 
-				case ConsoleKey.Home:
-					_InputIndex = 0;
-					break;
-
-				case ConsoleKey.End:
-					_InputIndex = _InputLine.Length;
-					break;
-
 				case ConsoleKey.Escape:
+					if (inputVisible)
+					{
+						HideInputArea();
+						inputVisible = false;
+					}
+
 					_InputLine.Length = 0;
 					_InputIndex = 0;
 					break;
@@ -406,6 +442,16 @@ namespace Proximity.Terminal
 						_InputLine.Remove(_InputIndex - 1, 1);
 
 						_InputIndex--;
+
+						if (inputVisible)
+						{
+							// Clear the character at the input point
+							RepositionCursor(BufferWidth);
+
+							Console.Write(" ");
+
+							RepositionCursor(BufferWidth);
+						}
 					}
 					break;
 
@@ -413,6 +459,15 @@ namespace Proximity.Terminal
 					if (_InputIndex < _InputLine.Length)
 					{
 						_InputLine.Remove(_InputIndex, 1);
+
+						if (inputVisible)
+						{
+							// Rewrite the remainder of the line
+							Console.Write(_InputLine.ToString(_InputIndex, _InputLine.Length - _InputIndex));
+							Console.Write(" "); // Clear the last character
+
+							RepositionCursor(BufferWidth);
+						}
 					}
 					break;
 
@@ -422,6 +477,22 @@ namespace Proximity.Terminal
 
 					_InputLine.Insert(_InputIndex, keyData.KeyChar);
 					_InputIndex++;
+
+					if (inputVisible)
+					{
+						if (_InputIndex == _InputLine.Length)
+						{
+							// Write to the end of the line
+							Console.Write(keyData.KeyChar);
+						}
+						else
+						{
+							// Replace the remaining line
+							Console.Write(_InputLine.ToString(_InputIndex - 1, _InputLine.Length - _InputIndex + 1));
+
+							RepositionCursor(BufferWidth);
+						}
+					}
 					break;
 				}
 			}
@@ -514,11 +585,14 @@ namespace Proximity.Terminal
 				// This may have pushed the console down a line, so we need to calculate the start index afterwards
 				_InputTop = Console.CursorTop - (_InputLine.Length + 2) / BufferWidth;
 
-				// Now calculate where the cursor location is
-				var RealPosition = (_InputIndex + 2);
-				Console.SetCursorPosition(RealPosition - (RealPosition / BufferWidth) * BufferWidth, _InputTop + (RealPosition / BufferWidth));
+				RepositionCursor(BufferWidth);
+			}
 
-				Console.ResetColor();
+			private void RepositionCursor(int bufferWidth)
+			{
+				// Recalculate where the cursor location is
+				var Row = Math.DivRem(_InputIndex + 2, bufferWidth, out var Column);
+				Console.SetCursorPosition(Column, _InputTop + Row);
 			}
 
 			//****************************************

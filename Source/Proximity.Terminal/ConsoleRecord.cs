@@ -17,13 +17,13 @@ namespace Proximity.Terminal
 		/// <param name="severity">The severity level</param>
 		/// <param name="text">The text content</param>
 		/// <param name="indentation">The indentation to display with</param>
-		/// <param name="scope">The scope providing additional context</param>
+		/// <param name="highlight">The highlighting providing additional visual context</param>
 		/// <param name="exception">An exception associated with the record</param>
-		public ConsoleRecord(DateTimeOffset timestamp, LogLevel severity, string text, int indentation = 0, TerminalScope? scope = null, Exception? exception = null)
+		public ConsoleRecord(DateTimeOffset timestamp, LogLevel severity, string text, int indentation = 0, TerminalHighlight? highlight = null, Exception? exception = null)
 		{
 			Timestamp = timestamp;
 			Severity = severity;
-			Scope = scope;
+			Highlight = highlight;
 			Exception = exception;
 			Text = text;
 			Indentation = indentation;
@@ -52,9 +52,9 @@ namespace Proximity.Terminal
 		public LogLevel Severity { get; }
 
 		/// <summary>
-		/// Gets the scope of the record
+		/// Gets the special highlighting of the record
 		/// </summary>
-		public TerminalScope? Scope { get; }
+		public TerminalHighlight? Highlight { get; }
 
 		/// <summary>
 		/// Gets the exception associated with the record

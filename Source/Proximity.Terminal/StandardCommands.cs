@@ -128,9 +128,9 @@ namespace Proximity.Terminal
 			var CurrentProcess = Process.GetCurrentProcess();
 			//****************************************
 
-			logger.LogInformation("Runtime Memory: {0:N}", GC.GetTotalMemory(false));
-			logger.LogInformation("Total Unshared Memory: {0:N}", CurrentProcess.PrivateMemorySize64);
-			logger.LogInformation("Total Virtual Memory: {0:N}", CurrentProcess.VirtualMemorySize64);
+			logger.LogInformation("Runtime Memory: {0:N0}", GC.GetTotalMemory(false));
+			logger.LogInformation("Total Unshared Memory: {0:N0}", CurrentProcess.PrivateMemorySize64);
+			logger.LogInformation("Total Virtual Memory: {0:N0}", CurrentProcess.VirtualMemorySize64);
 		}
 
 		/// <summary>

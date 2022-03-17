@@ -16,6 +16,8 @@ namespace Proximity.Terminal.Serilog
 	/// </summary>
 	internal sealed class TerminalSink : ILogEventSink
 	{ //****************************************
+		private readonly Func<LogEvent, Exception?, string> _MessageFormatter;
+
 		private readonly ITextFormatter _Formatter;
 		//****************************************
 
@@ -23,32 +25,102 @@ namespace Proximity.Terminal.Serilog
 		{
 			Terminal = terminal ?? throw new ArgumentNullException(nameof(terminal));
 			_Formatter = formatter ?? throw new ArgumentNullException(nameof(formatter));
+			_MessageFormatter = MessageFormatter;
 		}
 
 		//****************************************
 
 		void ILogEventSink.Emit(LogEvent logEvent)
 		{
-			var Target = EmitterTarget.GetOrCreate();
+			// Restore any Logging or Terminal properties passed through Serilog
+			EventId LogEventId = 0;
+			TerminalHighlight? Scope = null;
+			var Indent = 0;
 
+			if (logEvent.Properties.TryGetValue("EventId", out var EventIdProperty) && EventIdProperty is StructureValue StructuredEventId)
+			{
+				string? Name = null;
+				int? ID = null;
+
+				foreach (var Property in StructuredEventId.Properties)
+				{
+					if (Property.Value is not ScalarValue ScalarProperty)
+						continue;
+
+					switch (Property.Name)
+					{
+					case "Name":
+						Name = (string?)ScalarProperty.Value;
+						break;
+
+					case "Id":
+						ID = (int?)ScalarProperty.Value;
+						break;
+					}
+				}
+
+				LogEventId = new EventId(ID ?? 0, Name);
+			}
+
+			if (logEvent.Properties.TryGetValue("TerminalScope", out var ScopeProperty) && ScopeProperty is ScalarValue ScalarScope)
+			{
+				if (ScalarScope.Value is string ScopeName)
+					TerminalHighlight.FromName(ScopeName, out Scope);
+			}
+
+			// Serilog properties override based on the highest scope, so the indent value saved will be the innermost one
+			if (logEvent.Properties.TryGetValue("TerminalIndent", out var IndentProperty) && IndentProperty is ScalarValue ScalarIndent)
+			{
+				if (ScalarIndent.Value is int IndentValue)
+					Indent = IndentValue;
+			}
+
+			IDisposable? ScopeDisposable = null, IndentDisposable = null;
+
+			// Log the entry
 			try
 			{
-				_Formatter.Format(logEvent, Target.Writer);
+				if (Scope != null)
+					ScopeDisposable = Terminal.BeginScope(Scope);
 
-				Target.Writer.Flush();
+				if (Indent > 0)
+					IndentDisposable = Terminal.BeginScope(TerminalIndent.Replace(Indent));
 
-				var Message = Target.Buffer.ToSequence();
-
-				// Console automatically appends a newline, so ensure we don't write one
-				if (Message.EndsWith(Environment.NewLine.AsSpan(), StringComparison.Ordinal))
-					Message = Message.Slice(0, Message.Length - Environment.NewLine.Length);
-
-				Terminal.Log(Translate(logEvent.Level), logEvent.Exception, Message.AsString(), Array.Empty<object>());
+				Terminal.Log(Translate(logEvent.Level), LogEventId, logEvent, logEvent.Exception, _MessageFormatter);
 			}
 			finally
 			{
-				Target.Release();
+				IndentDisposable?.Dispose();
+				ScopeDisposable?.Dispose();
 			}
+		}
+
+		private string MessageFormatter(LogEvent logEvent, Exception? exception)
+		{
+			using var Target = EmitterTarget.GetOrCreate();
+
+			_Formatter.Format(logEvent, Target.Writer);
+
+			Target.Writer.Flush();
+
+			// Console automatically appends a newline, so ensure we don't write one
+			var NewLineSpan = Environment.NewLine.AsSpan();
+			var Builder = Target.Buffer.Builder;
+
+			if (Builder.Length >= NewLineSpan.Length)
+			{
+				Span<char> TempSpan = stackalloc char[NewLineSpan.Length];
+
+				var Offset = Builder.Length - TempSpan.Length;
+
+				for (var Index = 0; Index < TempSpan.Length; Index++)
+					TempSpan[Index] = Builder[Offset + Index];
+
+				if (NewLineSpan.Equals(TempSpan, StringComparison.Ordinal))
+					Builder.Remove(Offset, NewLineSpan.Length);
+			}
+
+			return Target.Buffer.ToString();
 		}
 
 		//****************************************
@@ -73,12 +145,12 @@ namespace Proximity.Terminal.Serilog
 
 		//****************************************
 
-		private readonly struct EmitterTarget
+		private readonly struct EmitterTarget : IDisposable
 		{ //****************************************
 			private static readonly ConcurrentBag<EmitterTarget> Instances = new();
 			//****************************************
 
-			private EmitterTarget(BufferWriter<char> buffer, CharTextWriter writer)
+			private EmitterTarget(StringBuilderWriter buffer, CharTextWriter writer)
 			{
 				Buffer = buffer;
 				Writer = writer;
@@ -86,7 +158,7 @@ namespace Proximity.Terminal.Serilog
 
 			//****************************************
 
-			public void Release()
+			public void Dispose()
 			{
 				Writer.Flush();
 				Buffer.Reset();
@@ -96,7 +168,7 @@ namespace Proximity.Terminal.Serilog
 
 			//****************************************
 
-			public BufferWriter<char> Buffer { get; }
+			public StringBuilderWriter Buffer { get; }
 
 			public CharTextWriter Writer { get; }
 
@@ -106,7 +178,7 @@ namespace Proximity.Terminal.Serilog
 			{
 				if (!Instances.TryTake(out var Target))
 				{
-					var Buffer = new BufferWriter<char>();
+					var Buffer = new StringBuilderWriter();
 
 					Target = new EmitterTarget(Buffer, new CharTextWriter(Buffer));
 				}

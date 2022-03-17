@@ -21,9 +21,9 @@ namespace Proximity.Terminal
 		/// Gets the colour associated with a particular logging level
 		/// </summary>
 		/// <param name="level">The relevant logging level, or null if this is a reported console command </param>
-		/// <param name="scope">The custom scope for the entry being logged</param>
+		/// <param name="highlight">The additional highlighting information for the entry being logged</param>
 		/// <returns>The associated colour</returns>
-		public abstract ConsoleColor GetColour(LogLevel? level, TerminalScope? scope);
+		public abstract ConsoleColor GetColour(LogLevel? level, TerminalHighlight? highlight);
 
 		//****************************************
 
@@ -51,12 +51,12 @@ namespace Proximity.Terminal
 
 		private sealed class DefaultTheme : TerminalTheme
 		{
-			public override ConsoleColor GetColour(LogLevel? level, TerminalScope? scope)
+			public override ConsoleColor GetColour(LogLevel? level, TerminalHighlight? highlight)
 			{
-				if (scope == TerminalScope.ConsoleCommand)
+				if (highlight == TerminalHighlight.ConsoleCommand)
 					return ConsoleColor.Green;
 
-				if (scope == TerminalScope.Milestone)
+				if (highlight == TerminalHighlight.Milestone)
 					return ConsoleColor.Cyan;
 
 				return level switch
@@ -71,6 +71,8 @@ namespace Proximity.Terminal
 					_ => ConsoleColor.Gray,
 				};
 			}
+
+			//****************************************
 
 			public override string Prompt => "> ";
 

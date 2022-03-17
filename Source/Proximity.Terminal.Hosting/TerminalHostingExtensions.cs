@@ -1,6 +1,7 @@
 using System;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Proximity.Terminal.Hosting;
 
 namespace Proximity.Terminal
@@ -10,61 +11,69 @@ namespace Proximity.Terminal
 	/// </summary>
 	public static class TerminalHostingExtensions
 	{
-		/// <summary>
-		/// Initialises the Global Terminal Registry
-		/// </summary>
-		/// <param name="builder">The Host Builder to attach to</param>
-		/// <param name="configureRegistry">A callback to configure the registry. If null, automatically scans loaded and future assemblies</param>
-		/// <returns>The Host Builder</returns>
-		public static IHostBuilder UseTerminal(this IHostBuilder builder, Action<TerminalRegistry>? configureRegistry = null)
+		public static ILoggingBuilder AddTerminal(this ILoggingBuilder builder, Action<TerminalRegistry>? configureRegistry = null) => builder.AddTerminal(TerminalConsole.View!, configureRegistry);
+
+		public static ILoggingBuilder AddTerminal(this ILoggingBuilder builder, ITerminal terminal, Action<TerminalRegistry>? configureRegistry = null)
 		{
-			if (builder == null)
-				throw new ArgumentNullException(nameof(builder));
+			if (terminal == null)
+				throw new ArgumentNullException(nameof(terminal), "Terminal is not initialised");
 
-			if (configureRegistry == null)
-				return builder.ConfigureServices(UseDefaultTerminal);
+			builder.Services.AddTerminal(terminal, configureRegistry);
 
-			return builder.ConfigureServices((context, services) =>
-			{
-				var Registry = TerminalRegistry.Global;
-
-				services.AddSingleton(Registry);
-
-				configureRegistry(Registry);
-			});
+			return builder.AddProvider(new TerminalLogProvider(terminal));
 		}
 
-		/// <summary>
-		/// Initialises the Global Terminal Registry
-		/// </summary>
-		/// <param name="builder">The Host Builder to attach to</param>
-		/// <param name="configureRegistry">A callback to configure the registry. If null, automatically scans loaded and future assemblies</param>
-		/// <returns>The Host Builder</returns>
-		public static IHostBuilder UseTerminal(this IHostBuilder builder, Action<TerminalRegistry, IServiceProvider> configureRegistry)
+		public static ILoggingBuilder AddTerminal(this ILoggingBuilder builder, Action<TerminalRegistry, IServiceProvider> configureRegistry) => builder.AddTerminal(TerminalConsole.View!, configureRegistry);
+
+		public static ILoggingBuilder AddTerminal(this ILoggingBuilder builder, ITerminal terminal, Action<TerminalRegistry, IServiceProvider> configureRegistry)
 		{
-			if (builder == null)
-				throw new ArgumentNullException(nameof(builder));
+			if (terminal == null)
+				throw new ArgumentNullException(nameof(terminal), "Terminal is not initialised");
 
-			if (configureRegistry == null)
-				return builder.ConfigureServices(UseDefaultTerminal);
+			builder.Services.AddTerminal(terminal, configureRegistry);
 
-			return builder.ConfigureServices((context, services) =>
-			{
-				services.AddSingleton(TerminalRegistry.Global);
-				services.AddHostedService(provider => new TerminalHostService(provider, configureRegistry));
-			});
+			return builder.AddProvider(new TerminalLogProvider(terminal));
 		}
 
-		//****************************************
+		public static IServiceCollection AddTerminal(this IServiceCollection services, Action<TerminalRegistry>? configureRegistry = null) => services.AddTerminal(TerminalConsole.View!, configureRegistry);
 
-		private static void UseDefaultTerminal(HostBuilderContext context, IServiceCollection services)
+		public static IServiceCollection AddTerminal(this IServiceCollection services, ITerminal terminal, Action<TerminalRegistry>? configureRegistry = null)
 		{
+			if (terminal == null)
+				throw new ArgumentNullException(nameof(terminal), "Terminal is not initialised");
+
 			var Registry = TerminalRegistry.Global;
 
 			services.AddSingleton(Registry);
 
-			Registry.ScanLoaded();
-			Registry.ScanOnLoad();
+			if (configureRegistry == null)
+			{
+				Registry.ScanLoaded();
+				Registry.ScanOnLoad();
+			}
+			else
+			{
+				configureRegistry(Registry);
+			}
+
+			return services.AddSingleton(terminal);
+		}
+
+		public static IServiceCollection AddTerminal(this IServiceCollection services, Action<TerminalRegistry, IServiceProvider> configureRegistry) => services.AddTerminal(TerminalConsole.View!, configureRegistry);
+
+		public static IServiceCollection AddTerminal(this IServiceCollection services, ITerminal terminal, Action<TerminalRegistry, IServiceProvider> configureRegistry)
+		{
+			if (terminal == null)
+				throw new ArgumentNullException(nameof(terminal), "Terminal is not initialised");
+
+			if (configureRegistry == null)
+				throw new ArgumentNullException(nameof(configureRegistry));
+
+			var Registry = TerminalRegistry.Global;
+
+			return services
+				.AddHostedService(provider => new TerminalHostService(provider, configureRegistry))
+				.AddSingleton(terminal);
 		}
 	}
 }

@@ -110,9 +110,9 @@ namespace Proximity.Terminal.Logging
 
 			if (state is ConsoleRecord Record)
 			{
-				if (Record.Scope == TerminalScope.Milestone)
+				if (Record.Highlight == TerminalHighlight.Milestone)
 					Level = Severity.Milestone;
-				else if (Record.Scope == TerminalScope.ConsoleCommand)
+				else if (Record.Highlight == TerminalHighlight.ConsoleCommand)
 					Level = Severity.None;
 
 				if (exception != null)

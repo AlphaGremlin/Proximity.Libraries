@@ -5,6 +5,9 @@ using Proximity.Terminal.Metadata;
 
 namespace Proximity.Terminal
 {
+	/// <summary>
+	/// Represents the results of parsing a terminal command
+	/// </summary>
 	public readonly ref struct TerminalParseResult
 	{
 		internal TerminalParseResult(TerminalTypeSet? typeSet, TerminalTypeInstance? instance, ReadOnlySpan<char> command, ReadOnlySpan<char> arguments)
@@ -39,7 +42,7 @@ namespace Proximity.Terminal
 
 		//****************************************
 
-		public TerminalTypeSet? TypeSet{ get; }
+		public TerminalTypeSet? TypeSet { get; }
 
 		public TerminalTypeInstance? Instance { get; }
 

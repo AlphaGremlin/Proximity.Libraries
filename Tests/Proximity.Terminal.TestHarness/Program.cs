@@ -72,7 +72,7 @@ namespace Proximity.Terminal.TestHarness
 			{
 				TerminalConsole.Initialise(commandLine);
 
-				var builder = new HostBuilder()
+				var Builder = new HostBuilder()
 					.ConfigureAppConfiguration((hostContext, config) =>
 					{
 						config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
@@ -97,21 +97,21 @@ namespace Proximity.Terminal.TestHarness
 					{
 						var Configuration = hostContext.Configuration;
 
-						services.AddSingleton<ITerminal>(TerminalConsole.View);
+						// Since we didn't register the Terminal during ConfigureLogging, we need to register it here
+						services.AddTerminal(registry =>
+						{
+							// Load the Program type and Standard Commands
+							registry.Scan(typeof(Program));
+							registry.Scan(typeof(StandardCommands));
+						});
 						services.AddSingleton<Program>();
 						services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<Program>());
 					})
 					.UseSerilog()
-					.UseTerminal(registry =>
-					{
-						// Load the Program type and Standard Commands
-						registry.Scan(typeof(Program));
-						registry.Scan(typeof(StandardCommands));
-					})
 					.UseConsoleLifetime()
 					;
 
-				var Host = builder.Build();
+				var Host = Builder.Build();
 
 				await Host.RunAsync(Exited.Token);
 
@@ -132,6 +132,50 @@ namespace Proximity.Terminal.TestHarness
 			{
 				Log.CloseAndFlush();
 
+				TerminalConsole.Terminate();
+			}
+		}
+
+		private static async Task<int> MainMicrosoft(bool commandLine)
+		{
+			try
+			{
+				TerminalConsole.Initialise(commandLine);
+
+				var Builder = new HostBuilder()
+					.ConfigureAppConfiguration((hostContext, config) =>
+					{
+						config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
+
+						config.AddEnvironmentVariables();
+					})
+					.ConfigureLogging((hostContext, logging) =>
+					{
+						logging.AddTerminal(TerminalConsole.View, registry =>
+						{
+							// Load the Program type and Standard Commands
+							registry.Scan(typeof(Program));
+							registry.Scan(typeof(StandardCommands));
+						});
+					})
+					.ConfigureServices((hostContext, services) =>
+					{
+						var Configuration = hostContext.Configuration;
+
+						services.AddSingleton<Program>();
+						services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<Program>());
+					})
+					.UseConsoleLifetime()
+					;
+
+				var Host = Builder.Build();
+
+				await Host.RunAsync(Exited.Token);
+
+				return 0;
+			}
+			finally
+			{
 				TerminalConsole.Terminate();
 			}
 		}

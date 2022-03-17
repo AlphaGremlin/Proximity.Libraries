@@ -55,7 +55,7 @@ namespace Proximity.Terminal.Logging
 		/// <inheritdoc />
 		protected override void Write(LogEntry entry)
 		{
-			TerminalScope? Scope = null;
+			TerminalHighlight? Scope = null;
 
 			var Level = entry.Severity switch
 			{
@@ -70,9 +70,9 @@ namespace Proximity.Terminal.Logging
 			};
 
 			if (entry.Severity == Severity.Milestone)
-				Scope = TerminalScope.Milestone;
+				Scope = TerminalHighlight.Milestone;
 			else if (entry.Severity == Severity.None)
-				Scope = TerminalScope.ConsoleCommand;
+				Scope = TerminalHighlight.ConsoleCommand;
 
 			if (entry is ExceptionLogEntry ExceptionEntry)
 				Logger.Log(Level, default, new ConsoleRecord(entry.Timestamp, Level, entry.Text, Target.SectionDepth, Scope, ExceptionEntry.Exception), ExceptionEntry.Exception, Formatter);
