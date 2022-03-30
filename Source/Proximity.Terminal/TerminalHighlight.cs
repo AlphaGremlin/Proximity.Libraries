@@ -18,7 +18,7 @@ namespace Proximity.Terminal
 		IEnumerator<KeyValuePair<string, object>> IEnumerable<KeyValuePair<string, object>>.GetEnumerator()
 		{
 			// Enables capturing this scope as a property for other scope providers
-			yield return new KeyValuePair<string, object>("TerminalHighlight", Name);
+			yield return new KeyValuePair<string, object>(ScopeProperty, Name);
 		}
 
 		IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable<KeyValuePair<string, object>>)this).GetEnumerator();
@@ -41,6 +41,11 @@ namespace Proximity.Terminal
 		/// Represents a milestone entry
 		/// </summary>
 		public static TerminalHighlight Milestone { get; } = new TerminalHighlight("Milestone");
+
+		/// <summary>
+		/// Gets the property name returned for scope providers
+		/// </summary>
+		public const string ScopeProperty = "TerminalHighlight";
 
 		/// <summary>
 		/// Maps a name to a valid Terminal Highlight

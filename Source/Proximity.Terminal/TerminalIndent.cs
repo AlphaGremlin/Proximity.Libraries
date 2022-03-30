@@ -31,7 +31,7 @@ namespace Proximity.Terminal
 		IEnumerator<KeyValuePair<string, object>> IEnumerable<KeyValuePair<string, object>>.GetEnumerator()
 		{
 			// Enables capturing this scope as a property for other scope providers
-			yield return new KeyValuePair<string, object>("TerminalIndent", Levels);
+			yield return new KeyValuePair<string, object>(ScopeProperty, Levels);
 		}
 
 		IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable<KeyValuePair<string, object>>)this).GetEnumerator();
@@ -44,6 +44,11 @@ namespace Proximity.Terminal
 		/// Gets the number of indentation levels
 		/// </summary>
 		public int Levels { get; }
+
+		/// <summary>
+		/// Gets the property name returned for scope providers
+		/// </summary>
+		public const string ScopeProperty = "TerminalIndent";
 
 		//****************************************
 

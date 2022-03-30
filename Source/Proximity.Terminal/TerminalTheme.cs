@@ -66,9 +66,9 @@ namespace Proximity.Terminal
 					LogLevel.Warning => ConsoleColor.Yellow,
 					LogLevel.None => ConsoleColor.Cyan,
 					LogLevel.Information => ConsoleColor.White,
-					LogLevel.Debug => ConsoleColor.Blue,
+					LogLevel.Debug => ConsoleColor.Gray,
 					null => PromptColour,
-					_ => ConsoleColor.Gray,
+					_ => ConsoleColor.Blue,
 				};
 			}
 

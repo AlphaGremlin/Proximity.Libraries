@@ -34,7 +34,7 @@ namespace Proximity.Terminal.Serilog
 		{
 			// Restore any Logging or Terminal properties passed through Serilog
 			EventId LogEventId = 0;
-			TerminalHighlight? Scope = null;
+			TerminalHighlight? Highlight = null;
 			var Indent = 0;
 
 			if (logEvent.Properties.TryGetValue("EventId", out var EventIdProperty) && EventIdProperty is StructureValue StructuredEventId)
@@ -62,26 +62,26 @@ namespace Proximity.Terminal.Serilog
 				LogEventId = new EventId(ID ?? 0, Name);
 			}
 
-			if (logEvent.Properties.TryGetValue("TerminalScope", out var ScopeProperty) && ScopeProperty is ScalarValue ScalarScope)
+			if (logEvent.Properties.TryGetValue(TerminalHighlight.ScopeProperty, out var HighlightProperty) && HighlightProperty is ScalarValue ScalarHighlight)
 			{
-				if (ScalarScope.Value is string ScopeName)
-					TerminalHighlight.FromName(ScopeName, out Scope);
+				if (ScalarHighlight.Value is string HighlightName)
+					TerminalHighlight.FromName(HighlightName, out Highlight);
 			}
 
 			// Serilog properties override based on the highest scope, so the indent value saved will be the innermost one
-			if (logEvent.Properties.TryGetValue("TerminalIndent", out var IndentProperty) && IndentProperty is ScalarValue ScalarIndent)
+			if (logEvent.Properties.TryGetValue(TerminalIndent.ScopeProperty, out var IndentProperty) && IndentProperty is ScalarValue ScalarIndent)
 			{
 				if (ScalarIndent.Value is int IndentValue)
 					Indent = IndentValue;
 			}
 
-			IDisposable? ScopeDisposable = null, IndentDisposable = null;
+			IDisposable? HighlightDisposable = null, IndentDisposable = null;
 
 			// Log the entry
 			try
 			{
-				if (Scope != null)
-					ScopeDisposable = Terminal.BeginScope(Scope);
+				if (Highlight != null)
+					HighlightDisposable = Terminal.BeginScope(Highlight);
 
 				if (Indent > 0)
 					IndentDisposable = Terminal.BeginScope(TerminalIndent.Replace(Indent));
@@ -91,7 +91,7 @@ namespace Proximity.Terminal.Serilog
 			finally
 			{
 				IndentDisposable?.Dispose();
-				ScopeDisposable?.Dispose();
+				HighlightDisposable?.Dispose();
 			}
 		}
 

@@ -14,7 +14,10 @@ namespace Serilog
 	/// </summary>
 	public static class TerminalConfigurationExtensions
 	{
-		internal const string DefaultTerminalOutputTemplate = "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}";
+		/// <summary>
+		/// The terminal uses highlighting and has its own exception rendering, so rendering the level and exception is unnecessary
+		/// </summary>
+		public const string DefaultTerminalOutputTemplate = "[{Timestamp:HH:mm:ss}] {Message:lj}{NewLine}";
 
 		/// <summary>
 		/// Attaches a Serilog event sink that writes to a Terminal View
