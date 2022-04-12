@@ -443,6 +443,7 @@ namespace System.Buffers
 				}
 
 				// We removed all saved segments, leaving only the contents of the current buffer
+				_TailSegment = null;
 			}
 
 			// We could copy internally to the buffer, but it's faster to just ignore the data already written

@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace System.IO
 {
 	/// <summary>
-	/// Provides a Stream that writes to a Buffer Writer
+	/// Provides a <see cref="Stream"/> that writes to an <see cref="IBufferWriter{Byte}"/>
 	/// </summary>
 	public sealed class BufferWriterStream : Stream
 	{ //****************************************

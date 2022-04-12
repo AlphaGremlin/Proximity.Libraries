@@ -8,7 +8,7 @@ using System.Threading;
 namespace System.IO
 {
 	/// <summary>
-	/// Provides a Stream that reads from an <see cref="IBufferReader{Byte}"/>
+	/// Provides a <see cref="Stream"/> that reads from an <see cref="IBufferReader{Byte}"/>
 	/// </summary>
 	public sealed class BufferReaderStream : Stream
 	{ //****************************************

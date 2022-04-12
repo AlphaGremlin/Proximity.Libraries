@@ -1,30 +1,25 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace System.Buffers
 {
 	/// <summary>
-	/// Provides incremental pull reading
+	/// Provides asynchronous incremental pull reading
 	/// </summary>
 	/// <typeparam name="T">The type of element to read</typeparam>
-	public interface IBufferReader<T>
+	public interface IBufferReaderAsync<T>
 	{
 		/// <summary>
 		/// Retrieves a buffer representing the next unread block of data
 		/// </summary>
 		/// <param name="minSize">The minimum desired block size. If 0, a non-empty buffer is returned.</param>
+		/// <param name="cancellationToken">A cancellation token to abort the operation</param>
 		/// <returns>The requested buffer</returns>
 		/// <remarks>Can be less than requested if the underlying source has ended. When this occurs, subsequent calls should return an empty buffer.</remarks>
-		ReadOnlyMemory<T> GetMemory(int minSize);
-
-		/// <summary>
-		/// Retrieves a buffer representing the next unread block of data
-		/// </summary>
-		/// <param name="minSize">The minimum desired block size. If 0, a non-empty buffer is returned.</param>
-		/// <returns>The requested buffer</returns>
-		/// <remarks>Can be less than requested if the underlying source has ended. When this occurs, subsequent calls should return an empty buffer.</remarks>
-		ReadOnlySpan<T> GetSpan(int minSize);
+		ValueTask<ReadOnlyMemory<T>> GetMemoryAsync(int minSize, CancellationToken cancellationToken = default);
 
 		/// <summary>
 		/// Advances the reader forward

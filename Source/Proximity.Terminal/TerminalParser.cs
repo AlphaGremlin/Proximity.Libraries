@@ -748,7 +748,8 @@ namespace Proximity.Terminal
 
 		internal static ValueTask<bool> InternalExecute(ITerminal terminal, string command, CancellationToken token)
 		{
-			terminal.Log(LogLevel.Information, default, new ConsoleRecord(DateTimeOffset.Now, LogLevel.Information, command, highlight: TerminalHighlight.ConsoleCommand), null, (record, exception) => record.Text);
+			using (terminal.BeginScope(TerminalHighlight.ConsoleCommand))
+				terminal.Log(LogLevel.Information, default, new ConsoleRecord(DateTimeOffset.Now, LogLevel.Information, command, highlight: TerminalHighlight.ConsoleCommand), null, (record, exception) => record.Text);
 
 			var Command = command.AsSpan();
 			var IsHelp = false;

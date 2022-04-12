@@ -18,6 +18,11 @@ namespace Proximity.Terminal
 		//****************************************
 
 		/// <summary>
+		/// Initialises the console to act as a Terminal, automatically determining whether to offer a commandline based on <see cref="Environment.UserInteractive"/>
+		/// </summary>
+		public static void Initialise() => Initialise(Environment.UserInteractive, new TerminalView(), TerminalTheme.Default);
+
+		/// <summary>
 		/// Initialises the console to act as a Terminal
 		/// </summary>
 		/// <param name="hasCommandLine">Whether to offer an interactive command line</param>

@@ -71,9 +71,6 @@ namespace Proximity.Terminal
 			{
 				var Levels = ((TerminalIndent)(object)state).Levels;
 
-				var PreviousLevels = 
-				_CurrentIndent.Value = Levels;
-
 				return Levels == 1 ? _IndentScope : new IndentScope(this, Levels);
 			}
 

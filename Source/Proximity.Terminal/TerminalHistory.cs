@@ -25,7 +25,8 @@ namespace Proximity.Terminal
 		/// <param name="source"></param>
 		public TerminalHistory(TerminalHistory source)
 		{
-			_History.AddRange(source._History);
+			lock (source._History)
+				_History.AddRange(source._History);
 		}
 
 		//****************************************

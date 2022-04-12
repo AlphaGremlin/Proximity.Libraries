@@ -46,6 +46,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Diagnostics.Tests
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Proximity.Terminal.Logging", "Source\Proximity.Terminal.Logging\Proximity.Terminal.Logging.csproj", "{4574B37A-A083-4B81-A5B8-13CD973C1B33}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proximity.Text.Json", "Source\Proximity.Text.Json\Proximity.Text.Json.csproj", "{D9EA90D5-6D0F-44CC-B4D6-CE0550C12A33}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -346,6 +348,22 @@ Global
 		{4574B37A-A083-4B81-A5B8-13CD973C1B33}.Release|Net40.Build.0 = Release|Any CPU
 		{4574B37A-A083-4B81-A5B8-13CD973C1B33}.Release|Net45.ActiveCfg = Release|Any CPU
 		{4574B37A-A083-4B81-A5B8-13CD973C1B33}.Release|Net45.Build.0 = Release|Any CPU
+		{D9EA90D5-6D0F-44CC-B4D6-CE0550C12A33}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D9EA90D5-6D0F-44CC-B4D6-CE0550C12A33}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D9EA90D5-6D0F-44CC-B4D6-CE0550C12A33}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{D9EA90D5-6D0F-44CC-B4D6-CE0550C12A33}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{D9EA90D5-6D0F-44CC-B4D6-CE0550C12A33}.Debug|Net40.ActiveCfg = Debug|Any CPU
+		{D9EA90D5-6D0F-44CC-B4D6-CE0550C12A33}.Debug|Net40.Build.0 = Debug|Any CPU
+		{D9EA90D5-6D0F-44CC-B4D6-CE0550C12A33}.Debug|Net45.ActiveCfg = Debug|Any CPU
+		{D9EA90D5-6D0F-44CC-B4D6-CE0550C12A33}.Debug|Net45.Build.0 = Debug|Any CPU
+		{D9EA90D5-6D0F-44CC-B4D6-CE0550C12A33}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D9EA90D5-6D0F-44CC-B4D6-CE0550C12A33}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D9EA90D5-6D0F-44CC-B4D6-CE0550C12A33}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{D9EA90D5-6D0F-44CC-B4D6-CE0550C12A33}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{D9EA90D5-6D0F-44CC-B4D6-CE0550C12A33}.Release|Net40.ActiveCfg = Release|Any CPU
+		{D9EA90D5-6D0F-44CC-B4D6-CE0550C12A33}.Release|Net40.Build.0 = Release|Any CPU
+		{D9EA90D5-6D0F-44CC-B4D6-CE0550C12A33}.Release|Net45.ActiveCfg = Release|Any CPU
+		{D9EA90D5-6D0F-44CC-B4D6-CE0550C12A33}.Release|Net45.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

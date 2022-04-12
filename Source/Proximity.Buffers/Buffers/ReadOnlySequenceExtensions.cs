@@ -410,20 +410,12 @@ namespace System.Buffers
 			if (maximum < 0)
 				throw new ArgumentOutOfRangeException(nameof(maximum));
 
-			if (maximum == 0)
-				return 0;
+			var Length = source.Length;
 
-			var Offset = 0;
+			if (Length > int.MaxValue)
+				return maximum;
 
-			foreach (var Segment in source)
-			{
-				if (Segment.Length > maximum - Offset)
-					return maximum;
-
-				Offset += Segment.Length;
-			}
-
-			return Offset;
+			return Math.Min(maximum, (int)source.Length);
 		}
 
 		/// <summary>

@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace System.Buffers
 {
@@ -11,7 +12,7 @@ namespace System.Buffers
 	/// </summary>
 	/// <typeparam name="T">The type of sequence element</typeparam>
 	/// <remarks>When requesting 0-size blocks, we guarantee to not allocate any temporary buffers, and thus does not require <see cref="Dispose"/> to be called.</remarks>
-	public sealed class BufferReader<T> : IBufferReader<T>, IDisposable
+	public sealed class BufferReader<T> : IBufferReader<T>, IBufferReaderAsync<T>, IDisposable
 	{ //****************************************
 		private ReadOnlySequence<T> _Buffer, _OriginalBuffer;
 		private T[]? _OutputBuffer;
@@ -98,6 +99,9 @@ namespace System.Buffers
 		/// <param name="count">The number of elements to advance over</param>
 		public void Advance(int count)
 		{
+			if (count < 0 || count > _Buffer.Length)
+				throw new ArgumentOutOfRangeException(nameof(count));
+
 			if (count == 0)
 				return;
 
@@ -145,6 +149,15 @@ namespace System.Buffers
 		/// Retrieves a buffer representing the next unread block of data
 		/// </summary>
 		/// <param name="minSize">The minimum desired block size</param>
+		/// <param name="cancellationToken">A cancellation token to abort the operation</param>
+		/// <returns>The requested buffer</returns>
+		/// <remarks>Can be less than requested if the underlying source has ended.</remarks>
+		public ValueTask<ReadOnlyMemory<T>> GetMemoryAsync(int minSize, CancellationToken cancellationToken = default) => new(GetMemory(minSize));
+
+		/// <summary>
+		/// Retrieves a buffer representing the next unread block of data
+		/// </summary>
+		/// <param name="minSize">The minimum desired block size</param>
 		/// <returns>The requested buffer</returns>
 		/// <remarks>Can be less than requested if the underlying source has ended.</remarks>
 		public ReadOnlySpan<T> GetSpan(int minSize) => GetMemory(minSize).Span;
@@ -152,7 +165,7 @@ namespace System.Buffers
 		//****************************************
 
 		/// <summary>
-		/// Gets the position the next call to <see cref="GetMemory"/> or <see cref="GetSpan"/> will read from
+		/// Gets the position the next call to <see cref="O:GetMemory"/> or <see cref="GetSpan"/> will read from
 		/// </summary>
 		public long Position { get; private set; }
 	}
