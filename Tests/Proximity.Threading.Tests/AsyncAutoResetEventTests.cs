@@ -29,6 +29,24 @@ namespace Proximity.Threading.Tests
 		}
 
 		[Test]
+		public void DisposeTryWait()
+		{
+			var Event = new AsyncAutoResetEvent();
+
+			Event.Dispose();
+
+			try
+			{
+				_ = Event.TryWait();
+
+				Assert.Fail("Did not throw");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
+		}
+
+		[Test]
 		public void DisposeWait()
 		{
 			var Event = new AsyncAutoResetEvent();

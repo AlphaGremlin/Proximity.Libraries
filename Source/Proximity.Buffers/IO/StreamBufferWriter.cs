@@ -91,6 +91,9 @@ namespace System.IO
 		{
 			if (_Buffer == null)
 			{
+				if (sizeHint == 0)
+					sizeHint = 1024;
+
 				_Buffer = ArrayPool<byte>.Shared.Rent(sizeHint);
 			}
 			else if (_Buffer.Length < sizeHint)

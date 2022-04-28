@@ -29,6 +29,42 @@ namespace Proximity.Threading.Tests
 		}
 
 		[Test]
+		public void DisposeTryWait()
+		{
+			var Event = new AsyncManualResetEvent();
+
+			Event.Dispose();
+
+			try
+			{
+				Event.TryWait();
+
+				Assert.Fail("Did not throw");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
+		}
+
+		[Test]
+		public void DisposeTryWaitBlocking()
+		{
+			var Event = new AsyncManualResetEvent();
+
+			Event.Dispose();
+
+			try
+			{
+				Event.TryWait(Timeout.InfiniteTimeSpan);
+
+				Assert.Fail("Did not throw");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
+		}
+
+		[Test]
 		public void DisposeWait()
 		{
 			var Event = new AsyncManualResetEvent();
@@ -144,6 +180,37 @@ namespace Proximity.Threading.Tests
 			Assert.IsFalse(Event.TryWait());
 		}
 
+		[Test, Timeout(1000)]
+		public void TryWaitDispose()
+		{
+			var Event = new AsyncManualResetEvent();
+
+			Task.Run(() =>
+			{
+				Thread.Sleep(100);
+
+				Event.Dispose();
+			});
+
+			try
+			{
+				Event.TryWait(Timeout.InfiniteTimeSpan);
+
+				Assert.Fail("Did not throw");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
+		}
+
+		[Test, Timeout(1000)]
+		public void TryWaitTimeout()
+		{
+			var Event = new AsyncManualResetEvent();
+
+			Assert.IsFalse(Event.TryWait(new TimeSpan(0, 0, 0, 0, 100)));
+		}
+
 		[Test]
 		public void Wait()
 		{
@@ -174,6 +241,36 @@ namespace Proximity.Threading.Tests
 			catch (OperationCanceledException)
 			{
 			}
+		}
+
+		[Test, Timeout(1000)]
+		public async Task WaitDispose()
+		{
+			var Event = new AsyncManualResetEvent();
+
+			var Task = Event.Wait(Timeout.InfiniteTimeSpan);
+
+			Event.Dispose();
+
+			try
+			{
+				await Task;
+
+				Assert.Fail("Did not throw");
+			}
+			catch (ObjectDisposedException)
+			{
+			}
+		}
+
+		[Test, Timeout(1000)]
+		public async Task WaitTimeout()
+		{
+			var Event = new AsyncManualResetEvent();
+
+			var Task = Event.Wait(new TimeSpan(0, 0, 0, 0, 100));
+
+			Assert.IsFalse(await Task);
 		}
 
 		[Test, Timeout(1000)]

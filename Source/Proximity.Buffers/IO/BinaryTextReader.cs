@@ -14,7 +14,7 @@ namespace System.IO
 	/// <summary>
 	/// Implements a TextReader that works directly from a byte sequence, rather than requiring a MemoryStream wrapper
 	/// </summary>
-	public sealed class BinaryTextReader : TextReader
+	public sealed class BinaryTextReader : TextReader, IBufferReader<char>
 	{ //****************************************
 		private const int MinBufferSize = 128;
 		private const int DefaultBufferSize = 1024;
@@ -246,6 +246,75 @@ namespace System.IO
 
 		//****************************************
 
+		/// <summary>
+		/// Advances the reader forward
+		/// </summary>
+		/// <param name="count">The number of bytes to advance over</param>
+		public void Advance(int count)
+		{
+			if (count < 0 || count > _BufferLength)
+				throw new ArgumentOutOfRangeException(nameof(count));
+
+			_BufferIndex += count;
+			_BufferLength -= count;
+		}
+
+		/// <summary>
+		/// Reads data into the buffer from the underlying Reader.
+		/// </summary>
+		/// <param name="minSize">The minimum desired block size. If 0, a non-empty buffer is returned.</param>
+		/// <returns>The requested buffer.</returns>
+		/// <remarks>Can be less than requested if the reader has ended. When this occurs, subsequent calls should return an empty buffer.</remarks>
+		public ReadOnlyMemory<char> GetMemory(int minSize)
+		{
+			// If we have enough data already to satisfy this request, just return it
+			if (_BufferLength >= minSize)
+				return _Buffer.AsMemory(_BufferIndex, _BufferLength);
+
+			if (_DetectEncoding)
+				DetectEncoding();
+
+			if (_Buffer.Length < minSize)
+			{
+				// Buffer isn't large enough
+				var NewBuffer = new char[minSize];
+
+				if (_BufferLength > 0)
+				{
+					// Copy any remaining data over
+					Array.Copy(_Buffer, _BufferIndex, NewBuffer, 0, _BufferLength);
+
+					_BufferIndex = 0;
+					_BufferLength = 0;
+				}
+
+				_Buffer = NewBuffer;
+			}
+			
+			// Buffer is now large enough, but there's not enough data inside it
+			if (_BufferIndex > 0)
+			{
+				// Shuffle the remaining down to the start
+				if (_BufferLength > 0)
+					Array.Copy(_Buffer, _BufferIndex, _Buffer, 0, _BufferLength);
+
+				_BufferIndex = 0;
+			}
+
+			// Fill the remaining buffer
+			FillWithoutReset();
+
+			return _Buffer.AsMemory(_BufferIndex, _BufferLength);
+		}
+
+		/// <summary>
+		/// Reads data into the buffer from the underlying Reader.
+		/// </summary>
+		/// <param name="minSize">The minimum desired block size. If 0, a non-empty buffer is returned.</param>
+		/// <returns>The requested buffer</returns>
+		/// <remarks>Can be less than requested if the reader has ended. When this occurs, subsequent calls should return an empty buffer.</remarks>
+		public ReadOnlySpan<char> GetSpan(int minSize) => GetMemory(minSize).Span;
+
 		/// <inheritdoc />
 		public override int Peek()
 		{
@@ -415,35 +484,136 @@ namespace System.IO
 				Builder.Append(_Buffer, _BufferIndex, CharsBefore);
 
 				// If it's a carriage-return, check if the next character is available (might be a CRLF pair, so we need to skip it)
-				if (_Buffer[CharIndex] == '\r' && _BufferLength == CharsBefore + 1)
+				if (_Buffer[CharIndex] == '\r')
 				{
-					// Read more data if available
-					if (!FillBuffer())
-						break; // No data left, return what we've read so far
+					if (_BufferLength == CharsBefore + 1)
+					{
+						// Read more data if available
+						if (!FillBuffer())
+							break; // No data left, return what we've read so far
 
-					CharIndex = 0;
-					CharsBefore = 0;
-				}
-				else
-				{
-					// Character is available, push up by one
-					CharIndex++;
+						CharIndex = 0;
+						CharsBefore = 0;
+					}
+					else
+					{
+						// Character is available, push up by one
+						CharIndex++;
+					}
+
+					// Buffer is refilled. If the next char is a line-feed, skip it
+					if (_Buffer[CharIndex] == '\n')
+						CharsBefore++;
 				}
 
-				_BufferIndex += CharsBefore;
-				_BufferLength -= CharsBefore;
-
-				// Buffer is refilled. If the next char is a line-feed, skip it
-				if (_Buffer[CharIndex] == '\n')
-				{
-					_BufferIndex++;
-					_BufferLength--;
-				}
+				_BufferIndex += CharsBefore + 1;
+				_BufferLength -= CharsBefore + 1;
 
 				break; // We found a new-line, complete
 			}
 
 			return Builder.ToString();
+		}
+
+		/// <summary>
+		/// Attempts to read a line of characters into a buffer
+		/// </summary>
+		/// <param name="target">The target buffer</param>
+		/// <param name="charsWritten">The number of characters written</param>
+		/// <returns>True if the end of the line was reached, False if another buffer is required to continue reading into.</returns>
+		/// <remarks>Every call will read as many characters from the current line as possible. A result of False means the next call will continue returning more of the same line.</remarks>
+		public bool TryReadLine(Span<char> target, out int charsWritten)
+		{
+			charsWritten = 0;
+
+			for (; ; )
+			{
+				// Is there enough space for more data?
+				if (target.IsEmpty)
+					return false;
+
+				// Read more data if available
+				if (_BufferLength == 0 && !FillBuffer())
+					return true; // No data left, return what we've read so far
+
+				var CharIndex = _BufferIndex;
+				var ReadLength = Math.Min(target.Length, _BufferLength);
+				var EndIndex = _BufferIndex + ReadLength;
+
+				// Find the next carriage-return or line-feed in the current buffer
+				while (CharIndex < EndIndex)
+				{
+					var MyChar = _Buffer[CharIndex];
+
+					if (MyChar == '\r' || MyChar == '\n')
+						break;
+
+					CharIndex++;
+				}
+
+				// None? Clear the buffer and keep looking
+				if (CharIndex == EndIndex)
+				{
+					_Buffer.AsSpan(_BufferIndex, ReadLength).CopyTo(target);
+
+					_BufferIndex += ReadLength;
+					_BufferLength -= ReadLength;
+					target = target.Slice(ReadLength);
+					charsWritten += ReadLength;
+
+					continue;
+				}
+
+				var CharsBefore = CharIndex - _BufferIndex;
+
+				// Found a CR or LF. Append what we've read so far, minus the line character
+				var WriteLength = Math.Min(target.Length, CharsBefore);
+
+				_Buffer.AsSpan(_BufferIndex, WriteLength).CopyTo(target);
+
+				charsWritten += WriteLength;
+
+				// If we weren't able to fit the remainder, abort early
+				if (CharsBefore > WriteLength)
+				{
+					_BufferIndex += WriteLength;
+					_BufferLength -= WriteLength;
+
+					return false; // Still more characters to read, so we'll hit the CR or LF again on the next attempt
+				}
+
+				// If it's a carriage-return, check if the next character is available (might be a CRLF pair, so we need to skip it)
+				if (_Buffer[CharIndex] == '\r')
+				{
+					if (_BufferLength == CharsBefore + 1)
+					{
+						// Read more data if available
+						if (!FillBuffer())
+						{
+							_BufferIndex += CharsBefore + 1;
+							_BufferLength -= CharsBefore + 1;
+
+							return true; // No data left, return what we've read so far
+						}
+
+						CharIndex = 0;
+					}
+					else
+					{
+						// Character is available, push up by one
+						CharIndex++;
+					}
+
+					// Buffer is refilled. If the next char is a line-feed, skip it
+					if (_Buffer[CharIndex] == '\n')
+						CharsBefore++;
+				}
+
+				_BufferIndex += CharsBefore + 1;
+				_BufferLength -= CharsBefore + 1;
+
+				return true; // We found a new-line, complete
+			}
 		}
 
 		/// <inheritdoc />
@@ -486,6 +656,71 @@ namespace System.IO
 			_CheckPreamble = true;
 		}
 
+		/// <summary>
+		/// Skips the remaining line of characters
+		/// </summary>
+		public void SkipLine()
+		{
+			for (; ; )
+			{
+				// Read more data if available
+				if (_BufferLength == 0 && !FillBuffer())
+					return; // No data left
+
+				var CharIndex = _BufferIndex;
+				var EndIndex = _BufferIndex + _BufferLength;
+
+				// Find the next carriage-return or line-feed in the current buffer
+				while (CharIndex < EndIndex)
+				{
+					var MyChar = _Buffer[CharIndex];
+
+					if (MyChar == '\r' || MyChar == '\n')
+						break;
+
+					CharIndex++;
+				}
+
+				// None? Clear the buffer and keep looking
+				if (CharIndex == EndIndex)
+				{
+					_BufferLength = 0;
+
+					continue;
+				}
+
+				// Found a CR or LF. Skip what we've read so far, minus the line character
+				var CharsBefore = CharIndex - _BufferIndex;
+
+				// If it's a carriage-return, check if the next character is available (might be a CRLF pair, so we need to skip it)
+				if (_Buffer[CharIndex] == '\r')
+				{
+					if (_BufferLength == CharsBefore + 1)
+					{
+						// Read more data if available
+						if (!FillBuffer())
+							return; // No data left, return what we've read so far
+
+						CharIndex = 0;
+						CharsBefore = 0;
+					}
+					else
+					{
+						CharIndex++;
+					}
+
+					// Buffer is refilled. If the next char is a line-feed, skip it
+					if (_Buffer[CharIndex] == '\n')
+						CharsBefore++;
+				}
+
+				_BufferIndex += CharsBefore + 1;
+				_BufferLength -= CharsBefore + 1;
+
+				return; // We found a new-line, complete
+			}
+		}
+
 		//****************************************
 
 		private bool FillBuffer()
@@ -498,12 +733,18 @@ namespace System.IO
 
 			//****************************************
 
-			ReadOnlySpan<byte> InBuffer;
-			var OutBuffer = _Buffer.AsSpan();
-			bool IsCompleted;
-
+			// Reset the buffer and refill
 			_BufferIndex = 0;
 			_BufferLength = 0;
+
+			return FillWithoutReset();
+		}
+
+		private bool FillWithoutReset()
+		{
+			ReadOnlySpan<byte> InBuffer;
+			var OutBuffer = _Buffer.AsSpan(_BufferIndex + _BufferLength);
+			bool IsCompleted;
 
 			// Keep trying to read until we fill the buffer, or the source sequence runs out
 			do
@@ -650,6 +891,11 @@ namespace System.IO
 		/// </summary>
 		/// <remarks>Due to buffering, this may not reflect the position of the most recent character</remarks>
 		public long Position => _Position;
+
+		/// <summary>
+		/// Gets whether the end of the stream has been reached
+		/// </summary>
+		public bool EndOfReader => _BufferLength == 0 && !FillBuffer();
 
 		/// <summary>
 		/// Gets the Encoding being used to decode the source Sequence

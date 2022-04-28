@@ -10,7 +10,7 @@ using Proximity.Threading;
 namespace System.Threading
 {
 	/// <summary>
-	/// Provides a lock-free primitive for an Auto Reset Event supporting Valuetask async/await
+	/// Provides a lock-free primitive for an Auto Reset Event supporting ValueTask async/await
 	/// </summary>
 	public sealed class AsyncAutoResetEvent : IDisposable
 	{ //****************************************
@@ -91,6 +91,7 @@ namespace System.Threading
 		/// <param name="token">A cancellation token to abort waiting</param>
 		/// <returns>A task that returns true when the event has been set</returns>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		/// <exception cref="ObjectDisposedException">The event has been disposed</exception>
 		public ValueTask<bool> Wait(CancellationToken token = default) => Wait(Timeout.InfiniteTimeSpan, token);
 
 		/// <summary>
@@ -100,6 +101,7 @@ namespace System.Threading
 		/// <param name="token">A cancellation token to abort waiting</param>
 		/// <returns>A task that returns true when the event has been set, false if a timeout occurred</returns>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		/// <exception cref="ObjectDisposedException">The event has been disposed</exception>
 		public ValueTask<bool> Wait(TimeSpan timeout, CancellationToken token = default)
 		{
 			if (TryReset())
@@ -124,14 +126,25 @@ namespace System.Threading
 		/// Tries to reset the event without waiting
 		/// </summary>
 		/// <returns>True if the event was set and reset, otherwise false</returns>
-		public bool TryWait() => TryReset();
+		/// <exception cref="ObjectDisposedException">The event has been disposed</exception>
+		public bool TryWait()
+		{
+			if (TryReset())
+				return true;
+
+			if (_State == State.Disposed)
+				throw new ObjectDisposedException(nameof(AsyncAutoResetEvent), "Event has been disposed of");
+
+			return false;
+		}
 
 		/// <summary>
 		/// Blocks waiting for the event
 		/// </summary>
 		/// <param name="token">A cancellation token that can be used to abort waiting on the event</param>
-		/// <returns>True if the event was set, otherwise False due to disposal</returns>
+		/// <returns>True if the event was set</returns>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		/// <exception cref="ObjectDisposedException">The event has been disposed</exception>
 		public bool TryWait(CancellationToken token) => TryWait(Timeout.InfiniteTimeSpan, token);
 
 		/// <summary>
@@ -139,13 +152,17 @@ namespace System.Threading
 		/// </summary>
 		/// <param name="timeout">Number of milliseconds to block for the event to be set. Pass zero to not block, or Timeout.InfiniteTimeSpan to block indefinitely</param>
 		/// <param name="token">A cancellation token that can be used to abort waiting on the event</param>
-		/// <returns>True if the event was set, otherwise False due to timeout or disposal</returns>
+		/// <returns>True if the event was set, otherwise False due to timeout</returns>
 		/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+		/// <exception cref="ObjectDisposedException">The event has been disposed</exception>
 		public bool TryWait(TimeSpan timeout, CancellationToken token = default)
 		{
 			// First up, try and reset the event if possible
 			if (TryReset())
 				return true;
+
+			if (_State == State.Disposed)
+				throw new ObjectDisposedException(nameof(AsyncAutoResetEvent), "Event has been disposed of");
 
 			// If we're not okay with blocking, then we fail
 			if (timeout == TimeSpan.Zero && !token.CanBeCanceled)

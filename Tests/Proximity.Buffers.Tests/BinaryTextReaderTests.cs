@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using NUnit.Framework;
@@ -13,7 +15,13 @@ namespace Proximity.Buffers.Tests
 	public class BinaryTextReaderTests
 	{	//****************************************
 		private readonly string _TestOutput = @"ABC!DEF@GHI#JKL$123%456^789&0*MNO(PQR)STU-VWX=YZ abcdefghijklmnopqrstuvwxyz ♥ ";
-		private byte[] _TestInput;
+		private readonly string _TestMultilineOutput = @"ABC!DEF@GHI#J
+KL$123%456^789&0*MNO
+
+(PQR)STU-VWX=YZ abcdefghi
+jk
+lmnopqrstuvwxyz ♥ ";
+		private byte[] _TestInput, _TestMultilineInput;
 		//****************************************
 
 		[OneTimeSetUp()]
@@ -29,7 +37,15 @@ namespace Proximity.Buffers.Tests
 				_TestInput = RawStream.ToArray();
 			}
 
-//			_TestOutput = Encoding.UTF8.GetBytes(_TestInput);
+			using (var RawStream = new MemoryStream())
+			{
+				using (var Writer = new StreamWriter(RawStream, Encoding.UTF8))
+				{
+					Writer.Write(_TestMultilineOutput);
+				}
+
+				_TestMultilineInput = RawStream.ToArray();
+			}
 		}
 
 		//****************************************
@@ -253,5 +269,129 @@ namespace Proximity.Buffers.Tests
 			Assert.AreEqual(_TestOutput, MyResult2);
 		}
 
+		[Test]
+		public void ReadMultiline()
+		{
+			var Lines = new List<string>();
+
+			using (var Reader = new BinaryTextReader(_TestMultilineInput, Encoding.UTF8))
+			{
+				while (!Reader.EndOfReader)
+				{
+					Lines.Add(Reader.ReadLine());
+				}
+			}
+
+			// TODO: Will this fail on Linux? Maybe if the file is changed from CRLF
+			Assert.AreEqual(_TestMultilineOutput, string.Join("\r\n", Lines));
+		}
+
+		[Test]
+		public void ReadMultilineBuffered()
+		{
+			var Lines = new List<string>();
+			var Buffer = new char[128];
+
+			using (var Reader = new BinaryTextReader(_TestMultilineInput, Encoding.UTF8))
+			{
+				while (!Reader.EndOfReader)
+				{
+					var Offset = 0;
+					bool Success;
+
+					do
+					{
+						Success = Reader.TryReadLine(Buffer.AsSpan(Offset, 4), out var CharsWritten);
+
+						Offset += CharsWritten;
+					}
+					while (!Success);
+
+					Lines.Add(Buffer.AsSpan(0, Offset).AsString());
+				}
+			}
+
+			// TODO: Will this fail on Linux? Maybe if the file is changed from CRLF
+			Assert.AreEqual(_TestMultilineOutput, string.Join("\r\n", Lines));
+		}
+
+		[Test]
+		public void ReadMultilineBufferedSkip()
+		{
+			var Buffer = new char[4];
+
+			using (var Reader = new BinaryTextReader(_TestMultilineInput, Encoding.UTF8, false, 4))
+			{
+				while (!Reader.EndOfReader)
+				{
+					if (!Reader.TryReadLine(Buffer, out var CharsWritten))
+						Reader.SkipLine();
+				}
+			}
+		}
+
+		[Test]
+		public void TempTest()
+		{
+			using var RawEventFile = File.Open(@"C:\Development\Resources\Zenith\Events 134.log", FileMode.Open);
+
+			using var RawReader = new StreamBufferReader(RawEventFile);
+			using var EventReader = new BinaryTextReader(RawReader);
+
+			var EventBuffer = new char[128];
+			var TotalRecords = 0;
+			var LastSequenceNumber = 1L;
+			var TimeStamp = DateTimeOffset.MinValue;
+			var IsStatus = false;
+
+			while (!EventReader.EndOfReader)
+			{
+				var Offset = 0;
+
+				// Decode the start of the next line into the buffer. It should be more than sufficiently large for the header
+				if (!EventReader.TryReadLine(EventBuffer.AsSpan(Offset), out var CharsWritten))
+					EventReader.SkipLine(); // We don't need the rest of the line data, no sense copying it
+
+				var Line = EventBuffer.AsSpan(0, CharsWritten);
+
+				if (Line.IsEmpty)
+					continue;
+
+				// Find the first SequenceNumber:DateTimeUtc:Type:Data divider
+				var Divider = Line.IndexOf(':');
+
+				if (Divider == -1)
+					continue;
+
+				// Process the sequence number
+				if (!long.TryParse(Line.Slice(0, Divider), NumberStyles.None, CultureInfo.InvariantCulture, out var SequenceNumber))
+					continue;
+
+				TotalRecords++;
+				LastSequenceNumber = SequenceNumber;
+				IsStatus = false;
+
+				// Find the next divider (end of DateTimeUtc)
+				var NextDivider = Line.Slice(++Divider).IndexOf(':');
+
+				if (NextDivider == -1)
+					continue;
+
+				if (!DateTimeOffset.TryParseExact(Line.Slice(Divider, NextDivider), "yyyyMMddHHmmssfff", CultureInfo.InvariantCulture, DateTimeStyles.None, out var NewTimeStamp))
+					continue;
+
+				TimeStamp = NewTimeStamp;
+
+				Divider += NextDivider + 1;
+
+				// Next divider (end of Type)
+				NextDivider = Line.Slice(Divider).IndexOf(':');
+
+				var Type = Line.Slice(Divider, NextDivider);
+
+				// Check if it's a Status event
+				IsStatus = Type.SequenceEqual("Status");
+			}
+		}
 	}
 }
