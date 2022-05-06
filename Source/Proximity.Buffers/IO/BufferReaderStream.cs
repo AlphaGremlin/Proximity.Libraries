@@ -159,6 +159,16 @@ namespace System.IO
 		}
 
 		/// <inheritdoc />
+		public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => Task.FromResult(Read(buffer.AsSpan(offset, count)));
+
+		/// <inheritdoc />
+		public
+#if !NETSTANDARD2_0
+			override
+#endif
+			ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) => new ValueTask<int>(Read(buffer.Span));
+
+		/// <inheritdoc />
 		public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
 
 		/// <inheritdoc />
@@ -166,6 +176,26 @@ namespace System.IO
 
 		/// <inheritdoc />
 		public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+		/// <inheritdoc />
+		public
+#if !NETSTANDARD2_0
+			override
+#endif
+			void Write(ReadOnlySpan<byte> buffer) => throw new NotSupportedException();
+
+		/// <inheritdoc />
+		public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+		/// <inheritdoc />
+		public
+#if !NETSTANDARD2_0
+			override
+#endif
+			ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+		/// <inheritdoc />
+		public override void WriteByte(byte value) => throw new NotSupportedException();
 
 		//****************************************
 

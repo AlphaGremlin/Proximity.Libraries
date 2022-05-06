@@ -138,12 +138,12 @@ namespace System.IO
 #endif
 			int Read(Span<byte> buffer)
 		{
-			if (_CurrentBlock.Length == _CurrentOffset)
-				return 0; // No more data to read
-
-			// Create a span with the space we're populating
 			var Remainder = _Sequence.Length - _Position;
 
+			if (Remainder == 0)
+				return 0; // No more data to read
+
+			// Ensure the buffer is never larger than what we can write into it
 			if (buffer.Length > Remainder)
 				buffer = buffer.Slice(0, (int)Remainder);
 

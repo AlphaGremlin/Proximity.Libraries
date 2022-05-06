@@ -156,6 +156,16 @@ namespace System.IO
 		/// <returns>The requested buffer</returns>
 		public Span<char> GetSpan(int sizeHint = 0) => GetMemory(sizeHint).Span;
 
+		/// <summary>
+		/// Resets the writer to begin a new document with the same encoding and underlying writer
+		/// </summary>
+		public void Reset()
+		{
+			_Encoder.Reset();
+			_HaveWrittenPreamble = false;
+			_PendingLength = 0;
+		}
+
 		/// <inheritdoc />
 		public override void Write(char value)
 		{

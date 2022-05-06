@@ -13,7 +13,8 @@ namespace System.IO
 	/// <summary>
 	/// Provides an <see cref="IBufferWriter{Byte}"/> that writes to a <see cref="Stream"/> with async calls and buffering
 	/// </summary>
-	public sealed class StreamAsyncBufferWriter : IBufferWriter<byte>, IDisposable
+	/// <remarks>Useful for asynchronously writing data from synchronous producers like JSON serialisers</remarks>
+	public sealed class AsyncStreamBufferWriter : IBufferWriter<byte>, IDisposable
 #if !NETSTANDARD2_0
 		, IAsyncDisposable
 #endif
@@ -42,7 +43,7 @@ namespace System.IO
 		/// Creates a new Stream Async Buffer Writer
 		/// </summary>
 		/// <param name="stream">The <see cref="Stream"/> to write to</param>
-		public StreamAsyncBufferWriter(Stream stream) : this(stream, 128, DefaultMaxOutstandingBytes)
+		public AsyncStreamBufferWriter(Stream stream) : this(stream, 128, DefaultMaxOutstandingBytes)
 		{
 		}
 
@@ -52,7 +53,7 @@ namespace System.IO
 		/// <param name="stream">The <see cref="Stream"/> to write to</param>
 		/// <param name="minimumWriteSize">The minimum bytes before we begin an async write. Does not apply to <see cref="O:Flush"/> or <see cref="O:FlushAsync"/>.</param>
 		/// <param name="maxOutstandingBytes">The maximum number of outstanding bytes before operations can block</param>
-		public StreamAsyncBufferWriter(Stream stream, int minimumWriteSize, int maxOutstandingBytes)
+		public AsyncStreamBufferWriter(Stream stream, int minimumWriteSize, int maxOutstandingBytes)
 		{
 			if (minimumWriteSize < 0)
 				throw new ArgumentOutOfRangeException(nameof(minimumWriteSize));

@@ -168,5 +168,10 @@ namespace System.Buffers
 		/// Gets the position the next call to <see cref="O:GetMemory"/> or <see cref="GetSpan"/> will read from
 		/// </summary>
 		public long Position { get; private set; }
+
+		/// <summary>
+		/// Gets whether there is more data to read
+		/// </summary>
+		public bool CanRead => !_Buffer.IsEmpty;
 	}
 }

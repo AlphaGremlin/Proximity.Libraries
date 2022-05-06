@@ -22,6 +22,8 @@ namespace System.IO
 		private int _BufferIndex;
 		// The number of bytes remaining in _Buffer
 		private int _BufferCount;
+
+		private bool _EndOfStream;
 		//****************************************
 
 		/// <summary>
@@ -103,12 +105,15 @@ namespace System.IO
 				}
 
 				// There's enough room at the end that, combined with what we've already read, we can fulfil the request
-				_BufferCount +=
+				var BytesRead =
 #if NETSTANDARD2_0
 				Stream.Read(_Buffer, _BufferCount, _Buffer.Length - _BufferCount);
 #else
 				Stream.Read(_Buffer.AsSpan(_BufferCount));
 #endif
+
+				_BufferCount += BytesRead;
+				_EndOfStream = BytesRead == 0;
 			}
 
 			return _Buffer.AsMemory(_BufferIndex, _BufferCount);
@@ -169,12 +174,14 @@ namespace System.IO
 				}
 
 				// There's enough room at the end that, combined with what we've already read, we can fulfil the request
-				_BufferCount +=
+				var BytesRead =
 #if NETSTANDARD2_0
 				await Stream.ReadAsync(_Buffer, _BufferCount, _Buffer.Length - _BufferCount, cancellationToken);
 #else
 				await Stream.ReadAsync(_Buffer.AsMemory(_BufferCount), cancellationToken);
 #endif
+				_BufferCount += BytesRead;
+				_EndOfStream = BytesRead == 0;
 			}
 
 			return _Buffer.AsMemory(_BufferIndex, _BufferCount);
@@ -239,5 +246,15 @@ namespace System.IO
 		/// Gets the underlying <see cref="Stream"/> being read from
 		/// </summary>
 		public Stream Stream { get; }
+
+		/// <summary>
+		/// Gets when the reader has reached the end of the stream
+		/// </summary>
+		public bool EndOfStream => _EndOfStream && _BufferCount == 0;
+
+		/// <summary>
+		/// Gets whether there is more data to read
+		/// </summary>
+		public bool CanRead => _BufferCount > 0 || !_EndOfStream;
 	}
 }

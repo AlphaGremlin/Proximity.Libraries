@@ -26,5 +26,13 @@ namespace System.Buffers
 		/// </summary>
 		/// <param name="count">The number of elements to advance over</param>
 		void Advance(int count);
+
+		//****************************************
+
+		/// <summary>
+		/// Gets whether there is more data to read
+		/// </summary>
+		/// <remarks>Can change from False to True when the underlying source receives more data (a file being written to, a socket, etc)</remarks>
+		bool CanRead { get; }
 	}
 }

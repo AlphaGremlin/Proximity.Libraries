@@ -146,7 +146,7 @@ namespace Proximity.Text.Json
 				if (Consumed == _LastBuffer.Length)
 				{
 					// No need to pass anything on to the next reader
-					_Reader.Advance(Consumed);
+					_Reader.Advance(_LastBuffer.Length);
 
 					_LastBuffer = _Reader.GetMemory(0);
 					_HasExtraTail = false;
@@ -237,6 +237,74 @@ namespace Proximity.Text.Json
 			{
 				Skip(ref reader);
 				Read(ref reader);
+			}
+		}
+
+		/// <summary>
+		/// Writes the current value to the given writer
+		/// </summary>
+		/// <param name="reader">The underlying reader this stream is managing</param>
+		/// <param name="writer">The writer to write the value to</param>
+		/// <remarks>If this value is a PropertyName, writes the property name and the following value. If the value is StartObject or StartArray, writes all child tokens.</remarks>
+		public void WriteTo(ref Utf8JsonReader reader, Utf8JsonWriter writer)
+		{
+			if (reader.TokenType == JsonTokenType.PropertyName)
+			{
+				writer.WritePropertyName(reader.GetString()!);
+				Read(ref reader);
+			}
+
+			switch (reader.TokenType)
+			{
+			case JsonTokenType.Comment:
+				writer.WriteCommentValue(reader.GetString()!);
+				break;
+
+			case JsonTokenType.False:
+				writer.WriteBooleanValue(false);
+				break;
+
+			case JsonTokenType.Null:
+				writer.WriteNullValue();
+				break;
+
+			case JsonTokenType.Number:
+				if (reader.TryGetDecimal(out var DecimalNumber))
+					writer.WriteNumberValue(DecimalNumber);
+				else if (reader.TryGetDouble(out var DoubleNumber))
+					writer.WriteNumberValue(DoubleNumber);
+				else
+					throw new JsonException("Failed to parse number");
+				break;
+
+			case JsonTokenType.StartArray:
+				writer.WriteStartArray();
+
+				for (Read(ref reader); reader.TokenType != JsonTokenType.EndArray; Read(ref reader))
+					WriteTo(ref reader, writer);
+
+				writer.WriteEndArray();
+				break;
+
+			case JsonTokenType.StartObject:
+				writer.WriteStartObject();
+
+				for (Read(ref reader); reader.TokenType != JsonTokenType.EndObject; Read(ref reader))
+					WriteTo(ref reader, writer);
+
+				writer.WriteEndObject();
+				break;
+
+			case JsonTokenType.String:
+				writer.WriteStringValue(reader.GetString());
+				break;
+
+			case JsonTokenType.True:
+				writer.WriteBooleanValue(true);
+				break;
+
+			default:
+				throw new JsonException("Unexpected token type");
 			}
 		}
 

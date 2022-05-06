@@ -901,5 +901,10 @@ namespace System.IO
 		/// Gets the Encoding being used to decode the source Sequence
 		/// </summary>
 		public Encoding Encoding { get; private set; }
+
+		/// <summary>
+		/// Gets whether there is more data to read
+		/// </summary>
+		public bool CanRead => _BufferLength != 0 || FillBuffer();
 	}
 }
