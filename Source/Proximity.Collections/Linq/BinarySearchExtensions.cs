@@ -225,9 +225,10 @@ namespace System.Linq
 
 			if (Position < 0)
 			{
+				// Inexact match, BinarySearch will return the index of the next highest item, so we want that UNLESS it's past the end of the list
 				Position = ~Position;
 
-				if (Position == index + count && comparer.Compare(list[index + count - 1], item) < 0)
+				if (Position == index + count)
 					return -1; // The last item in the list is less than our target, so no match
 			}
 
@@ -266,9 +267,10 @@ namespace System.Linq
 
 			if (Position < 0)
 			{
+				// Inexact match, BinarySearch will return the index of the next highest item, so we want that UNLESS it's past the end of the list
 				Position = ~Position;
 
-				if (Position == index + count && comparer.Compare(list[index + count - 1], item) < 0)
+				if (Position == index + count)
 					return -1; // The last item in the list is less than our target, so no match
 			}
 
@@ -307,10 +309,13 @@ namespace System.Linq
 
 			if (Position < 0)
 			{
+				// Inexact match, BinarySearch will return the index of the next highest item, so we want the one below it
 				Position = ~Position;
 
-				if (Position == index && comparer.Compare(list[index], item) > 0)
+				if (Position == index)
 					return -1; // The first item in the list is greater than our target, so no match
+
+				Position--;
 			}
 
 			return Position;
@@ -348,10 +353,13 @@ namespace System.Linq
 
 			if (Position < 0)
 			{
+				// Inexact match, BinarySearch will return the index of the next highest item, so we want the one below it
 				Position = ~Position;
 
-				if (Position == index && comparer.Compare(list[index], item) > 0)
+				if (Position == index)
 					return -1; // The first item in the list is greater than our target, so no match
+
+				Position--;
 			}
 
 			return Position;
