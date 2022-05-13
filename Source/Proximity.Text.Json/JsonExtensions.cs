@@ -38,6 +38,22 @@ namespace System.Text.Json
 				writer.WriteBoolean(name, number.Value);
 		}
 
+		public static void WriteBoolean(this Utf8JsonWriter writer, JsonEncodedText name, bool? number)
+		{
+			if (number == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteBoolean(name, number.Value);
+		}
+
+		public static void WriteBoolean(this Utf8JsonWriter writer, ReadOnlySpan<char> name, bool? number)
+		{
+			if (number == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteBoolean(name, number.Value);
+		}
+
 		public static void WriteBooleanValue(this Utf8JsonWriter writer, bool? number)
 		{
 			if (number == null)
@@ -95,6 +111,118 @@ namespace System.Text.Json
 		}
 
 		public static void WriteNumber(this Utf8JsonWriter writer, string name, ulong? number)
+		{
+			if (number == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteNumber(name, number.Value);
+		}
+
+		public static void WriteNumber(this Utf8JsonWriter writer, JsonEncodedText name, decimal? number)
+		{
+			if (number == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteNumber(name, number.Value);
+		}
+
+		public static void WriteNumber(this Utf8JsonWriter writer, JsonEncodedText name, double? number)
+		{
+			if (number == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteNumber(name, number.Value);
+		}
+
+		public static void WriteNumber(this Utf8JsonWriter writer, JsonEncodedText name, float? number)
+		{
+			if (number == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteNumber(name, number.Value);
+		}
+
+		public static void WriteNumber(this Utf8JsonWriter writer, JsonEncodedText name, int? number)
+		{
+			if (number == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteNumber(name, number.Value);
+		}
+
+		public static void WriteNumber(this Utf8JsonWriter writer, JsonEncodedText name, long? number)
+		{
+			if (number == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteNumber(name, number.Value);
+		}
+
+		public static void WriteNumber(this Utf8JsonWriter writer, JsonEncodedText name, uint? number)
+		{
+			if (number == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteNumber(name, number.Value);
+		}
+
+		public static void WriteNumber(this Utf8JsonWriter writer, JsonEncodedText name, ulong? number)
+		{
+			if (number == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteNumber(name, number.Value);
+		}
+
+		public static void WriteNumber(this Utf8JsonWriter writer, ReadOnlySpan<char> name, decimal? number)
+		{
+			if (number == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteNumber(name, number.Value);
+		}
+
+		public static void WriteNumber(this Utf8JsonWriter writer, ReadOnlySpan<char> name, double? number)
+		{
+			if (number == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteNumber(name, number.Value);
+		}
+
+		public static void WriteNumber(this Utf8JsonWriter writer, ReadOnlySpan<char> name, float? number)
+		{
+			if (number == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteNumber(name, number.Value);
+		}
+
+		public static void WriteNumber(this Utf8JsonWriter writer, ReadOnlySpan<char> name, int? number)
+		{
+			if (number == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteNumber(name, number.Value);
+		}
+
+		public static void WriteNumber(this Utf8JsonWriter writer, ReadOnlySpan<char> name, long? number)
+		{
+			if (number == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteNumber(name, number.Value);
+		}
+
+		public static void WriteNumber(this Utf8JsonWriter writer, ReadOnlySpan<char> name, uint? number)
+		{
+			if (number == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteNumber(name, number.Value);
+		}
+
+		public static void WriteNumber(this Utf8JsonWriter writer, ReadOnlySpan<char> name, ulong? number)
 		{
 			if (number == null)
 				writer.WriteNull(name);
@@ -175,6 +303,54 @@ namespace System.Text.Json
 		}
 
 		public static void WriteString(this Utf8JsonWriter writer, string name, DateTimeOffset? value)
+		{
+			if (value == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteString(name, value.Value);
+		}
+
+		public static void WriteString(this Utf8JsonWriter writer, JsonEncodedText name, Guid? value)
+		{
+			if (value == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteString(name, value.Value);
+		}
+
+		public static void WriteString(this Utf8JsonWriter writer, JsonEncodedText name, DateTime? value)
+		{
+			if (value == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteString(name, value.Value);
+		}
+
+		public static void WriteString(this Utf8JsonWriter writer, JsonEncodedText name, DateTimeOffset? value)
+		{
+			if (value == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteString(name, value.Value);
+		}
+
+		public static void WriteString(this Utf8JsonWriter writer, ReadOnlySpan<char> name, Guid? value)
+		{
+			if (value == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteString(name, value.Value);
+		}
+
+		public static void WriteString(this Utf8JsonWriter writer, ReadOnlySpan<char> name, DateTime? value)
+		{
+			if (value == null)
+				writer.WriteNull(name);
+			else
+				writer.WriteString(name, value.Value);
+		}
+
+		public static void WriteString(this Utf8JsonWriter writer, ReadOnlySpan<char> name, DateTimeOffset? value)
 		{
 			if (value == null)
 				writer.WriteNull(name);

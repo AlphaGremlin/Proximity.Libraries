@@ -59,57 +59,12 @@ namespace System.IO
 		/// <remarks>Can be less than requested if the stream has ended. When this occurs, subsequent calls should return an empty buffer.</remarks>
 		public ReadOnlyMemory<byte> GetMemory(int minSize)
 		{
-			if (_Buffer == null)
+			if (PrepareForRead(minSize))
 			{
-				minSize = Math.Max(minSize, _BlockSize);
-
-				// No buffer, refill the entire thing
-				_Buffer = ArrayPool<byte>.Shared.Rent(minSize);
-
 #if NETSTANDARD2_0
-				_BufferCount = Stream.Read(_Buffer, 0, _Buffer.Length);
+				var BytesRead = Stream.Read(_Buffer, _BufferCount, _Buffer!.Length - _BufferCount);
 #else
-				_BufferCount = Stream.Read(_Buffer);
-#endif
-			}
-			else if (_BufferCount < minSize)
-			{
-				minSize = Math.Max(minSize, _BlockSize);
-
-				// There's a buffer, and we don't have enough space remaining to fulfil the request
-				if (_Buffer.Length < minSize)
-				{
-					// We're asking for more data than the buffer contains, so resize and copy any exisiting data
-					byte[]? OldBuffer = null;
-
-					try
-					{
-						OldBuffer = Interlocked.Exchange(ref _Buffer, ArrayPool<byte>.Shared.Rent(minSize));
-
-						Array.Copy(OldBuffer, _BufferIndex, _Buffer, 0, _BufferCount);
-					}
-					finally
-					{
-						if (OldBuffer != null)
-							ArrayPool<byte>.Shared.Return(OldBuffer);
-					}
-
-					_BufferIndex = 0;
-				}
-				else if (_BufferIndex > 0)
-				{
-					// Our buffer is large enough, move the data we've already read down to make room
-					Array.Copy(_Buffer, _BufferIndex, _Buffer, 0, _BufferCount);
-
-					_BufferIndex = 0;
-				}
-
-				// There's enough room at the end that, combined with what we've already read, we can fulfil the request
-				var BytesRead =
-#if NETSTANDARD2_0
-				Stream.Read(_Buffer, _BufferCount, _Buffer.Length - _BufferCount);
-#else
-				Stream.Read(_Buffer.AsSpan(_BufferCount));
+				var BytesRead = Stream.Read(_Buffer.AsSpan(_BufferCount));
 #endif
 
 				_BufferCount += BytesRead;
@@ -128,58 +83,14 @@ namespace System.IO
 		/// <remarks>Can be less than requested if the stream has ended. When this occurs, subsequent calls should return an empty buffer.</remarks>
 		public async ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(int minSize, CancellationToken cancellationToken = default)
 		{
-			if (_Buffer == null)
+			if (PrepareForRead(minSize))
 			{
-				minSize = Math.Max(minSize, _BlockSize);
-
-				// No buffer, refill the entire thing
-				_Buffer = ArrayPool<byte>.Shared.Rent(minSize);
-
 #if NETSTANDARD2_0
-				_BufferCount = await Stream.ReadAsync(_Buffer, 0, _Buffer.Length, cancellationToken);
+				var BytesRead = await Stream.ReadAsync(_Buffer, _BufferCount, _Buffer.Length - _BufferCount, cancellationToken);
 #else
-				_BufferCount = await Stream.ReadAsync(_Buffer, cancellationToken);
+				var BytesRead = await Stream.ReadAsync(_Buffer.AsMemory(_BufferCount), cancellationToken);
 #endif
-			}
-			else if (_BufferCount < minSize)
-			{
-				minSize = Math.Max(minSize, _BlockSize);
 
-				// There's a buffer, and we don't have enough space remaining to fulfil the request
-				if (_Buffer.Length < minSize)
-				{
-					// We're asking for more data than the buffer contains, so resize and copy any exisiting data
-					byte[]? OldBuffer = null;
-
-					try
-					{
-						OldBuffer = Interlocked.Exchange(ref _Buffer, ArrayPool<byte>.Shared.Rent(minSize));
-
-						Array.Copy(OldBuffer, _BufferIndex, _Buffer, 0, _BufferCount);
-					}
-					finally
-					{
-						if (OldBuffer != null)
-							ArrayPool<byte>.Shared.Return(OldBuffer);
-					}
-
-					_BufferIndex = 0;
-				}
-				else if (_BufferIndex > 0)
-				{
-					// Our buffer is large enough, move the data we've already read down to make room
-					Array.Copy(_Buffer, _BufferIndex, _Buffer, 0, _BufferCount);
-
-					_BufferIndex = 0;
-				}
-
-				// There's enough room at the end that, combined with what we've already read, we can fulfil the request
-				var BytesRead =
-#if NETSTANDARD2_0
-				await Stream.ReadAsync(_Buffer, _BufferCount, _Buffer.Length - _BufferCount, cancellationToken);
-#else
-				await Stream.ReadAsync(_Buffer.AsMemory(_BufferCount), cancellationToken);
-#endif
 				_BufferCount += BytesRead;
 				_EndOfStream = BytesRead == 0;
 			}
@@ -238,6 +149,59 @@ namespace System.IO
 				_BufferIndex = 0;
 				_BufferCount = 0;
 			}
+		}
+
+		//****************************************
+
+		private bool PrepareForRead(int minSize)
+		{
+			if (_Buffer == null)
+			{
+				minSize = Math.Max(minSize, _BlockSize);
+
+				// No buffer, refill the entire thing
+				_Buffer = ArrayPool<byte>.Shared.Rent(minSize);
+
+				return true;
+			}
+
+			if (_Buffer.Length < minSize)
+			{
+				var NewBuffer = ArrayPool<byte>.Shared.Rent(minSize);
+
+				// If we have unread bytes, shift them to the start of the buffer
+				if (_BufferCount > 0)
+					Array.Copy(_Buffer, _BufferIndex, NewBuffer, 0, _BufferCount);
+
+				ArrayPool<byte>.Shared.Return(_Buffer);
+
+				_Buffer = NewBuffer;
+				_BufferIndex = 0;
+
+				return true;
+			}
+
+			// Check if we have enough data to satisfy the request
+			if (minSize == 0)
+			{
+				// If the caller asked for zero, we only need 1 byte or more
+				if (_BufferCount > 0)
+					return false;
+			}
+			else
+			{
+				// If they asked for a specific amount of data, we need to ensure we can give at least that
+				if (_BufferCount >= minSize)
+					return false;
+			}
+
+			// We need more data, so we need to move whatever's leftover
+			if (_BufferCount > 0)
+				Array.Copy(_Buffer, _BufferIndex, _Buffer, 0, _BufferCount);
+
+			_BufferIndex = 0;
+
+			return true;
 		}
 
 		//****************************************
