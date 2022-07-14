@@ -36,7 +36,32 @@ namespace System.Collections.Immutable
 			
 			return true;
 		}
-		
+
+		/// <summary>
+		/// Performs an atomic except into an Immutable Hash Set
+		/// </summary>
+		/// <param name="hashSet">The location of the hash set to update</param>
+		/// <param name="items">The set of items to remove</param>
+		/// <returns>True if at least one item was removed, or False if no items existed in the set</returns>
+		/// <remarks>The set of items may be enumerated multiple times</remarks>
+		public static bool Except<T>(ref ImmutableHashSet<T> hashSet, IEnumerable<T> items)
+		{ //****************************************
+			ImmutableHashSet<T> OldSet, NewSet;
+			//****************************************
+
+			do
+			{
+				OldSet = hashSet;
+				NewSet = OldSet.Except(items);
+
+				if (object.ReferenceEquals(OldSet, NewSet))
+					return false;
+
+			} while (Interlocked.CompareExchange(ref hashSet, NewSet, OldSet) != OldSet);
+
+			return true;
+		}
+
 		/// <summary>
 		/// Performs an atomic pop from an Immutable Hash Set
 		/// </summary>
@@ -58,6 +83,31 @@ namespace System.Collections.Immutable
 				
 			} while (Interlocked.CompareExchange(ref hashSet, NewSet, OldSet) != OldSet);
 			
+			return true;
+		}
+
+		/// <summary>
+		/// Performs an atomic union into an Immutable Hash Set
+		/// </summary>
+		/// <param name="hashSet">The location of the hash set to update</param>
+		/// <param name="items">The set of items to union with</param>
+		/// <returns>True if at least one item was added, or False if all items were already in the set</returns>
+		/// <remarks>The set of items may be enumerated multiple times</remarks>
+		public static bool Union<T>(ref ImmutableHashSet<T> hashSet, IEnumerable<T> items)
+		{ //****************************************
+			ImmutableHashSet<T> OldSet, NewSet;
+			//****************************************
+
+			do
+			{
+				OldSet = hashSet;
+				NewSet = OldSet.Union(items);
+
+				if (object.ReferenceEquals(OldSet, NewSet))
+					return false;
+
+			} while (Interlocked.CompareExchange(ref hashSet, NewSet, OldSet) != OldSet);
+
 			return true;
 		}
 	}
