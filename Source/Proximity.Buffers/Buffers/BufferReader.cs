@@ -20,6 +20,14 @@ namespace System.Buffers
 		//****************************************
 
 		/// <summary>
+		/// Creates a new Buffer Reader with an empty buffer
+		/// </summary>
+		/// <remarks>Call Reset with new content in order to utilise the reader</remarks>
+		public BufferReader() : this(ReadOnlySequence<T>.Empty)
+		{
+		}
+
+		/// <summary>
 		/// Creates a new Buffer Reader
 		/// </summary>
 		/// <param name="buffer">The buffer to read from</param>
@@ -56,6 +64,12 @@ namespace System.Buffers
 			Position = 0;
 			_OutputUsed = 0;
 		}
+
+		/// <summary>
+		/// Reuses the reader with a new buffer
+		/// </summary>
+		/// <param name="buffer">The buffer to read from</param>
+		public void Reset(ReadOnlyMemory<T> buffer) => Reset(new ReadOnlySequence<T>(buffer));
 
 		/// <summary>
 		/// Restarts the reader from the start of the buffer

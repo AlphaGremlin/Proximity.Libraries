@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -86,7 +87,7 @@ namespace System.IO
 			if (PrepareForRead(minSize))
 			{
 #if NETSTANDARD2_0
-				var BytesRead = await Stream.ReadAsync(_Buffer, _BufferCount, _Buffer.Length - _BufferCount, cancellationToken);
+				var BytesRead = await Stream.ReadAsync(_Buffer!, _BufferCount, _Buffer!.Length - _BufferCount, cancellationToken);
 #else
 				var BytesRead = await Stream.ReadAsync(_Buffer.AsMemory(_BufferCount), cancellationToken);
 #endif

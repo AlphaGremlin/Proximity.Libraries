@@ -13,7 +13,7 @@ using System.Runtime.Intrinsics.X86;
 namespace System.Buffers
 {
 	/// <summary>
-	/// Provides a block equality comparer for <see cref="Memory{T}"/>, <see cref="ReadOnlyMemory{T}"/>, and <see cref="Array"/>
+	/// Provides a block equality comparer for <see cref="Memory{T}"/>, <see cref="ReadOnlyMemory{T}"/>, <see cref="Span{T}"/>, <see cref="ReadOnlySpan{T}"/>, and <see cref="Array"/>
 	/// </summary>
 	public abstract class BlockEqualityComparer
 	{
@@ -55,7 +55,7 @@ namespace System.Buffers
 			private const int AdlerMax = 5552;
 
 #if !NETSTANDARD
-			private const int AdlerMaxSse2 = 5552 / 16;
+			private const int BlockSize = 16;
 
 			private const byte S23O1 = (((2) << 6) | ((3) << 4) | ((0) << 2) | ((1)));
 			private const byte S1O32 = (((1) << 6) | ((0) << 4) | ((3) << 2) | ((2)));
@@ -90,22 +90,24 @@ namespace System.Buffers
 				{
 					var Vectors = MemoryMarshal.Cast<byte, Vector128<byte>>(value);
 
-					while (Vectors.Length > AdlerMaxSse2)
+					while (!Vectors.IsEmpty)
 					{
+						var Count = Math.Min(Vectors.Length, AdlerMax / BlockSize);
+
 						// B is the running total of every A value generated after each byte: For Each Value: (B = B + (A = A + Value)
-						// We know the starting A will be added N times, thus we can multiply it ahead of time by the number of operations.
-						var PreviousSum = Vector128.Create(0, 0, 0, A * AdlerMaxSse2);
+						// We know the starting A will be added Count times, thus we can multiply it ahead of time by the number of operations.
+						var PreviousSum = Vector128.Create(0, 0, 0, A * (uint)Count);
 						var Sum = Vector128.Create(0u, 0, 0, 0);
 						var SumSum = Vector128.Create(0, 0, 0, B);
 
-						for (var Index = 0; Index < AdlerMaxSse2; Index++)
+						for (var Index = 0; Index < Count; Index++)
 						{
 							// Each block needs to include the sum from the previous block
 							PreviousSum = Sse2.Add(PreviousSum, Sum);
 							// Total up the bytes into two 16-bit numbers, and add them to the sum
-							Sum = Sse2.Add(Sum, Sse2.SumAbsoluteDifferences(Vectors[0], Vector128<byte>.Zero).AsUInt32());
+							Sum = Sse2.Add(Sum, Sse2.SumAbsoluteDifferences(Vectors[Index], Vector128<byte>.Zero).AsUInt32());
 							// The tap multiplies each byte by the number of times it would be added to B, then we sum them all together and add them to the secondary sum
-							SumSum = Sse2.Add(SumSum, Sse2.MultiplyAddAdjacent(Ssse3.MultiplyAddAdjacent(Vectors[0], SseTap), SseOnes).AsUInt32());
+							SumSum = Sse2.Add(SumSum, Sse2.MultiplyAddAdjacent(Ssse3.MultiplyAddAdjacent(Vectors[Index], SseTap), SseOnes).AsUInt32());
 						}
 
 						// PreviousSum needs to be multiplied by sixteen, since each operation processes that many bytes.
@@ -125,8 +127,8 @@ namespace System.Buffers
 						B = Sse2.ConvertToUInt32(SumSum) % AdlerModulus;
 
 						// Once a section is processed, trim it off
-						Vectors = Vectors.Slice(AdlerMaxSse2);
-						value = value.Slice(AdlerMax);
+						Vectors = Vectors.Slice(Count);
+						value = value.Slice(Count * BlockSize);
 					}
 				}
 				else

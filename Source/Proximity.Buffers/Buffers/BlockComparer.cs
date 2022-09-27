@@ -6,7 +6,7 @@ using System.Threading;
 namespace System.Buffers
 {
 	/// <summary>
-	/// Provides a block comparer for <see cref="Memory{T}"/>, <see cref="ReadOnlyMemory{T}"/>, and <see cref="Array"/>
+	/// Provides a block comparer for <see cref="Memory{T}"/>, <see cref="ReadOnlyMemory{T}"/>, <see cref="Span{T}"/>, <see cref="ReadOnlySpan{T}"/>, and <see cref="Array"/>
 	/// </summary>
 	public abstract class BlockComparer
 	{
