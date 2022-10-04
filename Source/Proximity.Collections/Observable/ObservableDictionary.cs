@@ -285,7 +285,7 @@ namespace System.Collections.Observable
 		/// Gets the key/value pair at the given index
 		/// </summary>
 		/// <param name="index">The index to retrieve</param>
-		/// <returns>They key/value pair at the requested index</returns>
+		/// <returns>The key/value pair at the requested index</returns>
 		public KeyValuePair<TKey, TValue> Get(int index) => GetByIndexValidated(index);
 
 		/// <summary>

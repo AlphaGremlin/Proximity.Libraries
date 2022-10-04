@@ -541,7 +541,7 @@ namespace Proximity.Collections.Tests
 
 			Assert.AreEqual(1024, MyRecords.Count, "Count incorrect. Bad Seed was {0}", MySeed);
 
-			CollectionAssert.AreEqual(MySortedList, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MySortedList.SequenceEquivalent(MyRecords), "Collections don't match. Bad Seed was {0}", MySeed);
 			
 			Thread.Sleep(1);
 		}
@@ -587,7 +587,7 @@ namespace Proximity.Collections.Tests
 
 			Assert.AreEqual(512, MyRecords.Count, "Count incorrect. Bad Seed was {0}", MySeed);
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MyDictionary.SequenceEquivalent(MyRecords), "Collections don't match. Bad Seed was {0}", MySeed);
 
 			foreach (var MyPair in MyDictionary)
 			{
@@ -639,7 +639,7 @@ namespace Proximity.Collections.Tests
 
 			Assert.AreEqual(512, MyRecords.Count, "Count incorrect. Bad Seed was {0}", MySeed);
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MyDictionary.SequenceEquivalent(MyRecords), "Collections don't match. Bad Seed was {0}", MySeed);
 
 			foreach (var MyPair in MyDictionary)
 			{
@@ -681,7 +681,7 @@ namespace Proximity.Collections.Tests
 
 			//****************************************
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MyDictionary.SequenceEquivalent(MyRecords), "Collections don't match. Bad Seed was {0}", MySeed);
 
 			foreach (var MyPair in MyDictionary)
 			{
@@ -723,10 +723,10 @@ namespace Proximity.Collections.Tests
 				MyDictionary.Remove(MyResult.Key);
 
 			MyRecords.RemoveRange(256, 256);
-			
+
 			//****************************************
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MyDictionary.SequenceEquivalent(MyRecords), "Collections don't match. Bad Seed was {0}", MySeed);
 
 			foreach (var MyPair in MyDictionary)
 			{

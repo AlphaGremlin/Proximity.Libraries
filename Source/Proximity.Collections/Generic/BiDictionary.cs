@@ -472,7 +472,7 @@ namespace System.Collections.Generic
 		/// Finds the index of a particular right value
 		/// </summary>
 		/// <param name="right">The right value to lookup</param>
-		/// <returns></returns>
+		/// <returns>The index of the right value, if found, otherwise -1</returns>
 		public int IndexOfRight(TRight right)
 		{
 			if (right == null)
@@ -548,69 +548,18 @@ namespace System.Collections.Generic
 		public int RemoveAll(Predicate<KeyValuePair<TLeft, TRight>> predicate)
 		{
 			var Entries = _Entries;
-			var LeftBuckets = _LeftBuckets;
-			var RightBuckets = _RightBuckets;
-			var Index = 0;
+			var Count = 0;
 
-			// Find the Left item we need to remove
-			while (Index < _Size && !predicate(Entries[Index].Item))
-				Index++;
-
-			// Did we find anything?
-			if (Index >= _Size)
-				return 0;
-
-			var RemovedItems = new List<KeyValuePair<TLeft, TRight>>() { Entries[Index].Item };
-
-			var InnerIndex = Index + 1;
-
-			while (InnerIndex < _Size)
+			for (var Index = _Size - 1; Index >= 0; Index--)
 			{
-				// Skip the items we need to remove
-				while (InnerIndex < _Size && predicate(Entries[InnerIndex].Item))
+				if (predicate(Entries[Index].Item))
 				{
-					RemovedItems.Add(Entries[InnerIndex].Item);
-
-					InnerIndex++;
+					RemoveAt(Index);
+					Count++;
 				}
-
-				// If we reached the end, abort
-				if (InnerIndex >= _Size)
-					break;
-
-				// We found one we're not removing, so move it up
-				ref var Entry = ref Entries[Index];
-
-				Entry = Entries[InnerIndex];
-
-				// Reindex it
-				ref var LeftBucket = ref LeftBuckets[Entry.LeftHashCode % LeftBuckets.Length];
-				ref var RightBucket = ref RightBuckets[Entry.RightHashCode % RightBuckets.Length];
-				var NextLeftIndex = LeftBucket - 1;
-				var NextRightIndex = RightBucket - 1;
-
-				Entry.NextLeftIndex = NextLeftIndex;
-				Entry.NextRightIndex = NextRightIndex;
-				Entry.PreviousLeftIndex = -1;
-				Entry.PreviousRightIndex = -1;
-
-				if (NextLeftIndex >= 0)
-					Entries[NextLeftIndex].PreviousLeftIndex = Index;
-
-				if (NextRightIndex >= 0)
-					Entries[NextRightIndex].PreviousRightIndex = Index;
-
-				LeftBucket = RightBucket = Index + 1;
-
-				Index++;
-				InnerIndex++;
 			}
 
-			// Clear the removed item(s)
-			Array.Clear(_Entries, Index, _Size - Index);
-			_Size = Index;
-
-			return InnerIndex - Index;
+			return Count;
 		}
 
 		/// <summary>
@@ -1215,7 +1164,7 @@ namespace System.Collections.Generic
 		}
 
 		/// <summary>
-		/// Gets/Sets the number of elements that the Observable Dictionary can contain.
+		/// Gets/Sets the number of elements that the Dictionary can contain.
 		/// </summary>
 		public int Capacity
 		{

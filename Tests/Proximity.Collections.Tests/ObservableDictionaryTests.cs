@@ -43,7 +43,7 @@ namespace Proximity.Collections.Tests
 
 			Assert.AreEqual(1024, MyRecords.Count, "Count incorrect. Bad Seed was {0}", MySeed);
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MyDictionary.SequenceEquivalent(MyRecords), "Collections don't match. Bad Seed was {0}", MySeed);
 
 			foreach (var MyPair in MyDictionary)
 			{
@@ -83,7 +83,7 @@ namespace Proximity.Collections.Tests
 
 			Assert.AreEqual(1024, MyRecords.Count, "Count incorrect. Bad Seed was {0}", MySeed);
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MyDictionary.SequenceEquivalent(MyRecords), "Collections don't match. Bad Seed was {0}", MySeed);
 
 			foreach (var MyPair in MyDictionary)
 			{
@@ -124,7 +124,7 @@ namespace Proximity.Collections.Tests
 
 			Assert.AreEqual(64, MyRecords.Count, "Count incorrect. Bad Seed was {0}", MySeed);
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MyDictionary.SequenceEquivalent(MyRecords), "Collections don't match. Bad Seed was {0}", MySeed);
 
 			foreach (var MyPair in MyDictionary)
 			{
@@ -186,7 +186,7 @@ namespace Proximity.Collections.Tests
 
 			Assert.AreEqual(1024, MyRecords.Count, "Count incorrect. Bad Seed was {0}", MySeed);
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MyDictionary.SequenceEquivalent(MyRecords), "Collections don't match. Bad Seed was {0}", MySeed);
 
 			foreach (var MyPair in MyDictionary)
 			{
@@ -228,7 +228,7 @@ namespace Proximity.Collections.Tests
 
 			Assert.AreEqual(64, MyRecords.Count, "Count incorrect. Bad Seed was {0}", MySeed);
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MyDictionary.SequenceEquivalent(MyRecords), "Collections don't match. Bad Seed was {0}", MySeed);
 
 			foreach (var MyPair in MyDictionary)
 			{
@@ -333,7 +333,7 @@ namespace Proximity.Collections.Tests
 
 			Assert.AreEqual(1024, MyRecords.Count, "Count incorrect. Bad Seed was {0}", MySeed);
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MyDictionary.SequenceEquivalent(MyRecords), "Collections don't match. Bad Seed was {0}", MySeed);
 
 			foreach (var MyPair in MyDictionary)
 			{
@@ -393,7 +393,7 @@ namespace Proximity.Collections.Tests
 
 			Assert.AreEqual(64, MyRecords.Count, "Count incorrect. Bad Seed was {0}", MySeed);
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MyDictionary.SequenceEquivalent(MyRecords), "Collections don't match. Bad Seed was {0}", MySeed);
 
 			foreach (var MyPair in MyDictionary)
 			{
@@ -775,7 +775,7 @@ namespace Proximity.Collections.Tests
 
 			Assert.AreEqual(1024, MyRecords.Count, "Count incorrect. Bad Seed was {0}", MySeed);
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MyDictionary.SequenceEquivalent(MyRecords), "Collections don't match. Bad Seed was {0}", MySeed);
 
 			foreach (var MyPair in MyDictionary)
 			{
@@ -827,7 +827,7 @@ namespace Proximity.Collections.Tests
 
 			Assert.AreEqual(512, MyRecords.Count, "Count incorrect. Bad Seed was {0}", MySeed);
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MyDictionary.SequenceEquivalent(MyRecords), "Collections don't match. Bad Seed was {0}", MySeed);
 
 			foreach (var MyPair in MyDictionary)
 			{
@@ -879,7 +879,7 @@ namespace Proximity.Collections.Tests
 
 			Assert.AreEqual(512, MyRecords.Count, "Count incorrect. Bad Seed was {0}", MySeed);
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MyDictionary.SequenceEquivalent(MyRecords), "Collections don't match. Bad Seed was {0}", MySeed);
 
 			foreach (var MyPair in MyDictionary)
 			{
@@ -921,7 +921,7 @@ namespace Proximity.Collections.Tests
 
 			//****************************************
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MyDictionary.SequenceEquivalent(MyRecords), "Collections don't match. Bad Seed was {0}", MySeed);
 
 			foreach (var MyPair in MyDictionary)
 			{
@@ -966,7 +966,7 @@ namespace Proximity.Collections.Tests
 			
 			//****************************************
 
-			CollectionAssert.AreEquivalent(MyDictionary, MyRecords, "Collections don't match. Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MyDictionary.SequenceEquivalent(MyRecords), "Collections don't match. Bad Seed was {0}", MySeed);
 
 			foreach (var MyPair in MyDictionary)
 			{

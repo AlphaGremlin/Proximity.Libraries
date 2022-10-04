@@ -269,6 +269,8 @@ namespace Proximity.Collections.Tests
 				};
 
 				CollectionAssert.Contains(WeakCollection, StrongRef);
+
+				StrongRef = null;
 			}
 
 			GC.Collect();

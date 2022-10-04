@@ -22,7 +22,7 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListView<int>(MyRecords, ReverseComparer<int>.Default);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
 			//****************************************
@@ -44,7 +44,7 @@ namespace Proximity.Collections.Tests
 			var MyRecords = new ObservableList<int>(1024);
 			//****************************************
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
 			//****************************************
@@ -70,7 +70,7 @@ namespace Proximity.Collections.Tests
 			var MyRecords = new ObservableList<int>(count);
 			//****************************************
 
-			for (int Index = 0; Index < count; Index++)
+			for (var Index = 0; Index < count; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
 			//****************************************
@@ -96,7 +96,7 @@ namespace Proximity.Collections.Tests
 			var MyRecords = new ObservableList<int>(1024);
 			//****************************************
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
 			//****************************************
@@ -126,7 +126,7 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListView<int>(MyRecords);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
 			//****************************************
@@ -150,7 +150,7 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListView<int>(MyRecords, FilterLessThan512);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
 			//****************************************
@@ -174,7 +174,7 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListView<int>(MyRecords, maximum);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
 			//****************************************
@@ -200,7 +200,7 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListView<int>(MyRecords, FilterLessThan512, maximum);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
 			//****************************************
@@ -228,7 +228,7 @@ namespace Proximity.Collections.Tests
 
 			MyRecords.BeginUpdate();
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
 			MyRecords.EndUpdate();
@@ -256,7 +256,7 @@ namespace Proximity.Collections.Tests
 
 			MyRecords.BeginUpdate();
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
 			MyRecords.EndUpdate();
@@ -284,7 +284,7 @@ namespace Proximity.Collections.Tests
 
 			MyRecords.BeginUpdate();
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
 			MyRecords.EndUpdate();
@@ -312,10 +312,10 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListView<int>(MyRecords);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 			{
 				MyRecords[MyRandom.Next(1024)] = MyRandom.Next(short.MaxValue);
 			}
@@ -341,10 +341,10 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListView<int>(MyRecords, FilterLessThan512);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 			{
 				MyRecords[MyRandom.Next(1024)] = MyRandom.Next(short.MaxValue);
 			}
@@ -369,10 +369,10 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListView<int>(MyRecords, FilterLessThan512);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 			{
 				var MyInnerRecords = MyRecords.Where(FilterLessThan512).ToArray();
 
@@ -404,10 +404,10 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListView<int>(MyRecords, maximum);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 			{
 				MyRecords[MyRandom.Next(1024)] = MyRandom.Next(short.MaxValue);
 			}
@@ -435,10 +435,10 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListView<int>(MyRecords, FilterLessThan512, maximum);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 			{
 				MyRecords[MyRandom.Next(1024)] = MyRandom.Next(short.MaxValue);
 			}
@@ -466,12 +466,12 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListView<int>(MyRecords, FilterLessThan512, 256);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 			{
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 			}
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 			{
 				var MyInnerRecords = MyRecords.Where(FilterLessThan512).ToArray();
 
@@ -507,10 +507,10 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListView<int>(MyRecords, FilterMoreThan512, maximum);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 			{
 				MyRecords[MyRandom.Next(1024)] = MyRandom.Next(short.MaxValue);
 			}
@@ -538,10 +538,10 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListView<int>(MyRecords);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
-			for (int Index = 0; Index < 512; Index++)
+			for (var Index = 0; Index < 512; Index++)
 			{
 				MyRecords.RemoveAt(MyRandom.Next(MyRecords.Count));
 			}
@@ -567,10 +567,10 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListView<int>(MyRecords, FilterLessThan512);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
-			for (int Index = 0; Index < 512; Index++)
+			for (var Index = 0; Index < 512; Index++)
 			{
 				MyRecords.RemoveAt(MyRandom.Next(MyRecords.Count));
 			}
@@ -596,10 +596,10 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListView<int>(MyRecords, maximum);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
-			for (int Index = 0; Index < 512; Index++)
+			for (var Index = 0; Index < 512; Index++)
 			{
 				MyRecords.RemoveAt(MyRandom.Next(MyRecords.Count));
 			}
@@ -627,10 +627,10 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListView<int>(MyRecords, FilterLessThan512, maximum);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
-			for (int Index = 0; Index < 512; Index++)
+			for (var Index = 0; Index < 512; Index++)
 			{
 				MyRecords.RemoveAt(MyRandom.Next(MyRecords.Count));
 			}
@@ -658,10 +658,10 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListView<int>(MyRecords, FilterMoreThan512, maximum);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
-			for (int Index = 0; Index < 512; Index++)
+			for (var Index = 0; Index < 512; Index++)
 			{
 				MyRecords.RemoveAt(MyRandom.Next(MyRecords.Count));
 			}
@@ -713,14 +713,14 @@ namespace Proximity.Collections.Tests
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
 			var MyRecords = new ObservableList<int>(1024);
-			int EventCount = 0;
+			var EventCount = 0;
 			//****************************************
 
 			var MyView = new ObservableListView<int>(MyRecords);
 
 			MyView.CollectionChanged += (sender, e) => { if (e.Action == NotifyCollectionChangedAction.Add) EventCount++; };
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
 			//****************************************
@@ -774,7 +774,7 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListView<int>(MyRecords);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
 			MyView.CollectionChanged += (sender, e) => { if (MyFirstEventArgs == null) MyFirstEventArgs = e; else MySecondEventArgs = e; };
@@ -835,12 +835,12 @@ namespace Proximity.Collections.Tests
 			var MySeed = Environment.TickCount;
 			var MyRandom = new Random(MySeed);
 			var MyRecords = new ObservableList<int>(1024);
-			int EventCount = 0;
+			var EventCount = 0;
 			//****************************************
 
 			var MyView = new ObservableListView<int>(MyRecords);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
 			MyView.CollectionChanged += (sender, e) => { if (e.Action == NotifyCollectionChangedAction.Remove) EventCount++; };
@@ -865,7 +865,7 @@ namespace Proximity.Collections.Tests
 			var MyView = new ObservableListView<int>(MyRecords, maximum);
 			var MyTopView = new ObservableListView<int>(MyView);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
 			//****************************************
@@ -892,7 +892,7 @@ namespace Proximity.Collections.Tests
 			var MyView = new ObservableListView<int>(MyRecords, FilterLessThan512, maximum);
 			var MyTopView = new ObservableListView<int>(MyView);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
 			//****************************************
@@ -919,10 +919,10 @@ namespace Proximity.Collections.Tests
 			var MyView = new ObservableListView<int>(MyRecords, maximum);
 			var MyTopView = new ObservableListView<int>(MyView);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 			{
 				MyRecords[MyRandom.Next(1024)] = MyRandom.Next(short.MaxValue);
 			}
@@ -951,10 +951,10 @@ namespace Proximity.Collections.Tests
 			var MyView = new ObservableListView<int>(MyRecords, FilterLessThan512, maximum);
 			var MyTopView = new ObservableListView<int>(MyView);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 			{
 				MyRecords[MyRandom.Next(1024)] = MyRandom.Next(short.MaxValue);
 			}
@@ -982,10 +982,10 @@ namespace Proximity.Collections.Tests
 			var MyView = new ObservableListView<int>(MyRecords, maximum);
 			var MyTopView = new ObservableListView<int>(MyView);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 			{
 				CollectionAssert.AreEqual(MyView, MyTopView, "Iteration {0}", Index);
 
@@ -1016,10 +1016,10 @@ namespace Proximity.Collections.Tests
 			var MyView = new ObservableListView<int>(MyRecords, maximum);
 			var MyTopView = new ObservableListView<int>(MyView);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
-			for (int Index = 0; Index < 512; Index++)
+			for (var Index = 0; Index < 512; Index++)
 			{
 				MyRecords.RemoveAt(MyRandom.Next(MyRecords.Count));
 			}
@@ -1048,10 +1048,10 @@ namespace Proximity.Collections.Tests
 			var MyView = new ObservableListView<int>(MyRecords, FilterLessThan512, maximum);
 			var MyTopView = new ObservableListView<int>(MyView);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(MyRandom.Next(short.MaxValue));
 
-			for (int Index = 0; Index < 512; Index++)
+			for (var Index = 0; Index < 512; Index++)
 			{
 				MyRecords.RemoveAt(MyRandom.Next(MyRecords.Count));
 			}

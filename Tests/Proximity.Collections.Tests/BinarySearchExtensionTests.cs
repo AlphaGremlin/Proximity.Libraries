@@ -239,7 +239,7 @@ namespace Proximity.Collections.Tests
 		[Test()]
 		public void SeekBefore()
 		{
-			Assert.AreEqual(0, _SortedRecords.NearestBelow(new DateTime(2012, 7, 15), ReverseComparer<DateTime>.Default));
+			Assert.AreEqual(-1, _SortedRecords.NearestBelow(new DateTime(2012, 7, 15), ReverseComparer<DateTime>.Default));
 		}
 		
 		[Test()]
@@ -256,8 +256,8 @@ namespace Proximity.Collections.Tests
 			Assert.AreNotEqual(-1, Index, "Missing Index");
 			
 			Assert.AreEqual(Index + 0, _SortedRecords.NearestBelow(new DateTime(2012, 7, 9), ReverseComparer<DateTime>.Default));
-			Assert.AreEqual(Index + 1, _SortedRecords.NearestBelow(new DateTime(2012, 7, 8), ReverseComparer<DateTime>.Default));
-			Assert.AreEqual(Index + 1, _SortedRecords.NearestBelow(new DateTime(2012, 7, 7), ReverseComparer<DateTime>.Default));
+			Assert.AreEqual(Index + 0, _SortedRecords.NearestBelow(new DateTime(2012, 7, 8), ReverseComparer<DateTime>.Default));
+			Assert.AreEqual(Index + 0, _SortedRecords.NearestBelow(new DateTime(2012, 7, 7), ReverseComparer<DateTime>.Default));
 			Assert.AreEqual(Index + 1, _SortedRecords.NearestBelow(new DateTime(2012, 7, 6), ReverseComparer<DateTime>.Default));
 		}
 		
@@ -269,8 +269,8 @@ namespace Proximity.Collections.Tests
 			Assert.AreNotEqual(-1, Index, "Missing Index");
 			
 			Assert.AreEqual(Index + 0, _SortedRecords.NearestBelow(new DateTime(2011, 12, 5), ReverseComparer<DateTime>.Default));
-			Assert.AreEqual(Index + 1, _SortedRecords.NearestBelow(new DateTime(2011, 12, 4), ReverseComparer<DateTime>.Default));
-			Assert.AreEqual(Index + 1, _SortedRecords.NearestBelow(new DateTime(2011, 12, 3), ReverseComparer<DateTime>.Default));
+			Assert.AreEqual(Index + 0, _SortedRecords.NearestBelow(new DateTime(2011, 12, 4), ReverseComparer<DateTime>.Default));
+			Assert.AreEqual(Index + 0, _SortedRecords.NearestBelow(new DateTime(2011, 12, 3), ReverseComparer<DateTime>.Default));
 			Assert.AreEqual(Index + 1, _SortedRecords.NearestBelow(new DateTime(2011, 12, 2), ReverseComparer<DateTime>.Default));
 		}
 		
@@ -312,15 +312,15 @@ namespace Proximity.Collections.Tests
 			Assert.AreNotEqual(-1, Index, "Missing Index");
 			
 			Assert.AreEqual(Index - 1, _SortedRecords.NearestBelow(new DateTime(2011, 10, 31), ReverseComparer<DateTime>.Default));
-			Assert.AreEqual(Index + 0, _SortedRecords.NearestBelow(new DateTime(2011, 10, 30), ReverseComparer<DateTime>.Default));
-			Assert.AreEqual(Index + 0, _SortedRecords.NearestBelow(new DateTime(2011, 10, 29), ReverseComparer<DateTime>.Default));
+			Assert.AreEqual(Index - 1, _SortedRecords.NearestBelow(new DateTime(2011, 10, 30), ReverseComparer<DateTime>.Default));
+			Assert.AreEqual(Index - 1, _SortedRecords.NearestBelow(new DateTime(2011, 10, 29), ReverseComparer<DateTime>.Default));
 			Assert.AreEqual(Index + 0, _SortedRecords.NearestBelow(new DateTime(2011, 10, 28), ReverseComparer<DateTime>.Default));
 			Assert.AreEqual(Index + 1, _SortedRecords.NearestBelow(new DateTime(2011, 10, 27), ReverseComparer<DateTime>.Default));
 			Assert.AreEqual(Index + 2, _SortedRecords.NearestBelow(new DateTime(2011, 10, 26), ReverseComparer<DateTime>.Default));
 			Assert.AreEqual(Index + 3, _SortedRecords.NearestBelow(new DateTime(2011, 10, 25), ReverseComparer<DateTime>.Default));
 			Assert.AreEqual(Index + 4, _SortedRecords.NearestBelow(new DateTime(2011, 10, 24), ReverseComparer<DateTime>.Default));
-			Assert.AreEqual(Index + 5, _SortedRecords.NearestBelow(new DateTime(2011, 10, 23), ReverseComparer<DateTime>.Default));
-			Assert.AreEqual(Index + 5, _SortedRecords.NearestBelow(new DateTime(2011, 10, 22), ReverseComparer<DateTime>.Default));
+			Assert.AreEqual(Index + 4, _SortedRecords.NearestBelow(new DateTime(2011, 10, 23), ReverseComparer<DateTime>.Default));
+			Assert.AreEqual(Index + 4, _SortedRecords.NearestBelow(new DateTime(2011, 10, 22), ReverseComparer<DateTime>.Default));
 			Assert.AreEqual(Index + 5, _SortedRecords.NearestBelow(new DateTime(2011, 10, 21), ReverseComparer<DateTime>.Default));
 		}
 		
@@ -333,7 +333,7 @@ namespace Proximity.Collections.Tests
 		[Test()]
 		public void SeekAfter()
 		{
-			Assert.AreEqual(-1, _SortedRecords.NearestBelow(new DateTime(2011, 9, 20), ReverseComparer<DateTime>.Default));
+			Assert.AreEqual(198, _SortedRecords.NearestBelow(new DateTime(2011, 9, 20), ReverseComparer<DateTime>.Default));
 		}
 
 		//****************************************
@@ -359,7 +359,7 @@ namespace Proximity.Collections.Tests
 
 			Array.Sort(MySortedRecords);
 
-			CollectionAssert.AreEqual(MySortedRecords.Skip(index).Take(24), MyRecords.Skip(index).Take(24), "Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MySortedRecords.Skip(index).Take(24).SequenceEquivalent(MyRecords.Skip(index).Take(24)), "Bad Seed was {0}", MySeed);
 
 			Thread.Sleep(1);
 		}
@@ -384,7 +384,7 @@ namespace Proximity.Collections.Tests
 
 			Array.Sort(MySortedRecords);
 
-			CollectionAssert.AreEqual(MySortedRecords.Skip(index).Take(24), MyRecords.Skip(index).Take(24));
+			Assert.IsTrue(MySortedRecords.Skip(index).Take(24).SequenceEquivalent(MyRecords.Skip(index).Take(24)));
 		}
 	}
 }

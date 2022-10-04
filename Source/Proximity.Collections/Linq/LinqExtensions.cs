@@ -151,6 +151,68 @@ namespace System.Linq
 		}
 
 		/// <summary>
+		/// Compares two sequences and ensures they have the same values, including duplicates, regardless of order
+		/// </summary>
+		/// <typeparam name="T">The type of element</typeparam>
+		/// <param name="source">The first sequence to compare</param>
+		/// <param name="other">The second sequence to compare</param>
+		/// <returns>True if the sequences have the same values, regardless of order</returns>
+		public static bool SequenceEquivalent<T>(this IEnumerable<T> source, IEnumerable<T> other) => SequenceEquivalent(source, other, null);
+
+		/// <summary>
+		/// Compares two sequences and ensures they have the same values, including duplicates, regardless of order
+		/// </summary>
+		/// <typeparam name="T">The type of element</typeparam>
+		/// <param name="source">The first sequence to compare</param>
+		/// <param name="other">The second sequence to compare</param>
+		/// <param name="comparer">A comparer to use for the values. If omitted, uses the default Equality Comparer</param>
+		/// <returns>True if the sequences have the same values, regardless of order</returns>
+		public static bool SequenceEquivalent<T>(this IEnumerable<T> source, IEnumerable<T> other, IEqualityComparer<T>? comparer)
+		{
+			if (source is null)
+				throw new ArgumentNullException(nameof(source));
+
+			if (other is null)
+				throw new ArgumentNullException(nameof(other));
+
+			if (comparer is null)
+				comparer = EqualityComparer<T>.Default;
+
+#pragma warning disable CS8714 // The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'notnull' constraint.
+			// We explicitly ensure that if T is a null, we count it separately
+			var Table = new Dictionary<T, int>(comparer);
+#pragma warning restore CS8714 // The type cannot be used as type parameter in the generic type or method. Nullability of type argument doesn't match 'notnull' constraint.
+			var NullCount = 0;
+
+			foreach (var Item in source)
+			{
+				if (Item is null)
+					NullCount++;
+				else if (Table.TryGetValue(Item, out var Count))
+					Table[Item] = Count + 1;
+				else
+					Table[Item] = 1;
+			}
+
+			foreach (var Item in other)
+			{
+				if (Item is null)
+					NullCount--;
+				else if (Table.TryGetValue(Item, out var Count))
+				{
+					if (Count == 1)
+						Table.Remove(Item);
+					else
+						Table[Item] = Count - 1;
+				}
+				else
+					Table[Item] = -1;
+			}
+
+			return Table.Count == 0 && NullCount == 0;
+		}
+
+		/// <summary>
 		/// Converts an enumerable to a read-only collection
 		/// </summary>
 		/// <typeparam name="T">The type of element</typeparam>

@@ -14,7 +14,7 @@ namespace System.Collections.Generic
 	/// </summary>
 	/// <typeparam name="TKey">The type of key</typeparam>
 	/// <typeparam name="TValue">The type of value</typeparam>
-	/// <remarks>Note that index locations can change in response to Remove operations</remarks>
+	/// <remarks>Note that index locations can change in response to Remove operations. For controlled indexation, use <see cref="OrderedDictionary{TKey, TValue}"/></remarks>
 	public class IndexedDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IList<KeyValuePair<TKey, TValue>>, IReadOnlyList<KeyValuePair<TKey, TValue>>, IList, IDictionary where TKey : notnull
 	{ //****************************************
 		private const int HashCodeMask = 0x7FFFFFFF;
@@ -232,7 +232,9 @@ namespace System.Collections.Generic
 			Reindex(_Buckets, Entries, InsertIndex, InsertIndex + NewItems.Length);
 		}
 
-		/// <inheritdoc />
+		/// <summary>
+		/// Removes all elements from the collection
+		/// </summary>
 		public void Clear()
 		{
 			if (_Size == 0)
@@ -244,7 +246,11 @@ namespace System.Collections.Generic
 			_Size = 0;
 		}
 
-		/// <inheritdoc />
+		/// <summary>
+		/// Determines whether the collection contains a specific item
+		/// </summary>
+		/// <param name="item">The item to locate</param>
+		/// <returns>True if the item is in the list, otherwise false</returns>
 		public bool Contains(KeyValuePair<TKey, TValue> item) => IndexOf(item) != -1;
 
 		/// <inheritdoc />
@@ -277,6 +283,19 @@ namespace System.Collections.Generic
 		/// </summary>
 		/// <returns>An Enumerator to enumerate the contents of the Dictionary</returns>
 		public Enumerator GetEnumerator() => new(this);
+
+		/// <summary>
+		/// Gets the key/value pair at the given index by reference
+		/// </summary>
+		/// <param name="index">The index to retrieve</param>
+		/// <returns>They key/value pair at the requested index</returns>
+		public ref readonly KeyValuePair<TKey, TValue> GetRef(int index)
+		{
+			if (index >= _Size || index < 0)
+				throw new ArgumentOutOfRangeException(nameof(index));
+
+			return ref _Entries[index].Item;
+		}
 
 		/// <summary>
 		/// Determines the index of a specific item in the list
@@ -532,14 +551,14 @@ namespace System.Collections.Generic
 		/// <param name="key">The key of the item</param>
 		/// <param name="value">The value to associate with the key</param>
 		/// <returns>True if the item was added, otherwise False</returns>
-		public bool TryAdd(TKey key, TValue value) => TryAdd(new KeyValuePair<TKey, TValue>(key, value), out _);
+		public bool TryAdd(TKey key, TValue value) => TryAdd(new KeyValuePair<TKey, TValue>(key, value), false, out _);
 
 		/// <summary>
 		/// Tries to add an item to the Dictionary
 		/// </summary>
 		/// <param name="item">The key/value pair to add</param>
 		/// <returns>True if the item was added, otherwise False</returns>
-		public bool TryAdd(KeyValuePair<TKey, TValue> item) => TryAdd(item, out _);
+		public bool TryAdd(KeyValuePair<TKey, TValue> item) => TryAdd(item, false, out _);
 
 		/// <summary>
 		/// Tries to add an item to the Dictionary
@@ -548,7 +567,7 @@ namespace System.Collections.Generic
 		/// <param name="value">The value to associate with the key</param>
 		/// <param name="index">Receives the index of the new key/value pair, if added</param>
 		/// <returns>True if the item was added, otherwise False</returns>
-		public bool TryAdd(TKey key, TValue value, out int index) => TryAdd(new KeyValuePair<TKey, TValue>(key, value), out index);
+		public bool TryAdd(TKey key, TValue value, out int index) => TryAdd(new KeyValuePair<TKey, TValue>(key, value), false, out index);
 
 		/// <summary>
 		/// Tries to add an item to the Dictionary
@@ -557,6 +576,32 @@ namespace System.Collections.Generic
 		/// <param name="index">Receives the index of the new key/value pair, if added</param>
 		/// <returns>True if the item was added, otherwise False</returns>
 		public bool TryAdd(KeyValuePair<TKey, TValue> item, out int index) => TryAdd(item, false, out index);
+
+		/// <summary>
+		/// Searches the dictionary for a given key and returns the equal key, if any
+		/// </summary>
+		/// <param name="equalKey">The key to search for</param>
+		/// <param name="actualKey">The key already in the collection, or the given key if not found</param>
+		/// <returns>True if an equal key was found, otherwise False</returns>
+		public bool TryGetKey(TKey equalKey,
+#if !NETSTANDARD2_0 && !NET40
+			[MaybeNullWhen(false)]
+#endif
+			out TKey actualKey)
+		{
+			var Index = IndexOfKey(equalKey);
+
+			if (Index > 0)
+			{
+				actualKey = _Entries[Index].Key;
+
+				return true;
+			}
+
+			actualKey = equalKey;
+
+			return false;
+		}
 
 		/// <inheritdoc />
 		public bool TryGetValue(TKey key,

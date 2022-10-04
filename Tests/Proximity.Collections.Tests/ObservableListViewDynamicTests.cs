@@ -68,10 +68,10 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListViewDynamic<TestObject>(MyRecords, (Func<TestObject, TestObject>)Clone);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(new TestObject(MyRandom.Next(short.MaxValue)));
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 			{
 				MyRecords[MyRandom.Next(1024)].Value = MyRandom.Next(short.MaxValue);
 			}
@@ -82,7 +82,7 @@ namespace Proximity.Collections.Tests
 
 			Array.Sort(MySortedRecords);
 
-			CollectionAssert.AreEqual(MySortedRecords, MyView, "Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MySortedRecords.SequenceEqual(MyView), "Bad Seed was {0}", MySeed);
 
 			Thread.Sleep(1);
 		}
@@ -97,10 +97,10 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListViewDynamic<TestObject>(MyRecords, Clone, (IComparer<TestObject>)null, FilterLessThan512);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(new TestObject(MyRandom.Next(short.MaxValue)));
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 			{
 				MyRecords[MyRandom.Next(1024)].Value = MyRandom.Next(short.MaxValue);
 			}
@@ -111,7 +111,7 @@ namespace Proximity.Collections.Tests
 
 			Array.Sort(MySortedRecords);
 
-			CollectionAssert.AreEqual(MySortedRecords, MyView, "Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MySortedRecords.SequenceEqual(MyView), "Bad Seed was {0}", MySeed);
 
 			Thread.Sleep(1);
 		}
@@ -126,10 +126,10 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListViewDynamic<TestObject>(MyRecords, Clone, (IComparer<TestObject>)null, null, maximum);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(new TestObject(MyRandom.Next(short.MaxValue)));
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 			{
 				MyRecords[MyRandom.Next(1024)].Value = MyRandom.Next(short.MaxValue);
 			}
@@ -142,7 +142,7 @@ namespace Proximity.Collections.Tests
 			if (MySortedRecords.Length > maximum)
 				Array.Resize(ref MySortedRecords, maximum);
 
-			CollectionAssert.AreEqual(MySortedRecords, MyView, "Bad Seed was {0}", MySeed);
+			Assert.IsTrue(MySortedRecords.SequenceEqual(MyView), "Bad Seed was {0}", MySeed);
 
 			Thread.Sleep(1);
 		}
@@ -157,10 +157,10 @@ namespace Proximity.Collections.Tests
 
 			var MyView = new ObservableListViewDynamic<TestObject>(MyRecords, Clone, (IComparer<TestObject>)null, FilterLessThan512, maximum);
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 				MyRecords.Add(new TestObject(MyRandom.Next(short.MaxValue)));
 
-			for (int Index = 0; Index < 1024; Index++)
+			for (var Index = 0; Index < 1024; Index++)
 			{
 				MyRecords[MyRandom.Next(1024)].Value = MyRandom.Next(short.MaxValue);
 			}
