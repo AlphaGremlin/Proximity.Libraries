@@ -259,7 +259,11 @@ namespace System.Collections.Generic
 		/// <inheritdoc />
 		public bool ContainsValue(TValue value) => IndexOfValue(value) != -1;
 
-		/// <inheritdoc />
+		/// <summary>
+		/// Copies the contents of the collection to an array
+		/// </summary>
+		/// <param name="array">The destination array</param>
+		/// <param name="arrayIndex">The offset to start copying to</param>
 		public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
 		{
 			if (arrayIndex + _Size > array.Length)
