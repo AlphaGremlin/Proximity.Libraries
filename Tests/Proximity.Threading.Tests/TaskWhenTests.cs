@@ -114,6 +114,28 @@ namespace Proximity.Threading.Tests
 			}
 		}
 
+		[Test, MaxTime(1000)]
+		public async Task WhenCancelled()
+		{
+			using var CancelSource = new CancellationTokenSource();
+			CancelSource.Cancel();
+
+			var TaskSource = new TaskCompletionSource<VoidStruct>();
+
+			var WhenTask = ((Task)TaskSource.Task).When(CancelSource.Token);
+
+			try
+			{
+				await WhenTask;
+
+				Assert.Fail("Should not complete");
+			}
+			catch (OperationCanceledException e)
+			{
+				Assert.IsTrue(CancelSource.Token == e.CancellationToken);
+			}
+		}
+
 		//****************************************
 
 		[Test, MaxTime(1000)]

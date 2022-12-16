@@ -90,7 +90,7 @@ namespace Proximity.Threading
 				if (token.IsCancellationRequested)
 					SwitchToCancelled();
 				else
-					_Registration = token.Register((state) => ((BaseCancellable)state).SwitchToCancelled(), this, false);
+					_Registration = token.Register(static (state) => ((BaseCancellable)state).SwitchToCancelled(), this, false);
 			}
 		}
 

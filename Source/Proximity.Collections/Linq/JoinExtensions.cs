@@ -12,8 +12,7 @@ namespace System.Linq
 		/// <summary>
 		/// Joins an enumeration with a dictionary
 		/// </summary>
-		/// <typeparam name="TInput">The input value type</typeparam>
-		/// <typeparam name="TKey">The key type to join on</typeparam>
+		/// <typeparam name="TKey">The input value type to join on</typeparam>
 		/// <typeparam name="TValue">The value type that results from the join</typeparam>
 		/// <typeparam name="TResult">The final result of the join</typeparam>
 		/// <param name="input">The input enumeration</param>
@@ -21,16 +20,14 @@ namespace System.Linq
 		/// <param name="keySelector">A selector to determine the key from the input</param>
 		/// <param name="resultSelector">A selector to generate the final result</param>
 		/// <returns>An enumeration of join matches</returns>
-		public static IEnumerable<TResult> Join<TInput, TKey, TValue, TResult>(this IEnumerable<TInput> input, IDictionary<TKey, TValue> inner, Func<TInput, TKey> keySelector, Func<TInput, TKey, TValue, TResult> resultSelector)
+		public static IEnumerable<TResult> Join<TKey, TValue, TResult>(this IEnumerable<TKey> input, IReadOnlyDictionary<TKey, TValue> inner, Func<TKey, TValue, TResult> resultSelector)
 		{
-			foreach (var MyInput in input)
+			foreach (var Key in input)
 			{
-				var MyKey = keySelector(MyInput);
-
-				if (!inner.TryGetValue(MyKey, out var MyValue))
+				if (!inner.TryGetValue(Key, out var Value))
 					continue;
 
-				yield return resultSelector(MyInput, MyKey, MyValue);
+				yield return resultSelector(Key, Value);
 			}
 		}
 
@@ -48,14 +45,14 @@ namespace System.Linq
 		/// <returns>An enumeration of join matches</returns>
 		public static IEnumerable<TResult> Join<TInput, TKey, TValue, TResult>(this IEnumerable<TInput> input, IReadOnlyDictionary<TKey, TValue> inner, Func<TInput, TKey> keySelector, Func<TInput, TKey, TValue, TResult> resultSelector)
 		{
-			foreach (var MyInput in input)
+			foreach (var Input in input)
 			{
-				var MyKey = keySelector(MyInput);
+				var Key = keySelector(Input);
 
-				if (!inner.TryGetValue(MyKey, out var MyValue))
+				if (!inner.TryGetValue(Key, out var Value))
 					continue;
 
-				yield return resultSelector(MyInput, MyKey, MyValue);
+				yield return resultSelector(Input, Key, Value);
 			}
 		}
 
@@ -211,7 +208,7 @@ namespace System.Linq
 		/// <param name="leftKeySelect">A selector returning the key to join on for the left item</param>
 		/// <param name="rightKeySelect">A selector returning the key to join on for the right item</param>
 		/// <param name="resultSelector">A selector combining the two items into a single result</param>
-		/// <returns>An enumeration returning the result of the full outer join</returns>
+		/// <returns>An enumeration returning the result of the left outer join</returns>
 		public static IEnumerable<TResult> LeftOuterJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IEnumerable<TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TRight, TKey> rightKeySelect, Func<TLeft, TRight, TResult> resultSelector) where TKey : notnull
 		{
 			return LeftOuterJoin(left, right, leftKeySelect, rightKeySelect, resultSelector, default!, null);
@@ -227,7 +224,7 @@ namespace System.Linq
 		/// <param name="resultSelector">A selector combining the two items into a single result</param>
 		/// <param name="defaultRight">The default for the right item when a match is not found</param>
 		/// <param name="keyComparer">A comparer to use to compare keys</param>
-		/// <returns>An enumeration returning the result of the full outer join</returns>
+		/// <returns>An enumeration returning the result of the left outer join</returns>
 		public static IEnumerable<TResult> LeftOuterJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IEnumerable<TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TRight, TKey> rightKeySelect, Func<TLeft, TRight, TResult> resultSelector, TRight defaultRight, IEqualityComparer<TKey>? keyComparer) where TKey : notnull
 		{ //****************************************
 			var RightLookup = BuildLookup(right, rightKeySelect, keyComparer);
@@ -247,6 +244,45 @@ namespace System.Linq
 					{
 						yield return resultSelector(LeftItem, RightValue.Item);
 					} while ((RightValue = RightValue.Next) != null);
+				}
+				else
+				{
+					// No, so return right without a left
+					yield return resultSelector(LeftItem, defaultRight);
+				}
+			}
+		}
+
+		/// <summary>
+		/// Performs a left outer join between an enumeration and a dictionary
+		/// </summary>
+		/// <param name="left">The left collection to join</param>
+		/// <param name="right">The right collection to join</param>
+		/// <param name="leftKeySelect">A selector returning the key to join on for the left item</param>
+		/// <param name="resultSelector">A selector combining the two items into a single result</param>
+		/// <returns>An enumeration returning the result of the left outer join</returns>
+		public static IEnumerable<TResult> LeftOuterJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IReadOnlyDictionary<TKey, TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TLeft, TRight?, TResult> resultSelector) where TKey : notnull
+		{
+			return left.LeftOuterJoin(right, leftKeySelect, resultSelector, default!);
+		}
+
+		/// <summary>
+		/// Performs a left outer join between an enumeration and a dictionary
+		/// </summary>
+		/// <param name="left">The left collection to join</param>
+		/// <param name="right">The right collection to join</param>
+		/// <param name="leftKeySelect">A selector returning the key to join on for the left item</param>
+		/// <param name="resultSelector">A selector combining the two items into a single result</param>
+		/// <param name="defaultRight">The default for the right item when a match is not found</param>
+		/// <returns>An enumeration returning the result of the left outer join</returns>
+		public static IEnumerable<TResult> LeftOuterJoin<TLeft, TRight, TKey, TResult>(this IEnumerable<TLeft> left, IReadOnlyDictionary<TKey, TRight> right, Func<TLeft, TKey> leftKeySelect, Func<TLeft, TRight?, TResult> resultSelector, TRight defaultRight) where TKey : notnull
+		{
+			foreach (var LeftItem in left)
+			{
+				// Can we find a right item with the key of the left?
+				if (right.TryGetValue(leftKeySelect(LeftItem), out var RightValue))
+				{
+					yield return resultSelector(LeftItem, RightValue);
 				}
 				else
 				{

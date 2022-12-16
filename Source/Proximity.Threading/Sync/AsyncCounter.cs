@@ -525,7 +525,7 @@ namespace System.Threading
 				lock (Instance)
 				{
 					// Queue this inside the lock, so Pulse cannot execute until we've reached Wait, even if we've already completed
-					Instance.OnCompleted((state) => { lock (state!) Monitor.Pulse(state); }, Instance, Instance.Version, ValueTaskSourceOnCompletedFlags.None);
+					Instance.OnCompleted(static (state) => { lock (state!) Monitor.Pulse(state); }, Instance, Instance.Version, ValueTaskSourceOnCompletedFlags.None);
 
 					// Wait for a definitive result
 					Monitor.Wait(Instance);
@@ -684,7 +684,7 @@ namespace System.Threading
 				lock (Instance)
 				{
 					// Queue this inside the lock, so Pulse cannot execute until we've reached Wait, even if we've already completed
-					Instance.OnCompleted((state) => { lock (state!) Monitor.Pulse(state); }, Instance, Instance.Version, ValueTaskSourceOnCompletedFlags.None);
+					Instance.OnCompleted(static (state) => { lock (state!) Monitor.Pulse(state); }, Instance, Instance.Version, ValueTaskSourceOnCompletedFlags.None);
 
 					// Wait for a definitive result
 					Monitor.Wait(Instance);

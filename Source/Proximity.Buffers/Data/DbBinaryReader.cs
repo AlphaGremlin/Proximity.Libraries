@@ -29,6 +29,7 @@ namespace System.Data
 		{
 			_Reader = reader;
 			_Ordinal = ordinal;
+			_CanRead = true;
 		}
 
 		/// <summary>
@@ -40,6 +41,7 @@ namespace System.Data
 		{
 			_Reader = reader;
 			_Ordinal = reader.GetOrdinal(columnName);
+			_CanRead = true;
 		}
 
 		//****************************************

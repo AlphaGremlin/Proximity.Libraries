@@ -79,9 +79,9 @@ namespace System.Threading.Tasks
 			if ((!token.CanBeCanceled && timeout == Timeout.InfiniteTimeSpan) || task.IsCompleted)
 				return task;
 
-			var Instance = TaskCancelInstance<VoidStruct>.GetOrCreate(token, timeout);
+			var Instance = TaskCancelInstance<VoidStruct>.GetOrCreate();
 
-			Instance.Attach(task);
+			Instance.Attach(task, token, timeout);
 
 			return new ValueTask(Instance, Instance.Version);
 		}
@@ -123,9 +123,9 @@ namespace System.Threading.Tasks
 			if ((!token.CanBeCanceled && timeout == Timeout.InfiniteTimeSpan) || task.IsCompleted)
 				return task;
 
-			var Instance = TaskCancelInstance<T>.GetOrCreate(token, timeout);
+			var Instance = TaskCancelInstance<T>.GetOrCreate();
 
-			Instance.Attach(task);
+			Instance.Attach(task, token, timeout);
 
 			return new ValueTask<T>(Instance, Instance.Version);
 		}

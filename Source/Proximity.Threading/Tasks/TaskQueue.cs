@@ -273,7 +273,7 @@ namespace System.Threading.Tasks
 
 		//****************************************
 
-		private static void ExecutePool(BaseTask nextTask) => ThreadPool.UnsafeQueueUserWorkItem((state) => ExecuteNextTask((BaseTask)state), nextTask);
+		private static void ExecutePool(BaseTask nextTask) => ThreadPool.UnsafeQueueUserWorkItem(static (state) => ExecuteNextTask((BaseTask)state), nextTask);
 
 		private static void ExecuteNextTask(BaseTask nextTask)
 		{
@@ -393,7 +393,7 @@ namespace System.Threading.Tasks
 				{
 					_CanCancel = 1;
 					_Token = token;
-					_Registration = token.Register((state) => ((BaseTask<TResult>)state).Cancel(), this, false);
+					_Registration = token.Register(static (state) => ((BaseTask<TResult>)state).Cancel(), this, false);
 				}
 				else
 				{

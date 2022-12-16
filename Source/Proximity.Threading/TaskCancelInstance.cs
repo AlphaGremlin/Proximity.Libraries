@@ -34,75 +34,93 @@ namespace Proximity.Threading
 
 		//****************************************
 
-		internal void Initialise(CancellationToken token, TimeSpan timeout)
+		internal void Initialise()
 		{
 			_InstanceState = Status.Pending;
+		}
+
+		internal void Attach(Task task, CancellationToken token, TimeSpan timeout)
+		{
+			_HasResult = false;
+			_Task = task;
 
 			RegisterCancellation(token, timeout);
+
+			if (_InstanceState == Status.Pending)
+			{
+				// We use ContinueWith for Task.
+				// This results in a some allocations, but it also lets us associate the Token with the continuation
+				// Thus, if we cancel, then the continuation will be REMOVED from the attached Task
+
+				// A common pattern for Task.When is for implementing a singleton-style operation, letting callers abort waiting as needed.
+				// If we can't remove continuations, each call would then leak a TaskCancelInstance, potentially indefinitely.
+
+				// Make sure we run the continuation on the ThreadPool (equivalent to ConfigureAwait(false))
+				task.ContinueWith(_CompleteTask ??= OnCompleteTask, Token, TaskContinuationOptions.None, TaskScheduler.Default);
+			}
 		}
 
-		internal void Attach(Task task)
-		{
-			_HasResult = false;
-			_Task = task;
-
-			// We use ContinueWith for Task.
-			// This results in a some allocations, but it also lets us associate the Token with the continuation
-			// Thus, if we cancel, then the continuation will be REMOVED from the attached Task
-
-			// A common pattern for Task.When is for implementing a singleton-style operation, letting callers abort waiting as needed.
-			// If we can't remove continuations, each call would then leak a TaskCancelInstance, potentially indefinitely.
-
-			// Make sure we run the continuation on the ThreadPool (equivalent to ConfigureAwait(false))
-			task.ContinueWith(_CompleteTask ??= OnCompleteTask, Token, TaskContinuationOptions.None, TaskScheduler.Default);
-		}
-
-		internal void Attach(ValueTask task)
+		internal void Attach(ValueTask task, CancellationToken token, TimeSpan timeout)
 		{
 			_HasResult = false;
 			_WaitForCompletion = true; // ValueTask needs to wait before it can Release, since we can't unschedule the completion
 			_Task = Task.CompletedTask; // Allows cancellation to proceed
 
-			// We use GetAwaiter for ValueTask.
-			// Unlike with Task, which can have When called multiple times (and would leak on each call to GetAwaiter), we assume a ValueTask is consumed by calling When on it.
+			RegisterCancellation(token, timeout);
 
-			// The common pattern for ValueTask.When is to allow a caller to give up waiting on an operation without cancelling the operation (by passing a CancellationToken to the operation itself).
-			// In this scenario, since ValueTask cannot be reused, we will leak at worst a single TaskCancelInstance until the underlying operation completes - presumably a minimal cost compared to the operation itself.
+			if (_InstanceState == Status.Pending)
+			{
+				// We use GetAwaiter for ValueTask.
+				// Unlike with Task, which can have When called multiple times (and would leak on each call to GetAwaiter), we assume a ValueTask is consumed by calling When on it.
 
-			// The only way this can result in an unbounded memory leak is if ValueTask.When is called on a ValueTask that wraps an underlying Task.
-			// The only way to detect this with the current ValueTask API would be with `new ValueTask(task.AsTask()) == task`, which would return true in the case of an underlying Task,
-			// but would unfortunately allocate (and consume the ValueTask) in the case where it's an underlying IValueTaskSource.
+				// The common pattern for ValueTask.When is to allow a caller to give up waiting on an operation without cancelling the operation (by passing a CancellationToken to the operation itself).
+				// In this scenario, since ValueTask cannot be reused, we will leak at worst a single TaskCancelInstance until the underlying operation completes - presumably a minimal cost compared to the operation itself.
 
-			// We want to optimise for ValueTask.When causing as few allocations as possible, so we assume it's IValueTaskSource and warn the caller of the risk if given a Task.
-			_Awaiter = task.ConfigureAwait(false).GetAwaiter();
+				// The only way this can result in an unbounded memory leak is if ValueTask.When is called on a ValueTask that wraps an underlying Task.
+				// The only way to detect this with the current ValueTask API would be with `new ValueTask(task.AsTask()) == task`, which would return true in the case of an underlying Task,
+				// but would unfortunately allocate (and consume the ValueTask) in the case where it's an underlying IValueTaskSource.
 
-			if (_Awaiter.IsCompleted)
-				OnCompleteValueTask();
-			else
-				_Awaiter.OnCompleted(_CompleteValueTask ??= OnCompleteValueTask);
+				// We want to optimise for ValueTask.When causing as few allocations as possible, so we assume it's IValueTaskSource and warn the caller of the risk if given a Task.
+				_Awaiter = task.ConfigureAwait(false).GetAwaiter();
+
+				if (_Awaiter.IsCompleted)
+					OnCompleteValueTask();
+				else
+					_Awaiter.OnCompleted(_CompleteValueTask ??= OnCompleteValueTask);
+			}
 		}
 
-		internal void Attach(Task<T> task)
+		internal void Attach(Task<T> task, CancellationToken token, TimeSpan timeout)
 		{
 			_HasResult = true;
 			_Task = task;
 
-			// Make sure we run the continuation on the ThreadPool (equivalent to ConfigureAwait(false))
-			task.ContinueWith(_CompleteTask ??= OnCompleteTask, Token, TaskContinuationOptions.None, TaskScheduler.Default);
+			RegisterCancellation(token, timeout);
+
+			if (_InstanceState == Status.Pending)
+			{
+				// Make sure we run the continuation on the ThreadPool (equivalent to ConfigureAwait(false))
+				task.ContinueWith(_CompleteTask ??= OnCompleteTask, Token, TaskContinuationOptions.None, TaskScheduler.Default);
+			}
 		}
 
-		internal void Attach(ValueTask<T> task)
+		internal void Attach(ValueTask<T> task, CancellationToken token, TimeSpan timeout)
 		{
 			_HasResult = true;
 			_WaitForCompletion = true; // ValueTask needs to wait before it can Release, since we can't unschedule the completion
 			_Task = Task.CompletedTask; // Allows cancellation to proceed
 
-			_ResultAwaiter = task.ConfigureAwait(false).GetAwaiter();
+			RegisterCancellation(token, timeout);
 
-			if (_ResultAwaiter.IsCompleted)
-				OnCompleteValueTask();
-			else
-				_ResultAwaiter.OnCompleted(_CompleteValueTask ??= OnCompleteValueTask);
+			if (_InstanceState == Status.Pending)
+			{
+				_ResultAwaiter = task.ConfigureAwait(false).GetAwaiter();
+
+				if (_ResultAwaiter.IsCompleted)
+					OnCompleteValueTask();
+				else
+					_ResultAwaiter.OnCompleted(_CompleteValueTask ??= OnCompleteValueTask);
+			}
 		}
 
 		//****************************************
@@ -232,12 +250,12 @@ namespace Proximity.Threading
 
 		//****************************************
 
-		internal static TaskCancelInstance<T> GetOrCreate(CancellationToken token, TimeSpan timeout)
+		internal static TaskCancelInstance<T> GetOrCreate()
 		{
 			if (!Instances.TryTake(out var Instance))
 				Instance = new TaskCancelInstance<T>();
 
-			Instance.Initialise(token, timeout);
+			Instance.Initialise();
 
 			return Instance;
 		}
