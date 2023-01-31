@@ -86,6 +86,12 @@ namespace System.Data
 		/// <remarks>May be less than <paramref name="minSize"/> if there are not enough bytes available</remarks>
 		public ReadOnlyMemory<byte> GetMemory(int minSize)
 		{
+			if (minSize < 0)
+				throw new ArgumentOutOfRangeException(nameof(minSize));
+
+			if (minSize == 0)
+				minSize = MinimumBufferSize;
+
 			if (minSize > _Count)
 			{
 				if (_OutputBuffer == null)
