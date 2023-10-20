@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -44,7 +45,7 @@ namespace Proximity.Threading
 		}
 
 		protected bool TryCreateCancellationException(
-#if !NETSTANDARD
+#if !NETSTANDARD2_0
 			[MaybeNullWhen(false)]
 #endif
 			out Exception exception)
@@ -90,7 +91,7 @@ namespace Proximity.Threading
 				if (token.IsCancellationRequested)
 					SwitchToCancelled();
 				else
-					_Registration = token.Register(static (state) => ((BaseCancellable)state).SwitchToCancelled(), this, false);
+					_Registration = token.Register(static (state) => ((BaseCancellable)state!).SwitchToCancelled(), this, false);
 			}
 		}
 

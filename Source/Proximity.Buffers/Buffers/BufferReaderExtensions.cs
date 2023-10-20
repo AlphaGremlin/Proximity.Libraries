@@ -43,7 +43,7 @@ namespace System.Buffers
 		/// <param name="reader">The reader to read from</param>
 		/// <param name="writer">The writer to write to</param>
 		/// <param name="token">A cancellation token to abort the operation</param>
-		/// <returns>A task representing the progress fo the write operation</returns>
+		/// <returns>A task representing the progress of the write operation</returns>
 		public static async ValueTask CopyToAsync<T>(this IBufferReader<T> reader, IBufferWriterAsync<T> writer, CancellationToken token = default)
 		{
 			while (reader.CanRead)
@@ -67,7 +67,7 @@ namespace System.Buffers
 		/// <param name="reader">The reader to read from</param>
 		/// <param name="writer">The writer to write to</param>
 		/// <param name="token">A cancellation token to abort the operation</param>
-		/// <returns>A task representing the progress fo the write operation</returns>
+		/// <returns>A task representing the progress of the write operation</returns>
 		public static async ValueTask CopyToAsync<T>(this IBufferReaderAsync<T> reader, IBufferWriter<T> writer, CancellationToken token = default)
 		{
 			while (reader.CanRead)
@@ -91,7 +91,7 @@ namespace System.Buffers
 		/// <param name="reader">The reader to read from</param>
 		/// <param name="writer">The writer to write to</param>
 		/// <param name="token">A cancellation token to abort the operation</param>
-		/// <returns>A task representing the progress fo the write operation</returns>
+		/// <returns>A task representing the progress of the write operation</returns>
 		public static async ValueTask CopyToAsync<T>(this IBufferReaderAsync<T> reader, IBufferWriterAsync<T> writer, CancellationToken token = default)
 		{
 			while (reader.CanRead)
@@ -106,6 +106,36 @@ namespace System.Buffers
 				await writer.AdvanceAsync(InBuffer.Length, token);
 				reader.Advance(InBuffer.Length);
 			}
+		}
+
+		/// <summary>
+		/// Reads a <see cref="IBufferReader{T}"/> to completion, producing an array
+		/// </summary>
+		/// <typeparam name="T">The type of element</typeparam>
+		/// <param name="reader">The reader to read from</param>
+		public static T[] ReadAll<T>(this IBufferReader<T> reader)
+		{
+			using var Writer = new BufferWriter<T>();
+
+			reader.CopyTo(Writer);
+
+			return Writer.ToArray();
+		}
+
+		/// <summary>
+		/// Reads a <see cref="IBufferReaderAsync{T}"/> to completion, producing an array
+		/// </summary>
+		/// <typeparam name="T">The type of element</typeparam>
+		/// <param name="reader">The reader to read from</param>
+		/// <param name="token">A cancellation token to abort the operation</param>
+		/// <returns>A task representing the progress of the read, returning the resulting array</returns>
+		public static async ValueTask<T[]> ReadAllAsync<T>(this IBufferReaderAsync<T> reader, CancellationToken token = default)
+		{
+			using var Writer = new BufferWriter<T>();
+
+			await reader.CopyToAsync(Writer, token);
+
+			return Writer.ToArray();
 		}
 	}
 }

@@ -630,7 +630,11 @@ namespace System.Collections.Concurrent
 			return true;
 		}
 
-		private bool GetNextItem(out T item)
+		private bool GetNextItem(
+#if !NETSTANDARD
+			[MaybeNullWhen(false)]
+#endif
+			out T item)
 		{
 			if (!_Collection.TryTake(out item))
 			{

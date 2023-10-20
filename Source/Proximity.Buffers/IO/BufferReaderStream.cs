@@ -19,6 +19,7 @@ namespace System.IO
 		private int _BufferRead;
 
 		private long _Position;
+		private long? _Length, _Remainder;
 		//****************************************
 
 		/// <summary>
@@ -35,10 +36,34 @@ namespace System.IO
 		/// Creates a Stream that reads directly from the underlying Buffer Reader
 		/// </summary>
 		/// <param name="reader">The Buffer Reader to write to</param>
-		/// <param name="blockSize">The block size to use when reading</param>
-		public BufferReaderStream(IBufferReader<byte> reader, int? blockSize)
+		/// <param name="length">The maximum length to read from the Buffer Reader. Null for unlimited</param>
+		public BufferReaderStream(IBufferReader<byte> reader, long? length)
 		{
+			if (length.HasValue && length <= 0)
+				throw new ArgumentOutOfRangeException(nameof(length));
+
 			Reader = reader ?? throw new ArgumentNullException(nameof(reader));
+			_Length = _Remainder = length;
+			_BlockSize = null;
+		}
+
+		/// <summary>
+		/// Creates a Stream that reads directly from the underlying Buffer Reader
+		/// </summary>
+		/// <param name="reader">The Buffer Reader to write to</param>
+		/// <param name="length">The maximum length to read from the Buffer Reader. Null for unlimited</param>
+		/// <param name="blockSize">The block size to use when reading</param>
+		public BufferReaderStream(IBufferReader<byte> reader, long? length, int? blockSize)
+		{
+			if (length.HasValue && length <= 0)
+				throw new ArgumentOutOfRangeException(nameof(length));
+
+			// Blocksize can be 0, which will just perform 0-length reads from the underlying source
+			if (blockSize.HasValue && blockSize < 0)
+				throw new ArgumentOutOfRangeException(nameof(blockSize));
+
+			Reader = reader ?? throw new ArgumentNullException(nameof(reader));
+			_Length = _Remainder = length;
 			_BlockSize = blockSize;
 		}
 
@@ -73,6 +98,9 @@ namespace System.IO
 		/// <inheritdoc />
 		public override int ReadByte()
 		{
+			if (_Remainder != null && _Remainder.Value == 0)
+				return -1;
+
 			if (_Buffer.IsEmpty)
 			{
 				// If a block size is set, read that instead of trying to get the minimum size
@@ -89,6 +117,9 @@ namespace System.IO
 
 			_Buffer = _Buffer.Slice(1);
 			_BufferRead++;
+
+			if (_Remainder != null)
+				_Remainder = _Remainder.Value - 1;
 
 			// If we exhausted the buffer, advance the number of bytes we read in total
 			if (_Buffer.IsEmpty)
@@ -114,6 +145,16 @@ namespace System.IO
 		{
 			if (buffer.IsEmpty)
 				return 0;
+
+			if (_Remainder != null)
+			{
+				if (_Remainder.Value == 0)
+					return 0;
+
+				// Cap the read to the remaining length
+				if (_Remainder.Value < buffer.Length)
+					buffer = buffer.Slice(0, (int)_Remainder.Value);
+			}
 
 			int BytesRead;
 
@@ -145,7 +186,7 @@ namespace System.IO
 
 				// Have we exhausted the reader?
 				if (_Buffer.IsEmpty)
-					return BytesRead;
+					break;
 
 				// Copy from the buffer
 				ReadLength = ReadFromBuffer(buffer);
@@ -154,6 +195,9 @@ namespace System.IO
 				buffer = buffer.Slice(ReadLength);
 				BytesRead += ReadLength;
 			}
+
+			if (_Remainder != null)
+				_Remainder = _Remainder.Value - BytesRead;
 
 			return BytesRead;
 		}
@@ -167,6 +211,18 @@ namespace System.IO
 			override
 #endif
 			ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) => new ValueTask<int>(Read(buffer.Span));
+
+		/// <summary>
+		/// Resets the remaining length to be read from the underlying Stream
+		/// </summary>
+		/// <param name="length">The maximum length to read from the Buffer Reader. Null for unlimited</param>
+		public void ResetLength(long? length)
+		{
+			if (length.HasValue && length <= 0)
+				throw new ArgumentOutOfRangeException(nameof(length));
+
+			_Length = _Remainder = length;
+		}
 
 		/// <inheritdoc />
 		public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
@@ -239,7 +295,7 @@ namespace System.IO
 		public override bool CanWrite => false;
 
 		/// <inheritdoc />
-		public override long Length => throw new NotSupportedException();
+		public override long Length => _Length ?? throw new NotSupportedException();
 
 		/// <inheritdoc />
 		public override long Position

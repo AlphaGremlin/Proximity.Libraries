@@ -1,13 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFrameworks>netstandard2.0;netstandard2.1;net5.0;net4.0</TargetFrameworks>
+		<TargetFrameworks>netstandard2.0;netstandard2.1;net6.0</TargetFrameworks>
 		<Authors>Daniel Chandler</Authors>
 		<Company>Proximity Interactive</Company>
 		<Copyright>Copyright © Daniel Chandler 2020</Copyright>
 		<Product>Proximity Collections Utility Library</Product>
-		<Version>1.3.0</Version>
-		<AssemblyVersion>1.3.0.0</AssemblyVersion>
-		<FileVersion>1.3.0.0</FileVersion>
+		<Version>1.4.0</Version>
+		<AssemblyVersion>1.4.0.0</AssemblyVersion>
+		<FileVersion>1.4.0.0</FileVersion>
 		<Description>Collections Utility Library</Description>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -24,6 +24,13 @@
 		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.0" />
 	</ItemGroup>
 	<ItemGroup>
+	  <Compile Remove="Immutable\ImmutableSortedList.cs" />
+	  <Compile Remove="Immutable\ImmutableSortedList_2.Builder.cs" />
+	  <Compile Remove="Immutable\ImmutableSortedList_2.Collections.cs" />
+	  <Compile Remove="Immutable\ImmutableSortedList_2.cs" />
+	  <Compile Remove="Immutable\ImmutableSortedList_2.Enumerator.cs" />
+	  <Compile Remove="Immutable\ImmutableSortedList_2.KeyComparer.cs" />
+	  <Compile Remove="Immutable\ImmutableSortedList_2.Node.cs" />
 	  <Compile Remove="Observable\ObservableSortedSubset.cs" />
 	</ItemGroup>
 	<ItemGroup Condition="$(TargetFramework)!='net4.0'">
@@ -31,6 +38,13 @@
 		<PackageReference Include="System.Collections.Immutable" Version="5.0.0" />
 	</ItemGroup>
 	<ItemGroup>
+	  <None Include="Immutable\ImmutableSortedList.cs" />
+	  <None Include="Immutable\ImmutableSortedList_2.Builder.cs" />
+	  <None Include="Immutable\ImmutableSortedList_2.Collections.cs" />
+	  <None Include="Immutable\ImmutableSortedList_2.cs" />
+	  <None Include="Immutable\ImmutableSortedList_2.Enumerator.cs" />
+	  <None Include="Immutable\ImmutableSortedList_2.KeyComparer.cs" />
+	  <None Include="Immutable\ImmutableSortedList_2.Node.cs" />
 	  <None Include="Observable\ObservableSortedSubset.cs" />
 	</ItemGroup>
 </Project>

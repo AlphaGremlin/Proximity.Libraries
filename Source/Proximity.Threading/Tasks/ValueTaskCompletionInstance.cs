@@ -71,6 +71,9 @@ namespace System.Threading.Tasks
 			if (_TaskSource.Version != token)
 				return false; // Instance has already been disposed
 
+			if (exception is null)
+				throw new ArgumentNullException(nameof(exception));
+
 			if (Interlocked.CompareExchange(ref _InstanceState, Status.SetException, Status.Pending) != Status.Pending)
 				return false; // Result has already been set
 
@@ -130,11 +133,11 @@ namespace System.Threading.Tasks
 				break;
 
 			case Status.SetException:
-				_TaskSource.SetException(_PendingException);
+				_TaskSource.SetException(_PendingException!);
 				break;
 
 			case Status.Disposed:
-				_TaskSource.SetException(_PendingException);
+				_TaskSource.SetException(_PendingException!);
 				break;
 			}
 		}

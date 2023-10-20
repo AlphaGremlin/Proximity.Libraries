@@ -17,7 +17,6 @@ namespace System.Linq
 		/// <typeparam name="TResult">The final result of the join</typeparam>
 		/// <param name="input">The input enumeration</param>
 		/// <param name="inner">The dictionary to join</param>
-		/// <param name="keySelector">A selector to determine the key from the input</param>
 		/// <param name="resultSelector">A selector to generate the final result</param>
 		/// <returns>An enumeration of join matches</returns>
 		public static IEnumerable<TResult> Join<TKey, TValue, TResult>(this IEnumerable<TKey> input, IReadOnlyDictionary<TKey, TValue> inner, Func<TKey, TValue, TResult> resultSelector)

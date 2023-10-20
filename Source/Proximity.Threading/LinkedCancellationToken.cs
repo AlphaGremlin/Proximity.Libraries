@@ -77,7 +77,7 @@ namespace System.Threading
 		public static LinkedCancellationToken Create(params CancellationToken[] tokens)
 		{	//****************************************
 			var CanCancel = false;
-			CancellationToken TargetToken;
+			CancellationToken TargetToken = default;
 			//****************************************
 			
 			if (tokens == null || tokens.Length == 0)

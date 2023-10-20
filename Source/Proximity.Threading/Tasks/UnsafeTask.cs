@@ -77,9 +77,9 @@ namespace System.Threading.Tasks
 
 		//****************************************
 
-		private static void ExecuteAction(object state)
+		private static void ExecuteAction(object? state)
 		{	//****************************************
-			var Definition = (Tuple<Action, TaskCompletionSource<VoidStruct>>)state;
+			var Definition = (Tuple<Action, TaskCompletionSource<VoidStruct>>)state!;
 			//****************************************
 			
 			try
@@ -98,9 +98,9 @@ namespace System.Threading.Tasks
 			}
 		}
 		
-		private static void ExecuteFunc<TResult>(object state)
+		private static void ExecuteFunc<TResult>(object? state)
 		{	//****************************************
-			var Definition = (Tuple<Func<TResult>, TaskCompletionSource<TResult>>)state;
+			var Definition = (Tuple<Func<TResult>, TaskCompletionSource<TResult>>)state!;
 			//****************************************
 			
 			try
@@ -124,7 +124,7 @@ namespace System.Threading.Tasks
 		/// <summary>
 		/// Provides an awaitable object that breaks execution context
 		/// </summary>
-		public struct UnsafeYieldAwaitable : INotifyCompletion, ICriticalNotifyCompletion
+		public readonly struct UnsafeYieldAwaitable : INotifyCompletion, ICriticalNotifyCompletion
 		{
 			/// <summary>
 			/// Gets the awaitable
@@ -160,7 +160,7 @@ namespace System.Threading.Tasks
 
 			//****************************************
 
-			private static void OnContinue(object state) => ((Action)state)();
+			private static void OnContinue(object? state) => ((Action)state!)();
 		}
 	}
 }
