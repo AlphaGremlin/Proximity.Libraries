@@ -807,12 +807,12 @@ namespace System.Buffers
 			if (sequence.IsSingleSegment)
 				return sequence.First.Span.SequenceEqual(value);
 
-			foreach (var MySegment in sequence)
+			foreach (var Segment in sequence)
 			{
-				if (!MySegment.Span.SequenceEqual(value.Slice(0, MySegment.Length)))
+				if (!Segment.Span.SequenceEqual(value.Slice(0, Segment.Length)))
 					return false;
 
-				value = value.Slice(MySegment.Length);
+				value = value.Slice(Segment.Length);
 			}
 
 			return true;
@@ -846,6 +846,103 @@ namespace System.Buffers
 		}
 
 		/// <summary>
+		/// Compares the sequence to another sequence for equality
+		/// </summary>
+		/// <typeparam name="T">The element type in the sequence</typeparam>
+		/// <param name="sequence">The sequence to compare</param>
+		/// <param name="value">The sequence to compare to</param>
+		/// <returns>True if the two sequences match, otherwise false</returns>
+		public static bool SequenceEqual<T>(this ReadOnlySequence<T> sequence, ReadOnlySequence<T> value) where T : IEquatable<T>
+		{
+			if (sequence.Length != value.Length)
+				return false;
+
+			// If we're both single-segment, just compare them directly
+			if (sequence.IsSingleSegment && value.IsSingleSegment)
+				return sequence.First.Span.SequenceEqual(value.First.Span);
+
+			var SourcePosition = sequence.Start;
+			var ValuePosition = value.Start;
+
+			// Get the first segment for each side
+			if (!sequence.TryGetNonEmpty(ref SourcePosition, out var SourceSegment))
+				return false;
+
+			if (!value.TryGetNonEmpty(ref ValuePosition, out var ValueSegment))
+				return false;
+
+			for (; ; )
+			{
+				var Minimum = Math.Min(SourceSegment.Length, ValueSegment.Length);
+
+				if (!SourceSegment.Slice(0, Minimum).Span.SequenceEqual(ValueSegment.Span.Slice(0, Minimum)))
+					return false; // Segments don't match
+
+				SourceSegment = SourceSegment.Slice(Minimum);
+				ValueSegment = ValueSegment.Slice(Minimum);
+
+				// Read the next segments if necessary
+				var MoreSource = !SourceSegment.IsEmpty || sequence.TryGetNonEmpty(ref SourcePosition, out SourceSegment);
+				var MoreValue = !ValueSegment.IsEmpty || value.TryGetNonEmpty(ref ValuePosition, out ValueSegment);
+
+				if (MoreSource != MoreValue)
+					return false; // One of the sequences has ended
+
+				if (!MoreSource)
+					return true; // Both sequences have ended
+			}
+		}
+
+		/// <summary>
+		/// Compares the sequence to another sequence for equality
+		/// </summary>
+		/// <typeparam name="T">The element type in the sequence</typeparam>
+		/// <param name="sequence">The sequence to compare</param>
+		/// <param name="value">The sequence to compare to</param>
+		/// <param name="comparer">The comparer to use</param>
+		/// <returns>True if the two sequences match, otherwise false</returns>
+		public static bool SequenceEqual<T>(this ReadOnlySequence<T> sequence, ReadOnlySequence<T> value, IEqualityComparer<T> comparer)
+		{
+			if (sequence.Length != value.Length)
+				return false;
+
+			// If we're both single-segment, just compare them directly
+			if (sequence.IsSingleSegment && value.IsSingleSegment)
+				return sequence.First.Span.SequenceEqual(value.First.Span, comparer);
+
+			var SourcePosition = sequence.Start;
+			var ValuePosition = value.Start;
+
+			// Get the first segment for each side
+			if (!sequence.TryGetNonEmpty(ref SourcePosition, out var SourceSegment))
+				return false;
+
+			if (!value.TryGetNonEmpty(ref ValuePosition, out var ValueSegment))
+				return false;
+
+			for (; ; )
+			{
+				var Minimum = Math.Min(SourceSegment.Length, ValueSegment.Length);
+
+				if (!SourceSegment.Slice(0, Minimum).Span.SequenceEqual(ValueSegment.Span.Slice(0, Minimum), comparer))
+					return false; // Segments don't match
+
+				SourceSegment = SourceSegment.Slice(Minimum);
+				ValueSegment = ValueSegment.Slice(Minimum);
+
+				// Read the next segments if necessary
+				var MoreSource = !SourceSegment.IsEmpty || sequence.TryGetNonEmpty(ref SourcePosition, out SourceSegment);
+				var MoreValue = !ValueSegment.IsEmpty || value.TryGetNonEmpty(ref ValuePosition, out ValueSegment);
+
+				if (MoreSource != MoreValue)
+					return false; // One of the sequences has ended
+
+				if (!MoreSource)
+					return true; // Both sequences have ended
+			}
+		}
+
+		/// <summary>
 		/// Compares the character sequence to a span
 		/// </summary>
 		/// <param name="sequence">The sequence to compare</param>
@@ -860,11 +957,11 @@ namespace System.Buffers
 			if (sequence.Length != value.Length)
 				return false;
 
-			foreach (var MySegment in sequence)
+			foreach (var Segment in sequence)
 			{
-				var CompareLength = Math.Min(MySegment.Length, value.Length);
+				var CompareLength = Math.Min(Segment.Length, value.Length);
 
-				if (!MySegment.Span.SequenceEqual(value.Slice(0, CompareLength), comparisonType))
+				if (!Segment.Span.SequenceEqual(value.Slice(0, CompareLength), comparisonType))
 					return false;
 
 				value = value.Slice(CompareLength);
@@ -985,26 +1082,10 @@ namespace System.Buffers
 		/// <returns>True if the sequence starts with the span, otherwise False</returns>
 		public static bool StartsWith(this ReadOnlySequence<char> sequence, ReadOnlySpan<char> value, StringComparison comparisonType)
 		{
-			if (sequence.IsSingleSegment)
-				return sequence.First.Span.StartsWith(value, comparisonType);
-
 			if (sequence.Length < value.Length)
 				return false;
 
-			foreach (var MySegment in sequence)
-			{
-				var CompareLength = Math.Min(MySegment.Length, value.Length);
-
-				if (!MySegment.Span.StartsWith(value.Slice(0, CompareLength), comparisonType))
-					return false;
-
-				value = value.Slice(CompareLength);
-
-				if (value.IsEmpty)
-					break;
-			}
-
-			return true;
+			return sequence.Slice(0, value.Length).SequenceEqual(value, comparisonType);
 		}
 
 		/// <summary>
@@ -1019,23 +1100,22 @@ namespace System.Buffers
 			if (sequence.Length < value.Length)
 				return false;
 
-			if (sequence.IsSingleSegment)
-				return sequence.First.Span.StartsWith(value);
+			return sequence.Slice(0, value.Length).SequenceEqual(value);
+		}
 
-			foreach (var MySegment in sequence)
-			{
-				var CompareLength = Math.Min(MySegment.Length, value.Length);
+		/// <summary>
+		/// Compares the start of a sequence against another sequence
+		/// </summary>
+		/// <typeparam name="T">The element type in the sequences</typeparam>
+		/// <param name="sequence">The sequence to check</param>
+		/// <param name="value">The value to check against</param>
+		/// <returns>True if the sequence starts with the value, otherwise False</returns>
+		public static bool StartsWith<T>(this ReadOnlySequence<T> sequence, ReadOnlySequence<T> value) where T : IEquatable<T>
+		{
+			if (sequence.Length < value.Length)
+				return false;
 
-				if (!MySegment.Span.StartsWith(value.Slice(0, CompareLength)))
-					return false;
-
-				value = value.Slice(CompareLength);
-
-				if (value.IsEmpty)
-					break;
-			}
-
-			return true;
+			return sequence.Slice(0, value.Length).SequenceEqual(value);
 		}
 
 		/// <summary>
@@ -1053,6 +1133,27 @@ namespace System.Buffers
 				return encoding.GetString(sequence.First.Span);
 
 			return ToStringBuilder(sequence, encoding).ToString();
+		}
+
+		/// <summary>
+		/// Tries to retrieve a non-empty segment after <paramref name="position"/>
+		/// </summary>
+		/// <typeparam name="T">The element type in the sequence</typeparam>
+		/// <param name="sequence">The sequence to advance through</param>
+		/// <param name="position">The position to retrieve from</param>
+		/// <param name="memory">Receives the next non-empty segment that was found</param>
+		/// <param name="advance">True to advance <paramref name="position"/> to the beginning of the next segment</param>
+		/// <returns>True if a non-empty segment was found and returned, False if the end of the sequence was reached</returns>
+		/// <remarks><see cref="ReadOnlySequence{T}.TryGet(ref SequencePosition, out ReadOnlyMemory{T}, bool)"/> can return empty segments, especially at the end of a sequence that has been Split.</remarks>
+		public static bool TryGetNonEmpty<T>(this ReadOnlySequence<T> sequence, ref SequencePosition position, out ReadOnlyMemory<T> memory, bool advance = true)
+		{
+			do
+			{
+				if (!sequence.TryGet(ref position, out memory, advance))
+					return false;
+			} while (memory.IsEmpty);
+
+			return true;
 		}
 
 		/// <summary>

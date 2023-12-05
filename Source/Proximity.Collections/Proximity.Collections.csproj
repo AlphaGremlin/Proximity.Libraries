@@ -24,13 +24,6 @@
 		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.0" />
 	</ItemGroup>
 	<ItemGroup>
-	  <Compile Remove="Immutable\ImmutableSortedList.cs" />
-	  <Compile Remove="Immutable\ImmutableSortedList_2.Builder.cs" />
-	  <Compile Remove="Immutable\ImmutableSortedList_2.Collections.cs" />
-	  <Compile Remove="Immutable\ImmutableSortedList_2.cs" />
-	  <Compile Remove="Immutable\ImmutableSortedList_2.Enumerator.cs" />
-	  <Compile Remove="Immutable\ImmutableSortedList_2.KeyComparer.cs" />
-	  <Compile Remove="Immutable\ImmutableSortedList_2.Node.cs" />
 	  <Compile Remove="Observable\ObservableSortedSubset.cs" />
 	</ItemGroup>
 	<ItemGroup Condition="$(TargetFramework)!='net4.0'">
@@ -38,13 +31,6 @@
 		<PackageReference Include="System.Collections.Immutable" Version="5.0.0" />
 	</ItemGroup>
 	<ItemGroup>
-	  <None Include="Immutable\ImmutableSortedList.cs" />
-	  <None Include="Immutable\ImmutableSortedList_2.Builder.cs" />
-	  <None Include="Immutable\ImmutableSortedList_2.Collections.cs" />
-	  <None Include="Immutable\ImmutableSortedList_2.cs" />
-	  <None Include="Immutable\ImmutableSortedList_2.Enumerator.cs" />
-	  <None Include="Immutable\ImmutableSortedList_2.KeyComparer.cs" />
-	  <None Include="Immutable\ImmutableSortedList_2.Node.cs" />
 	  <None Include="Observable\ObservableSortedSubset.cs" />
 	</ItemGroup>
 </Project>

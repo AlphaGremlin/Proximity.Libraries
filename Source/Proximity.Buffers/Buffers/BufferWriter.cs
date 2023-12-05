@@ -495,6 +495,11 @@ namespace System.Buffers
 		/// </summary>
 		public long Length => _TailSegment == null ? _CurrentOffset : _TailSegment.RunningIndex + _TailSegment.Memory.Length + _CurrentOffset;
 
+		/// <summary>
+		/// Gets the number of elements available until a new buffer must be attached to the sequence
+		/// </summary>
+		public int FreeCapacity => _CurrentBuffer.Length - _CurrentOffset;
+
 		//****************************************
 
 		private sealed class BufferSegment : ReadOnlySequenceSegment<T>
