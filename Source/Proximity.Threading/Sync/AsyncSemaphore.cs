@@ -19,6 +19,7 @@ namespace System.Threading
 	public sealed partial class AsyncSemaphore : IDisposable, IAsyncDisposable
 	{ //****************************************
 		private readonly WaiterQueue<SemaphoreInstance> _Waiters = new();
+		private readonly WaiterQueue<SemaphoreWaitInstance> _PulseWaiters = new();
 		private int _MaxCount, _CurrentCount;
 
 		private LockDisposer? _Disposer;
@@ -219,7 +220,35 @@ namespace System.Threading
 			}
 		}
 
+		/// <summary>
+		/// Pulses the semaphore, triggering the first waiter (if any)
+		/// </summary>
+		public void Pulse()
+		{
+			while (_PulseWaiters.TryDequeue(out var Waiter))
+			{
+				if (Waiter.TrySwitchToCompleted())
+					return;
+			}
+		}
+
+		/// <summary>
+		/// Pulses the semaphore, triggering all waiters (if any)
+		/// </summary>
+		public void PulseAll()
+		{
+			while (_PulseWaiters.TryDequeue(out var Waiter))
+				Waiter.TrySwitchToCompleted();
+		}
+
 		//****************************************
+
+		private ValueTask<bool> Wait(SemaphoreInstance instance, CancellationToken token, TimeSpan timeout)
+		{
+			// TODO: Pulse/Wait
+
+			return new(true);
+		}
 
 		private bool TryIncrement()
 		{ //****************************************
@@ -324,7 +353,26 @@ namespace System.Threading
 			}
 
 			//****************************************
+			/*
+			/// <summary>
+			/// Releases the counter, and waits for a Pulse before reacquiring
+			/// </summary>
+			/// <param name="token">A cancellation token to abort waiting</param>
+			/// <returns>A Task that returns true when the Semaphore has been pulsed</returns>
+			/// <remarks>Always reacquires the counter before completing, even in the event of cancellation</remarks>
+			/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+			public ValueTask<bool> Wait(CancellationToken token = default) => _Instance.Wait(_Token, token, Timeout.InfiniteTimeSpan);
 
+			/// <summary>
+			/// Releases the counter, and waits for a Pulse before reacquiring
+			/// </summary>
+			/// <param name="timeout">The amount of time to wait for the pulse</param>
+			/// <param name="token">A cancellation token to abort waiting</param>
+			/// <returns>A Task that returns true when the Semaphore has been pulsed, False when the timeout has elapsed</returns>
+			/// <remarks>Always reacquires the counter before completing, even in the event of cancellation</remarks>
+			/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+			public ValueTask<bool> Wait(TimeSpan timeout, CancellationToken token = default) => _Instance.Wait(_Token, token, timeout);
+			*/
 			/// <summary>
 			/// Releases the lock currently held
 			/// </summary>

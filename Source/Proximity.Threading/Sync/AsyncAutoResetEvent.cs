@@ -357,7 +357,8 @@ namespace System.Threading
 				_InstanceState = Status.Unused;
 				ResetCancellation();
 
-				Instances.Add(this);
+				if (Instances.Count < MaxInstanceCache)
+					Instances.Add(this);
 			}
 
 			//****************************************

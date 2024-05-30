@@ -14,7 +14,7 @@ namespace System.Collections.Concurrent
 		/// <param name="item">The item to try and add</param>
 		/// <param name="collection">Receives the collection the item was added to</param>
 		/// <returns>True if the item was added, False if none of the collections had capacity</returns>
-		public bool TryAddToAny(IEnumerable<AsyncCollection<T>> collections, T item,
+		public static bool TryAddToAny(IEnumerable<AsyncCollection<T>> collections, T item,
 #if !NETSTANDARD2_0
 			[MaybeNullWhen(false)]
 #endif

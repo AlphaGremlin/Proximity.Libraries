@@ -146,5 +146,7 @@ namespace Proximity.Threading
 		/// </summary>
 		/// <remarks>If <see cref="Token"/> is not cancelled, this can mean a timeout occurred instead</remarks>
 		protected bool IsCancelled => _Token.IsCancellationRequested;
+
+		private protected const int MaxInstanceCache = 16;
 	}
 }

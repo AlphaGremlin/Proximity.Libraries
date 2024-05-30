@@ -585,6 +585,8 @@ namespace System.Threading
 			/// <param name="token">A cancellation token to abort the upgrade</param>
 			/// <returns>A Task returning True if we managed an upgrade to a Write lock, False if we remain a Read lock because there are waiting Writers.</returns>
 			/// <remarks>Can wait until other Readers finish. Will not wait for other Writers. Does nothing if you're already a Writer.</remarks>
+			/// <exception cref="OperationCanceledException">The given cancellation token was cancelled</exception>
+			/// <exception cref="TimeoutException">The timeout elapsed</exception>
 			public ValueTask<bool> TryUpgrade(TimeSpan timeout, CancellationToken token = default) => _Instance.TryUpgrade(_Token, token, timeout);
 
 			/// <summary>

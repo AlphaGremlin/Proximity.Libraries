@@ -32,12 +32,9 @@ namespace System.Threading.Tasks
 		{
 			_CancelSource.Cancel();
 
-			var DisposeException = new ObjectDisposedException(null);
-
-			foreach (var (Key, Item) in _Items)
+			foreach (var (_, Item) in _Items)
 			{
-				if (Item.TrySetException(DisposeException) && _Items.TryRemove(Key, out _))
-					Item.Unregister();
+				Item.Dispose();
 			}
 		}
 
@@ -160,8 +157,8 @@ namespace System.Threading.Tasks
 				{
 					Unregister();
 
-					if (!Task.IsCompleted)
-						TrySetException(new ObjectDisposedException(Key.ToString()));
+					if (!Task.IsCompleted && TrySetException(new ObjectDisposedException(Key.ToString())))
+						_ = Task.Exception; // Observe the exception
 				}
 			}
 
@@ -240,12 +237,9 @@ namespace System.Threading.Tasks
 		{
 			_CancelSource.Cancel();
 
-			var DisposeException = new ObjectDisposedException(null);
-
-			foreach (var (Key, Item) in _Items)
+			foreach (var (_, Item) in _Items)
 			{
-				if (Item.TrySetException(DisposeException) && _Items.Remove(Key, out _))
-					Item.Unregister();
+				Item.Dispose();
 			}
 		}
 
@@ -369,8 +363,8 @@ namespace System.Threading.Tasks
 				{
 					Unregister();
 
-					if (!Task.IsCompleted)
-						TrySetException(new ObjectDisposedException(Key.ToString()));
+					if (!Task.IsCompleted && TrySetException(new ObjectDisposedException(Key.ToString())))
+						_ = Task.Exception; // Observe the exception
 				}
 			}
 

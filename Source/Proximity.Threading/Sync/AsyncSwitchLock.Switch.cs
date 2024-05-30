@@ -171,7 +171,8 @@ namespace System.Threading
 				ResetCancellation();
 
 				GC.SuppressFinalize(this);
-				Instances.Add(this);
+				if (Instances.Count < MaxInstanceCache)
+					Instances.Add(this);
 			}
 
 			//****************************************

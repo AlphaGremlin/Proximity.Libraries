@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
 using Proximity.Threading;
 
@@ -45,6 +46,14 @@ namespace System.Threading
 				{
 					_InstanceState = Status.Pending;
 				}
+			}
+
+			internal ValueTask<bool> Wait(short token, CancellationToken cancellationToken, TimeSpan timeout)
+			{
+				if (_TaskSource.Version != token || _InstanceState != Status.Held)
+					throw new InvalidOperationException("Lock is not held and able to wait");
+
+				return Owner!.Wait(this, cancellationToken, timeout);
 			}
 
 			internal void ApplyCancellation(CancellationToken token, TimeSpan timeout)
@@ -169,7 +178,8 @@ namespace System.Threading
 				ResetCancellation();
 
 				GC.SuppressFinalize(this);
-				Instances.Add(this);
+				if (Instances.Count < MaxInstanceCache)
+					Instances.Add(this);
 			}
 
 			//****************************************

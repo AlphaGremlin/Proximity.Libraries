@@ -44,7 +44,8 @@ namespace System.Threading
 				_InstanceState = Status.Unused;
 				ResetCancellation();
 
-				Instances.Add(this);
+				if (Instances.Count < MaxInstanceCache)
+					Instances.Add(this);
 			}
 
 			public void SwitchToDisposed()
@@ -293,7 +294,7 @@ namespace System.Threading
 				/// <summary>
 				/// The lock has been upgraded while trying to downgrade (cancellation may still be running), and is waiting for cancellation
 				/// </summary>
-				internal const int UpgradedGotResult = 10;
+				internal const int UpgradedGotResult = 11;
 			}
 		}
 	}
