@@ -13,7 +13,7 @@ namespace System.Threading.Tasks
 		//****************************************
 		private ManualResetValueTaskSourceCore<TResult> _TaskSource = new();
 
-		private volatile int _InstanceState;
+		private int _InstanceState;
 
 		private TResult _PendingResult = default!;
 		private Exception? _PendingException = null;
@@ -89,7 +89,7 @@ namespace System.Threading.Tasks
 			if (_TaskSource.Version != token)
 				return true;
 
-			return _InstanceState == Status.Pending;
+			return Volatile.Read(ref _InstanceState) == Status.Pending;
 		}
 
 		public ValueTaskSourceStatus GetStatus(short token) => _TaskSource.GetStatus(token);
@@ -108,7 +108,7 @@ namespace System.Threading.Tasks
 
 				do
 				{
-					InstanceState = _InstanceState;
+					InstanceState = Volatile.Read(ref _InstanceState);
 
 					if (InstanceState == Status.Disposed)
 						break;
@@ -126,7 +126,7 @@ namespace System.Threading.Tasks
 
 		protected override void UnregisteredCancellation()
 		{
-			switch (_InstanceState)
+			switch (Volatile.Read(ref _InstanceState))
 			{
 			case Status.SetResult:
 				_TaskSource.SetResult(_PendingResult);
@@ -156,7 +156,7 @@ namespace System.Threading.Tasks
 		{
 			_TaskSource.RunContinuationsAsynchronously = runContinuationsAsynchronously;
 
-			_InstanceState = Status.Pending;
+			Interlocked.Exchange(ref _InstanceState, Status.Pending);
 
 			RegisterCancellation(token, Timeout.InfiniteTimeSpan);
 		}
@@ -164,7 +164,7 @@ namespace System.Threading.Tasks
 		private void Release()
 		{
 			_TaskSource.Reset();
-			_InstanceState = Status.Unused;
+			Interlocked.Exchange(ref _InstanceState, Status.Unused);
 			ResetCancellation();
 
 			Instances.Add(this);

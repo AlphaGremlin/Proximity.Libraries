@@ -14,7 +14,7 @@ namespace System.Threading
 		{ //****************************************
 			private static readonly ConcurrentBag<SemaphoreInstance> Instances = new();
 			//****************************************
-			private volatile int _InstanceState;
+			private int _InstanceState;
 
 			private ManualResetValueTaskSourceCore<Instance> _TaskSource = new();
 			//****************************************
@@ -23,7 +23,7 @@ namespace System.Threading
 
 			~SemaphoreInstance()
 			{
-				if (_InstanceState != Status.Unused)
+				if (Volatile.Read(ref _InstanceState) != Status.Unused)
 				{
 					// TODO: Lock instance was garbage collected without being released
 				}
@@ -39,18 +39,18 @@ namespace System.Threading
 
 				if (isHeld)
 				{
-					_InstanceState = Status.Held;
+					Interlocked.Exchange(ref _InstanceState, Status.Held);
 					_TaskSource.SetResult(new Instance(this));
 				}
 				else
 				{
-					_InstanceState = Status.Pending;
+					Interlocked.Exchange(ref _InstanceState, Status.Pending);
 				}
 			}
 
 			internal ValueTask<bool> Wait(short token, CancellationToken cancellationToken, TimeSpan timeout)
 			{
-				if (_TaskSource.Version != token || _InstanceState != Status.Held)
+				if (_TaskSource.Version != token || Volatile.Read(ref _InstanceState) != Status.Held)
 					throw new InvalidOperationException("Lock is not held and able to wait");
 
 				return Owner!.Wait(this, cancellationToken, timeout);
@@ -58,7 +58,7 @@ namespace System.Threading
 
 			internal void ApplyCancellation(CancellationToken token, TimeSpan timeout)
 			{
-				if (_InstanceState != Status.Pending)
+				if (Volatile.Read(ref _InstanceState) != Status.Pending)
 					throw new InvalidOperationException("Cannot register for cancellation when not pending");
 
 				RegisterCancellation(token, timeout);
@@ -89,7 +89,7 @@ namespace System.Threading
 
 				do
 				{
-					InstanceState = _InstanceState;
+					InstanceState = Volatile.Read(ref _InstanceState);
 
 					switch (InstanceState)
 					{
@@ -127,7 +127,7 @@ namespace System.Threading
 
 			protected override void SwitchToCancelled()
 			{
-				if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Cancelled, Status.Pending) != Status.Pending)
+				if (Volatile.Read(ref _InstanceState) != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Cancelled, Status.Pending) != Status.Pending)
 					return; // Instance is no longer in a cancellable state
 
 				Owner!._Waiters.Erase(this);
@@ -138,7 +138,7 @@ namespace System.Threading
 
 			protected override void UnregisteredCancellation()
 			{
-				switch (_InstanceState)
+				switch (Volatile.Read(ref _InstanceState))
 				{
 				case Status.Disposed:
 					_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncSemaphore), "Semaphore has been disposed of"));
@@ -162,7 +162,7 @@ namespace System.Threading
 				}
 				finally
 				{
-					if (_InstanceState == Status.CancelledNotWaiting || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledNotWaiting)
+					if (Volatile.Read(ref _InstanceState) == Status.CancelledNotWaiting || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledNotWaiting)
 						Release(); // We're cancelled and no longer on the Wait queue, so we can return to the pool
 				}
 			}
@@ -174,7 +174,7 @@ namespace System.Threading
 				Owner = null;
 
 				_TaskSource.Reset();
-				_InstanceState = Status.Unused;
+				Interlocked.Exchange(ref _InstanceState, Status.Unused);
 				ResetCancellation();
 
 				GC.SuppressFinalize(this);
@@ -186,7 +186,7 @@ namespace System.Threading
 
 			public AsyncSemaphore? Owner { get; private set; }
 
-			public bool IsPending => _InstanceState == Status.Pending;
+			public bool IsPending => Volatile.Read(ref _InstanceState) == Status.Pending;
 
 			public short Version => _TaskSource.Version;
 

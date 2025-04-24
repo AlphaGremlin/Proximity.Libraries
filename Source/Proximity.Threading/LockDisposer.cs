@@ -37,7 +37,7 @@ namespace Proximity.Threading
 
 		//****************************************
 
-		public bool IsDisposed => _IsDisposed == 1;
+		public bool IsDisposed => Volatile.Read(ref _IsDisposed) == 1;
 
 		public Task Task { get; }
 	}

@@ -257,7 +257,7 @@ namespace System.Threading
 
 			for (; ; )
 			{
-				var OldCount = _CurrentCount;
+				var OldCount = Volatile.Read(ref _CurrentCount);
 
 				// Are there any free counters?
 				if (OldCount >= _MaxCount)

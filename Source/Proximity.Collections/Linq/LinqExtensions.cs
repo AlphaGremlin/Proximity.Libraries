@@ -213,6 +213,37 @@ namespace System.Linq
 		}
 
 		/// <summary>
+		/// Generates a copy of an enumeration as a dictionary
+		/// </summary>
+		/// <typeparam name="TKey">The type of key element</typeparam>
+		/// <typeparam name="TValue">The type of value element</typeparam>
+		/// <param name="source">The source enumeration</param>
+		/// <returns>A copy of the enumeration as a dictionary</returns>
+		public static Dictionary<TKey, TValue> ToDictionary<TKey, TValue>(this IEnumerable<KeyValuePair<TKey, TValue>> source) where TKey : notnull => ToDictionary(source, null);
+
+		/// <summary>
+		/// Generates a copy of an enumeration as a dictionary
+		/// </summary>
+		/// <typeparam name="TKey">The type of key element</typeparam>
+		/// <typeparam name="TValue">The type of value element</typeparam>
+		/// <param name="source">The source enumeration</param>
+		/// <param name="comparer">A comparer to use for the keys. If omitted, uses the default Equality Comparer</param>
+		/// <returns>A copy of the enumeration as a dictionary</returns>
+		public static Dictionary<TKey, TValue> ToDictionary<TKey, TValue>(this IEnumerable<KeyValuePair<TKey, TValue>> source, IEqualityComparer<TKey>? comparer) where TKey : notnull
+		{
+#if NETSTANDARD2_0
+			var Result = new Dictionary<TKey, TValue>(comparer);
+
+			foreach (var Item in source)
+				Result.Add(Item.Key, Item.Value);
+
+			return Result;
+#else
+			return new(source, comparer);
+#endif
+		}
+
+		/// <summary>
 		/// Converts an enumerable to a read-only collection
 		/// </summary>
 		/// <typeparam name="T">The type of element</typeparam>
@@ -231,6 +262,27 @@ namespace System.Linq
 #else
 			return source.ToArray();
 #endif
+		}
+
+		/// <summary>
+		/// Converts an enumerable of key-value pairs to a read-only dictionary
+		/// </summary>
+		/// <typeparam name="TKey">The type of keys in the read-only dictionary.</typeparam>
+		/// <typeparam name="TValue">The type of values in the read-only dictionary.</typeparam>
+		/// <param name="source">The enumeration to convert</param>
+		/// <returns>A read-only dictionary</returns>
+		public static IReadOnlyDictionary<TKey, TValue> ToReadOnlyDictionary<TKey, TValue>(this IEnumerable<KeyValuePair<TKey, TValue>> source) where TKey : notnull
+		{
+			if (source is null)
+				throw new ArgumentNullException(nameof(source));
+
+			if (source is IReadOnlyDictionary<TKey, TValue> ReadOnlyDict)
+				return ReadOnlyDict;
+
+			if (source is IDictionary<TKey, TValue> Dict)
+				return new ReadOnlyDictionary<TKey, TValue>(Dict);
+
+			return new ReadOnlyDictionary<TKey, TValue>((IDictionary<TKey, TValue>)source.ToDictionary());
 		}
 
 		/// <summary>

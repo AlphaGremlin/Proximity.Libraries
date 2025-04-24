@@ -15,7 +15,7 @@ namespace System.Threading
 		{ //****************************************
 			private static readonly ConcurrentBag<LockUpgradeInstance> Instances = new();
 			//****************************************
-			private volatile int _InstanceState;
+			private int _InstanceState;
 			private bool _IsFirst;
 
 			private ManualResetValueTaskSourceCore<bool> _TaskSource = new();
@@ -29,7 +29,7 @@ namespace System.Threading
 			{
 				_IsFirst = isFirst;
 
-				if (_InstanceState != Status.Pending)
+				if (Volatile.Read(ref _InstanceState) != Status.Pending)
 					throw new InvalidOperationException($"Read Write Lock upgrade is in an invalid state (Prepare)");
 
 				RegisterCancellation(token, timeout);
@@ -41,7 +41,7 @@ namespace System.Threading
 
 				_TaskSource.Reset();
 				_IsFirst = false;
-				_InstanceState = Status.Unused;
+				Interlocked.Exchange(ref _InstanceState, Status.Unused);
 				ResetCancellation();
 
 				if (Instances.Count < MaxInstanceCache)
@@ -63,7 +63,7 @@ namespace System.Threading
 
 				do
 				{
-					InstanceState = _InstanceState;
+					InstanceState = Volatile.Read(ref _InstanceState);
 
 					switch (InstanceState)
 					{
@@ -181,7 +181,7 @@ namespace System.Threading
 
 			protected override void UnregisteredCancellation()
 			{
-				switch (_InstanceState)
+				switch (Volatile.Read(ref _InstanceState))
 				{
 				case Status.Disposed:
 					_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncReadWriteLock), "Read Write Lock has been disposed of"));
@@ -205,7 +205,7 @@ namespace System.Threading
 				}
 				finally
 				{
-					switch (_InstanceState)
+					switch (Volatile.Read(ref _InstanceState))
 					{
 					case Status.Disposed:
 					case Status.CancelledNotWaiting:
@@ -232,7 +232,7 @@ namespace System.Threading
 			{
 				Owner = owner;
 
-				_InstanceState = Status.Pending;
+				Interlocked.Exchange(ref _InstanceState, Status.Pending);
 			}
 
 			//****************************************

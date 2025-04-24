@@ -21,7 +21,7 @@ namespace System.Threading
 
 		private LockDisposer? _Disposer;
 		
-		private volatile int _Counter = 0; // Left is negative, Right is positive
+		private int _Counter = 0; // Left is negative, Right is positive
 		//****************************************
 
 		/// <summary>
@@ -167,7 +167,7 @@ namespace System.Threading
 
 			do
 			{
-				PreviousCounter = _Counter;
+				PreviousCounter = Volatile.Read(ref _Counter);
 
 				if (PreviousCounter < LockState.Unlocked || PreviousCounter == LockState.Disposed)
 					return false; // We're disposed, or there is a left active, can't take no matter what
@@ -188,7 +188,7 @@ namespace System.Threading
 
 			do
 			{
-				PreviousCounter = _Counter;
+				PreviousCounter = Volatile.Read(ref _Counter);
 
 				if (PreviousCounter > LockState.Unlocked || PreviousCounter == LockState.Disposed)
 					return false; // We're disposed, or there is a right active, can't take no matter what
@@ -211,7 +211,7 @@ namespace System.Threading
 			{
 				do
 				{
-					PreviousCounter = _Counter;
+					PreviousCounter = Volatile.Read(ref _Counter);
 
 					Debug.Assert(PreviousCounter != LockState.Unlocked, "Switch Lock is in an invalid state (Unheld)");
 					Debug.Assert(PreviousCounter != LockState.Disposed, "Switch Lock is in an invalid state (Disposed)");
@@ -444,7 +444,7 @@ namespace System.Threading
 		{
 			get
 			{
-				var Counter = _Counter;
+				var Counter = Volatile.Read(ref _Counter);
 
 				return Counter <= LockState.Left && Counter != LockState.Disposed;
 			}
@@ -457,7 +457,7 @@ namespace System.Threading
 		{
 			get
 			{
-				var Counter = _Counter;
+				var Counter = Volatile.Read(ref _Counter);
 
 				return Counter >= LockState.Right && Counter != LockState.Disposed;
 			}

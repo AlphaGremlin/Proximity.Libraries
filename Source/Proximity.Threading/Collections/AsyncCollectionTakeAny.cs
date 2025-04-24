@@ -34,7 +34,7 @@ namespace System.Collections.Concurrent
 
 		internal void Initialise(CancellationToken token, TimeSpan timeout)
 		{
-			_InstanceState = Status.Pending;
+			Interlocked.Exchange(ref _InstanceState, Status.Pending);
 
 			RegisterCancellation(token, timeout);
 		}
@@ -55,7 +55,7 @@ namespace System.Collections.Concurrent
 		{
 			Interlocked.Exchange(ref _IsStarted, 1);
 
-			if (_InstanceState != Status.Pending)
+			if (Volatile.Read(ref _InstanceState) != Status.Pending)
 				return;
 
 			if (Volatile.Read(ref _OutstandingCounters) == 0)
@@ -97,7 +97,7 @@ namespace System.Collections.Concurrent
 		{
 			// State can be one of: Pending, Waiting, GotResult
 			// Try to switch from Pending to Waiting
-			if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Waiting, Status.Pending) != Status.Pending)
+			if (Volatile.Read(ref _InstanceState) != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Waiting, Status.Pending) != Status.Pending)
 				return; // Too late, we already have a result
 
 			_TaskSource.SetException(CreateCancellationException());
@@ -121,7 +121,7 @@ namespace System.Collections.Concurrent
 		{
 			// State can be one of: Pending, Waiting, GotResult
 			// Try to switch from Pending to Waiting
-			if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Waiting, Status.Pending) != Status.Pending)
+			if (Volatile.Read(ref _InstanceState) != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Waiting, Status.Pending) != Status.Pending)
 				return false; // Too late, we already have a result
 
 			_SourceCollection = null;
@@ -133,7 +133,7 @@ namespace System.Collections.Concurrent
 
 		private void TryRelease()
 		{
-			if (_InstanceState == Status.GotResult || Interlocked.CompareExchange(ref _InstanceState, Status.Unused, Status.GotResult) != Status.GotResult)
+			if (Volatile.Read(ref _InstanceState) == Status.GotResult || Interlocked.CompareExchange(ref _InstanceState, Status.Unused, Status.GotResult) != Status.GotResult)
 				return; // We're waiting on GetResult to execute
 
 			ResetCancellation();
@@ -148,13 +148,13 @@ namespace System.Collections.Concurrent
 		private void OnPeekCompleted(AsyncCollection<T> collection)
 		{
 			// Can be one of: Pending, Waiting, GotResult
-			if (_InstanceState == Status.Pending)
+			if (Volatile.Read(ref _InstanceState) == Status.Pending)
 			{
 				if (collection.TryReserveTake())
 				{
 					// State can be one of: Pending, Waiting, GotResult
 					// Try to switch from Pending to Waiting
-					if (_InstanceState == Status.Pending && Interlocked.CompareExchange(ref _InstanceState, Status.Waiting, Status.Pending) == Status.Pending)
+					if (Volatile.Read(ref _InstanceState) == Status.Pending && Interlocked.CompareExchange(ref _InstanceState, Status.Waiting, Status.Pending) == Status.Pending)
 					{
 						_SourceCollection = collection;
 

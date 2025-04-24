@@ -252,7 +252,7 @@ namespace System.Threading.Tasks
 		public ValueTask Complete(CancellationToken token = default)
 		{
 			// Optimisation so we don't add Null Tasks when the stream is finished
-			if (_NextTask == CompleteStreamTask)
+			if (Volatile.Read(ref _NextTask) == CompleteStreamTask)
 				return default;
 
 			// Append a Null Task to the Stream.
@@ -269,7 +269,7 @@ namespace System.Threading.Tasks
 		/// <summary>
 		/// Gets the number of actions that have yet to execute
 		/// </summary>
-		public int PendingActions => _PendingActions;
+		public int PendingActions => Volatile.Read(ref _PendingActions);
 
 		//****************************************
 
@@ -311,7 +311,7 @@ namespace System.Threading.Tasks
 			private CancellationToken _Token;
 			private CancellationTokenRegistration _Registration;
 
-			private volatile int _CanCancel, _TaskState;
+			private int _CanCancel, _TaskState;
 			//****************************************
 
 			protected BaseTask() => _TaskSource.RunContinuationsAsynchronously = true;
@@ -347,7 +347,7 @@ namespace System.Threading.Tasks
 			{
 				nextTask = null!;
 
-				if (_CanCancel == 0)
+				if (Volatile.Read(ref _CanCancel) == 0)
 					return true; // Task cannot be cancelled, so its free to execute
 
 				// TODO: Refactor to remove the blocking cancellation disposal?
@@ -391,13 +391,13 @@ namespace System.Threading.Tasks
 
 				if (token.CanBeCanceled)
 				{
-					_CanCancel = 1;
+					Interlocked.Exchange(ref _CanCancel, 1);
 					_Token = token;
 					_Registration = token.Register(static (state) => ((BaseTask<TResult>)state!).Cancel(), this, false);
 				}
 				else
 				{
-					_CanCancel = 0;
+					Interlocked.Exchange(ref _CanCancel, 0);
 				}
 			}
 
@@ -479,9 +479,9 @@ namespace System.Threading.Tasks
 				_Stream = null;
 				_Token = default;
 				_Registration = default;
-				_NextTask = null;
+				Interlocked.Exchange(ref _NextTask, null);
 				_TaskSource.Reset();
-				_TaskState = 0;
+				Interlocked.Exchange(ref _TaskState, 0);
 
 				Return();
 			}

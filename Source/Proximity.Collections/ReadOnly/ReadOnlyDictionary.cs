@@ -13,8 +13,8 @@ namespace System.Collections.ReadOnly
 	public class ReadOnlyDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>, IDictionary where TKey : notnull
 	{	//****************************************
 		private readonly IDictionary<TKey, TValue> _Dictionary;
-		private KeyCollection? _Keys;
-		private ValueCollection? _Values;
+		private Collection<TKey>? _Keys;
+		private Collection<TValue>? _Values;
 		//****************************************
 		
 		/// <summary>
@@ -32,6 +32,15 @@ namespace System.Collections.ReadOnly
 		public ReadOnlyDictionary(IDictionary<TKey, TValue> dictionary)
 		{
 			_Dictionary = dictionary;
+		}
+
+		/// <summary>
+		/// Creates a new read-only wrapper around a dictionary
+		/// </summary>
+		/// <param name="dictionary">The dictionary to wrap as read-only</param>
+		public ReadOnlyDictionary(IReadOnlyDictionary<TKey, TValue> dictionary)
+		{
+			_Dictionary = new ReadOnlyWrapper(dictionary);
 		}
 
 		//****************************************
@@ -101,9 +110,9 @@ namespace System.Collections.ReadOnly
 
 		//****************************************
 
-		private KeyCollection GetKeys() => _Keys ?? Interlocked.CompareExchange(ref _Keys, new KeyCollection(_Dictionary), null) ?? _Keys!;
+		private Collection<TKey> GetKeys() => _Keys ?? Interlocked.CompareExchange(ref _Keys, _Dictionary is ReadOnlyWrapper WrappedDictionary ? new ReadOnlyKeyCollection(WrappedDictionary.Dictionary) : new KeyCollection(_Dictionary), null) ?? _Keys!;
 
-		private ValueCollection GetValues() => _Values ?? Interlocked.CompareExchange(ref _Values, new ValueCollection(_Dictionary), null) ?? _Values!;
+		private Collection<TValue> GetValues() => _Values ?? Interlocked.CompareExchange(ref _Values, new ValueCollection(_Dictionary), null) ?? _Values!;
 
 		IDictionaryEnumerator IDictionary.GetEnumerator() => (_Dictionary as IDictionary)?.GetEnumerator() ?? new DictionaryEnumerator(_Dictionary);
 
@@ -117,12 +126,12 @@ namespace System.Collections.ReadOnly
 		/// <summary>
 		/// Gets a read-only collection of the dictionary keys
 		/// </summary>
-		public KeyCollection Keys => GetKeys(); // Have to wrap as IDictionary doesn't implement IReadOnlyCollection
+		public Collection<TKey> Keys => GetKeys(); // Have to wrap as IDictionary doesn't implement IReadOnlyCollection
 
 		/// <summary>
 		/// Gets a read-only collection of the dictionary values
 		/// </summary>
-		public ValueCollection Values => GetValues(); // Have to wrap as IDictionary doesn't implement IReadOnlyCollection
+		public Collection<TValue> Values => GetValues(); // Have to wrap as IDictionary doesn't implement IReadOnlyCollection
 
 		/// <summary>
 		/// Gets the value corresponding to the provided key
@@ -170,10 +179,6 @@ namespace System.Collections.ReadOnly
 		/// </summary>
 		public abstract class Collection<T> : IReadOnlyCollection<T>, ICollection<T>, ICollection
 		{
-			internal Collection(IDictionary<TKey, TValue> dictionary) => Dictionary = dictionary;
-
-			//****************************************
-
 			void ICollection<T>.Add(T item) => throw new NotSupportedException("Collection is read-only");
 
 			void ICollection<T>.Clear() => throw new NotSupportedException("Collection is read-only");
@@ -198,57 +203,61 @@ namespace System.Collections.ReadOnly
 			//****************************************
 
 			/// <inheritdoc/>
-			public int Count => Dictionary.Count;
+			public abstract int Count { get; }
 
 			bool ICollection<T>.IsReadOnly => true;
 
-			object ICollection.SyncRoot => Dictionary;
+			object ICollection.SyncRoot => SyncRoot;
 
 			bool ICollection.IsSynchronized => false;
 
-			internal IDictionary<TKey, TValue> Dictionary { get; }
+			internal abstract object SyncRoot { get; }
 		}
 
-		/// <summary>
-		/// Provides a read-only keys wrapper
-		/// </summary>
-		public sealed class KeyCollection : Collection<TKey>
-		{
-			internal KeyCollection(IDictionary<TKey, TValue> dictionary) : base(dictionary)
+		private sealed class KeyCollection : Collection<TKey>
+		{ //****************************************
+			private readonly IDictionary<TKey, TValue> _Dictionary;
+			//****************************************
+
+			internal KeyCollection(IDictionary<TKey, TValue> dictionary)
 			{
+				_Dictionary = dictionary;
 			}
 
 			//****************************************
 
-			/// <inheritdoc/>
-			public override bool Contains(TKey item) => Dictionary.ContainsKey(item);
+			public override bool Contains(TKey item) => _Dictionary.ContainsKey(item);
 
-			/// <inheritdoc/>
-			public override void CopyTo(TKey[] array, int arrayIndex) => Dictionary.Keys.CopyTo(array, arrayIndex);
+			public override void CopyTo(TKey[] array, int arrayIndex) => _Dictionary.Keys.CopyTo(array, arrayIndex);
 
-			/// <inheritdoc/>
-			public override IEnumerator<TKey> GetEnumerator() => Dictionary.Keys.GetEnumerator();
+			public override IEnumerator<TKey> GetEnumerator() => _Dictionary.Keys.GetEnumerator();
+
+			public override int Count => _Dictionary.Count;
+
+			internal override object SyncRoot => _Dictionary;
 		}
 
-		/// <summary>
-		/// Provides a read-only values wrapper
-		/// </summary>
-		public sealed class ValueCollection : Collection<TValue>
-		{
-			internal ValueCollection(IDictionary<TKey, TValue> dictionary) : base(dictionary)
+		private sealed class ValueCollection : Collection<TValue>
+		{ //****************************************
+			private readonly IDictionary<TKey, TValue> _Dictionary;
+			//****************************************
+
+			internal ValueCollection(IDictionary<TKey, TValue> dictionary)
 			{
+				_Dictionary = dictionary;
 			}
 
 			//****************************************
 
-			/// <inheritdoc/>
-			public override bool Contains(TValue item) => Dictionary.Values.Contains(item);
+			public override bool Contains(TValue item) => _Dictionary.Values.Contains(item);
 
-			/// <inheritdoc/>
-			public override void CopyTo(TValue[] array, int arrayIndex) => Dictionary.Values.CopyTo(array, arrayIndex);
+			public override void CopyTo(TValue[] array, int arrayIndex) => _Dictionary.Values.CopyTo(array, arrayIndex);
 
-			/// <inheritdoc/>
-			public override IEnumerator<TValue> GetEnumerator() => Dictionary.Values.GetEnumerator();
+			public override IEnumerator<TValue> GetEnumerator() => _Dictionary.Values.GetEnumerator();
+
+			public override int Count => _Dictionary.Count;
+
+			internal override object SyncRoot => _Dictionary;
 		}
 
 		private sealed class DictionaryEnumerator : IDictionaryEnumerator
@@ -274,5 +283,98 @@ namespace System.Collections.ReadOnly
 
 			public object Current => _Enumerator.Current;
 		}
+
+		private sealed class ReadOnlyWrapper : IDictionary<TKey, TValue>
+		{
+			public ReadOnlyWrapper(IReadOnlyDictionary<TKey, TValue> dictionary)
+			{
+				Dictionary = dictionary;
+			}
+
+			//****************************************
+
+			public bool Contains(KeyValuePair<TKey, TValue> item)
+			{
+				var Comparer = EqualityComparer<TValue>.Default;
+
+				return Dictionary.TryGetValue(item.Key, out var Value) && Comparer.Equals(item.Value, Value);
+			}
+
+			public bool ContainsKey(TKey key) => Dictionary.ContainsKey(key);
+
+			public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
+			{
+				foreach (var Pair in Dictionary)
+					array[arrayIndex++] = Pair;
+			}
+
+			public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() => Dictionary.GetEnumerator();
+
+			public bool TryGetValue(TKey key,
+#if !NETSTANDARD && !NET40
+				[MaybeNullWhen(false)]
+#endif
+				out TValue value) => Dictionary.TryGetValue(key, out value);
+
+			IEnumerator IEnumerable.GetEnumerator() => Dictionary.GetEnumerator();
+
+			//****************************************
+
+			void IDictionary<TKey, TValue>.Add(TKey key, TValue value) => throw new NotSupportedException("Dictionary is read-only");
+
+			void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> item) => throw new NotSupportedException("Dictionary is read-only");
+
+			void ICollection<KeyValuePair<TKey, TValue>>.Clear() => throw new NotSupportedException("Dictionary is read-only");
+
+			bool IDictionary<TKey, TValue>.Remove(TKey key) => throw new NotSupportedException("Dictionary is read-only");
+
+			bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> item) => throw new NotSupportedException("Dictionary is read-only");
+
+			//****************************************
+
+			public TValue this[TKey key]
+			{
+				get => Dictionary[key];
+				set => throw new NotSupportedException("Dictionary is read-only");
+			}
+
+			public ICollection<TKey> Keys => throw new NotSupportedException();
+
+			public ICollection<TValue> Values => throw new NotSupportedException();
+
+			public int Count => Dictionary.Count;
+
+			public bool IsReadOnly => true;
+
+			internal IReadOnlyDictionary<TKey, TValue> Dictionary { get; }
+		}
+
+		private sealed class ReadOnlyKeyCollection : Collection<TKey>
+		{ //****************************************
+			private readonly IReadOnlyDictionary<TKey, TValue> _Dictionary;
+			//****************************************
+
+			internal ReadOnlyKeyCollection(IReadOnlyDictionary<TKey, TValue> dictionary)
+			{
+				_Dictionary = dictionary;
+			}
+
+			//****************************************
+
+			public override bool Contains(TKey item) => _Dictionary.ContainsKey(item);
+
+			public override void CopyTo(TKey[] array, int arrayIndex)
+			{
+				foreach (var Key in _Dictionary.Keys)
+					array[arrayIndex++] = Key;
+			}
+
+			public override IEnumerator<TKey> GetEnumerator() => _Dictionary.Keys.GetEnumerator();
+
+			public override int Count => _Dictionary.Count;
+
+			internal override object SyncRoot => _Dictionary;
+		}
+
 	}
 }

@@ -235,7 +235,7 @@ namespace System.Threading
 		{ //****************************************
 			private static readonly ConcurrentBag<AutoResetInstance> Instances = new();
 			//****************************************
-			private volatile int _InstanceState;
+			private int _InstanceState;
 
 			private ManualResetValueTaskSourceCore<bool> _TaskSource = new();
 			//****************************************
@@ -248,7 +248,7 @@ namespace System.Threading
 			{
 				Owner = owner;
 
-				_InstanceState = Status.Pending;
+				Interlocked.Exchange(ref _InstanceState, Status.Pending);
 
 				RegisterCancellation(token, timeout);
 			}
@@ -278,7 +278,7 @@ namespace System.Threading
 
 				do
 				{
-					InstanceState = _InstanceState;
+					InstanceState = Volatile.Read(ref _InstanceState);
 
 					switch (InstanceState)
 					{
@@ -304,7 +304,7 @@ namespace System.Threading
 
 			protected override void SwitchToCancelled()
 			{
-				if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Cancelled, Status.Pending) != Status.Pending)
+				if (Volatile.Read(ref _InstanceState) != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Cancelled, Status.Pending) != Status.Pending)
 					return; // Instance is no longer in a cancellable state
 
 				Owner!._Waiters.Erase(this);
@@ -318,7 +318,7 @@ namespace System.Threading
 
 			protected override void UnregisteredCancellation()
 			{
-				switch (_InstanceState)
+				switch (Volatile.Read(ref _InstanceState))
 				{
 				case Status.Disposed:
 					_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncAutoResetEvent), "Event has been disposed of"));
@@ -342,7 +342,7 @@ namespace System.Threading
 				}
 				finally
 				{
-					if (_InstanceState == Status.CancelledNotWaiting || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledNotWaiting)
+					if (Volatile.Read(ref _InstanceState) == Status.CancelledNotWaiting || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledNotWaiting)
 						Release(); // We're cancelled and no longer on the Wait queue, so we can return to the pool
 				}
 			}
@@ -354,7 +354,7 @@ namespace System.Threading
 				Owner = null;
 
 				_TaskSource.Reset();
-				_InstanceState = Status.Unused;
+				Interlocked.Exchange(ref _InstanceState, Status.Unused);
 				ResetCancellation();
 
 				if (Instances.Count < MaxInstanceCache)
@@ -365,7 +365,7 @@ namespace System.Threading
 
 			public AsyncAutoResetEvent? Owner { get; private set; }
 
-			public bool IsPending => _InstanceState == Status.Pending;
+			public bool IsPending => Volatile.Read(ref _InstanceState) == Status.Pending;
 
 			public short Version => _TaskSource.Version;
 

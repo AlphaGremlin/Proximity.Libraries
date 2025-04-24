@@ -14,7 +14,7 @@ namespace System.Threading
 		{	//****************************************
 			private static readonly ConcurrentBag<LockInstance> Instances = new();
 			//****************************************
-			private volatile int _InstanceState;
+			private int _InstanceState;
 
 			private ManualResetValueTaskSourceCore<Instance> _TaskSource = new();
 			//****************************************
@@ -23,7 +23,7 @@ namespace System.Threading
 
 			~LockInstance()
 			{
-				if (_InstanceState != Status.Unused)
+				if (Volatile.Read(ref _InstanceState) != Status.Unused)
 				{
 					// TODO: Lock instance was garbage collected without being released
 				}
@@ -51,7 +51,7 @@ namespace System.Threading
 
 			internal void ApplyCancellation(CancellationToken token, TimeSpan timeout)
 			{
-				if (_InstanceState != Status.Pending)
+				if (Volatile.Read(ref _InstanceState) != Status.Pending)
 					throw new InvalidOperationException("Cannot register for cancellation when not pending");
 
 				RegisterCancellation(token, timeout);
@@ -82,7 +82,7 @@ namespace System.Threading
 
 				do
 				{
-					InstanceState = _InstanceState;
+					InstanceState = Volatile.Read(ref _InstanceState);
 
 					switch (InstanceState)
 					{

@@ -13,7 +13,7 @@ namespace System.Threading
 		{ //****************************************
 			private static readonly ConcurrentBag<SemaphoreWaitInstance> Instances = new();
 			//****************************************
-			private volatile int _InstanceState;
+			private int _InstanceState;
 
 			private ManualResetValueTaskSourceCore<bool> _TaskSource = new();
 			//****************************************
@@ -49,7 +49,7 @@ namespace System.Threading
 				Owner = null;
 
 				_TaskSource.Reset();
-				_InstanceState = Status.Unused;
+				Interlocked.Exchange(ref _InstanceState, Status.Unused);
 				ResetCancellation();
 
 				GC.SuppressFinalize(this);
@@ -71,12 +71,12 @@ namespace System.Threading
 
 				GC.ReRegisterForFinalize(this);
 
-				_InstanceState = Status.Wait;
+				Interlocked.Exchange(ref _InstanceState, Status.Wait);
 			}
 
 			protected override void UnregisteredCancellation()
 			{
-				switch (_InstanceState)
+				switch (Volatile.Read(ref _InstanceState))
 				{
 				case Status.Disposed:
 					_TaskSource.SetException(new ObjectDisposedException(nameof(AsyncSemaphore), "Semaphore has been disposed of"));
@@ -102,7 +102,7 @@ namespace System.Threading
 				}
 				finally
 				{
-					switch (_InstanceState)
+					switch (Volatile.Read(ref _InstanceState))
 					{
 					case Status.Disposed:
 					case Status.CancelledNotWaiting:
@@ -124,7 +124,7 @@ namespace System.Threading
 
 			public AsyncSemaphore? Owner { get; private set; }
 
-			public bool IsPending => _InstanceState == Status.Pending;
+			public bool IsPending => Volatile.Read(ref _InstanceState) == Status.Pending;
 
 			public short Version => _TaskSource.Version;
 

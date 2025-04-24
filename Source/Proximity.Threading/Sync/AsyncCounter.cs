@@ -713,7 +713,7 @@ namespace System.Threading
 
 			for (; ; )
 			{
-				OldCount = _CurrentCount;
+				OldCount = Volatile.Read(ref _CurrentCount);
 
 				// Are we disposed?
 				if (OldCount == -1)
@@ -742,7 +742,7 @@ namespace System.Threading
 
 			for (; ; )
 			{
-				OldCount = _CurrentCount;
+				OldCount = Volatile.Read(ref _CurrentCount);
 
 				if (OldCount <= 0)
 				{

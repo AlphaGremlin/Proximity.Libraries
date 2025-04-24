@@ -21,7 +21,7 @@ namespace System.Threading
 
 		private LockDisposer? _Disposer;
 
-		private volatile int _Counter = LockState.Unlocked;
+		private int _Counter = LockState.Unlocked;
 		//****************************************
 
 		/// <summary>
@@ -180,7 +180,7 @@ namespace System.Threading
 
 				do
 				{
-					PreviousCounter = _Counter;
+					PreviousCounter = Volatile.Read(ref _Counter);
 
 					Debug.Assert(PreviousCounter >= LockState.Reader, "Read Write Lock is in an invalid state (Upgrade)");
 
@@ -238,7 +238,7 @@ namespace System.Threading
 
 			do
 			{
-				PreviousCounter = _Counter;
+				PreviousCounter = Volatile.Read(ref _Counter);
 
 				if (PreviousCounter < LockState.Unlocked)
 					return false; // We're disposed, or there is a writer active, can't take no matter what
@@ -265,7 +265,7 @@ namespace System.Threading
 
 			do
 			{
-				PreviousCounter = _Counter;
+				PreviousCounter = Volatile.Read(ref _Counter);
 
 				Debug.Assert(PreviousCounter == LockState.Writer, "Read Write Lock is in an invalid state (Reader)");
 
@@ -306,7 +306,7 @@ namespace System.Threading
 			{
 				do
 				{
-					PreviousCounter = _Counter;
+					PreviousCounter = Volatile.Read(ref _Counter);
 
 					Debug.Assert(PreviousCounter != LockState.Unlocked, "Read Write Lock is in an invalid state (Unheld)");
 					Debug.Assert(PreviousCounter != LockState.Disposed, "Read Write Lock is in an invalid state (Disposed)");

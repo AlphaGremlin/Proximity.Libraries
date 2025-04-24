@@ -16,7 +16,7 @@ namespace Proximity.Threading
 		private Action? _CompleteValueTask;
 		private Action<Task>? _CompleteTask;
 
-		private volatile int _InstanceState;
+		private int _InstanceState;
 		private bool _HasResult;
 		private bool _WaitForCompletion;
 
@@ -36,7 +36,7 @@ namespace Proximity.Threading
 
 		internal void Initialise()
 		{
-			_InstanceState = Status.Pending;
+			Interlocked.Exchange(ref _InstanceState, Status.Pending);
 		}
 
 		internal void Attach(Task task, CancellationToken token, TimeSpan timeout)
@@ -46,7 +46,7 @@ namespace Proximity.Threading
 
 			RegisterCancellation(token, timeout);
 
-			if (_InstanceState == Status.Pending)
+			if (Volatile.Read(ref _InstanceState) == Status.Pending)
 			{
 				// We use ContinueWith for Task.
 				// This results in a some allocations, but it also lets us associate the Token with the continuation
@@ -68,7 +68,7 @@ namespace Proximity.Threading
 
 			RegisterCancellation(token, timeout);
 
-			if (_InstanceState == Status.Pending)
+			if (Volatile.Read(ref _InstanceState) == Status.Pending)
 			{
 				// We use GetAwaiter for ValueTask.
 				// Unlike with Task, which can have When called multiple times (and would leak on each call to GetAwaiter), we assume a ValueTask is consumed by calling When on it.
@@ -97,7 +97,7 @@ namespace Proximity.Threading
 
 			RegisterCancellation(token, timeout);
 
-			if (_InstanceState == Status.Pending)
+			if (Volatile.Read(ref _InstanceState) == Status.Pending)
 			{
 				// Make sure we run the continuation on the ThreadPool (equivalent to ConfigureAwait(false))
 				task.ContinueWith(_CompleteTask ??= OnCompleteTask, Token, TaskContinuationOptions.None, TaskScheduler.Default);
@@ -112,7 +112,7 @@ namespace Proximity.Threading
 
 			RegisterCancellation(token, timeout);
 
-			if (_InstanceState == Status.Pending)
+			if (Volatile.Read(ref _InstanceState) == Status.Pending)
 			{
 				_ResultAwaiter = task.ConfigureAwait(false).GetAwaiter();
 
@@ -137,7 +137,7 @@ namespace Proximity.Threading
 			}
 			finally
 			{
-				if (_InstanceState == Status.Completed || !_WaitForCompletion || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledCompleted)
+				if (Volatile.Read(ref _InstanceState) == Status.Completed || !_WaitForCompletion || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledCompleted)
 					Release(); // Completed and not waiting for the callback to execute (or we don't care because it should be unregistered)
 			}
 		}
@@ -150,7 +150,7 @@ namespace Proximity.Threading
 			}
 			finally
 			{
-				if (_InstanceState == Status.Completed || !_WaitForCompletion || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledCompleted)
+				if (Volatile.Read(ref _InstanceState) == Status.Completed || !_WaitForCompletion || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledGotResult, Status.Cancelled) == Status.CancelledCompleted)
 					Release(); // Completed and not waiting for the callback to execute
 			}
 		}
@@ -161,7 +161,7 @@ namespace Proximity.Threading
 			if (Interlocked.Exchange(ref _Task, null) == null)
 				return; // OnCompleteTask has already executed
 
-			if (_InstanceState != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Cancelled, Status.Pending) != Status.Pending)
+			if (Volatile.Read(ref _InstanceState) != Status.Pending || Interlocked.CompareExchange(ref _InstanceState, Status.Cancelled, Status.Pending) != Status.Pending)
 				return; // Instance is no longer in a cancellable state
 
 			// The cancellation token was raised
@@ -204,7 +204,7 @@ namespace Proximity.Threading
 			}
 
 			// Cancellation triggered was probably triggered, are we waiting for GetResult?
-			if (_InstanceState == Status.CancelledGotResult || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledCompleted, Status.Cancelled) == Status.CancelledGotResult)
+			if (Volatile.Read(ref _InstanceState) == Status.CancelledGotResult || Interlocked.CompareExchange(ref _InstanceState, Status.CancelledCompleted, Status.Cancelled) == Status.CancelledGotResult)
 				Release(); // We're cancelled and not waiting for GetResult, so we can return to the pool
 		}
 
@@ -238,7 +238,7 @@ namespace Proximity.Threading
 			_Task = null;
 			_Awaiter = default;
 			_ResultAwaiter = default;
-			_InstanceState = Status.Unused;
+			Interlocked.Exchange(ref _InstanceState, Status.Unused);
 			ResetCancellation();
 
 			Instances.Add(this);
