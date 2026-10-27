@@ -1,34 +1,31 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFrameworks>netstandard2.0;netstandard2.1;net6.0</TargetFrameworks>
-		<Authors>Daniel Chandler</Authors>
-		<Company>Proximity Interactive</Company>
-		<Copyright>Copyright © Daniel Chandler 2020</Copyright>
+		<TargetFrameworks>netstandard2.0;netstandard2.1;net10.0</TargetFrameworks>
 		<Product>Proximity Collections Utility Library</Product>
-		<Version>1.4.0</Version>
-		<AssemblyVersion>1.4.0.0</AssemblyVersion>
-		<FileVersion>1.4.0.0</FileVersion>
 		<Description>Collections Utility Library</Description>
+		<Version>1.5.0</Version>
+		<AssemblyVersion>1.5.0.0</AssemblyVersion>
+		<FileVersion>1.5.0.0</FileVersion>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<SignAssembly>true</SignAssembly>
 		<AssemblyOriginatorKeyFile>..\Proximity.snk</AssemblyOriginatorKeyFile>
 		<OutputPath>..\..\Build</OutputPath>
 		<LangVersion>Latest</LangVersion>
-		<PackageProjectUrl>https://github.com/AlphaGremlin/Proximity.Libraries</PackageProjectUrl>
-		<RepositoryUrl></RepositoryUrl>
 		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+		<IncludeSymbols>True</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
 	<ItemGroup Condition="$(TargetFramework)=='netstandard2.0'">
-		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.0" />
+		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.13" />
 	</ItemGroup>
 	<ItemGroup>
 	  <Compile Remove="Observable\ObservableSortedSubset.cs" />
 	</ItemGroup>
-	<ItemGroup Condition="$(TargetFramework)!='net4.0'">
-		<PackageReference Include="System.Memory" Version="4.5.4" />
-		<PackageReference Include="System.Collections.Immutable" Version="5.0.0" />
+	<ItemGroup Condition="$(TargetFramework)!='net10.0'">
+		<PackageReference Include="System.Memory" Version="4.6.3" />
+		<PackageReference Include="System.Collections.Immutable" Version="10.0.13" />
 	</ItemGroup>
 	<ItemGroup>
 	  <None Include="Observable\ObservableSortedSubset.cs" />

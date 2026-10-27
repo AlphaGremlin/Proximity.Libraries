@@ -1,0 +1,9 @@
+<Project>
+	<PropertyGroup>
+		<Authors>Daniel Chandler</Authors>
+		<Company>Proximity Interactive</Company>
+		<Copyright>Copyright © Daniel Chandler 2026</Copyright>
+		<PackageProjectUrl>https://github.com/AlphaGremlin/Proximity.Libraries</PackageProjectUrl>
+		<RepositoryUrl></RepositoryUrl>
+	</PropertyGroup>
+</Project>

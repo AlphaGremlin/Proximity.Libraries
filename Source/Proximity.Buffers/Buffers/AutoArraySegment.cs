@@ -3,140 +3,139 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Text;
 
-namespace System.Buffers
+namespace System.Buffers;
+
+/// <summary>
+/// Provides disposal over an <see cref="System.ArraySegment{T}"/> rented from an <see cref="ArrayPool{T}"/>
+/// </summary>
+public static class AutoArraySegment
 {
 	/// <summary>
-	/// Provides disposal over an <see cref="System.ArraySegment{T}"/> rented from an <see cref="ArrayPool{T}"/>
-	/// </summary>
-	public static class AutoArraySegment
-	{
-		/// <summary>
-		/// Converts an <see cref="AutoArray{T}"/> to an <see cref="AutoArraySegment{T}"/>
-		/// </summary>
-		/// <typeparam name="T">The type of array element</typeparam>
-		/// <param name="array">The AutoArray to conver</param>
-		/// <returns>An <see cref="AutoArraySegment{T}"/> representing the given array</returns>
-		public static AutoArraySegment<T> From<T>(AutoArray<T> array) => new(new ArraySegment<T>(array.Array), array.Pool, array.WillClear);
-
-		/// <summary>
-		/// Converts an <see cref="AutoArray{T}"/> to an <see cref="AutoArraySegment{T}"/>
-		/// </summary>
-		/// <typeparam name="T">The type of array element</typeparam>
-		/// <param name="array">The AutoArray to conver</param>
-		/// <param name="start">The starting offset of the segment</param>
-		/// <returns>An <see cref="AutoArraySegment{T}"/> representing the given array and range</returns>
-		public static AutoArraySegment<T> From<T>(AutoArray<T> array, int start) => new(new ArraySegment<T>(array.Array, start, array.Array.Length - start), array.Pool, array.WillClear);
-
-		/// <summary>
-		/// Converts an <see cref="AutoArray{T}"/> to an <see cref="AutoArraySegment{T}"/>
-		/// </summary>
-		/// <typeparam name="T">The type of array element</typeparam>
-		/// <param name="array">The AutoArray to conver</param>
-		/// <param name="start">The starting offset of the segment</param>
-		/// <param name="count">The length of the segment</param>
-		/// <returns>An <see cref="AutoArraySegment{T}"/> representing the given array and range</returns>
-		public static AutoArraySegment<T> From<T>(AutoArray<T> array, int start, int count) => new(new ArraySegment<T>(array.Array, start, count), array.Pool, array.WillClear);
-
-		/// <summary>
-		/// Wraps a previously rented array with an <see cref="AutoArraySegment{T}"/>
-		/// </summary>
-		/// <typeparam name="T">The type of array element</typeparam>
-		/// <param name="segment">The rented array segment</param>
-		/// <returns>An <see cref="AutoArraySegment{T}"/> providing automated disposal of the rented array</returns>
-		public static AutoArraySegment<T> Over<T>(ArraySegment<T> segment) => new(segment, ArrayPool<T>.Shared);
-
-		/// <summary>
-		/// Wraps a previously rented array with an <see cref="AutoArraySegment{T}"/>
-		/// </summary>
-		/// <typeparam name="T">The type of array element</typeparam>
-		/// <param name="segment">The rented array segment</param>
-		/// <param name="from">The <see cref="ArrayPool{T}"/> the array was originally rented from</param>
-		/// <returns>An <see cref="AutoArraySegment{T}"/> providing automated disposal of the rented array</returns>
-		public static AutoArraySegment<T> Over<T>(ArraySegment<T> segment, ArrayPool<T> from) => new(segment, from);
-
-		/// <summary>
-		/// Wraps a previously rented array with an <see cref="AutoArraySegment{T}"/>, clearing it upon return
-		/// </summary>
-		/// <typeparam name="T">The type of array element</typeparam>
-		/// <param name="segment">The rented array segment</param>
-		/// <returns>An <see cref="AutoArraySegment{T}"/> providing automated disposal of the rented array</returns>
-		public static AutoArraySegment<T> OverWithClear<T>(ArraySegment<T> segment) => new(segment, ArrayPool<T>.Shared, true);
-
-		/// <summary>
-		/// Wraps a previously rented array with an <see cref="AutoArraySegment{T}"/>, clearing it upon return
-		/// </summary>
-		/// <typeparam name="T">The type of array element</typeparam>
-		/// <param name="segment">The rented array segment</param>
-		/// <param name="from">The <see cref="ArrayPool{T}"/> the array was originally rented from</param>
-		/// <returns>An <see cref="AutoArraySegment{T}"/> providing automated disposal of the rented array</returns>
-		public static AutoArraySegment<T> OverWithClear<T>(ArraySegment<T> segment, ArrayPool<T> from) => new(segment, from, true);
-	}
-
-	/// <summary>
-	/// Provides disposal over an <see cref="System.ArraySegment{T}"/> rented from an <see cref="ArrayPool{T}"/>
+	/// Converts an <see cref="AutoArray{T}"/> to an <see cref="AutoArraySegment{T}"/>
 	/// </summary>
 	/// <typeparam name="T">The type of array element</typeparam>
-	public readonly struct AutoArraySegment<T> : IDisposable
+	/// <param name="array">The AutoArray to conver</param>
+	/// <returns>An <see cref="AutoArraySegment{T}"/> representing the given array</returns>
+	public static AutoArraySegment<T> From<T>(AutoArray<T> array) => new(new ArraySegment<T>(array.Array), array.Pool, array.WillClear);
+
+	/// <summary>
+	/// Converts an <see cref="AutoArray{T}"/> to an <see cref="AutoArraySegment{T}"/>
+	/// </summary>
+	/// <typeparam name="T">The type of array element</typeparam>
+	/// <param name="array">The AutoArray to conver</param>
+	/// <param name="start">The starting offset of the segment</param>
+	/// <returns>An <see cref="AutoArraySegment{T}"/> representing the given array and range</returns>
+	public static AutoArraySegment<T> From<T>(AutoArray<T> array, int start) => new(new ArraySegment<T>(array.Array, start, array.Array.Length - start), array.Pool, array.WillClear);
+
+	/// <summary>
+	/// Converts an <see cref="AutoArray{T}"/> to an <see cref="AutoArraySegment{T}"/>
+	/// </summary>
+	/// <typeparam name="T">The type of array element</typeparam>
+	/// <param name="array">The AutoArray to conver</param>
+	/// <param name="start">The starting offset of the segment</param>
+	/// <param name="count">The length of the segment</param>
+	/// <returns>An <see cref="AutoArraySegment{T}"/> representing the given array and range</returns>
+	public static AutoArraySegment<T> From<T>(AutoArray<T> array, int start, int count) => new(new ArraySegment<T>(array.Array, start, count), array.Pool, array.WillClear);
+
+	/// <summary>
+	/// Wraps a previously rented array with an <see cref="AutoArraySegment{T}"/>
+	/// </summary>
+	/// <typeparam name="T">The type of array element</typeparam>
+	/// <param name="segment">The rented array segment</param>
+	/// <returns>An <see cref="AutoArraySegment{T}"/> providing automated disposal of the rented array</returns>
+	public static AutoArraySegment<T> Over<T>(ArraySegment<T> segment) => new(segment, ArrayPool<T>.Shared);
+
+	/// <summary>
+	/// Wraps a previously rented array with an <see cref="AutoArraySegment{T}"/>
+	/// </summary>
+	/// <typeparam name="T">The type of array element</typeparam>
+	/// <param name="segment">The rented array segment</param>
+	/// <param name="from">The <see cref="ArrayPool{T}"/> the array was originally rented from</param>
+	/// <returns>An <see cref="AutoArraySegment{T}"/> providing automated disposal of the rented array</returns>
+	public static AutoArraySegment<T> Over<T>(ArraySegment<T> segment, ArrayPool<T> from) => new(segment, from);
+
+	/// <summary>
+	/// Wraps a previously rented array with an <see cref="AutoArraySegment{T}"/>, clearing it upon return
+	/// </summary>
+	/// <typeparam name="T">The type of array element</typeparam>
+	/// <param name="segment">The rented array segment</param>
+	/// <returns>An <see cref="AutoArraySegment{T}"/> providing automated disposal of the rented array</returns>
+	public static AutoArraySegment<T> OverWithClear<T>(ArraySegment<T> segment) => new(segment, ArrayPool<T>.Shared, true);
+
+	/// <summary>
+	/// Wraps a previously rented array with an <see cref="AutoArraySegment{T}"/>, clearing it upon return
+	/// </summary>
+	/// <typeparam name="T">The type of array element</typeparam>
+	/// <param name="segment">The rented array segment</param>
+	/// <param name="from">The <see cref="ArrayPool{T}"/> the array was originally rented from</param>
+	/// <returns>An <see cref="AutoArraySegment{T}"/> providing automated disposal of the rented array</returns>
+	public static AutoArraySegment<T> OverWithClear<T>(ArraySegment<T> segment, ArrayPool<T> from) => new(segment, from, true);
+}
+
+/// <summary>
+/// Provides disposal over an <see cref="System.ArraySegment{T}"/> rented from an <see cref="ArrayPool{T}"/>
+/// </summary>
+/// <typeparam name="T">The type of array element</typeparam>
+public readonly struct AutoArraySegment<T> : IDisposable
+{
+	internal AutoArraySegment(ArraySegment<T> segment,  ArrayPool<T> pool, bool willClear = false)
 	{
-		internal AutoArraySegment(ArraySegment<T> segment,  ArrayPool<T> pool, bool willClear = false)
-		{
-			Segment = segment;
-			Pool = pool;
-			WillClear = willClear;
-		}
-
-		//****************************************
-
-		/// <summary>
-		/// Retrieves the underlying array
-		/// </summary>
-		/// <returns>The underlying array as a <see cref="Memory{T}"/></returns>
-		public Memory<T> AsMemory() => Segment.AsMemory();
-
-		/// <summary>
-		/// Retrieves the underlying array
-		/// </summary>
-		/// <returns>The underlying array as a <see cref="Span{T}"/></returns>
-		public Span<T> AsSpan() => Segment.AsSpan();
-
-		/// <summary>
-		/// Returns the rented buffer to the source pool
-		/// </summary>
-		public void Dispose()
-		{
-			if (Segment.Array != null)
-				Pool.Return(Segment.Array, WillClear);
-		}
-
-		//****************************************
-
-		/// <summary>
-		/// Gets the rented <see cref="System.ArraySegment{T}"/>
-		/// </summary>
-		public ArraySegment<T> Segment { get; }
-
-		/// <summary>
-		/// Gets the <see cref="ArrayPool{T}"/> the array was rented from
-		/// </summary>
-		public ArrayPool<T> Pool { get; }
-
-		/// <summary>
-		/// Gets whether the rented array will be cleared when returned
-		/// </summary>
-		public bool WillClear { get; }
-
-		//****************************************
-
-		/// <summary>
-		/// Converts an Auto Array Segment to the underlying <see cref="System.ArraySegment{T}"/>
-		/// </summary>
-		/// <param name="autoArrayPool">The <see cref="AutoArraySegment{T}"/> to convert</param>
-		public static implicit operator ArraySegment<T>(AutoArraySegment<T> autoArrayPool) => autoArrayPool.Segment;
-
-		/// <summary>
-		/// Converts an Auto Array Segment to a <see cref="Span{T}"/> over the underlying array
-		/// </summary>
-		/// <param name="autoArrayPool">The <see cref="AutoArraySegment{T}"/> to convert</param>
-		public static implicit operator Span<T>(AutoArraySegment<T> autoArrayPool) => autoArrayPool.Segment;
+		Segment = segment;
+		Pool = pool;
+		WillClear = willClear;
 	}
+
+	//****************************************
+
+	/// <summary>
+	/// Retrieves the underlying array
+	/// </summary>
+	/// <returns>The underlying array as a <see cref="Memory{T}"/></returns>
+	public Memory<T> AsMemory() => Segment.AsMemory();
+
+	/// <summary>
+	/// Retrieves the underlying array
+	/// </summary>
+	/// <returns>The underlying array as a <see cref="Span{T}"/></returns>
+	public Span<T> AsSpan() => Segment.AsSpan();
+
+	/// <summary>
+	/// Returns the rented buffer to the source pool
+	/// </summary>
+	public void Dispose()
+	{
+		if (Segment.Array != null)
+			Pool.Return(Segment.Array, WillClear);
+	}
+
+	//****************************************
+
+	/// <summary>
+	/// Gets the rented <see cref="System.ArraySegment{T}"/>
+	/// </summary>
+	public ArraySegment<T> Segment { get; }
+
+	/// <summary>
+	/// Gets the <see cref="ArrayPool{T}"/> the array was rented from
+	/// </summary>
+	public ArrayPool<T> Pool { get; }
+
+	/// <summary>
+	/// Gets whether the rented array will be cleared when returned
+	/// </summary>
+	public bool WillClear { get; }
+
+	//****************************************
+
+	/// <summary>
+	/// Converts an Auto Array Segment to the underlying <see cref="System.ArraySegment{T}"/>
+	/// </summary>
+	/// <param name="autoArrayPool">The <see cref="AutoArraySegment{T}"/> to convert</param>
+	public static implicit operator ArraySegment<T>(AutoArraySegment<T> autoArrayPool) => autoArrayPool.Segment;
+
+	/// <summary>
+	/// Converts an Auto Array Segment to a <see cref="Span{T}"/> over the underlying array
+	/// </summary>
+	/// <param name="autoArrayPool">The <see cref="AutoArraySegment{T}"/> to convert</param>
+	public static implicit operator Span<T>(AutoArraySegment<T> autoArrayPool) => autoArrayPool.Segment;
 }

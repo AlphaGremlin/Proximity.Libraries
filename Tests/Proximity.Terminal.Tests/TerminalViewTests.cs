@@ -1,19 +1,12 @@
 using NUnit.Framework;
 
-namespace Proximity.Terminal.Tests
-{
-	[TestFixture]
-	public class TerminalViewTests
-	{
-		[SetUp]
-		public void Setup()
-		{
-		}
+namespace Proximity.Terminal.Tests;
 
-		[Test]
-		public void Test1()
-		{
-			Assert.Pass();
-		}
+[TestFixture]
+public class TerminalViewTests
+{
+	[SetUp]
+	public void Setup()
+	{
 	}
 }

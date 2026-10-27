@@ -3,97 +3,97 @@ using System.Buffers;
 using System.IO;
 using System.Text;
 using NUnit.Framework;
+using NUnit.Framework.Legacy;
 //****************************************
 
-namespace Proximity.Buffers.Tests
-{
-	/// <summary>
-	/// Tests the functionality of the <see cref="CharTextWriter"/> class
-	/// </summary>
-	[TestFixture()]
-	public class CharTextWriterTests
+namespace Proximity.Buffers.Tests;
+
+/// <summary>
+/// Tests the functionality of the <see cref="CharTextWriter"/> class
+/// </summary>
+[TestFixture()]
+public class CharTextWriterTests
+{ //****************************************
+	private string _TestInput = @"ABC!DEF@GHI#JKL$123%456^789&0*MNO(PQR)STU-VWX=YZ abcdefghijklmnopqrstuvwxyz ♥ ";
+	private char[] _TestOutput;
+	//****************************************
+
+	[OneTimeSetUp()]
+	public void Setup()
+	{
+		_TestOutput = _TestInput.ToCharArray();
+	}
+
+	//****************************************
+
+	[Test()]
+	public void WriteDefault()
 	{ //****************************************
-		private string _TestInput = @"ABC!DEF@GHI#JKL$123%456^789&0*MNO(PQR)STU-VWX=YZ abcdefghijklmnopqrstuvwxyz ♥ ";
-		private char[] _TestOutput;
+		char[] MyResult;
+		char[] TempOutput;
 		//****************************************
 
-		[OneTimeSetUp()]
-		public void Setup()
+		TempOutput = _TestInput.ToCharArray();
+
+		//****************************************
+
+		using (var Buffer = new BufferWriter<char>())
 		{
-			_TestOutput = _TestInput.ToCharArray();
+			using (var Writer = new CharTextWriter(Buffer))
+			{
+				Writer.Write(_TestInput);
+			}
+
+			MyResult = Buffer.ToSequence().ToArray();
 		}
 
 		//****************************************
 
-		[Test()]
-		public void WriteDefault()
-		{ //****************************************
-			char[] MyResult;
-			char[] TempOutput;
-			//****************************************
+		Assert.That(MyResult, Is.EqualTo(TempOutput).AsCollection);
+	}
 
-			TempOutput = _TestInput.ToCharArray();
+	[Test()]
+	public void Write([Values(8, 16, 32, 64, 128)] int capacity)
+	{ //****************************************
+		char[] MyResult;
+		//****************************************
 
-			//****************************************
-
-			using (var Buffer = new BufferWriter<char>())
+		using (var Buffer = new BufferWriter<char>())
+		{
+			using (var Writer = new CharTextWriter(Buffer, capacity))
 			{
-				using (var Writer = new CharTextWriter(Buffer))
-				{
-					Writer.Write(_TestInput);
-				}
-
-				MyResult = Buffer.ToSequence().ToArray();
+				Writer.Write(_TestInput);
 			}
 
-			//****************************************
-
-			CollectionAssert.AreEqual(TempOutput, MyResult);
+			MyResult = Buffer.ToSequence().ToArray();
 		}
 
-		[Test()]
-		public void Write([Values(8, 16, 32, 64, 128)] int capacity)
-		{ //****************************************
-			char[] MyResult;
-			//****************************************
+		//****************************************
 
-			using (var Buffer = new BufferWriter<char>())
+		Assert.That(MyResult, Is.EqualTo(_TestOutput).AsCollection);
+	}
+
+	[Test()]
+	public void WriteChar([Values(8, 16, 32, 64, 128)] int capacity)
+	{ //****************************************
+		char[] MyResult;
+		//****************************************
+
+		using (var Buffer = new BufferWriter<char>())
+		{
+			using (var Writer = new CharTextWriter(Buffer, capacity))
 			{
-				using (var Writer = new CharTextWriter(Buffer, capacity))
+				foreach (var MyChar in _TestInput)
 				{
-					Writer.Write(_TestInput);
+					Writer.Write(MyChar);
 				}
-
-				MyResult = Buffer.ToSequence().ToArray();
 			}
 
-			//****************************************
-
-			CollectionAssert.AreEqual(_TestOutput, MyResult);
+			MyResult = Buffer.ToSequence().ToArray();
 		}
 
-		[Test()]
-		public void WriteChar([Values(8, 16, 32, 64, 128)] int capacity)
-		{ //****************************************
-			char[] MyResult;
-			//****************************************
+		//****************************************
 
-			using (var Buffer = new BufferWriter<char>())
-			{
-				using (var Writer = new CharTextWriter(Buffer, capacity))
-				{
-					foreach (var MyChar in _TestInput)
-					{
-						Writer.Write(MyChar);
-					}
-				}
-
-				MyResult = Buffer.ToSequence().ToArray();
-			}
-
-			//****************************************
-
-			CollectionAssert.AreEqual(_TestOutput, MyResult);
-		}
+		Assert.That(MyResult, Is.EqualTo(_TestOutput).AsCollection);
 	}
 }

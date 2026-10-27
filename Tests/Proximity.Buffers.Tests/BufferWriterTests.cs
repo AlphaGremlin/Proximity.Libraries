@@ -3,238 +3,238 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Text;
 using NUnit.Framework;
+using NUnit.Framework.Legacy;
 
-namespace Proximity.Buffers.Tests
+namespace Proximity.Buffers.Tests;
+
+[TestFixture]
+public class BufferWriterTests
 {
-	[TestFixture]
-	public class BufferWriterTests
+	[Test]
+	public void Empty()
 	{
-		[Test]
-		public void Empty()
+		using var Writer = new BufferWriter<byte>(ExactPool<byte>.Shared);
+
+		var Sequence = Writer.ToSequence();
+
+		Assert.That(Sequence.IsEmpty, Is.True);
+	}
+
+	[Test]
+	[TestCase(1)]
+	[TestCase(16)]
+	[TestCase(128)]
+	[TestCase(1024)]
+	public void SingleByte(int totalBytes)
+	{
+		using var Writer = new BufferWriter<byte>(ExactPool<byte>.Shared);
+
+		for (var Index = 0; Index < totalBytes; Index++)
 		{
-			using var Writer = new BufferWriter<byte>(ExactPool<byte>.Shared);
+			var Contents = Writer.GetSpan(1);
 
-			var Sequence = Writer.ToSequence();
+			Contents[0] = 1;
 
-			Assert.IsTrue(Sequence.IsEmpty);
+			Writer.Advance(1);
 		}
 
-		[Test]
-		[TestCase(1)]
-		[TestCase(16)]
-		[TestCase(128)]
-		[TestCase(1024)]
-		public void SingleByte(int totalBytes)
+		Assert.That(Writer.Length, Is.EqualTo(totalBytes));
+
+		var Sequence = Writer.ToSequence();
+
+		Assert.That(Sequence.Length, Is.EqualTo(totalBytes));
+	}
+
+	[Test]
+	[TestCase(1024, 30)]
+	[TestCase(3000, 30)]
+	[TestCase(3000, 31)]
+	[TestCase(1024, 32)]
+	[TestCase(1024 * 4, 1024)]
+	[TestCase(1024, 200)]
+	public void Blocks(int totalBytes, int blockSize)
+	{
+		using var Writer = new BufferWriter<byte>(ExactPool<byte>.Shared);
+
+		for (var Index = 0; Index < totalBytes; Index += blockSize)
 		{
-			using var Writer = new BufferWriter<byte>(ExactPool<byte>.Shared);
+			var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
 
-			for (var Index = 0; Index < totalBytes; Index++)
-			{
-				var Contents = Writer.GetSpan(1);
+			var Contents = Writer.GetSpan(NextBlockSize);
 
-				Contents[0] = 1;
+			Contents.Slice(0, NextBlockSize).Fill(1);
 
-				Writer.Advance(1);
-			}
-
-			Assert.AreEqual(totalBytes, Writer.Length);
-
-			var Sequence = Writer.ToSequence();
-
-			Assert.AreEqual(totalBytes, Sequence.Length);
+			Writer.Advance(NextBlockSize);
 		}
 
-		[Test]
-		[TestCase(1024, 30)]
-		[TestCase(3000, 30)]
-		[TestCase(3000, 31)]
-		[TestCase(1024, 32)]
-		[TestCase(1024 * 4, 1024)]
-		[TestCase(1024, 200)]
-		public void Blocks(int totalBytes, int blockSize)
+		Assert.That(Writer.Length, Is.EqualTo(totalBytes));
+
+		var Sequence = Writer.ToSequence();
+
+		Assert.That(Sequence.Length, Is.EqualTo(totalBytes));
+	}
+
+	[Test]
+	[TestCase(1024, 30)]
+	[TestCase(3000, 30)]
+	[TestCase(3000, 31)]
+	[TestCase(1024, 32)]
+	[TestCase(1024 * 4, 1024)]
+	[TestCase(1024, 200)]
+	public void BlocksApproximate(int totalBytes, int blockSize)
+	{
+		using var Writer = new BufferWriter<byte>();
+
+		for (var Index = 0; Index < totalBytes; Index += blockSize)
 		{
-			using var Writer = new BufferWriter<byte>(ExactPool<byte>.Shared);
+			var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
 
-			for (var Index = 0; Index < totalBytes; Index += blockSize)
-			{
-				var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
+			var Contents = Writer.GetSpan(NextBlockSize);
 
-				var Contents = Writer.GetSpan(NextBlockSize);
+			Contents.Slice(0, NextBlockSize).Fill(1);
 
-				Contents.Slice(0, NextBlockSize).Fill(1);
-
-				Writer.Advance(NextBlockSize);
-			}
-
-			Assert.AreEqual(totalBytes, Writer.Length);
-
-			var Sequence = Writer.ToSequence();
-
-			Assert.AreEqual(totalBytes, Sequence.Length);
+			Writer.Advance(NextBlockSize);
 		}
 
-		[Test]
-		[TestCase(1024, 30)]
-		[TestCase(3000, 30)]
-		[TestCase(3000, 31)]
-		[TestCase(1024, 32)]
-		[TestCase(1024 * 4, 1024)]
-		[TestCase(1024, 200)]
-		public void BlocksApproximate(int totalBytes, int blockSize)
+		Assert.That(Writer.Length, Is.EqualTo(totalBytes));
+
+		var Sequence = Writer.ToSequence();
+
+		Assert.That(Sequence.Length, Is.EqualTo(totalBytes));
+	}
+
+	[Test]
+	[TestCase(1024, 30)]
+	[TestCase(3000, 30)]
+	[TestCase(3000, 31)]
+	[TestCase(1024, 32)]
+	[TestCase(1024 * 4, 1024)]
+	[TestCase(1024, 200)]
+	public void BlocksSmallMinimum(int totalBytes, int blockSize)
+	{
+		using var Writer = new BufferWriter<byte>(ExactPool<byte>.Shared, 1);
+
+		for (var Index = 0; Index < totalBytes; Index += blockSize)
 		{
-			using var Writer = new BufferWriter<byte>();
+			var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
 
-			for (var Index = 0; Index < totalBytes; Index += blockSize)
-			{
-				var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
+			var Contents = Writer.GetSpan(NextBlockSize);
 
-				var Contents = Writer.GetSpan(NextBlockSize);
+			Contents.Slice(0, NextBlockSize).Fill(1);
 
-				Contents.Slice(0, NextBlockSize).Fill(1);
-
-				Writer.Advance(NextBlockSize);
-			}
-
-			Assert.AreEqual(totalBytes, Writer.Length);
-
-			var Sequence = Writer.ToSequence();
-
-			Assert.AreEqual(totalBytes, Sequence.Length);
+			Writer.Advance(NextBlockSize);
 		}
 
-		[Test]
-		[TestCase(1024, 30)]
-		[TestCase(3000, 30)]
-		[TestCase(3000, 31)]
-		[TestCase(1024, 32)]
-		[TestCase(1024 * 4, 1024)]
-		[TestCase(1024, 200)]
-		public void BlocksSmallMinimum(int totalBytes, int blockSize)
+		Assert.That(Writer.Length, Is.EqualTo(totalBytes));
+
+		var Sequence = Writer.ToSequence();
+
+		Assert.That(Sequence.Length, Is.EqualTo(totalBytes));
+	}
+
+	[Test]
+	[TestCase(1024, 30)]
+	[TestCase(3000, 30)]
+	[TestCase(3000, 31)]
+	[TestCase(1024, 32)]
+	[TestCase(1024 * 4, 1024)]
+	[TestCase(1024, 200)]
+	public void BlocksSmallMinimumApproximate(int totalBytes, int blockSize)
+	{
+		using var Writer = new BufferWriter<byte>(ArrayPool<byte>.Shared, 1);
+
+		for (var Index = 0; Index < totalBytes; Index += blockSize)
 		{
-			using var Writer = new BufferWriter<byte>(ExactPool<byte>.Shared, 1);
+			var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
 
-			for (var Index = 0; Index < totalBytes; Index += blockSize)
-			{
-				var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
+			var Contents = Writer.GetSpan(NextBlockSize);
 
-				var Contents = Writer.GetSpan(NextBlockSize);
+			Contents.Slice(0, NextBlockSize).Fill(1);
 
-				Contents.Slice(0, NextBlockSize).Fill(1);
-
-				Writer.Advance(NextBlockSize);
-			}
-
-			Assert.AreEqual(totalBytes, Writer.Length);
-
-			var Sequence = Writer.ToSequence();
-
-			Assert.AreEqual(totalBytes, Sequence.Length);
+			Writer.Advance(NextBlockSize);
 		}
 
-		[Test]
-		[TestCase(1024, 30)]
-		[TestCase(3000, 30)]
-		[TestCase(3000, 31)]
-		[TestCase(1024, 32)]
-		[TestCase(1024 * 4, 1024)]
-		[TestCase(1024, 200)]
-		public void BlocksSmallMinimumApproximate(int totalBytes, int blockSize)
+		Assert.That(Writer.Length, Is.EqualTo(totalBytes));
+
+		var Sequence = Writer.ToSequence();
+
+		Assert.That(Sequence.Length, Is.EqualTo(totalBytes));
+	}
+
+	[Test]
+	[TestCase(1024, 30, 7)]
+	[TestCase(3000, 30, 7)]
+	[TestCase(3000, 31, 7)]
+	[TestCase(1024, 32, 7)]
+	[TestCase(1024 * 4, 1024, 7)]
+	[TestCase(1024, 200, 7)]
+	public void Trim(int totalBytes, int blockSize, int trim)
+	{
+		var Random = new Random();
+
+		var Source = new byte[totalBytes];
+		Random.NextBytes(Source);
+
+		using var Writer = new BufferWriter<byte>(ArrayPool<byte>.Shared, 1);
+
+		for (var Index = 0; Index < totalBytes; Index += blockSize)
 		{
-			using var Writer = new BufferWriter<byte>(ArrayPool<byte>.Shared, 1);
+			var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
 
-			for (var Index = 0; Index < totalBytes; Index += blockSize)
-			{
-				var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
+			var Contents = Writer.GetSpan(NextBlockSize);
 
-				var Contents = Writer.GetSpan(NextBlockSize);
+			Source.AsSpan(Index, NextBlockSize).CopyTo(Contents);
 
-				Contents.Slice(0, NextBlockSize).Fill(1);
-
-				Writer.Advance(NextBlockSize);
-			}
-
-			Assert.AreEqual(totalBytes, Writer.Length);
-
-			var Sequence = Writer.ToSequence();
-
-			Assert.AreEqual(totalBytes, Sequence.Length);
+			Writer.Advance(NextBlockSize);
 		}
 
-		[Test]
-		[TestCase(1024, 30, 7)]
-		[TestCase(3000, 30, 7)]
-		[TestCase(3000, 31, 7)]
-		[TestCase(1024, 32, 7)]
-		[TestCase(1024 * 4, 1024, 7)]
-		[TestCase(1024, 200, 7)]
-		public void Trim(int totalBytes, int blockSize, int trim)
+		Assert.That(Writer.Length, Is.EqualTo(totalBytes));
+
+		for (var Index = trim; Index < totalBytes; Index += trim)
 		{
-			var Random = new Random();
+			Writer.TrimStart(trim);
 
-			var Source = new byte[totalBytes];
-			Random.NextBytes(Source);
+			Assert.That(Source.Length - Index, Is.EqualTo(Writer.Length));
 
-			using var Writer = new BufferWriter<byte>(ArrayPool<byte>.Shared, 1);
+			Assert.That(Writer.ToSequence().SequenceEqual(Source.AsSpan(Index)), Is.True);
+		}
+	}
 
-			for (var Index = 0; Index < totalBytes; Index += blockSize)
-			{
-				var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
+	[Test]
+	[TestCase(1024, 30, 7)]
+	[TestCase(3000, 30, 7)]
+	[TestCase(3000, 31, 7)]
+	[TestCase(1024, 32, 7)]
+	[TestCase(1024 * 4, 1024, 7)]
+	[TestCase(1024, 200, 7)]
+	public void TrimAdd(int totalBytes, int blockSize, int trim)
+	{
+		var Random = new Random();
 
-				var Contents = Writer.GetSpan(NextBlockSize);
+		var Source = new byte[totalBytes];
+		Random.NextBytes(Source);
 
-				Source.AsSpan(Index, NextBlockSize).CopyTo(Contents);
+		using var Writer = new BufferWriter<byte>(ArrayPool<byte>.Shared, 1);
 
-				Writer.Advance(NextBlockSize);
-			}
+		var TotalTrimmed = 0;
 
-			Assert.AreEqual(totalBytes, Writer.Length);
+		for (var Index = 0; Index < totalBytes; Index += blockSize)
+		{
+			var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
 
-			for (var Index = trim; Index < totalBytes; Index += trim)
-			{
-				Writer.TrimStart(trim);
+			var Contents = Writer.GetSpan(NextBlockSize);
 
-				Assert.AreEqual(Writer.Length, Source.Length - Index);
+			Source.AsSpan(Index, NextBlockSize).CopyTo(Contents);
 
-				Assert.IsTrue(Writer.ToSequence().SequenceEqual(Source.AsSpan(Index)));
-			}
+			Writer.Advance(NextBlockSize);
+
+			Writer.TrimStart(trim);
+
+			TotalTrimmed += trim;
 		}
 
-		[Test]
-		[TestCase(1024, 30, 7)]
-		[TestCase(3000, 30, 7)]
-		[TestCase(3000, 31, 7)]
-		[TestCase(1024, 32, 7)]
-		[TestCase(1024 * 4, 1024, 7)]
-		[TestCase(1024, 200, 7)]
-		public void TrimAdd(int totalBytes, int blockSize, int trim)
-		{
-			var Random = new Random();
+		Assert.That(Writer.Length, Is.EqualTo(totalBytes - TotalTrimmed));
 
-			var Source = new byte[totalBytes];
-			Random.NextBytes(Source);
-
-			using var Writer = new BufferWriter<byte>(ArrayPool<byte>.Shared, 1);
-
-			var TotalTrimmed = 0;
-
-			for (var Index = 0; Index < totalBytes; Index += blockSize)
-			{
-				var NextBlockSize = Math.Min(blockSize, totalBytes - Index);
-
-				var Contents = Writer.GetSpan(NextBlockSize);
-
-				Source.AsSpan(Index, NextBlockSize).CopyTo(Contents);
-
-				Writer.Advance(NextBlockSize);
-
-				Writer.TrimStart(trim);
-
-				TotalTrimmed += trim;
-			}
-
-			Assert.AreEqual(totalBytes - TotalTrimmed, Writer.Length);
-
-			Assert.IsTrue(Writer.ToSequence().SequenceEqual(Source.AsSpan(TotalTrimmed)));
-		}
+		Assert.That(Writer.ToSequence().SequenceEqual(Source.AsSpan(TotalTrimmed)), Is.True);
 	}
 }

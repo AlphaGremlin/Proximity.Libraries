@@ -3,24 +3,23 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Proximity.Buffers
+namespace Proximity.Buffers;
+
+internal sealed class DummyPool<T> : ArrayPool<T>
 {
-	internal sealed class DummyPool<T> : ArrayPool<T>
+	internal static new readonly DummyPool<T> Shared = new();
+
+	//****************************************
+
+	private DummyPool()
 	{
-		internal static new readonly DummyPool<T> Shared = new();
+	}
 
-		//****************************************
+	//****************************************
 
-		private DummyPool()
-		{
-		}
+	public override T[] Rent(int minimumLength) => new T[Math.Max(minimumLength, 1024)];
 
-		//****************************************
-
-		public override T[] Rent(int minimumLength) => new T[Math.Max(minimumLength, 1024)];
-
-		public override void Return(T[] array, bool clearArray = false)
-		{
-		}
+	public override void Return(T[] array, bool clearArray = false)
+	{
 	}
 }

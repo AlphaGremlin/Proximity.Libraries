@@ -7,43 +7,42 @@ using Serilog.Core;
 using Serilog.Events;
 using Serilog.Formatting.Display;
 
-namespace Serilog
+namespace Serilog;
+
+/// <summary>
+/// Adds the WriteTo.Terminal() extension method
+/// </summary>
+public static class TerminalConfigurationExtensions
 {
 	/// <summary>
-	/// Adds the WriteTo.Terminal() extension method
+	/// The terminal uses highlighting and has its own exception rendering, so rendering the level and exception is unnecessary
 	/// </summary>
-	public static class TerminalConfigurationExtensions
+	public const string DefaultTerminalOutputTemplate = "[{Timestamp:HH:mm:ss}] {Message:lj}{NewLine}";
+
+	/// <summary>
+	/// Attaches a Serilog event sink that writes to a Terminal View
+	/// </summary>
+	/// <param name="sinkConfiguration"></param>
+	/// <param name="terminal">The Terminal View to write to</param>
+	/// <param name="restrictedToMinimumLevel"></param>
+	/// <param name="outputTemplate"></param>
+	/// <param name="formatProvider"></param>
+	/// <param name="levelSwitch"></param>
+	/// <returns></returns>
+	public static LoggerConfiguration Terminal(
+		this LoggerSinkConfiguration sinkConfiguration,
+		ITerminal terminal,
+		LogEventLevel restrictedToMinimumLevel = LevelAlias.Minimum,
+		string outputTemplate = DefaultTerminalOutputTemplate,
+		IFormatProvider? formatProvider = null,
+		LoggingLevelSwitch? levelSwitch = null
+		)
 	{
-		/// <summary>
-		/// The terminal uses highlighting and has its own exception rendering, so rendering the level and exception is unnecessary
-		/// </summary>
-		public const string DefaultTerminalOutputTemplate = "[{Timestamp:HH:mm:ss}] {Message:lj}{NewLine}";
+		if (sinkConfiguration == null)
+			throw new ArgumentNullException(nameof(sinkConfiguration));
 
-		/// <summary>
-		/// Attaches a Serilog event sink that writes to a Terminal View
-		/// </summary>
-		/// <param name="sinkConfiguration"></param>
-		/// <param name="terminal">The Terminal View to write to</param>
-		/// <param name="restrictedToMinimumLevel"></param>
-		/// <param name="outputTemplate"></param>
-		/// <param name="formatProvider"></param>
-		/// <param name="levelSwitch"></param>
-		/// <returns></returns>
-		public static LoggerConfiguration Terminal(
-			this LoggerSinkConfiguration sinkConfiguration,
-			ITerminal terminal,
-			LogEventLevel restrictedToMinimumLevel = LevelAlias.Minimum,
-			string outputTemplate = DefaultTerminalOutputTemplate,
-			IFormatProvider? formatProvider = null,
-			LoggingLevelSwitch? levelSwitch = null
-			)
-		{
-			if (sinkConfiguration == null)
-				throw new ArgumentNullException(nameof(sinkConfiguration));
+		var Formatter = new MessageTemplateTextFormatter(outputTemplate, formatProvider);
 
-			var Formatter = new MessageTemplateTextFormatter(outputTemplate, formatProvider);
-
-			return sinkConfiguration.Sink(new TerminalSink(terminal, Formatter), restrictedToMinimumLevel, levelSwitch);
-		}
+		return sinkConfiguration.Sink(new TerminalSink(terminal, Formatter), restrictedToMinimumLevel, levelSwitch);
 	}
 }

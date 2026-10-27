@@ -8,27 +8,26 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Proximity.Threading.Tests.Mocks;
 
-namespace Proximity.Threading.Tests
+namespace Proximity.Threading.Tests;
+
+[TestFixture]
+public sealed class AsyncStreamBufferWriterTests
 {
-	[TestFixture]
-	public sealed class AsyncStreamBufferWriterTests
+	[Test]
+	public async Task SingleWrite()
 	{
-		[Test]
-		public async Task SingleWrite()
+		using var Verifier = new VerifyingAsyncWriteStream(new TimeSpan(0, 0, 0, 0, 10));
+		var InputLength = 0;
+
+		await using (var Writer = new AsyncStreamBufferWriter(Verifier))
 		{
-			using var Verifier = new VerifyingAsyncWriteStream(new TimeSpan(0, 0, 0, 0, 10));
-			var InputLength = 0;
+			var Content = Encoding.ASCII.GetBytes("Write Some Text");
 
-			await using (var Writer = new AsyncStreamBufferWriter(Verifier))
-			{
-				var Content = Encoding.ASCII.GetBytes("Write Some Text");
+			InputLength = Content.Length;
 
-				InputLength = Content.Length;
-
-				Writer.Write(Content);
-			}
-
-			Assert.AreEqual(InputLength, Verifier.Length, "Operation did not finish");
+			Writer.Write(Content);
 		}
+
+		Assert.AreEqual(InputLength, Verifier.Length, "Operation did not finish");
 	}
 }

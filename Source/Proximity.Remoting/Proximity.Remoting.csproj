@@ -2,14 +2,11 @@
 
   <PropertyGroup>
     <TargetFramework>net47</TargetFramework>
-		<Authors>Daniel Chandler</Authors>
-		<Company>Proximity Interactive</Company>
-		<Copyright>Copyright © Daniel Chandler 2018</Copyright>
 		<Product>Proximity Remoting Library</Product>
+		<Description>Proximity Remoting Async Tools Library</Description>
 		<AssemblyVersion>1.0.0.0</AssemblyVersion>
 		<FileVersion>1.0.0.0</FileVersion>
 		<Version>1.0.0</Version>
-		<Description>Proximity Remoting Library</Description>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<SignAssembly>true</SignAssembly>
@@ -23,6 +20,6 @@
 		<DebugType>full</DebugType>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
+		<PackageReference Include="System.Collections.Immutable" Version="10.0.13" />
 	</ItemGroup>
 </Project>

@@ -8,25 +8,24 @@ using Proximity.Configuration;
 using System.Security;
 //****************************************
 
-namespace Proximity.Logging.Config
+namespace Proximity.Logging.Config;
+
+/// <summary>
+/// An configuration entry defining a Logging Output
+/// </summary>
+public class OutputElement : TypedElement
 {
 	/// <summary>
-	/// An configuration entry defining a Logging Output
+	/// Transforms this output configuration into the appropriate configured logging output
 	/// </summary>
-	public class OutputElement : TypedElement
-	{
-		/// <summary>
-		/// Transforms this output configuration into the appropriate configured logging output
-		/// </summary>
-		/// <returns>A configured log output</returns>
-		public LogOutput ToOutput()
-		{	//****************************************
-			var NewOutput = (LogOutput)Activator.CreateInstance(InstanceType);
-			//****************************************
+	/// <returns>A configured log output</returns>
+	public LogOutput ToOutput()
+	{	//****************************************
+		var NewOutput = (LogOutput)Activator.CreateInstance(InstanceType);
+		//****************************************
 
-			NewOutput.Configure(this);
-			
-			return NewOutput;
-		}
+		NewOutput.Configure(this);
+
+		return NewOutput;
 	}
 }

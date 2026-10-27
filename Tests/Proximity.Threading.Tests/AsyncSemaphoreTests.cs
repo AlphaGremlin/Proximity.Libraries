@@ -3,673 +3,707 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using NUnit.Framework.Legacy;
 //****************************************
 
-namespace Proximity.Threading.Tests
+namespace Proximity.Threading.Tests;
+
+/// <summary>
+/// Tests the functionality of the Asynchronous Semaphore
+/// </summary>
+[TestFixture]
+public sealed class AsyncSemaphoreTests
 {
-	/// <summary>
-	/// Tests the functionality of the Asynchronous Semaphore
-	/// </summary>
-	[TestFixture]
-	public sealed class AsyncSemaphoreTests
-	{
-		[Test, MaxTime(1000)]
-		public async Task Lock()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			//****************************************
+	[Test, CancelAfter(1000)]
+	public async Task Lock(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		//****************************************
 
-			(await MyLock.Take()).Dispose();
-			
-			//****************************************
-			
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
-		}
-		
-		[Test, MaxTime(1000)]
-		public void LockLock()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			//****************************************
-			
-			var MyWait1 = MyLock.Take();
-			
-			var MyWait2 = MyLock.Take();
-			
-			Assert.IsFalse(MyWait2.IsCompleted, "Nested lock taken");
-
-			//****************************************
-			
-			MyWait1.Result.Dispose();
-			
-			MyWait2.Result.Dispose();
-			
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
-		}
-		
-		[Test, MaxTime(1000)]
-		public async Task LockLockLock()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore(2);
-			ValueTask<AsyncSemaphore.Instance> MyWaiter1, MyWaiter2;
-			//****************************************
-			
-			using (await MyLock.Take())
-			{
-				MyWaiter1 = MyLock.Take();
-				
-				MyWaiter2 = MyLock.Take();
-				
-				Assert.IsTrue(MyWaiter1.IsCompleted, "Nested lock not taken");
-				
-				Assert.IsFalse(MyWaiter2.IsCompleted, "Nested lock taken");
-			}
-			
-			//****************************************
-			
-			await MyWaiter2;
-			
-			MyWaiter1.Result.Dispose();
-			MyWaiter2.Result.Dispose();
-			
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
-		}
-		
-		[Test, MaxTime(1000), Repeat(10)]
-		public async Task LockCancelLockLock()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			var Resource = false;
-			ValueTask<AsyncSemaphore.Instance> MyWaiter1, MyWaiter2;
-			//****************************************
-			
-			using (var MySource = new CancellationTokenSource())
-			{
-				using (await MyLock.Take())
-				{
-					MyWaiter1 = MyLock.Take(MySource.Token);
-					
-					MyWaiter2 = MyLock.Take();
-					
-					MySource.Cancel();
-					
-					Assert.IsTrue(MyWaiter1.IsCanceled, "Wait not cancelled");
-					
-					Assert.IsFalse(MyWaiter2.IsCompleted, "Nested lock taken");
-					
-					Resource = true;
-				}
-			}
-			
-			//****************************************
-			
-			await MyWaiter2;
-			
-			Assert.IsTrue(Resource, "Block not entered");
-			
-			MyWaiter2.Result.Dispose();
-			
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
-		}
-		
-		[Test, MaxTime(1000)]
-		public async Task LockTimeoutLock()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			ValueTask<AsyncSemaphore.Instance> MyWait;
-			//****************************************
-			
-			using (await MyLock.Take())
-			{
-				MyWait = MyLock.Take(TimeSpan.FromMilliseconds(50));
-				
-				Thread.Sleep(100);
-			}
-			
-			//****************************************
-
-			try
-			{
-				await MyWait;
-
-				Assert.Fail("Did not cancel");
-			}
-			catch (TimeoutException)
-			{
-			}
-
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
+		using (await Lock.Take(CancellationToken.None).WaitAsync(token))
+		{
 		}
 
-		[Test, MaxTime(1000)]
-		public void TryTake()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			//****************************************
+		//****************************************
 
-			Assert.True(MyLock.TryTake(out var MyHandle), "Lock not taken");
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
 
-			MyHandle.Dispose();
+	[Test, CancelAfter(1000)]
+	public void LockLock(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		//****************************************
 
-			//****************************************
+		var Wait1 = Lock.Take(CancellationToken.None).AsTask();
 
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
+		var Wait2 = Lock.Take(CancellationToken.None).AsTask();
+
+		Assert.That(Wait2.IsCompleted, Is.False, "Nested lock taken");
+
+		//****************************************
+
+		Wait1.Result.Dispose();
+
+		Wait2.Result.Dispose();
+
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
+
+	[Test, CancelAfter(1000)]
+	public async Task LockLockLock(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore(2);
+		Task<AsyncSemaphore.Instance> MyWaiter1, MyWaiter2;
+		//****************************************
+
+		using (await Lock.Take(CancellationToken.None))
+		{
+			MyWaiter1 = Lock.Take(CancellationToken.None).AsTask();
+
+			MyWaiter2 = Lock.Take(CancellationToken.None).AsTask();
+
+			Assert.IsTrue(MyWaiter1.IsCompleted, "Nested lock not taken");
+
+			Assert.IsFalse(MyWaiter2.IsCompleted, "Nested lock taken");
 		}
 
-		[Test, MaxTime(1000)]
-		public void TryTakeTake()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			//****************************************
+		//****************************************
 
-			Assert.True(MyLock.TryTake(out var MyHandle1), "Lock not taken");
+		await MyWaiter2;
 
+		MyWaiter1.Result.Dispose();
+		MyWaiter2.Result.Dispose();
 
-			Assert.False(MyLock.TryTake(out _), "Nested lock taken");
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
 
-			MyHandle1.Dispose();
+	[Test, CancelAfter(1000), Repeat(10)]
+	public async Task LockCancelLockLock(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		var Resource = false;
+		Task<AsyncSemaphore.Instance> MyWaiter1, MyWaiter2;
+		//****************************************
 
-			//****************************************
+		using var CancelSource = new CancellationTokenSource();
 
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
+		using (await Lock.Take(CancellationToken.None))
+		{
+			MyWaiter1 = Lock.Take(CancelSource.Token).AsTask();
+
+			MyWaiter2 = Lock.Take(CancellationToken.None).AsTask();
+
+			CancelSource.Cancel();
+
+			// Cancellation happens off-thread
+			await Task.Delay(100, token);
+
+			Assert.IsTrue(MyWaiter1.IsCanceled, "Wait not cancelled");
+
+			Assert.IsFalse(MyWaiter2.IsCompleted, "Nested lock taken");
+
+			Resource = true;
 		}
 
-		[Test, MaxTime(1000)]
-		public void TryTakeTakeZero()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			//****************************************
+		//****************************************
 
-			Assert.True(MyLock.TryTake(out var MyHandle1), "Lock not taken");
+		await MyWaiter2;
 
+		Assert.That(Resource, Is.True, "Block not entered");
 
-			Assert.False(MyLock.TryTake(out _, TimeSpan.Zero), "Nested lock taken");
+		MyWaiter2.Result.Dispose();
 
-			MyHandle1.Dispose();
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
 
-			//****************************************
+	[Test, CancelAfter(1000)]
+	public async Task LockTimeoutLock(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		ValueTask<AsyncSemaphore.Instance> MyWait;
+		//****************************************
 
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
+		using (await Lock.Take(CancellationToken.None))
+		{
+			MyWait = Lock.Take(TimeSpan.FromMilliseconds(50), CancellationToken.None);
+
+			await Task.Delay(100, token);
 		}
 
-		[Test, MaxTime(1000)]
-		public async Task TryTakeLock()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			//****************************************
+		//****************************************
 
-			Assert.True(MyLock.TryTake(out var MyHandle), "Lock not taken");
+		try
+		{
+			await MyWait;
 
-			var MyWait = MyLock.Take();
-
-			Assert.IsFalse(MyWait.IsCompleted, "Nested lock taken");
-
-			MyHandle.Dispose();
-
-			MyHandle = await MyWait;
-
-			MyHandle.Dispose();
-
-			//****************************************
-
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
+			Assert.Fail("Did not cancel");
+		}
+		catch (TimeoutException)
+		{
 		}
 
-		[Test, MaxTime(1000)]
-		public void TryTakeMaxTime()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			//****************************************
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
 
-			Assert.True(MyLock.TryTake(out var MyHandle1), "Lock not taken");
+	[Test]
+	public void TryTake()
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		//****************************************
+
+		Assert.That(Lock.TryTake(out var Handle), Is.True, "Lock not taken");
+
+		Handle.Dispose();
+
+		//****************************************
+
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
+
+	[Test]
+	public void TryTakeTake()
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		//****************************************
+
+		Assert.That(Lock.TryTake(out var Handle), Is.True, "Lock not taken");
+
+		Assert.That(Lock.TryTake(out _), Is.False, "Nested lock taken");
+
+		Handle.Dispose();
+
+		//****************************************
+
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
+
+	[Test]
+	public void TryTakeTakeZero()
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		//****************************************
+
+		Assert.That(Lock.TryTake(out var Handle), Is.True, "Lock not taken");
+
+		Assert.That(Lock.TryTake(out _, TimeSpan.Zero), Is.False, "Nested lock taken");
+
+		Handle.Dispose();
+
+		//****************************************
+
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
+
+	[Test, CancelAfter(1000)]
+	public async Task TryTakeLock(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		//****************************************
+
+		Assert.That(Lock.TryTake(out var Handle), Is.True, "Lock not taken");
+
+		var Wait = Lock.Take(CancellationToken.None);
+
+		Assert.That(Wait.IsCompleted, Is.False, "Nested lock taken");
+
+		Handle.Dispose();
+
+		Handle = await Wait.WaitAsync(token);
+
+		Handle.Dispose();
+
+		//****************************************
+
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
+
+	[Test, CancelAfter(1000)]
+	public async Task TryTakeMaxTime(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		//****************************************
+
+		Assert.That(Lock.TryTake(out var Handle), Is.True, "Lock not taken");
+
+		var StartTime = DateTime.Now;
+
+		var Take = Task.Run(() => Lock.TryTake(out _, TimeSpan.FromMilliseconds(50)));
+
+		Assert.That(await Take.WaitAsync(token), Is.False, "Nested lock taken");
+
+		var EndTime = DateTime.Now;
+
+		Handle.Dispose();
+
+		//****************************************
+
+		Assert.That((EndTime - StartTime).TotalMilliseconds, Is.GreaterThanOrEqualTo(50.0), "Finished too early");
+
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
+
+	[Test, CancelAfter(1000)]
+	public async Task TryTakeNoMaxTime(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		AsyncSemaphore.Instance Handle = default;
+		//****************************************
+
+		var Take = Task.Run(() => Lock.TryTake(out Handle, TimeSpan.FromMilliseconds(50)));
+
+		Assert.That(await Take.WaitAsync(token), Is.True, "Lock not taken");
+
+		Handle.Dispose();
+
+		//****************************************
+
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
+
+	[Test, CancelAfter(1000)]
+	public async Task TryTakeCancel(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		//****************************************
+
+		Assert.That(Lock.TryTake(out var Handle), Is.True, "Lock not taken");
+
+		using (var CancelSource = new CancellationTokenSource())
+		{
+			CancelSource.CancelAfter(50);
 
 			var StartTime = DateTime.Now;
 
+			try
+			{
+				var Take = Task.Run(() => Lock.TryTake(out _, CancelSource.Token));
 
-			Assert.False(MyLock.TryTake(out _, TimeSpan.FromMilliseconds(50)), "Nested lock taken");
+				await Take.WaitAsync(token);
+
+				Assert.Fail("Nested lock taken");
+			}
+			catch (OperationCanceledException)
+			{
+				Assert.That(token.IsCancellationRequested, Is.False);
+			}
 
 			var EndTime = DateTime.Now;
 
-			MyHandle1.Dispose();
-
-			//****************************************
-
 			Assert.GreaterOrEqual((EndTime - StartTime).TotalMilliseconds, 50.0, "Finished too early");
-
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
 		}
 
-		[Test, MaxTime(1000)]
-		public void TryTakeNoMaxTime()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			//****************************************
+		Handle.Dispose();
 
-			Assert.True(MyLock.TryTake(out var MyHandle, TimeSpan.FromMilliseconds(50)), "Lock not taken");
+		//****************************************
 
-			MyHandle.Dispose();
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
 
-			//****************************************
+	[Test, CancelAfter(1000)]
+	public async Task NoTimeoutLock(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		//****************************************
 
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
+		var Wait = Lock.Take(TimeSpan.FromMilliseconds(50));
+
+		//****************************************
+
+		Assert.That(Wait.IsCompleted, Is.True, "Is not completed");
+
+		using (await Wait.WaitAsync(token))
+		{
 		}
 
-		[Test, MaxTime(1000)]
-		public void TryTakeCancel()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			//****************************************
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
 
-			Assert.True(MyLock.TryTake(out var MyHandle1), "Lock not taken");
+	[Test, CancelAfter(2000)]
+	public async Task ConcurrentHoldSingle(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		var Resource = 0;
+		//****************************************
 
-			using (var MyCancel = new CancellationTokenSource())
-			{
-				MyCancel.CancelAfter(50);
-
-				var StartTime = DateTime.Now;
-
-				try
+		await Task.WhenAll(
+			Enumerable.Range(1, 100).Select(
+				async count =>
 				{
-					MyLock.TryTake(out _, MyCancel.Token);
+					await Task.Yield(); // Yield, so it doesn't serialise
 
-					Assert.Fail("Nested lock taken");
-				}
-				catch (OperationCanceledException)
+					using (await Lock.Take(CancellationToken.None))
+					{
+						Interlocked.Increment(ref Resource);
+
+						await Task.Delay(1);
+					}
+
+					return;
+				})
+		).WaitAsync(token);
+
+		//****************************************
+
+		Assert.That(Resource, Is.EqualTo(100), "Block not entered");
+
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
+
+	[Test, CancelAfter(2000), Repeat(4)]
+	public async Task ConcurrentHoldMulti([Values(5, 10, 25, 50)] int startCount, CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore(startCount);
+		var Resource = 0;
+		//****************************************
+
+		await Task.WhenAll(
+			Enumerable.Range(1, 100).Select(
+				async count =>
 				{
-				}
+					await Task.Yield(); // Yield, so it doesn't serialise
 
-				var EndTime = DateTime.Now;
-
-				Assert.GreaterOrEqual((EndTime - StartTime).TotalMilliseconds, 50.0, "Finished too early");
-			}
-			
-			MyHandle1.Dispose();
-
-			//****************************************
-
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
-		}
-
-		[Test, MaxTime(1000)]
-		public void NoTimeoutLock()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			//****************************************
-			
-			var MyWait = MyLock.Take(TimeSpan.FromMilliseconds(50));
-			
-			//****************************************
-			
-			Assert.IsTrue(MyWait.IsCompleted, "Is not completed");
-			
-			MyWait.Result.Dispose();
-			
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
-		}
-		
-		[Test, MaxTime(2000)]
-		public async Task ConcurrentHoldSingle()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			var Resource = 0;
-			//****************************************
-			
-			await Task.WhenAll(
-				Enumerable.Range(1, 100).Select(
-					async count =>
+					using (await Lock.Take(CancellationToken.None))
 					{
-						await Task.Yield(); // Yield, so it doesn't serialise
-						
-						using (var MyWait = await MyLock.Take())
-						{
-							Interlocked.Increment(ref Resource);
-							
-							await Task.Delay(1);
-						}
-						
-						return;
-					})
-			);
-			
-			//****************************************
-			
-			Assert.AreEqual(100, Resource, "Block not entered");
-			
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
-		}
-		
-		[Test, MaxTime(2000), Repeat(4)]
-		public async Task ConcurrentHoldMulti([Values(5, 10, 25, 50)] int startCount)
-		{	//****************************************
-			var MyLock = new AsyncSemaphore(startCount);
-			var Resource = 0;
-			//****************************************
-			
-			await Task.WhenAll(
-				Enumerable.Range(1, 100).Select(
-					async count =>
-					{
-						await Task.Yield(); // Yield, so it doesn't serialise
-						
-						using (var MyWait = await MyLock.Take())
-						{
-							Interlocked.Increment(ref Resource);
-							
-							await Task.Delay(10);
-						}
-						
-						return;
-					})
-			);
-			
-			//****************************************
-			
-			Assert.AreEqual(100, Resource, "Block not entered");
-			
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
-		}
-		
-		[Test, MaxTime(1000), Repeat(10)]
-		public async Task ConcurrentAll()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore(100);
-			var Resource = 0;
-			//****************************************
-			
-			await Task.WhenAll(
-				Enumerable.Range(1, 100).Select(
-					async count =>
-					{
-						await Task.Yield(); // Yield, so it doesn't serialise
-						
-						using (var MyWait = await MyLock.Take())
-						{
-							Interlocked.Increment(ref Resource);
-							
-							await Task.Delay(10);
-						}
-						
-						return;
-					})
-			);
-			
-			//****************************************
-			
-			Assert.AreEqual(100, Resource, "Block not entered");
-			
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
-		}
-		
-		[Test]
-		public async Task StackBlow()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			var Depth = 0;
-			Task ResultTask;
-			Task[] Results;
-			//****************************************
+						Interlocked.Increment(ref Resource);
 
-			using (await MyLock.Take())
-			{
-				Results = Enumerable.Range(1, 40000).Select(
-					async count => 
-					{
-						using (await MyLock.Take())
-						{
-							Depth++;
-						}
-					}).ToArray();
-				
-				ResultTask = Results[Results.Length -1].ContinueWith(task => System.Diagnostics.Debug.WriteLine("Done to " + new System.Diagnostics.StackTrace(false).FrameCount.ToString()), TaskContinuationOptions.ExecuteSynchronously);
-			}
-			
-			await ResultTask;
-		}
-		
-		[Test, MaxTime(1000)]
-		public async Task LockDispose()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			//****************************************
-			
-			var MyWait = MyLock.Take().Result;
-			
-			var MyDispose = MyLock.DisposeAsync();
+						await Task.Delay(10);
+					}
 
-			Assert.IsFalse(MyDispose.IsCompleted, "Dispose completed early");
-			
-			MyWait.Dispose();
-			
-			//****************************************
+					return;
+				})
+		).WaitAsync(token);
 
-			await MyDispose;
+		//****************************************
 
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
-		}
-		
-		[Test, MaxTime(1000)]
-		public async Task LockLockDispose()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore(2);
-			//****************************************
-			
-			var MyWait1 = MyLock.Take();
-			
-			var MyWait2 = MyLock.Take();
-			
-			var MyDispose = MyLock.DisposeAsync();
+		Assert.That(Resource, Is.EqualTo(100), "Block not entered");
 
-			Assert.IsFalse(MyDispose.IsCompleted, "Dispose completed early");
-			
-			MyWait2.Result.Dispose();
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
 
-			Assert.IsFalse(MyDispose.IsCompleted, "Dispose completed early");
-			
-			MyWait1.Result.Dispose();
-			
-			//****************************************
+	[Test, CancelAfter(1000), Repeat(10)]
+	public async Task ConcurrentAll(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore(100);
+		var Resource = 0;
+		//****************************************
 
-			await MyDispose;
-
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
-		}
-
-		[Test, MaxTime(1000)]
-		public async Task TryTakeTakeDispose()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore(1);
-			//****************************************
-
-			Assert.True(MyLock.TryTake(out var MyHandle1), "Lock not taken");
-
-			var MyTask = Task.Run(async () =>
+		await Task.WhenAll(
+			Enumerable.Range(1, 100).Select(
+				async count =>
 				{
-					await Task.Delay(50);
+					await Task.Yield(); // Yield, so it doesn't serialise
 
-					await MyLock.DisposeAsync();
-				});
+					using (await Lock.Take(CancellationToken.None))
+					{
+						Interlocked.Increment(ref Resource);
 
-			Assert.False(MyLock.TryTake(out var MyHandle2, Timeout.InfiniteTimeSpan), "Nested lock taken");
+						await Task.Delay(10);
+					}
 
-			MyHandle1.Dispose();
+					return;
+				})
+		).WaitAsync(token);
 
-			await MyTask;
+		//****************************************
 
-			//****************************************
+		Assert.That(Resource, Is.EqualTo(100), "Block not entered");
 
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
+
+	[Test]
+	public async Task StackBlow()
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		var Depth = 0;
+		Task ResultTask;
+		Task[] Results;
+		//****************************************
+
+		using (await Lock.Take(CancellationToken.None))
+		{
+			Results = Enumerable.Range(1, 40000).Select(
+				async count =>
+				{
+					using (await Lock.Take(CancellationToken.None))
+					{
+						Depth++;
+					}
+				}).ToArray();
+
+			ResultTask = Results[Results.Length - 1].ContinueWith(task => System.Diagnostics.Debug.WriteLine("Done to " + new System.Diagnostics.StackTrace(false).FrameCount.ToString()), TaskContinuationOptions.ExecuteSynchronously);
 		}
 
-		[Test, MaxTime(1000)]
-		public async Task TryTakeTakeTimeoutDispose()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore(1);
-			//****************************************
+		await ResultTask;
+	}
 
-			Assert.True(MyLock.TryTake(out var MyHandle1), "Lock not taken");
+	[Test, CancelAfter(1000)]
+	public async Task LockDispose(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		//****************************************
 
-			var MyTask = Task.Run(async () =>
-			{
-				await Task.Delay(50);
+		var Wait = await Lock.Take(CancellationToken.None).WaitAsync(token);
 
-				await MyLock.DisposeAsync();
-			});
+		var Dispose = Lock.DisposeAsync();
 
-			Assert.False(MyLock.TryTake(out var MyHandle2, TimeSpan.FromMilliseconds(100)), "Nested lock taken");
+		Assert.That(Dispose.IsCompleted, Is.False, "Dispose completed early");
 
-			MyHandle1.Dispose();
+		Wait.Dispose();
 
-			await MyTask;
+		//****************************************
 
-			//****************************************
+		await Dispose.WaitAsync(token);
 
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
+
+	[Test, CancelAfter(1000)]
+	public async Task LockLockDispose(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore(2);
+		//****************************************
+
+		var Wait1 = Lock.Take(CancellationToken.None).AsTask();
+
+		var Wait2 = Lock.Take(CancellationToken.None).AsTask();
+
+		var Dispose = Lock.DisposeAsync();
+
+		Assert.That(Dispose.IsCompleted, Is.False, "Dispose completed early");
+
+		using (await Wait2.WaitAsync(token))
+		{
 		}
 
-		[Test, MaxTime(1000)]
-		public async Task LockMaxLockDispose()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			//****************************************
+		Assert.That(Dispose.IsCompleted, Is.False, "Dispose completed early");
 
-			var MyWait1 = MyLock.Take();
+		using (await Wait1.WaitAsync(token))
+		{
+		}
 
-			var MyWait2 = MyLock.Take();
+		//****************************************
 
-			var MyDispose = MyLock.DisposeAsync();
+		await Dispose.WaitAsync(token);
 
-			try
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
+
+	[Test, CancelAfter(1000)]
+	public async Task TryTakeTakeDispose(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore(1);
+		//****************************************
+
+		Assert.That(Lock.TryTake(out var Handle), Is.True, "Lock not taken");
+
+		var DisposeTask = Task.Run(async () =>
 			{
-				(await MyWait2).Dispose();
+				await Task.Delay(50, token);
 
-				Assert.Fail("Did not dispose");
+				await Lock.DisposeAsync();
+			}, token);
+
+		var WaitTask = Task.Run(() => Lock.TryTake(out _, Timeout.InfiniteTimeSpan));
+
+		Assert.That(await WaitTask, Is.False, "Nested lock taken");
+
+		Handle.Dispose();
+
+		await DisposeTask;
+
+		//****************************************
+
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
+
+	[Test, CancelAfter(1000)]
+	public async Task TryTakeTakeTimeoutDispose(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore(1);
+		//****************************************
+
+		Assert.That(Lock.TryTake(out var Handle), Is.True, "Lock not taken");
+
+		var DisposeTask = Task.Run(async () =>
+		{
+			await Task.Delay(50, token);
+
+			await Lock.DisposeAsync();
+		}, token);
+
+		var WaitTask = Task.Run(() => Lock.TryTake(out _, TimeSpan.FromMilliseconds(100)), token);
+
+		Assert.That(await WaitTask, Is.False, "Nested lock taken");
+
+		Handle.Dispose();
+
+		await DisposeTask;
+
+		//****************************************
+
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
+
+	[Test, CancelAfter(1000)]
+	public async Task LockMaxLockDispose(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		//****************************************
+
+		var Wait1 = Lock.Take(CancellationToken.None).AsTask();
+
+		var Wait2 = Lock.Take(CancellationToken.None);
+
+		var Dispose = Lock.DisposeAsync();
+
+		try
+		{
+			using (await Wait2.WaitAsync(token))
+			{
 			}
-			catch (ObjectDisposedException)
+
+			Assert.Fail("Did not dispose");
+		}
+		catch (ObjectDisposedException)
+		{
+		}
+
+		using (await Wait1.WaitAsync(token))
+		{
+		}
+
+		//****************************************
+
+		await Dispose.WaitAsync(token);
+
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
+
+	[Test, CancelAfter(1000)]
+	public async Task Dispose(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		//****************************************
+
+		await Lock.DisposeAsync().WaitAsync(token);
+
+		//****************************************
+
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
+
+	[Test, CancelAfter(1000)]
+	public async Task DisposeLock(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		//****************************************
+
+		var Dispose = Lock.DisposeAsync();
+
+		try
+		{
+			using (await Lock.Take(CancellationToken.None).WaitAsync(token))
 			{
 			}
-
-			MyWait1.Result.Dispose();
-
-			//****************************************
-
-			await MyDispose;
-
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
+		}
+		catch (ObjectDisposedException)
+		{
 		}
 
-		[Test, MaxTime(1000)]
-		public async Task Dispose()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			//****************************************
+		//****************************************
 
-			await MyLock.DisposeAsync();
+		await Dispose;
 
-			//****************************************
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
 
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
-		}
+	[Test, CancelAfter(1000)]
+	public async Task DisposeTryTake(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		//****************************************
 
-		[Test, MaxTime(1000)]
-		public async Task DisposeLock()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			//****************************************
-			
-			var MyDispose = MyLock.DisposeAsync();
-			
-			try
-			{
-				MyLock.Take().GetAwaiter().GetResult().Dispose();
-			}
-			catch (ObjectDisposedException)
-			{
-			}
-			
-			//****************************************
+		var Dispose = Lock.DisposeAsync();
 
-			await MyDispose;
-			
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
-		}
+		Assert.That(Lock.TryTake(out _), Is.False, "Nested lock taken");
 
-		[Test, MaxTime(1000)]
-		public async Task DisposeTryTake()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			//****************************************
+		//****************************************
 
-			var MyDispose = MyLock.DisposeAsync();
+		await Dispose.WaitAsync(token);
 
-			Assert.False(MyLock.TryTake(out _), "Nested lock taken");
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
 
-			//****************************************
+	[Test, CancelAfter(1000)]
+	public async Task DisposeTryTakeZero(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		//****************************************
 
-			await MyDispose;
+		var Dispose = Lock.DisposeAsync();
 
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
-		}
+		Assert.That(Lock.TryTake(out _, TimeSpan.Zero), Is.False, "Nested lock taken");
 
-		[Test, MaxTime(1000)]
-		public async Task DisposeTryTakeZero()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			//****************************************
+		//****************************************
 
-			var MyDispose = MyLock.DisposeAsync();
+		await Dispose.WaitAsync(token);
 
-			Assert.False(MyLock.TryTake(out _, TimeSpan.Zero), "Nested lock taken");
+		Assert.That(Lock.WaitingCount, Is.Zero, "Still waiting for Semaphore");
+		Assert.That(Lock.CurrentCount, Is.EqualTo(Lock.MaxCount), "Semaphore still held");
+	}
 
-			//****************************************
+	[Test, CancelAfter(1000)]
+	public async Task LockDisposeContinueWithLock(CancellationToken token)
+	{ //****************************************
+		var Lock = new AsyncSemaphore();
+		//****************************************
 
-			await MyDispose;
+		// Succeeds
+		var Handle = await Lock.Take(CancellationToken.None).WaitAsync(token);
 
-			Assert.AreEqual(0, MyLock.WaitingCount, "Still waiting for Semaphore");
-			Assert.AreEqual(MyLock.MaxCount, MyLock.CurrentCount, "Semaphore still held");
-		}
+		// Should block, then throw once we dispose
+		var TakeTask = Lock.Take(CancellationToken.None).AsTask();
 
-		[Test, MaxTime(1000)]
-		public void LockDisposeContinueWithLock()
-		{	//****************************************
-			var MyLock = new AsyncSemaphore();
-			//****************************************
-			
-			var MyCounter = MyLock.Take().Result;
-			
-			var MyTask = MyLock.Take().AsTask();
-			
-			var MyInnerTask = MyTask.ContinueWith((task) => MyLock.Take().AsTask(), TaskContinuationOptions.ExecuteSynchronously).Unwrap();
-			
-			MyLock.DisposeAsync();
+		// Should throw immediately
+		var InnerTakeTask = TakeTask.ContinueWith((task) => Lock.Take(CancellationToken.None).AsTask(), TaskContinuationOptions.ExecuteSynchronously).Unwrap();
 
-			//****************************************
+		// Dispose, causing TakeTask to throw
+		var Dispose = Lock.DisposeAsync();
 
-			Assert.ThrowsAsync<ObjectDisposedException>(() => MyTask);
-			Assert.ThrowsAsync<ObjectDisposedException>(() => MyInnerTask);
-		}
+		//****************************************
+
+		await Assert.ThrowsAsync<ObjectDisposedException>(() => TakeTask);
+		await Assert.ThrowsAsync<ObjectDisposedException>(() => InnerTakeTask);
+
+		// Releases the last lock, so dispose can complete
+		Handle.Dispose();
+
+		await Dispose.WaitAsync(token);
 	}
 }

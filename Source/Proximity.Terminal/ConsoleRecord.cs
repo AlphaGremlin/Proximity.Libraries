@@ -3,62 +3,61 @@ using System.Drawing;
 using Microsoft.Extensions.Logging;
 //****************************************
 
-namespace Proximity.Terminal
+namespace Proximity.Terminal;
+
+/// <summary>
+/// Represents a single entry on a terminal
+/// </summary>
+public sealed class ConsoleRecord
 {
 	/// <summary>
-	/// Represents a single entry on a terminal
+	/// Creates a new console record
 	/// </summary>
-	public sealed class ConsoleRecord
+	/// <param name="timestamp">The time the entry was recorded</param>
+	/// <param name="severity">The severity level</param>
+	/// <param name="text">The text content</param>
+	/// <param name="indentation">The indentation to display with</param>
+	/// <param name="highlight">The highlighting providing additional visual context</param>
+	/// <param name="exception">An exception associated with the record</param>
+	public ConsoleRecord(DateTimeOffset timestamp, LogLevel severity, string text, int indentation = 0, TerminalHighlight? highlight = null, Exception? exception = null)
 	{
-		/// <summary>
-		/// Creates a new console record
-		/// </summary>
-		/// <param name="timestamp">The time the entry was recorded</param>
-		/// <param name="severity">The severity level</param>
-		/// <param name="text">The text content</param>
-		/// <param name="indentation">The indentation to display with</param>
-		/// <param name="highlight">The highlighting providing additional visual context</param>
-		/// <param name="exception">An exception associated with the record</param>
-		public ConsoleRecord(DateTimeOffset timestamp, LogLevel severity, string text, int indentation = 0, TerminalHighlight? highlight = null, Exception? exception = null)
-		{
-			Timestamp = timestamp;
-			Severity = severity;
-			Highlight = highlight;
-			Exception = exception;
-			Text = text;
-			Indentation = indentation;
-		}
-
-		//****************************************
-
-		/// <summary>
-		/// Gets the text displayed by this record
-		/// </summary>
-		public string Text { get; }
-
-		/// <summary>
-		/// Gets the indentation to apply to this record
-		/// </summary>
-		public int Indentation { get; }
-
-		/// <summary>
-		/// Gets the time this record was created
-		/// </summary>
-		public DateTimeOffset Timestamp { get; }
-
-		/// <summary>
-		/// Gets the severity of this entry
-		/// </summary>
-		public LogLevel Severity { get; }
-
-		/// <summary>
-		/// Gets the special highlighting of the record
-		/// </summary>
-		public TerminalHighlight? Highlight { get; }
-
-		/// <summary>
-		/// Gets the exception associated with the record
-		/// </summary>
-		public Exception? Exception { get; }
+		Timestamp = timestamp;
+		Severity = severity;
+		Highlight = highlight;
+		Exception = exception;
+		Text = text;
+		Indentation = indentation;
 	}
+
+	//****************************************
+
+	/// <summary>
+	/// Gets the text displayed by this record
+	/// </summary>
+	public string Text { get; }
+
+	/// <summary>
+	/// Gets the indentation to apply to this record
+	/// </summary>
+	public int Indentation { get; }
+
+	/// <summary>
+	/// Gets the time this record was created
+	/// </summary>
+	public DateTimeOffset Timestamp { get; }
+
+	/// <summary>
+	/// Gets the severity of this entry
+	/// </summary>
+	public LogLevel Severity { get; }
+
+	/// <summary>
+	/// Gets the special highlighting of the record
+	/// </summary>
+	public TerminalHighlight? Highlight { get; }
+
+	/// <summary>
+	/// Gets the exception associated with the record
+	/// </summary>
+	public Exception? Exception { get; }
 }

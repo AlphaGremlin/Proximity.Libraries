@@ -5,39 +5,38 @@ using Proximity.Logging.Config;
 using System.Security;
 //****************************************
 
-namespace Proximity.Logging
-{
+namespace Proximity.Logging;
+
+/// <summary>
+/// Configuration for the Logging Infrastructure
+/// </summary>
+public class LoggingConfig : ConfigurationSection
+{	//****************************************
+	private static LoggingConfig ActiveConfig;
+	//****************************************
+
 	/// <summary>
-	/// Configuration for the Logging Infrastructure
+	/// Opens an instance of the logging configuration
 	/// </summary>
-	public class LoggingConfig : ConfigurationSection
-	{	//****************************************
-		private static LoggingConfig ActiveConfig;
-		//****************************************
-
-		/// <summary>
-		/// Opens an instance of the logging configuration
-		/// </summary>
-		/// <returns>A single instance of the logging configuration</returns>
-		public static LoggingConfig OpenConfig()
+	/// <returns>A single instance of the logging configuration</returns>
+	public static LoggingConfig OpenConfig()
+	{
+		if (ActiveConfig == null)
 		{
-			if (ActiveConfig == null)
-			{
-				ActiveConfig = ConfigurationManager.GetSection("Proximity.Logging") as LoggingConfig;
-				
-				if (ActiveConfig == null)
-					ActiveConfig = new LoggingConfig();
-			}
+			ActiveConfig = ConfigurationManager.GetSection("Proximity.Logging") as LoggingConfig;
 
-			return ActiveConfig;
+			if (ActiveConfig == null)
+				ActiveConfig = new LoggingConfig();
 		}
 
-		//****************************************
-
-		/// <summary>
-		/// Gets the collection of logging outputs
-		/// </summary>
-		[ConfigurationProperty("Outputs", IsDefaultCollection = false)]
-		public OutputCollection Outputs => (OutputCollection)(this["Outputs"] ?? (this["Outputs"] = new OutputCollection()));
+		return ActiveConfig;
 	}
+
+	//****************************************
+
+	/// <summary>
+	/// Gets the collection of logging outputs
+	/// </summary>
+	[ConfigurationProperty("Outputs", IsDefaultCollection = false)]
+	public OutputCollection Outputs => (OutputCollection)(this["Outputs"] ?? (this["Outputs"] = new OutputCollection()));
 }

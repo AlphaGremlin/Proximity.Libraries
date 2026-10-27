@@ -1,28 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFrameworks>netstandard2.0;netstandard2.1;net6.0</TargetFrameworks>
-		<Authors>Daniel Chandler</Authors>
-		<Company>Proximity Interactive</Company>
-		<Copyright>Copyright © Daniel Chandler 2021</Copyright>
+		<TargetFrameworks>netstandard2.0;netstandard2.1;net10.0</TargetFrameworks>
 		<Product>Proximity Threading Utility Library</Product>
-		<Version>1.4.6</Version>
-		<AssemblyVersion>1.4.6.0</AssemblyVersion>
-		<FileVersion>1.4.6.0</FileVersion>
 		<Description>Threading Utility Library</Description>
+		<Version>1.5.0</Version>
+		<AssemblyVersion>1.5.0.0</AssemblyVersion>
+		<FileVersion>1.5.0.0</FileVersion>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<SignAssembly>true</SignAssembly>
 		<AssemblyOriginatorKeyFile>..\Proximity.snk</AssemblyOriginatorKeyFile>
 		<OutputPath>..\..\Build</OutputPath>
 		<LangVersion>Latest</LangVersion>
-		<PackageProjectUrl></PackageProjectUrl>
-		<RepositoryUrl>https://github.com/AlphaGremlin/Proximity.Libraries</RepositoryUrl>
 		<IncludeSymbols>True</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
 	<ItemGroup Condition="$(TargetFramework)=='netstandard2.0'">
-		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.0" />
+		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.13" />
 	</ItemGroup>
 	<ItemGroup>
 	  <Compile Remove="Sync\AsyncValue.cs" />
@@ -32,9 +27,9 @@
 	  <None Include="Sync\AsyncValue.cs" />
 	  <None Include="WaitHandleExtensions.cs" />
 	</ItemGroup>
-	<ItemGroup>
-		<PackageReference Include="System.Memory" Version="4.5.4" />
-		<PackageReference Include="System.Collections.Immutable" Version="5.0.0" />
-		<PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
+	<ItemGroup Condition="$(TargetFramework)!='net10.0'">
+		<PackageReference Include="System.Memory" Version="4.6.3" />
+		<PackageReference Include="System.Collections.Immutable" Version="10.0.13" />
+		<PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
 	</ItemGroup>
 </Project>

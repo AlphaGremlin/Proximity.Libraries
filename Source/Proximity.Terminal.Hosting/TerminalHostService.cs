@@ -6,31 +6,30 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace Proximity.Terminal.Hosting
-{
-	internal sealed class TerminalHostService : IHostedService
-	{ //****************************************
-		private readonly IServiceProvider _Provider;
-		private readonly Action<TerminalRegistry, IServiceProvider> _ConfigureRegistry;
-		//****************************************
+namespace Proximity.Terminal.Hosting;
 
-		public TerminalHostService(IServiceProvider provider, Action<TerminalRegistry, IServiceProvider> configureRegistry)
-		{
-			_Provider = provider;
-			_ConfigureRegistry = configureRegistry;
-		}
+internal sealed class TerminalHostService : IHostedService
+{ //****************************************
+	private readonly IServiceProvider _Provider;
+	private readonly Action<TerminalRegistry, IServiceProvider> _ConfigureRegistry;
+	//****************************************
 
-		//****************************************
-
-		Task IHostedService.StartAsync(CancellationToken cancellationToken)
-		{
-			var Registry = _Provider.GetRequiredService<TerminalRegistry>();
-
-			_ConfigureRegistry(Registry, _Provider);
-
-			return Task.CompletedTask;
-		}
-
-		Task IHostedService.StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+	public TerminalHostService(IServiceProvider provider, Action<TerminalRegistry, IServiceProvider> configureRegistry)
+	{
+		_Provider = provider;
+		_ConfigureRegistry = configureRegistry;
 	}
+
+	//****************************************
+
+	Task IHostedService.StartAsync(CancellationToken cancellationToken)
+	{
+		var Registry = _Provider.GetRequiredService<TerminalRegistry>();
+
+		_ConfigureRegistry(Registry, _Provider);
+
+		return Task.CompletedTask;
+	}
+
+	Task IHostedService.StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }

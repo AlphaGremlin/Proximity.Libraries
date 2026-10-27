@@ -6,154 +6,158 @@ using System.Xml;
 using System.Xml.Linq;
 //****************************************
 
-namespace Proximity.Configuration
+namespace Proximity.Configuration;
+
+/// <summary>
+/// The base class of an element within a <see cref="TypedElementCollection{T}" /> or <see cref="TypedElementProperty{T}" />
+/// </summary>
+public abstract class TypedElement : ConfigurationElement
 {
 	/// <summary>
-	/// The base class of an element within a <see cref="TypedElementCollection{T}" /> or <see cref="TypedElementProperty{T}" />
+	/// Creates a typed element
 	/// </summary>
-	public abstract class TypedElement : ConfigurationElement
+	protected TypedElement() : base()
 	{
-		/// <summary>
-		/// Creates a typed element
-		/// </summary>
-		protected TypedElement() : base()
+		base["Type"] = GetType().AssemblyQualifiedName;
+	}
+
+	//****************************************
+
+	/// <summary>
+	/// Parses the content of this Typed Element as a particular type
+	/// </summary>
+	/// <typeparam name="TValue">The type of element to parse as</typeparam>
+	/// <returns>The Typed Element with the content applied</returns>
+	public TValue? Populate<TValue>() where TValue : TypedElement, new() => Populate<TValue>(System.Type.GetType(Type));
+
+	/// <summary>
+	/// Parses the content of this Typed Element as a particular type
+	/// </summary>
+	/// <param name="targetType">The target subtype of <typeparamref name="TValue"/></param>
+	/// <typeparam name="TValue">The base type of element to parse as</typeparam>
+	/// <returns>The Typed Element with the content applied</returns>
+	public TValue? Populate<TValue>(Type? targetType) where TValue : TypedElement, new()
+	{
+		if (RawElement == null)
+			throw new InvalidOperationException("Element already populated");
+
+		TValue NewElement;
+
+		if (targetType != null)
 		{
-			base["Type"] = GetType().AssemblyQualifiedName;
-		}
+			var Attributes = targetType.GetCustomAttributes(typeof(TypedElementAttribute), true);
 
-		//****************************************
-
-		/// <summary>
-		/// Parses the content of this Typed Element as a particular type
-		/// </summary>
-		/// <typeparam name="TValue">The type of element to parse as</typeparam>
-		/// <returns>The Typed Element with the content applied</returns>
-		public TValue? Populate<TValue>() where TValue : TypedElement, new() => Populate<TValue>(System.Type.GetType(Type));
-
-		/// <summary>
-		/// Parses the content of this Typed Element as a particular type
-		/// </summary>
-		/// <param name="targetType">The target subtype of <typeparamref name="TValue"/></param>
-		/// <typeparam name="TValue">The base type of element to parse as</typeparam>
-		/// <returns>The Typed Element with the content applied</returns>
-		public TValue? Populate<TValue>(Type targetType) where TValue : TypedElement, new()
-		{
-			if (RawElement == null)
-				throw new InvalidOperationException("Element already populated");
-
-			TValue NewElement;
-
-			if (targetType != null)
+			if (Attributes.Length != 0)
 			{
-				var Attributes = targetType.GetCustomAttributes(typeof(TypedElementAttribute), true);
+				var ConfigType = ((TypedElementAttribute)Attributes[0]).ConfigType;
 
-				if (Attributes.Length != 0)
+				if (typeof(TValue).IsAssignableFrom(targetType))
 				{
-					var ConfigType = ((TypedElementAttribute)Attributes[0]).ConfigType;
+					NewElement = (TValue)Activator.CreateInstance(targetType);
 
-					if (typeof(TValue).IsAssignableFrom(targetType))
-					{
-						NewElement = (TValue)Activator.CreateInstance(targetType);
-
-						NewElement.InstanceType = ConfigType;
-					}
-					else
-					{
-						NewElement = (TValue)Activator.CreateInstance(ConfigType);
-
-						NewElement.InstanceType = targetType;
-					}
-
-					Populate(NewElement);
-
-					return NewElement;
+					NewElement.InstanceType = ConfigType;
 				}
 				else
 				{
-					if (typeof(TValue).IsAssignableFrom(targetType))
-					{
-						NewElement = (TValue)Activator.CreateInstance(targetType);
-					}
-					else
-					{
-						NewElement = new TValue { InstanceType = targetType };
-					}
+					NewElement = (TValue)Activator.CreateInstance(ConfigType);
 
-					Populate(NewElement);
-
-					return NewElement;
+					NewElement.InstanceType = targetType;
 				}
-			}
-
-			try
-			{
-				NewElement = new TValue();
-
-				// No TypedElement attribute, so InstanceType remains empty
 
 				Populate(NewElement);
 
 				return NewElement;
 			}
-			catch (MissingMethodException)
+			else
 			{
-				return null;
+				if (typeof(TValue).IsAssignableFrom(targetType))
+				{
+					NewElement = (TValue)Activator.CreateInstance(targetType);
+				}
+				else
+				{
+					NewElement = new TValue { InstanceType = targetType };
+				}
+
+				Populate(NewElement);
+
+				return NewElement;
 			}
 		}
 
-		/// <summary>
-		/// Applies the content of this Typed Element to an instance
-		/// </summary>
-		/// <param name="target">The target instance to parse the content</param>
-		public void Populate(TypedElement target)
+		try
 		{
-			target.Type = Type;
+			NewElement = new TValue();
 
-			if (RawElement == null)
-				throw new InvalidOperationException("Element content has already been populated");
+			// No TypedElement attribute, so InstanceType remains empty
 
-			using var Reader = RawElement.CreateReader();
+			Populate(NewElement);
 
-			Reader.Read();
-
-			target.Deserialise(Reader, false);
+			return NewElement;
 		}
-
-		internal bool Serialise(XmlWriter writer, bool serializeCollectionKey)
+		catch (MissingMethodException)
 		{
-			if (RawElement != null)
-			{
-				RawElement.WriteTo(writer);
-
-				return true;
-			}
-
-			return SerializeElement(writer, serializeCollectionKey);
+			return null;
 		}
-		
-		internal void Deserialise(XmlReader reader, bool serializeCollectionKey)
-		{
-			DeserializeElement(reader, serializeCollectionKey);
-		}
-		
-		//****************************************
-		
-		/// <summary>
-		/// Gets the base Type of this Element
-		/// </summary>
-		[ConfigurationProperty("Type", IsRequired=true)]
-		public string Type
-		{
-			get => (string)base["Type"];
-			set => base["Type"] = value;
-		}
-
-		/// <summary>
-		/// Gets the Type of the Instance this Typed Element refers to
-		/// </summary>
-		/// <remarks>Can be null if no TypedElementAttribute was found</remarks>
-		public Type? InstanceType { get; set; }
-
-		internal XElement? RawElement { get; set; }
 	}
+
+	/// <summary>
+	/// Applies the content of this Typed Element to an instance
+	/// </summary>
+	/// <param name="target">The target instance to parse the content</param>
+	public void Populate(TypedElement target)
+	{
+		target.Type = Type;
+
+		if (RawElement == null)
+			throw new InvalidOperationException("Element content has already been populated");
+
+		using var Reader = RawElement.CreateReader();
+
+		Reader.Read();
+
+		target.Deserialise(Reader, false);
+	}
+
+	internal bool Serialise(XmlWriter writer, bool serializeCollectionKey)
+	{
+		if (RawElement != null)
+		{
+			RawElement.WriteTo(writer);
+
+			return true;
+		}
+
+		return SerializeElement(writer, serializeCollectionKey);
+	}
+
+	internal void Deserialise(XmlReader reader, bool serializeCollectionKey)
+	{
+		DeserializeElement(reader, serializeCollectionKey);
+	}
+
+	//****************************************
+
+	/// <summary>
+	/// Gets the base Type of this Element
+	/// </summary>
+	[ConfigurationProperty("Type", IsRequired=true)]
+	public string Type
+	{
+		get => (string)base["Type"];
+		set => base["Type"] = value;
+	}
+
+	/// <summary>
+	/// Gets the Type of the Instance this Typed Element refers to
+	/// </summary>
+	/// <remarks>Can be null if no TypedElementAttribute was found</remarks>
+	public Type? InstanceType { get; set; }
+
+	/// <summary>
+	/// Gets if this is already an instance and has no additional type information to populate
+	/// </summary>
+	public bool IsInstance => RawElement == null;
+
+	internal XElement? RawElement { get; set; }
 }

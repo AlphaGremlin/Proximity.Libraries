@@ -4,328 +4,328 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using NUnit.Framework.Legacy;
 
-namespace Proximity.Threading.Tests
+namespace Proximity.Threading.Tests;
+
+[TestFixture]
+public class ValueTaskInterleaveTests
 {
-	[TestFixture]
-	public class ValueTaskInterleaveTests
+	[Test]
+	public async Task CancelEnumerable()
 	{
-		[Test]
-		public async Task CancelEnumerable()
+		var FirstSource = ValueTaskCompletionSource.New<int>();
+		var CancelSource = new CancellationTokenSource();
+
+		await using var Enumerator = new[] { FirstSource.Task }.Interleave(CancelSource.Token).GetAsyncEnumerator();
+
+		var Waiter = Enumerator.MoveNextAsync();
+		Assert.That(Waiter.IsCompleted, Is.False);
+
+		CancelSource.Cancel();
+
+		try
 		{
-			var FirstSource = ValueTaskCompletionSource.New<int>();
-			var CancelSource = new CancellationTokenSource();
+			await Waiter;
 
-			await using var Enumerator = new[] { FirstSource.Task }.Interleave(CancelSource.Token).GetAsyncEnumerator();
+			Assert.Fail("Did not cancel");
+		}
+		catch (OperationCanceledException)
+		{
+		}
+	}
 
-			var Waiter = Enumerator.MoveNextAsync();
-			Assert.IsFalse(Waiter.IsCompleted);
+	[Test]
+	public async Task CancelEnumerableWith()
+	{
+		var FirstSource = ValueTaskCompletionSource.New<int>();
+		var CancelSource = new CancellationTokenSource();
 
-			CancelSource.Cancel();
+		await using var Enumerator = new[] { FirstSource.Task }.Interleave().WithCancellation(CancelSource.Token).GetAsyncEnumerator();
 
-			try
-			{
-				await Waiter;
+		var Waiter = Enumerator.MoveNextAsync();
 
-				Assert.Fail("Did not cancel");
-			}
-			catch (OperationCanceledException)
-			{
-			}
+		CancelSource.Cancel();
+
+		try
+		{
+			await Waiter;
+
+			Assert.Fail("Did not cancel");
+		}
+		catch (OperationCanceledException)
+		{
+		}
+	}
+
+	[Test]
+	public async Task CancelEnumerator()
+	{
+		var FirstSource = ValueTaskCompletionSource.New<int>();
+		var CancelSource = new CancellationTokenSource();
+
+		await using var Enumerator = new[] { FirstSource.Task }.Interleave().GetAsyncEnumerator(CancelSource.Token);
+
+		var Waiter = Enumerator.MoveNextAsync();
+		Assert.That(Waiter.IsCompleted, Is.False);
+
+		CancelSource.Cancel();
+
+		try
+		{
+			await Waiter;
+
+			Assert.Fail("Did not cancel");
+		}
+		catch (OperationCanceledException)
+		{
+		}
+	}
+
+	[Test]
+	public async Task Empty()
+	{
+		await using var Enumerator = Array.Empty<ValueTask<int>>().Interleave().GetAsyncEnumerator();
+
+		Assert.That(await Enumerator.MoveNextAsync(), Is.False);
+	}
+
+	[Test]
+	public async Task Exception()
+	{
+		var FirstTask = Task.FromException<int>(new ApplicationException("Test"));
+
+		await using var Enumerator = new[] { FirstTask }.Interleave().GetAsyncEnumerator();
+
+		Assert.That(await Enumerator.MoveNextAsync(), Is.True);
+
+		try
+		{
+			await Enumerator.Current;
+
+			Assert.Fail("Did not throw");
+		}
+		catch (ApplicationException)
+		{
 		}
 
-		[Test]
-		public async Task CancelEnumerableWith()
+		Assert.That(await Enumerator.MoveNextAsync(), Is.False);
+	}
+
+	[Test]
+	public async Task ExceptionAsync()
+	{
+		var FirstSource = ValueTaskCompletionSource.New<int>();
+
+		await using var Enumerator = new[] { FirstSource.Task }.Interleave().GetAsyncEnumerator();
+
+		var Waiter = Enumerator.MoveNextAsync();
+		Assert.That(Waiter.IsCompleted, Is.False);
+		FirstSource.TrySetException(new ApplicationException("Test"));
+
+		Assert.That(await Waiter, Is.True);
+
+		try
 		{
-			var FirstSource = ValueTaskCompletionSource.New<int>();
-			var CancelSource = new CancellationTokenSource();
+			await Enumerator.Current;
 
-			await using var Enumerator = new[] { FirstSource.Task }.Interleave().WithCancellation(CancelSource.Token).GetAsyncEnumerator();
-
-			var Waiter = Enumerator.MoveNextAsync();
-
-			CancelSource.Cancel();
-
-			try
-			{
-				await Waiter;
-
-				Assert.Fail("Did not cancel");
-			}
-			catch (OperationCanceledException)
-			{
-			}
+			Assert.Fail("Did not throw");
+		}
+		catch (ApplicationException)
+		{
 		}
 
-		[Test]
-		public async Task CancelEnumerator()
-		{
-			var FirstSource = ValueTaskCompletionSource.New<int>();
-			var CancelSource = new CancellationTokenSource();
+		Assert.That(await Enumerator.MoveNextAsync(), Is.False);
+	}
 
-			await using var Enumerator = new[] { FirstSource.Task }.Interleave().GetAsyncEnumerator(CancelSource.Token);
+	[Test]
+	public async Task Multiple()
+	{
+		var FirstTask = new ValueTask<int>(42);
+		var SecondTask = new ValueTask<int>(108);
 
-			var Waiter = Enumerator.MoveNextAsync();
-			Assert.IsFalse(Waiter.IsCompleted);
+		await using var Enumerator = new[] { FirstTask, SecondTask }.Interleave().GetAsyncEnumerator();
+
+		Assert.That(await Enumerator.MoveNextAsync(), Is.True);
+		Assert.That(Enumerator.Current.IsCompleted, Is.True);
+		Assert.That(Enumerator.Current.Result, Is.EqualTo(FirstTask.Result));
 
-			CancelSource.Cancel();
+		Assert.That(await Enumerator.MoveNextAsync(), Is.True);
+		Assert.That(Enumerator.Current.IsCompleted, Is.True);
+		Assert.That(Enumerator.Current.Result, Is.EqualTo(SecondTask.Result));
 
-			try
-			{
-				await Waiter;
+		Assert.That(await Enumerator.MoveNextAsync(), Is.False);
+	}
+
+	[Test]
+	public async Task MultipleAsync()
+	{
+		var FirstSource = ValueTaskCompletionSource.New<int>();
+		var SecondSource = ValueTaskCompletionSource.New<int>();
 
-				Assert.Fail("Did not cancel");
-			}
-			catch (OperationCanceledException)
-			{
-			}
-		}
+		await using var Enumerator = new[] { FirstSource.Task, SecondSource.Task }.Interleave().GetAsyncEnumerator();
 
-		[Test]
-		public async Task Empty()
-		{
-			await using var Enumerator = Array.Empty<ValueTask<int>>().Interleave().GetAsyncEnumerator();
+		var Waiter = Enumerator.MoveNextAsync().AsTask();
+		Assert.That(Waiter.IsCompleted, Is.False);
+		FirstSource.TrySetResult(42);
+
+		Assert.That(await Waiter, Is.True);
+		Assert.That(Enumerator.Current.IsCompleted, Is.True);
+		Assert.That(Enumerator.Current.Result, Is.EqualTo(FirstSource.Task.Result));
 
-			Assert.IsFalse(await Enumerator.MoveNextAsync());
-		}
+		Waiter = Enumerator.MoveNextAsync().AsTask();
+		Assert.That(Waiter.IsCompleted, Is.False);
+		SecondSource.TrySetResult(108);
+
+		Assert.That(await Waiter, Is.True);
+		Assert.That(Enumerator.Current.IsCompleted, Is.True);
+		Assert.That(Enumerator.Current.Result, Is.EqualTo(SecondSource.Task.Result));
+
+		Assert.That(await Enumerator.MoveNextAsync(), Is.False);
+	}
 
-		[Test]
-		public async Task Exception()
-		{
-			var FirstTask = Task.FromException<int>(new ApplicationException("Test"));
+	[Test]
+	public async Task MultipleAsyncOutOfOrder()
+	{
+		var FirstSource = ValueTaskCompletionSource.New<int>();
+		var SecondSource = ValueTaskCompletionSource.New<int>();
 
-			await using var Enumerator = new[] { FirstTask }.Interleave().GetAsyncEnumerator();
+		await using var Enumerator = new[] { FirstSource.Task, SecondSource.Task }.Interleave().GetAsyncEnumerator();
 
-			Assert.IsTrue(await Enumerator.MoveNextAsync());
+		var Waiter = Enumerator.MoveNextAsync().AsTask();
+		Assert.That(Waiter.IsCompleted, Is.False);
+		SecondSource.TrySetResult(108);
 
-			try
-			{
-				await Enumerator.Current;
+		Assert.That(await Waiter, Is.True);
+		Assert.That(Enumerator.Current.IsCompleted, Is.True);
+		Assert.That(Enumerator.Current.Result, Is.EqualTo(SecondSource.Task.Result));
 
-				Assert.Fail("Did not throw");
-			}
-			catch (ApplicationException)
-			{
-			}
+		Waiter = Enumerator.MoveNextAsync().AsTask();
+		Assert.That(Waiter.IsCompleted, Is.False);
+		FirstSource.TrySetResult(42);
 
-			Assert.IsFalse(await Enumerator.MoveNextAsync());
-		}
+		Assert.That(await Waiter, Is.True);
+		Assert.That(Enumerator.Current.IsCompleted, Is.True);
+		Assert.That(Enumerator.Current.Result, Is.EqualTo(FirstSource.Task.Result));
 
-		[Test]
-		public async Task ExceptionAsync()
-		{
-			var FirstSource = ValueTaskCompletionSource.New<int>();
+		Assert.That(await Enumerator.MoveNextAsync(), Is.False);
+	}
 
-			await using var Enumerator = new[] { FirstSource.Task }.Interleave().GetAsyncEnumerator();
+	[Test]
+	public async Task MultipleAsyncIndexOutOfOrder()
+	{
+		var FirstSource = ValueTaskCompletionSource.New<int>();
+		var SecondSource = ValueTaskCompletionSource.New<int>();
 
-			var Waiter = Enumerator.MoveNextAsync();
-			Assert.IsFalse(Waiter.IsCompleted);
-			FirstSource.TrySetException(new ApplicationException("Test"));
+		await using var Enumerator = new[] { FirstSource.Task, SecondSource.Task }.InterleaveIndex().GetAsyncEnumerator();
 
-			Assert.IsTrue(await Waiter);
+		var Waiter = Enumerator.MoveNextAsync().AsTask();
+		Assert.That(Waiter.IsCompleted, Is.False);
+		SecondSource.TrySetResult(108);
 
-			try
-			{
-				await Enumerator.Current;
+		Assert.That(await Waiter, Is.True);
+		Assert.That(Enumerator.Current.result.IsCompleted, Is.True);
+		Assert.That(Enumerator.Current.result.Result, Is.EqualTo(SecondSource.Task.Result));
+		Assert.That(Enumerator.Current.index, Is.EqualTo(1));
 
-				Assert.Fail("Did not throw");
-			}
-			catch (ApplicationException)
-			{
-			}
+		Waiter = Enumerator.MoveNextAsync().AsTask();
+		Assert.That(Waiter.IsCompleted, Is.False);
+		FirstSource.TrySetResult(42);
 
-			Assert.IsFalse(await Enumerator.MoveNextAsync());
-		}
+		Assert.That(await Waiter, Is.True);
+		Assert.That(Enumerator.Current.result.IsCompleted, Is.True);
+		Assert.That(Enumerator.Current.result.Result, Is.EqualTo(FirstSource.Task.Result));
+		Assert.That(Enumerator.Current.index, Is.Zero);
 
-		[Test]
-		public async Task Multiple()
-		{
-			var FirstTask = new ValueTask<int>(42);
-			var SecondTask = new ValueTask<int>(108);
+		Assert.That(await Enumerator.MoveNextAsync(), Is.False);
+	}
 
-			await using var Enumerator = new[] { FirstTask, SecondTask }.Interleave().GetAsyncEnumerator();
+	[Test]
+	public async Task MultipleSimultaneousAsync()
+	{
+		var FirstSource = ValueTaskCompletionSource.New<int>();
+		var SecondSource = ValueTaskCompletionSource.New<int>();
 
-			Assert.IsTrue(await Enumerator.MoveNextAsync());
-			Assert.IsTrue(Enumerator.Current.IsCompleted);
-			Assert.AreEqual(FirstTask.Result, Enumerator.Current.Result);
+		await using var Enumerator = new[] { FirstSource.Task, SecondSource.Task }.Interleave().GetAsyncEnumerator();
 
-			Assert.IsTrue(await Enumerator.MoveNextAsync());
-			Assert.IsTrue(Enumerator.Current.IsCompleted);
-			Assert.AreEqual(SecondTask.Result, Enumerator.Current.Result);
+		var Waiter = Enumerator.MoveNextAsync();
+		Assert.That(Waiter.IsCompleted, Is.False);
+		FirstSource.TrySetResult(42);
+		SecondSource.TrySetResult(108);
 
-			Assert.IsFalse(await Enumerator.MoveNextAsync());
-		}
+		Assert.That(await Waiter, Is.True);
+		Assert.That(Enumerator.Current.IsCompleted, Is.True);
+		Assert.That(Enumerator.Current.Result, Is.EqualTo(FirstSource.Task.Result));
 
-		[Test]
-		public async Task MultipleAsync()
-		{
-			var FirstSource = ValueTaskCompletionSource.New<int>();
-			var SecondSource = ValueTaskCompletionSource.New<int>();
+		Assert.That(await Enumerator.MoveNextAsync(), Is.True);
+		Assert.That(Enumerator.Current.IsCompleted, Is.True);
+		Assert.That(Enumerator.Current.Result, Is.EqualTo(SecondSource.Task.Result));
 
-			await using var Enumerator = new[] { FirstSource.Task, SecondSource.Task }.Interleave().GetAsyncEnumerator();
+		Assert.That(await Enumerator.MoveNextAsync(), Is.False);
+	}
 
-			var Waiter = Enumerator.MoveNextAsync();
-			Assert.IsFalse(Waiter.IsCompleted);
-			FirstSource.TrySetResult(42);
-
-			Assert.IsTrue(await Waiter);
-			Assert.IsTrue(Enumerator.Current.IsCompleted);
-			Assert.AreEqual(FirstSource.Task.Result, Enumerator.Current.Result);
+	[Test]
+	public async Task Single()
+	{
+		var FirstTask = new ValueTask<int>(42);
 
-			Waiter = Enumerator.MoveNextAsync();
-			Assert.IsFalse(Waiter.IsCompleted);
-			SecondSource.TrySetResult(108);
-
-			Assert.IsTrue(await Waiter);
-			Assert.IsTrue(Enumerator.Current.IsCompleted);
-			Assert.AreEqual(SecondSource.Task.Result, Enumerator.Current.Result);
-
-			Assert.IsFalse(await Enumerator.MoveNextAsync());
-		}
-
-		[Test]
-		public async Task MultipleAsyncOutOfOrder()
-		{
-			var FirstSource = ValueTaskCompletionSource.New<int>();
-			var SecondSource = ValueTaskCompletionSource.New<int>();
+		await using var Enumerator = new[] { FirstTask }.Interleave().GetAsyncEnumerator();
 
-			await using var Enumerator = new[] { FirstSource.Task, SecondSource.Task }.Interleave().GetAsyncEnumerator();
-
-			var Waiter = Enumerator.MoveNextAsync();
-			Assert.IsFalse(Waiter.IsCompleted);
-			SecondSource.TrySetResult(108);
+		Assert.That(await Enumerator.MoveNextAsync(), Is.True);
+		Assert.That(Enumerator.Current.IsCompleted, Is.True);
+		Assert.That(Enumerator.Current.Result, Is.EqualTo(FirstTask.Result));
+		Assert.That(await Enumerator.MoveNextAsync(), Is.False);
+	}
 
-			Assert.IsTrue(await Waiter);
-			Assert.IsTrue(Enumerator.Current.IsCompleted);
-			Assert.AreEqual(SecondSource.Task.Result, Enumerator.Current.Result);
-
-			Waiter = Enumerator.MoveNextAsync();
-			Assert.IsFalse(Waiter.IsCompleted);
-			FirstSource.TrySetResult(42);
+	[Test]
+	public async Task SingleAsync()
+	{
+		var FirstSource = ValueTaskCompletionSource.New<int>();
 
-			Assert.IsTrue(await Waiter);
-			Assert.IsTrue(Enumerator.Current.IsCompleted);
-			Assert.AreEqual(FirstSource.Task.Result, Enumerator.Current.Result);
+		await using var Enumerator = new[] { FirstSource.Task }.Interleave().GetAsyncEnumerator();
 
-			Assert.IsFalse(await Enumerator.MoveNextAsync());
-		}
+		var Waiter = Enumerator.MoveNextAsync();
+		Assert.That(Waiter.IsCompleted, Is.False);
+		FirstSource.TrySetResult(42);
 
-		[Test]
-		public async Task MultipleAsyncIndexOutOfOrder()
-		{
-			var FirstSource = ValueTaskCompletionSource.New<int>();
-			var SecondSource = ValueTaskCompletionSource.New<int>();
+		Assert.That(await Waiter, Is.True);
+		Assert.That(Enumerator.Current.IsCompleted, Is.True);
+		Assert.That(Enumerator.Current.Result, Is.EqualTo(FirstSource.Task.Result));
 
-			await using var Enumerator = new[] { FirstSource.Task, SecondSource.Task }.InterleaveIndex().GetAsyncEnumerator();
+		Assert.That(await Enumerator.MoveNextAsync(), Is.False);
+	}
 
-			var Waiter = Enumerator.MoveNextAsync();
-			Assert.IsFalse(Waiter.IsCompleted);
-			SecondSource.TrySetResult(108);
+	[Test]
+	public async Task SingleAsyncIndex()
+	{
+		var FirstSource = ValueTaskCompletionSource.New<int>();
 
-			Assert.IsTrue(await Waiter);
-			Assert.IsTrue(Enumerator.Current.result.IsCompleted);
-			Assert.AreEqual(SecondSource.Task.Result, Enumerator.Current.result.Result);
-			Assert.AreEqual(1, Enumerator.Current.index);
+		await using var Enumerator = new[] { FirstSource.Task }.InterleaveIndex().GetAsyncEnumerator();
 
-			Waiter = Enumerator.MoveNextAsync();
-			Assert.IsFalse(Waiter.IsCompleted);
-			FirstSource.TrySetResult(42);
+		var Waiter = Enumerator.MoveNextAsync();
+		Assert.That(Waiter.IsCompleted, Is.False);
+		FirstSource.TrySetResult(42);
 
-			Assert.IsTrue(await Waiter);
-			Assert.IsTrue(Enumerator.Current.result.IsCompleted);
-			Assert.AreEqual(FirstSource.Task.Result, Enumerator.Current.result.Result);
-			Assert.AreEqual(0, Enumerator.Current.index);
+		Assert.That(await Waiter, Is.True);
+		Assert.That(Enumerator.Current.result.IsCompleted, Is.True);
+		Assert.That(Enumerator.Current.result.Result, Is.EqualTo(FirstSource.Task.Result));
+		Assert.That(Enumerator.Current.index, Is.Zero);
 
-			Assert.IsFalse(await Enumerator.MoveNextAsync());
-		}
+		Assert.That(await Enumerator.MoveNextAsync(), Is.False);
+	}
 
-		[Test]
-		public async Task MultipleSimultaneousAsync()
-		{
-			var FirstSource = ValueTaskCompletionSource.New<int>();
-			var SecondSource = ValueTaskCompletionSource.New<int>();
+	[Test]
+	public async Task SingleIndex()
+	{
+		var FirstTask = new ValueTask<int>(42);
 
-			await using var Enumerator = new[] { FirstSource.Task, SecondSource.Task }.Interleave().GetAsyncEnumerator();
+		await using var Enumerator = new[] { FirstTask }.InterleaveIndex().GetAsyncEnumerator();
 
-			var Waiter = Enumerator.MoveNextAsync();
-			Assert.IsFalse(Waiter.IsCompleted);
-			FirstSource.TrySetResult(42);
-			SecondSource.TrySetResult(108);
+		Assert.That(await Enumerator.MoveNextAsync(), Is.True);
+		Assert.That(Enumerator.Current.result.IsCompleted, Is.True);
+		Assert.That(Enumerator.Current.result.Result, Is.EqualTo(FirstTask.Result));
+		Assert.That(Enumerator.Current.index, Is.Zero);
 
-			Assert.IsTrue(await Waiter);
-			Assert.IsTrue(Enumerator.Current.IsCompleted);
-			Assert.AreEqual(FirstSource.Task.Result, Enumerator.Current.Result);
-
-			Assert.IsTrue(await Enumerator.MoveNextAsync());
-			Assert.IsTrue(Enumerator.Current.IsCompleted);
-			Assert.AreEqual(SecondSource.Task.Result, Enumerator.Current.Result);
-
-			Assert.IsFalse(await Enumerator.MoveNextAsync());
-		}
-
-		[Test]
-		public async Task Single()
-		{
-			var FirstTask = new ValueTask<int>(42);
-
-			await using var Enumerator = new[] { FirstTask }.Interleave().GetAsyncEnumerator();
-
-			Assert.IsTrue(await Enumerator.MoveNextAsync());
-			Assert.IsTrue(Enumerator.Current.IsCompleted);
-			Assert.AreEqual(FirstTask.Result, Enumerator.Current.Result);
-			Assert.IsFalse(await Enumerator.MoveNextAsync());
-		}
-
-		[Test]
-		public async Task SingleAsync()
-		{
-			var FirstSource = ValueTaskCompletionSource.New<int>();
-
-			await using var Enumerator = new[] { FirstSource.Task }.Interleave().GetAsyncEnumerator();
-
-			var Waiter = Enumerator.MoveNextAsync();
-			Assert.IsFalse(Waiter.IsCompleted);
-			FirstSource.TrySetResult(42);
-
-			Assert.IsTrue(await Waiter);
-			Assert.IsTrue(Enumerator.Current.IsCompleted);
-			Assert.AreEqual(FirstSource.Task.Result, Enumerator.Current.Result);
-
-			Assert.IsFalse(await Enumerator.MoveNextAsync());
-		}
-
-		[Test]
-		public async Task SingleAsyncIndex()
-		{
-			var FirstSource = ValueTaskCompletionSource.New<int>();
-
-			await using var Enumerator = new[] { FirstSource.Task }.InterleaveIndex().GetAsyncEnumerator();
-
-			var Waiter = Enumerator.MoveNextAsync();
-			Assert.IsFalse(Waiter.IsCompleted);
-			FirstSource.TrySetResult(42);
-
-			Assert.IsTrue(await Waiter);
-			Assert.IsTrue(Enumerator.Current.result.IsCompleted);
-			Assert.AreEqual(FirstSource.Task.Result, Enumerator.Current.result.Result);
-			Assert.AreEqual(0, Enumerator.Current.index);
-
-			Assert.IsFalse(await Enumerator.MoveNextAsync());
-		}
-
-		[Test]
-		public async Task SingleIndex()
-		{
-			var FirstTask = new ValueTask<int>(42);
-
-			await using var Enumerator = new[] { FirstTask }.InterleaveIndex().GetAsyncEnumerator();
-
-			Assert.IsTrue(await Enumerator.MoveNextAsync());
-			Assert.IsTrue(Enumerator.Current.result.IsCompleted);
-			Assert.AreEqual(FirstTask.Result, Enumerator.Current.result.Result);
-			Assert.AreEqual(0, Enumerator.Current.index);
-
-			Assert.IsFalse(await Enumerator.MoveNextAsync());
-		}
+		Assert.That(await Enumerator.MoveNextAsync(), Is.False);
 	}
 }
