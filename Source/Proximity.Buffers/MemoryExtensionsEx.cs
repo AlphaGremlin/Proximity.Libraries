@@ -141,7 +141,8 @@ public static class MemoryExtensionsEx
 
 		return 0;
 	}
-
+#endif
+#if !NET8_0_OR_GREATER
 	/// <summary>
 	/// Compares two spans for equality
 	/// </summary>
