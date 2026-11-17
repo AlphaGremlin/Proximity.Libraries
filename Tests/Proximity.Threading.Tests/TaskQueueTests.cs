@@ -196,7 +196,7 @@ public class TaskQueueTests
 		var TaskRan = false;
 		//****************************************
 
-		var QueuedTask = Queue.QueueTask(() => { TaskRan = true; return TaskSource.Task; }, CancellationToken.None).WaitAsync(token);
+		var QueuedTask = Queue.QueueAsync(() => { TaskRan = true; return TaskSource.Task; }, CancellationToken.None).WaitAsync(token);
 
 		TaskSource.SetResult();
 
@@ -216,7 +216,7 @@ public class TaskQueueTests
 		var SpinWait = new SpinWait();
 		//****************************************
 
-		var QueuedTask = Queue.QueueTask(() => { TaskRan = true; return TaskSource.Task; }, CancellationToken.None);
+		var QueuedTask = Queue.QueueAsync(() => { TaskRan = true; return TaskSource.Task; }, CancellationToken.None);
 
 		while (!TaskRan)
 		{
@@ -249,7 +249,7 @@ public class TaskQueueTests
 		var TaskRan = false;
 		//****************************************
 
-		var QueuedTask = Queue.QueueTask(() => { TaskRan = true; TaskSource.SetCanceled(); return TaskSource.Task; }, CancellationToken.None);
+		var QueuedTask = Queue.QueueAsync(() => { TaskRan = true; TaskSource.SetCanceled(); return TaskSource.Task; }, CancellationToken.None);
 
 		try
 		{
@@ -275,7 +275,7 @@ public class TaskQueueTests
 		var TaskRan = false;
 		//****************************************
 
-		var QueuedTask = Queue.QueueTask((value) => { Assert.AreEqual(42, value); TaskRan = true; return TaskSource.Task; }, 42, CancellationToken.None);
+		var QueuedTask = Queue.QueueAsync((value) => { Assert.AreEqual(42, value); TaskRan = true; return TaskSource.Task; }, 42, CancellationToken.None);
 
 		TaskSource.SetResult();
 
@@ -295,7 +295,7 @@ public class TaskQueueTests
 		var SpinWait = new SpinWait();
 		//****************************************
 
-		var QueuedTask = Queue.QueueTask((value) => { TaskRan = true; Assert.AreEqual(42, value); return TaskSource.Task; }, 42, CancellationToken.None);
+		var QueuedTask = Queue.QueueAsync((value) => { TaskRan = true; Assert.AreEqual(42, value); return TaskSource.Task; }, 42, CancellationToken.None);
 
 		while (!TaskRan)
 			SpinWait.SpinOnce();
@@ -326,7 +326,7 @@ public class TaskQueueTests
 		var TaskRan = false;
 		//****************************************
 
-		var QueedTask = Queue.QueueTask((value) => { TaskRan = true; Assert.AreEqual(42, value); TaskSource.SetCanceled(); return TaskSource.Task; }, 42, CancellationToken.None);
+		var QueedTask = Queue.QueueAsync((value) => { TaskRan = true; Assert.AreEqual(42, value); TaskSource.SetCanceled(); return TaskSource.Task; }, 42, CancellationToken.None);
 
 		try
 		{
@@ -352,7 +352,7 @@ public class TaskQueueTests
 		var TaskRan = false;
 		//****************************************
 
-		var QueuedTask = Queue.QueueTask((value) => { Assert.AreEqual(42, value); TaskRan = true; return TaskSource.Task; }, 42, CancellationToken.None);
+		var QueuedTask = Queue.QueueAsync((value) => { Assert.AreEqual(42, value); TaskRan = true; return TaskSource.Task; }, 42, CancellationToken.None);
 
 		TaskSource.SetResult(30);
 
@@ -373,7 +373,7 @@ public class TaskQueueTests
 		var SpinWait = new SpinWait();
 		//****************************************
 
-		var QueuedTask = Queue.QueueTask((value) => { TaskRan = true; Assert.AreEqual(42, value); return TaskSource.Task; }, 42, CancellationToken.None);
+		var QueuedTask = Queue.QueueAsync((value) => { TaskRan = true; Assert.AreEqual(42, value); return TaskSource.Task; }, 42, CancellationToken.None);
 
 		while (!TaskRan)
 			SpinWait.SpinOnce();
@@ -404,7 +404,7 @@ public class TaskQueueTests
 		var TaskRan = false;
 		//****************************************
 
-		var QueuedTask = Queue.QueueTask((value) => { TaskRan = true; Assert.AreEqual(42, value); TaskSource.SetCanceled(); return TaskSource.Task; }, 42, CancellationToken.None);
+		var QueuedTask = Queue.QueueAsync((value) => { TaskRan = true; Assert.AreEqual(42, value); TaskSource.SetCanceled(); return TaskSource.Task; }, 42, CancellationToken.None);
 
 		try
 		{
@@ -430,7 +430,7 @@ public class TaskQueueTests
 		var TaskRan = false;
 		//****************************************
 
-		var QueuedTask = Queue.QueueTask(() => { TaskRan = true; return TaskSource.Task; }, CancellationToken.None);
+		var QueuedTask = Queue.QueueAsync(() => { TaskRan = true; return TaskSource.Task; }, CancellationToken.None);
 
 		TaskSource.SetResult(30);
 
@@ -451,7 +451,7 @@ public class TaskQueueTests
 		var SpinWait = new SpinWait();
 		//****************************************
 
-		var QueuedTask = Queue.QueueTask(() => { TaskRan = true; return TaskSource.Task; }, CancellationToken.None);
+		var QueuedTask = Queue.QueueAsync(() => { TaskRan = true; return TaskSource.Task; }, CancellationToken.None);
 
 		while (!TaskRan)
 			SpinWait.SpinOnce();
@@ -482,7 +482,7 @@ public class TaskQueueTests
 		var TaskRan = false;
 		//****************************************
 
-		var QueuedTask = Queue.QueueTask(() => { TaskRan = true; TaskSource.SetCanceled(); return TaskSource.Task; }, CancellationToken.None);
+		var QueuedTask = Queue.QueueAsync(() => { TaskRan = true; TaskSource.SetCanceled(); return TaskSource.Task; }, CancellationToken.None);
 
 		try
 		{
@@ -507,7 +507,7 @@ public class TaskQueueTests
 		var TaskRan = false;
 		//****************************************
 
-		var QueuedTask = Queue.QueueTask(() => { TaskRan = true; return Task.CompletedTask; }, CancellationToken.None);
+		var QueuedTask = Queue.QueueAsync(() => { TaskRan = true; return Task.CompletedTask; }, CancellationToken.None);
 
 		await QueuedTask.WaitAsync(token);
 
@@ -525,7 +525,7 @@ public class TaskQueueTests
 		var SpinWait = new SpinWait();
 		//****************************************
 
-		var QueuedTask = Queue.QueueTask(() => { TaskRan = true; return TaskSource.Task; }, CancellationToken.None);
+		var QueuedTask = Queue.QueueAsync(() => { TaskRan = true; return TaskSource.Task; }, CancellationToken.None);
 
 		while (!TaskRan)
 			SpinWait.SpinOnce();
@@ -554,7 +554,7 @@ public class TaskQueueTests
 		var SpinWait = new SpinWait();
 		//****************************************
 
-		var QueuedTask = Queue.QueueTask(() => { TaskRan = true; return TaskSource.Task; }, CancellationToken.None);
+		var QueuedTask = Queue.QueueAsync(() => { TaskRan = true; return TaskSource.Task; }, CancellationToken.None);
 
 		while (!TaskRan)
 			SpinWait.SpinOnce();
@@ -580,7 +580,7 @@ public class TaskQueueTests
 		var Queue = new TaskQueue();
 		//****************************************
 
-		var QueuedTask = Queue.QueueTask(() => { Assert.Pass("Completed"); return Task.CompletedTask; }, CancellationToken.None);
+		var QueuedTask = Queue.QueueAsync(() => { Assert.Pass("Completed"); return Task.CompletedTask; }, CancellationToken.None);
 
 		await QueuedTask.WaitAsync(token);
 
@@ -596,7 +596,7 @@ public class TaskQueueTests
 		var TaskSource = new TaskCompletionSource();
 		//****************************************
 
-		var QueuedTask = Queue.QueueTask(() => { TaskSource.SetException(new ApplicationException()); return TaskSource.Task; }, CancellationToken.None);
+		var QueuedTask = Queue.QueueAsync(() => { TaskSource.SetException(new ApplicationException()); return TaskSource.Task; }, CancellationToken.None);
 
 		//****************************************
 
@@ -618,7 +618,7 @@ public class TaskQueueTests
 		var TaskSource = new TaskCompletionSource();
 		//****************************************
 
-		var QueuedTask = Queue.QueueTask(() => { TaskSource.SetException(new ApplicationException()); return TaskSource.Task; }, CancellationToken.None);
+		var QueuedTask = Queue.QueueAsync(() => { TaskSource.SetException(new ApplicationException()); return TaskSource.Task; }, CancellationToken.None);
 
 		//****************************************
 
@@ -1302,7 +1302,7 @@ public class TaskQueueTests
 
 		using (var CancelSource = new CancellationTokenSource())
 		{
-			FirstTask = Queue.QueueTask(() => FirstSource.Task, CancellationToken.None);
+			FirstTask = Queue.QueueAsync(() => FirstSource.Task, CancellationToken.None);
 			SecondTask = Queue.Queue(() => { SecondRan = true; }, CancelSource.Token);
 
 			CancelSource.Cancel();
@@ -1342,7 +1342,7 @@ public class TaskQueueTests
 
 		using (var CancelSource = new CancellationTokenSource())
 		{
-			FirstTask = Queue.QueueTask(() => FirstSource.Task, CancellationToken.None);
+			FirstTask = Queue.QueueAsync(() => FirstSource.Task, CancellationToken.None);
 			SecondTask = Queue.Queue((value) => { SecondRan = true; }, 42, CancelSource.Token);
 
 			CancelSource.Cancel();
@@ -1382,7 +1382,7 @@ public class TaskQueueTests
 
 		using (var CancelSource = new CancellationTokenSource())
 		{
-			FirstTask = Queue.QueueTask(() => FirstSource.Task, CancellationToken.None);
+			FirstTask = Queue.QueueAsync(() => FirstSource.Task, CancellationToken.None);
 			SecondTask = Queue.Queue(() => { SecondRan = true; return 2; }, CancelSource.Token);
 
 			CancelSource.Cancel();
@@ -1424,8 +1424,8 @@ public class TaskQueueTests
 
 		using (var CancelSource = new CancellationTokenSource())
 		{
-			FirstTask = Queue.QueueTask(() => FirstSource.Task, CancellationToken.None);
-			SecondTask = Queue.QueueTask(() => { SecondRan = true; return Task.CompletedTask; }, CancelSource.Token);
+			FirstTask = Queue.QueueAsync(() => FirstSource.Task, CancellationToken.None);
+			SecondTask = Queue.QueueAsync(() => { SecondRan = true; return Task.CompletedTask; }, CancelSource.Token);
 
 			await Task.Yield();
 
@@ -1466,8 +1466,8 @@ public class TaskQueueTests
 
 		using (var CancelSource = new CancellationTokenSource())
 		{
-			FirstTask = Queue.QueueTask(() => FirstSource.Task, CancellationToken.None);
-			SecondTask = Queue.QueueTask((value) => { SecondRan = true; return Task.CompletedTask; }, 42, CancelSource.Token);
+			FirstTask = Queue.QueueAsync(() => FirstSource.Task, CancellationToken.None);
+			SecondTask = Queue.QueueAsync((value) => { SecondRan = true; return Task.CompletedTask; }, 42, CancelSource.Token);
 
 			await Task.Yield();
 
@@ -1505,7 +1505,7 @@ public class TaskQueueTests
 
 		FirstSource = new TaskCompletionSource();
 
-		FirstTask = Queue.QueueTask(() => FirstSource.Task, CancellationToken.None);
+		FirstTask = Queue.QueueAsync(() => FirstSource.Task, CancellationToken.None);
 		SecondTask = Queue.Queue(() => { Assert.Pass("Success"); }, CancellationToken.None);
 
 		//****************************************
@@ -1533,7 +1533,7 @@ public class TaskQueueTests
 
 		using (var CancelSource = new CancellationTokenSource())
 		{
-			FirstTask = Queue.QueueTask((value) => { Assert.AreEqual(12, value); return FirstSource.Task; }, 12, CancellationToken.None);
+			FirstTask = Queue.QueueAsync((value) => { Assert.AreEqual(12, value); return FirstSource.Task; }, 12, CancellationToken.None);
 			SecondTask = Queue.Queue((value) => { Assert.AreEqual(24, value); SecondRan = true; }, 24, CancelSource.Token);
 
 			await Task.Yield();
@@ -1575,9 +1575,9 @@ public class TaskQueueTests
 		SecondSource = new TaskCompletionSource();
 		ThirdSource = new TaskCompletionSource();
 
-		FirstTask = Queue.QueueTask(() => FirstSource.Task, CancellationToken.None);
-		SecondTask = Queue.QueueTask(() => { SecondRan = true; return SecondSource.Task; }, CancellationToken.None);
-		ThirdTask = Queue.QueueTask(() => { ThirdRan = true; return ThirdSource.Task; }, CancellationToken.None);
+		FirstTask = Queue.QueueAsync(() => FirstSource.Task, CancellationToken.None);
+		SecondTask = Queue.QueueAsync(() => { SecondRan = true; return SecondSource.Task; }, CancellationToken.None);
+		ThirdTask = Queue.QueueAsync(() => { ThirdRan = true; return ThirdSource.Task; }, CancellationToken.None);
 
 		await Task.Yield();
 
@@ -1613,9 +1613,9 @@ public class TaskQueueTests
 
 		using (var CancelSource = new CancellationTokenSource())
 		{
-			FirstTask = Queue.QueueTask(() => FirstSource.Task, CancellationToken.None);
+			FirstTask = Queue.QueueAsync(() => FirstSource.Task, CancellationToken.None);
 			SecondTask = Queue.Queue(() => { SecondRan = true; }, CancelSource.Token);
-			ThirdTask = Queue.QueueTask(() => { ThirdRan = true; return ThirdSource.Task; }, CancellationToken.None);
+			ThirdTask = Queue.QueueAsync(() => { ThirdRan = true; return ThirdSource.Task; }, CancellationToken.None);
 
 			await Task.Yield();
 
@@ -1661,9 +1661,9 @@ public class TaskQueueTests
 
 		using (var CancelSource = new CancellationTokenSource())
 		{
-			FirstTask = Queue.QueueTask(() => FirstSource.Task, CancellationToken.None);
-			SecondTask = Queue.QueueTask(() => { SecondRan = true; return Task.CompletedTask; }, CancelSource.Token);
-			ThirdTask = Queue.QueueTask(() => { ThirdRan = true; return ThirdSource.Task; }, CancellationToken.None);
+			FirstTask = Queue.QueueAsync(() => FirstSource.Task, CancellationToken.None);
+			SecondTask = Queue.QueueAsync(() => { SecondRan = true; return Task.CompletedTask; }, CancelSource.Token);
+			ThirdTask = Queue.QueueAsync(() => { ThirdRan = true; return ThirdSource.Task; }, CancellationToken.None);
 
 			await Task.Yield();
 
@@ -1732,7 +1732,7 @@ public class TaskQueueTests
 		var TaskSource = new TaskCompletionSource();
 		//****************************************
 
-		var QueuedTask = Queue.QueueTask(() => TaskSource.Task, CancellationToken.None);
+		var QueuedTask = Queue.QueueAsync(() => TaskSource.Task, CancellationToken.None);
 
 		var CompletionTask = Queue.Complete(CancellationToken.None);
 
@@ -1752,7 +1752,7 @@ public class TaskQueueTests
 		var TaskSource = new TaskCompletionSource<int>();
 		//****************************************
 
-		var QueuedTask = Queue.QueueTask(() => TaskSource.Task, CancellationToken.None);
+		var QueuedTask = Queue.QueueAsync(() => TaskSource.Task, CancellationToken.None);
 
 		var CompletionTask = Queue.Complete(CancellationToken.None);
 
@@ -1824,7 +1824,7 @@ public class TaskQueueTests
 		var RunCounter = 0;
 		//****************************************
 
-		var QueuedTask = Queue.QueueTask(() => TaskSource.Task, CancellationToken.None);
+		var QueuedTask = Queue.QueueAsync(() => TaskSource.Task, CancellationToken.None);
 
 		for (var Index = 0; Index < 100; Index++)
 			LatestTask = Queue.Queue(() => { RunCounter++; }, CancellationToken.None);
@@ -1923,7 +1923,7 @@ public class TaskQueueTests
 		var AllTasks = new List<Task>();
 		//****************************************
 
-		AllTasks.Add(Queue.QueueTask(() => TaskSource.Task, CancellationToken.None).AsTask());
+		AllTasks.Add(Queue.QueueAsync(() => TaskSource.Task, CancellationToken.None).AsTask());
 
 		async ValueTask Callback(int index)
 		{

@@ -196,7 +196,7 @@ public static class LinqExtensions
 
 		return Table.Count == 0 && NullCount == 0;
 	}
-#if !NET10_0_OR_GREATER
+#if !NET8_0_OR_GREATER
 	/// <summary>
 	/// Generates a copy of an enumeration as a dictionary
 	/// </summary>
@@ -242,11 +242,7 @@ public static class LinqExtensions
 		if (source is IReadOnlyCollection<T> ReadOnlyCollection)
 			return ReadOnlyCollection;
 
-#if NET40
-		return new ReadOnlyCollection<T>(source.ToArray());
-#else
 		return source.ToArray();
-#endif
 	}
 
 	/// <summary>
@@ -284,14 +280,10 @@ public static class LinqExtensions
 		if (source is IReadOnlyList<T> ReadOnlyList)
 			return ReadOnlyList;
 
-#if NET40
-		return new ReadOnlyList<T>(source.ToArray());
-#else
 		return source.ToArray();
-#endif
 	}
 
-#if !NETSTANDARD && !NET40
+#if !NETSTANDARD
 	/// <summary>
 	/// Converts an enumerable to a read-only set
 	/// </summary>

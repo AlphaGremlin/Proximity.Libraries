@@ -1,8 +1,5 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace System.Threading.Tasks;
 
@@ -21,10 +18,14 @@ internal sealed class ValueTaskIgnore
 
 	internal void Attach(ValueTask task)
 	{
-		_Awaiter = task.ConfigureAwait(false).GetAwaiter();
+		var Awaiter = task.ConfigureAwait(false).GetAwaiter();
 
-		if (_Awaiter.IsCompleted)
-			OnContinue();
+		if (Awaiter.IsCompleted)
+		{
+			Swallow(Awaiter);
+
+			Instances.Add(this);
+		}
 		else
 			_Awaiter.OnCompleted(_Continue);
 	}
@@ -33,13 +34,7 @@ internal sealed class ValueTaskIgnore
 
 	private void OnContinue()
 	{
-		try
-		{
-			_Awaiter.GetResult();
-		}
-		catch // Swallow exceptions, we're ignoring the result of this ValueTask
-		{
-		}
+		Swallow(_Awaiter);
 
 		// Return to the object pool
 		_Awaiter = default;
@@ -54,6 +49,17 @@ internal sealed class ValueTaskIgnore
 			NewInstance = new ValueTaskIgnore();
 
 		NewInstance.Attach(task);
+	}
+
+	private static void Swallow(ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter awaiter)
+	{
+		try
+		{
+			awaiter.GetResult();
+		}
+		catch // Swallow exceptions, we're ignoring the result of this ValueTask
+		{
+		}
 	}
 }
 
@@ -72,10 +78,14 @@ internal sealed class ValueTaskIgnore<T>
 
 	internal void Attach(ValueTask<T> task)
 	{
-		_Awaiter = task.ConfigureAwait(false).GetAwaiter();
+		var Awaiter = task.ConfigureAwait(false).GetAwaiter();
 
-		if (_Awaiter.IsCompleted)
-			OnContinue();
+		if (Awaiter.IsCompleted)
+		{
+			Swallow(Awaiter);
+
+			Instances.Add(this);
+		}
 		else
 			_Awaiter.OnCompleted(_Continue);
 	}
@@ -84,13 +94,7 @@ internal sealed class ValueTaskIgnore<T>
 
 	private void OnContinue()
 	{
-		try
-		{
-			_Awaiter.GetResult();
-		}
-		catch // Swallow exceptions, we're ignoring the result of this ValueTask
-		{
-		}
+		Swallow(_Awaiter);
 
 		// Return to the object pool
 		_Awaiter = default;
@@ -105,5 +109,16 @@ internal sealed class ValueTaskIgnore<T>
 			NewInstance = new ValueTaskIgnore<T>();
 
 		NewInstance.Attach(task);
+	}
+
+	private static void Swallow(ConfiguredValueTaskAwaitable<T>.ConfiguredValueTaskAwaiter awaiter)
+	{
+		try
+		{
+			awaiter.GetResult();
+		}
+		catch // Swallow exceptions, we're ignoring the result of this ValueTask
+		{
+		}
 	}
 }

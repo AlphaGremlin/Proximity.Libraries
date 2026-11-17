@@ -1,12 +1,8 @@
-using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
-//****************************************
 
 namespace System.Threading.Tasks;
 
@@ -23,7 +19,7 @@ public sealed class TaskQueue
 	//****************************************
 
 	/// <summary>
-	/// Creates a new Task Queue
+	/// Creates a new Task Queue that executes all operations asynchronously
 	/// </summary>
 	public TaskQueue()
 	{
@@ -38,14 +34,7 @@ public sealed class TaskQueue
 	/// <param name="token">A token to cancel this action</param>
 	/// <returns>A task representing the completion of the action</returns>
 	public ValueTask Queue(Action action, CancellationToken token = default)
-	{
-		var NewTask = ActionTask.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
-
-		Interlocked.Increment(ref _PendingActions);
-		Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
-
-		return NewTask.Task;
-	}
+		=> EnqueueNew(ActionTask.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), false, token));
 
 	/// <summary>
 	/// Queues an action that takes a value
@@ -55,14 +44,7 @@ public sealed class TaskQueue
 	/// <param name="token">A token to cancel this action</param>
 	/// <returns>A task representing the completion of the action</returns>
 	public ValueTask Queue<TValue>(Action<TValue> action, TValue value, CancellationToken token = default)
-	{
-		var NewTask = ActionTask<TValue>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);
-
-		Interlocked.Increment(ref _PendingActions);
-		Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
-
-		return NewTask.Task;
-	}
+		=> EnqueueNew(ActionTask<TValue>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, false, token));
 
 	/// <summary>
 	/// Queues an action that returns a result
@@ -72,14 +54,7 @@ public sealed class TaskQueue
 	/// <returns>A task representing the completion of the action</returns>
 	/// <remarks>If the action returns a <see cref="Task"/> or <see cref="ValueTask"/>, you may want to use <see cref="O:QueueTask"/> instead</remarks>
 	public ValueTask<TResult> Queue<TResult>(Func<TResult> action, CancellationToken token = default)
-	{
-		var NewTask = FuncTask<TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
-
-		Interlocked.Increment(ref _PendingActions);
-		Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
-
-		return NewTask.Task;
-	}
+		=> EnqueueNew(FuncTask<TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), false, token));
 
 	/// <summary>
 	/// Queues an action that takes a value and returns a result
@@ -90,14 +65,7 @@ public sealed class TaskQueue
 	/// <returns>A task representing the completion of the action</returns>
 	/// <remarks>If the action returns a <see cref="Task"/> or <see cref="ValueTask"/>, you may want to use <see cref="O:QueueTask"/> instead</remarks>
 	public ValueTask<TResult> Queue<TValue, TResult>(Func<TValue, TResult> action, TValue value, CancellationToken token = default)
-	{
-		var NewTask = FuncTask<TValue, TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);
-
-		Interlocked.Increment(ref _PendingActions);
-		Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
-
-		return NewTask.Task;
-	}
+		=> EnqueueNew(FuncTask<TValue, TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, false, token));
 
 	/// <summary>
 	/// Queues an action returning a <see cref="Task"/>
@@ -106,15 +74,9 @@ public sealed class TaskQueue
 	/// <param name="token">A token to cancel this action</param>
 	/// <returns>A task representing the completion of the returned task</returns>
 	/// <remarks>The queue will not continue until the returned <see cref="Task"/> has been completed</remarks>
+	[Obsolete("Use QueueAsync overloads")]
 	public ValueTask QueueTask(Func<Task> action, CancellationToken token = default)
-	{
-		var NewTask = WrappedTask.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
-
-		Interlocked.Increment(ref _PendingActions);
-		Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
-
-		return NewTask.Task;
-	}
+		=> EnqueueNew(WrappedTask.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), false, token));
 
 	/// <summary>
 	/// Queues an action returning a <see cref="Task{TResult}"/>
@@ -123,15 +85,9 @@ public sealed class TaskQueue
 	/// <param name="token">A token to cancel this action</param>
 	/// <returns>A task representing the completion of the returned task and its result</returns>
 	/// <remarks>The queue will not continue until the returned <see cref="Task{TResult}"/> has been completed</remarks>
+	[Obsolete("Use QueueAsync overloads")]
 	public ValueTask<TResult> QueueTask<TResult>(Func<Task<TResult>> action, CancellationToken token = default)
-	{
-		var NewTask = WrappedFuncTask<TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
-
-		Interlocked.Increment(ref _PendingActions);
-		Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
-
-		return NewTask.Task;
-	}
+		=> EnqueueNew(WrappedFuncTask<TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), false, token));
 
 	/// <summary>
 	/// Queues an action taking a value and returning a <see cref="Task"/>
@@ -141,15 +97,9 @@ public sealed class TaskQueue
 	/// <param name="token">A token to cancel this action</param>
 	/// <returns>A task representing the completion of the returned task</returns>
 	/// <remarks>The queue will not continue until the returned <see cref="Task"/> has been completed</remarks>
+	[Obsolete("Use QueueAsync overloads")]
 	public ValueTask QueueTask<TValue>(Func<TValue, Task> action, TValue value, CancellationToken token = default)
-	{
-		var NewTask = WrappedTask<TValue>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);
-
-		Interlocked.Increment(ref _PendingActions);
-		Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
-
-		return NewTask.Task;
-	}
+		=> EnqueueNew(WrappedTask<TValue>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, false, token));
 
 	/// <summary>
 	/// Queues an action taking a value and returning a <see cref="Task{TResult}"/>
@@ -159,15 +109,51 @@ public sealed class TaskQueue
 	/// <param name="token">A token to cancel this action</param>
 	/// <returns>A task representing the completion of the returned task and its result</returns>
 	/// <remarks>The queue will not continue until the returned <see cref="Task{TResult}"/> has been completed</remarks>
+	[Obsolete("Use QueueAsync overloads")]
 	public ValueTask<TResult> QueueTask<TValue, TResult>(Func<TValue, Task<TResult>> action, TValue value, CancellationToken token = default)
-	{
-		var NewTask = WrappedFuncTask<TValue, TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);
+		=> EnqueueNew(WrappedFuncTask<TValue, TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, false, token));
 
-		Interlocked.Increment(ref _PendingActions);
-		Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
+	/// <summary>
+	/// Queues an action returning a <see cref="Task"/>
+	/// </summary>
+	/// <param name="action">The method to execute at the end of the queue</param>
+	/// <param name="token">A token to cancel this action</param>
+	/// <returns>A task representing the completion of the returned task</returns>
+	/// <remarks>The queue will not continue until the returned <see cref="Task"/> has been completed</remarks>
+	public ValueTask QueueAsync(Func<Task> action, CancellationToken token = default)
+		=> EnqueueNew(WrappedTask.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), false, token));
 
-		return NewTask.Task;
-	}
+	/// <summary>
+	/// Queues an action returning a <see cref="Task{TResult}"/>
+	/// </summary>
+	/// <param name="action">The method to execute at the end of the queue</param>
+	/// <param name="token">A token to cancel this action</param>
+	/// <returns>A task representing the completion of the returned task and its result</returns>
+	/// <remarks>The queue will not continue until the returned <see cref="Task{TResult}"/> has been completed</remarks>
+	public ValueTask<TResult> QueueAsync<TResult>(Func<Task<TResult>> action, CancellationToken token = default)
+		=> EnqueueNew(WrappedFuncTask<TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), false, token));
+
+	/// <summary>
+	/// Queues an action taking a value and returning a <see cref="Task"/>
+	/// </summary>
+	/// <param name="action">The method to execute at the end of the queue</param>
+	/// <param name="value">The value to pass to the action</param>
+	/// <param name="token">A token to cancel this action</param>
+	/// <returns>A task representing the completion of the returned task</returns>
+	/// <remarks>The queue will not continue until the returned <see cref="Task"/> has been completed</remarks>
+	public ValueTask QueueAsync<TValue>(Func<TValue, Task> action, TValue value, CancellationToken token = default)
+		=> EnqueueNew(WrappedTask<TValue>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, false, token));
+
+	/// <summary>
+	/// Queues an action taking a value and returning a <see cref="Task{TResult}"/>
+	/// </summary>
+	/// <param name="action">The method to execute at the end of the queue</param>
+	/// <param name="value">The value to pass to the action</param>
+	/// <param name="token">A token to cancel this action</param>
+	/// <returns>A task representing the completion of the returned task and its result</returns>
+	/// <remarks>The queue will not continue until the returned <see cref="Task{TResult}"/> has been completed</remarks>
+	public ValueTask<TResult> QueueAsync<TValue, TResult>(Func<TValue, Task<TResult>> action, TValue value, CancellationToken token = default)
+		=> EnqueueNew(WrappedFuncTask<TValue, TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, false, token));
 
 	/// <summary>
 	/// Queues an action returning a <see cref="ValueTask"/>
@@ -177,14 +163,7 @@ public sealed class TaskQueue
 	/// <returns>A task representing the completion of the returned task</returns>
 	/// <remarks>The queue will not continue until the returned <see cref="ValueTask"/> has been completed</remarks>
 	public ValueTask QueueAsync(Func<ValueTask> action, CancellationToken token = default)
-	{
-		var NewTask = WrappedValueTask.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
-
-		Interlocked.Increment(ref _PendingActions);
-		Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
-
-		return NewTask.Task;
-	}
+		=> EnqueueNew(WrappedValueTask.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), false, token));
 
 	/// <summary>
 	/// Queues an action returning a <see cref="ValueTask{TResult}"/>
@@ -194,14 +173,7 @@ public sealed class TaskQueue
 	/// <returns>A task representing the completion of the returned task and its result</returns>
 	/// <remarks>The queue will not continue until the returned <see cref="ValueTask{TResult}"/> has been completed</remarks>
 	public ValueTask<TResult> QueueAsync<TResult>(Func<ValueTask<TResult>> action, CancellationToken token = default)
-	{
-		var NewTask = WrappedFuncValueTask<TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), token);
-
-		Interlocked.Increment(ref _PendingActions);
-		Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
-
-		return NewTask.Task;
-	}
+		=> EnqueueNew(WrappedFuncValueTask<TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), false, token));
 
 	/// <summary>
 	/// Queues an action taking a value and returning a <see cref="ValueTask"/>
@@ -212,14 +184,7 @@ public sealed class TaskQueue
 	/// <returns>A task representing the completion of the returned task</returns>
 	/// <remarks>The queue will not continue until the returned <see cref="ValueTask"/> has been completed</remarks>
 	public ValueTask QueueAsync<TValue>(Func<TValue, ValueTask> action, TValue value, CancellationToken token = default)
-	{
-		var NewTask = WrappedValueTask<TValue>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);
-
-		Interlocked.Increment(ref _PendingActions);
-		Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
-
-		return NewTask.Task;
-	}
+		=> EnqueueNew(WrappedValueTask<TValue>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, false, token));
 
 	/// <summary>
 	/// Queues an action taking a value and returning a <see cref="ValueTask{TResult}"/>
@@ -230,14 +195,7 @@ public sealed class TaskQueue
 	/// <returns>A task representing the completion of the returned task and its result</returns>
 	/// <remarks>The queue will not continue until the returned <see cref="ValueTask{TResult}"/> has been completed</remarks>
 	public ValueTask<TResult> QueueAsync<TValue, TResult>(Func<TValue, ValueTask<TResult>> action, TValue value, CancellationToken token = default)
-	{
-		var NewTask = WrappedFuncValueTask<TValue, TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, token);
-
-		Interlocked.Increment(ref _PendingActions);
-		Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
-
-		return NewTask.Task;
-	}
+		=> EnqueueNew(WrappedFuncValueTask<TValue, TResult>.Retrieve(this, action ?? throw new ArgumentNullException(nameof(action)), value, false, token));
 
 	/// <summary>
 	/// Resets the queue, so future queued actions will begin executing immediately (essentially starts a new stream)
@@ -250,19 +208,8 @@ public sealed class TaskQueue
 	/// </summary>
 	/// <param name="token">A token to abort waiting</param>
 	public ValueTask Complete(CancellationToken token = default)
-	{
-		// Optimisation so we don't add Null Tasks when the stream is finished
-		if (Volatile.Read(ref _NextTask) == CompleteStreamTask)
-			return default;
-
-		// Append a Null Task to the Stream.
-		var NewTask = NullTask.Retrieve(this, token);
-
-		Interlocked.Increment(ref _PendingActions);
-		Interlocked.Exchange(ref _NextTask, NewTask).Queue(NewTask);
-
-		return NewTask.Task;
-	}
+		// ValueTask contract requires only one waiter, so we have to append a dummy task. We can skip this if the queue is empty
+		=> Volatile.Read(ref _NextTask) == CompleteStreamTask ? default : EnqueueNew(NullTask.Retrieve(this, token));
 
 	//****************************************
 
@@ -273,16 +220,57 @@ public sealed class TaskQueue
 
 	//****************************************
 
-	private static void ExecutePool(BaseTask nextTask) => ThreadPool.UnsafeQueueUserWorkItem(static (state) => ExecuteNextTask((BaseTask)state!), nextTask);
+	private ValueTask EnqueueNew(BaseTask<VoidStruct> task)
+	{
+		Interlocked.Increment(ref _PendingActions);
+		Interlocked.Exchange(ref _NextTask, task).Queue(task);
+
+		return new(task, task.TaskToken);
+	}
+
+	private ValueTask<T> EnqueueNew<T>(BaseValueTaskSource<T> task)
+	{
+		Interlocked.Increment(ref _PendingActions);
+		Interlocked.Exchange(ref _NextTask, task).Queue(task);
+
+		return new(task, task.TaskToken);
+	}
+
+	//****************************************
 
 	private static void ExecuteNextTask(BaseTask nextTask)
 	{
-		while (!ReferenceEquals(nextTask, CompleteStreamTask))
+		if (ReferenceEquals(nextTask, CompleteStreamTask))
+			return;
+
+		// Loop executing synchronous tasks - either inside QueueXX or from ContinueWrappedTask
+		while (nextTask.ExecuteSynchronously)
 		{
-			if (nextTask.TryActivate(out var NextTask))
+			if (nextTask.TryActivate(out var ContinueWithTask))
 				nextTask = nextTask.Execute();
 			else
-				nextTask = NextTask;
+				nextTask = ContinueWithTask;
+
+			if (ReferenceEquals(nextTask, CompleteStreamTask))
+				return;
+		}
+
+		// Task is not synchronous, so push to the thread pool
+		ThreadPool.UnsafeQueueUserWorkItem(ExecuteNextTask, nextTask);
+
+		static void ExecuteNextTask(object? state)
+		{
+			var NextTask = (BaseTask)state!;
+
+			// Since we're on the threadpool ourselves, synchronous or asynchronous is fine
+			do
+			{
+				if (NextTask.TryActivate(out var ContinueWithTask))
+					NextTask = NextTask.Execute();
+				else
+					NextTask = ContinueWithTask;
+			}
+			while (!ReferenceEquals(NextTask, CompleteStreamTask));
 		}
 	}
 
@@ -290,7 +278,7 @@ public sealed class TaskQueue
 
 	private class BaseTask
 	{
-		public virtual void Queue(BaseTask child) => ExecutePool(child);
+		public virtual void Queue(BaseTask child) => ExecuteNextTask(child);
 
 		public virtual bool TryActivate(
 #if !NETSTANDARD2_0
@@ -299,11 +287,14 @@ public sealed class TaskQueue
 		out BaseTask nextTask) => throw new InvalidOperationException("Cannot activate completed task");
 
 		public virtual BaseTask Execute() => throw new InvalidOperationException("Cannot execute completed task");
+
+		public virtual bool ExecuteSynchronously => true;
 	}
 
-	private abstract class BaseTask<TResult> : BaseTask
+	private abstract class BaseTask<TResult> : BaseTask, IValueTaskSource
 	{ //****************************************
 		private TaskQueue? _Stream;
+		private bool _ExecuteSynchronously;
 		private BaseTask? _NextTask;
 
 		private ManualResetValueTaskSourceCore<TResult> _TaskSource = new();
@@ -331,7 +322,7 @@ public sealed class TaskQueue
 				// Make sure to release this Task to the pool now it's not longer referenced
 				TryRelease();
 
-				ExecutePool(child);
+				ExecuteNextTask(child);
 			}
 			else
 			{
@@ -381,13 +372,16 @@ public sealed class TaskQueue
 			}
 		}
 
+		void IValueTaskSource.GetResult(short token) => GetResult(token);
+
 		public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _TaskSource.OnCompleted(continuation, state, token, flags);
 
 		//****************************************
 
-		protected void Initialise(TaskQueue stream, CancellationToken token)
+		protected void Initialise(TaskQueue stream, bool executeSynchronously, CancellationToken token)
 		{
 			_Stream = stream;
+			_ExecuteSynchronously = executeSynchronously;
 
 			if (token.CanBeCanceled)
 			{
@@ -406,6 +400,8 @@ public sealed class TaskQueue
 		{
 			var NextTask = Complete();
 
+			// Anyone who awaits this queued item will have their continuation triggered here
+			// Since we always run continuations async, this won't block continuing the queue
 			_TaskSource.SetResult(result);
 
 			return NextTask;
@@ -430,48 +426,42 @@ public sealed class TaskQueue
 
 		private BaseTask Complete()
 		{
-			// If we're the head of the queue, mark the entire queue as completed.
+			// If we're still the head of the queue, mark the entire queue as completed.
 			// This improves TaskQueue.Complete performance, and ensures there's no leftover reference to us.
 			var IsComplete = ReferenceEquals(Interlocked.CompareExchange(ref _Stream!._NextTask, CompleteStreamTask, this), this);
 
 			// Reduce the number of pending actions
 			Interlocked.Decrement(ref _Stream!._PendingActions);
 
-			BaseTask? NextTask = null;
-
 			if (IsComplete)
 			{
 				// No need to mark ourselves as complete, since it's implied by clearing the queue head.
 				// No more reference to us on the queue, so we can safely call TryRelease
 				TryRelease();
-			}
-			else
-			{
-				// We're not the head of the queue, so TaskQueue.QueueX has been called.
-				// Set this task to Complete, and capture the next Task in the chain if it's been queued yet.
-				// If it hasn't, the QueueX call will handle execution.
-				NextTask = Interlocked.CompareExchange(ref _NextTask, CompleteStreamTask, null);
 
-				if (NextTask is null)
-				{
-					// We're not the head, but our Queue method hasn't been called yet.
-					// This means a TaskQueue.QueueX method is still in progress, and we can't safely call TryRelease here.
-					// Instead, it will get called by Queue when it detects our NextTask was set to CompleteStreamTask
-				}
-				else
-				{
-					// QueueX has already called our Queue method, so we're safe to release
-					TryRelease();
-				}
+				return CompleteStreamTask;
 			}
 
-			// If we don't have a following Task, ensure that ExecuteNextTask knows to abort.
-			return NextTask ?? CompleteStreamTask;
+			// We're not the head of the queue, so TaskQueue.QueueX has been called
+
+			// Set this task to Complete, and capture the next Task in the chain to continue execution
+			// If the next Task is null, then TaskQueue has yet to call our Queue method to attach the next link
+			// ie: our completion preempted TaskQueue.EnqueueNew mid-processing
+			var NextTask = Interlocked.Exchange(ref _NextTask, CompleteStreamTask);
+
+			if (NextTask is null)
+			// We're in the preempted scenario, so Queue will take care of releasing us and executing the next link
+				return CompleteStreamTask;
+
+			TryRelease();
+
+			return NextTask;
 		}
 
 		private void TryRelease()
 		{
 			// Both GetResult and Complete need to be called before we can release this Task to the pool
+			// If the task never gets awaited, we don't really care - we'll just get garbage collected
 			if (Interlocked.Increment(ref _TaskState) < 2)
 				return;
 
@@ -497,35 +487,141 @@ public sealed class TaskQueue
 		//****************************************
 
 		internal short TaskToken => _TaskSource.Version;
+
+		public override bool ExecuteSynchronously => _ExecuteSynchronously;
 	}
 
-	private abstract class BaseValueTaskSource : BaseTask<VoidStruct>, IValueTaskSource
-	{
-		void IValueTaskSource.GetResult(short token) => GetResult(token);
+	private abstract class BaseValueTaskSource : BaseTask<VoidStruct>
+	{ //****************************************
+		private Action? _ContinueWrappedTask;
 
+		private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _InnerTask;
 		//****************************************
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		protected BaseTask SwitchToSucceeded() => SwitchToSucceeded(default);
+		public override sealed BaseTask Execute()
+		{
+			if (!TryActivate(out var NextTask))
+				return NextTask;
 
-		//****************************************
+			try
+			{
+				var Awaiter = GetAwaitable().ConfigureAwait(false).GetAwaiter();
 
-		public ValueTask Task => new(this, TaskToken);
+				if (Awaiter.IsCompleted)
+				{
+					Awaiter.GetResult();
+
+					return SwitchToSucceeded(default);
+				}
+
+				_InnerTask = Awaiter;
+
+				Awaiter.OnCompleted(_ContinueWrappedTask ??= ContinueWrappedTask);
+
+				return CompleteStreamTask;
+			}
+			catch (OperationCanceledException e)
+			{
+				return SwitchToCancelled(e.CancellationToken);
+			}
+			catch (Exception e)
+			{
+				return SwitchToFaulted(e);
+			}
+		}
+
+		protected abstract ValueTask GetAwaitable();
+
+		private void ContinueWrappedTask()
+		{
+			var Awaiter = _InnerTask;
+
+			_InnerTask = default;
+
+			// ExecuteNextTask may block executing the next queued task(s) if they're synchronous
+			try
+			{
+				Awaiter.GetResult();
+
+				ExecuteNextTask(SwitchToSucceeded(default));
+			}
+			catch (OperationCanceledException e)
+			{
+				ExecuteNextTask(SwitchToCancelled(e.CancellationToken));
+			}
+			catch (Exception e)
+			{
+				ExecuteNextTask(SwitchToFaulted(e));
+			}
+		}
 	}
 
 	private abstract class BaseValueTaskSource<TResult> : BaseTask<TResult>, IValueTaskSource<TResult>
-	{
-		public ValueTask<TResult> Task => new(this, TaskToken);
+	{ //****************************************
+		private Action? _ContinueWrappedTask;
+
+		private ConfiguredValueTaskAwaitable<TResult>.ConfiguredValueTaskAwaiter _InnerTask;
+		//****************************************
+
+		public override sealed BaseTask Execute()
+		{
+			try
+			{
+				var Awaiter = GetAwaitable().ConfigureAwait(false).GetAwaiter();
+
+				if (Awaiter.IsCompleted)
+					return SwitchToSucceeded(Awaiter.GetResult());
+
+				_InnerTask = Awaiter;
+
+				Awaiter.OnCompleted(_ContinueWrappedTask ??= ContinueWrappedTask);
+
+				return CompleteStreamTask;
+			}
+			catch (OperationCanceledException e)
+			{
+				return SwitchToCancelled(e.CancellationToken);
+			}
+			catch (Exception e)
+			{
+				return SwitchToFaulted(e);
+			}
+		}
+
+		protected abstract ValueTask<TResult> GetAwaitable();
+
+		private void ContinueWrappedTask()
+		{
+			var Awaiter = _InnerTask;
+
+			_InnerTask = default;
+
+			// ExecuteNextTask may block executing the next queued task(s) if they're synchronous
+			try
+			{
+				ExecuteNextTask(SwitchToSucceeded(Awaiter.GetResult()));
+			}
+			catch (OperationCanceledException e)
+			{
+				ExecuteNextTask(SwitchToCancelled(e.CancellationToken));
+			}
+			catch (Exception e)
+			{
+				ExecuteNextTask(SwitchToFaulted(e));
+			}
+		}
 	}
 
-	private sealed class NullTask : BaseValueTaskSource
+	private sealed class NullTask : BaseTask<VoidStruct>, IValueTaskSource
 	{ //****************************************
 		private readonly static ConcurrentBag<NullTask> Cache = new();
 		//****************************************
 
-		public override BaseTask Execute() => SwitchToSucceeded();
+		public override BaseTask Execute() => SwitchToSucceeded(default);
 
 		protected override void Return() => Cache.Add(this);
+
+		void IValueTaskSource.GetResult(short token) => GetResult(token);
 
 		//****************************************
 
@@ -534,7 +630,7 @@ public sealed class TaskQueue
 			if (!Cache.TryTake(out var Task))
 				Task = new NullTask();
 
-			Task.Initialise(stream, token);
+			Task.Initialise(stream, true, token);
 
 			return Task;
 		}
@@ -547,22 +643,11 @@ public sealed class TaskQueue
 		private Action? _Action;
 		//****************************************
 
-		public override BaseTask Execute()
+		protected override ValueTask GetAwaitable()
 		{
-			try
-			{
-				_Action!();
+			_Action!();
 
-				return SwitchToSucceeded();
-			}
-			catch (OperationCanceledException e)
-			{
-				return SwitchToCancelled(e.CancellationToken);
-			}
-			catch (Exception e)
-			{
-				return SwitchToFaulted(e);
-			}
+			return default;
 		}
 
 		protected override void Return()
@@ -574,13 +659,13 @@ public sealed class TaskQueue
 
 		//****************************************
 
-		public static BaseValueTaskSource Retrieve(TaskQueue stream, Action action, CancellationToken token)
+		public static BaseValueTaskSource Retrieve(TaskQueue stream, Action action, bool executeSynchronously, CancellationToken token)
 		{
 			if (!Cache.TryTake(out var Task))
 				Task = new ActionTask();
 
 			Task._Action = action;
-			Task.Initialise(stream, token);
+			Task.Initialise(stream, executeSynchronously, token);
 
 			return Task;
 		}
@@ -594,22 +679,11 @@ public sealed class TaskQueue
 		private TValue _Value = default!;
 		//****************************************
 
-		public override BaseTask Execute()
+		protected override ValueTask GetAwaitable()
 		{
-			try
-			{
-				_Action!(_Value!);
+			_Action!(_Value);
 
-				return SwitchToSucceeded();
-			}
-			catch (OperationCanceledException e)
-			{
-				return SwitchToCancelled(e.CancellationToken);
-			}
-			catch (Exception e)
-			{
-				return SwitchToFaulted(e);
-			}
+			return default;
 		}
 
 		protected override void Return()
@@ -622,332 +696,14 @@ public sealed class TaskQueue
 
 		//****************************************
 
-		public static BaseValueTaskSource Retrieve(TaskQueue stream, Action<TValue> action, TValue value, CancellationToken token)
+		public static BaseValueTaskSource Retrieve(TaskQueue stream, Action<TValue> action, TValue value, bool executeSynchronously, CancellationToken token)
 		{
 			if (!Cache.TryTake(out var Task))
 				Task = new ActionTask<TValue>();
 
 			Task._Action = action;
 			Task._Value = value;
-			Task.Initialise(stream, token);
-
-			return Task;
-		}
-	}
-
-	private sealed class WrappedTask : BaseValueTaskSource
-	{ //****************************************
-		private readonly static ConcurrentBag<WrappedTask> Cache = new();
-		//****************************************
-		private readonly Action _ContinueWrappedTask;
-
-		private Func<Task>? _Action;
-		private ConfiguredTaskAwaitable.ConfiguredTaskAwaiter _InnerTask;
-		//****************************************
-
-		public WrappedTask() => _ContinueWrappedTask = ContinueWrappedTask;
-
-		public override BaseTask Execute()
-		{
-			try
-			{
-				_InnerTask = _Action!().ConfigureAwait(false).GetAwaiter();
-
-				if (_InnerTask.IsCompleted)
-					return CompleteWrappedTask();
-
-				_InnerTask.OnCompleted(_ContinueWrappedTask);
-
-				return CompleteStreamTask;
-			}
-			catch (OperationCanceledException e)
-			{
-				return SwitchToCancelled(e.CancellationToken);
-			}
-			catch (Exception e)
-			{
-				return SwitchToFaulted(e);
-			}
-		}
-
-		protected override void Return()
-		{
-			_Action = null;
-			_InnerTask = default;
-
-			Cache.Add(this);
-		}
-
-		private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
-
-		private BaseTask CompleteWrappedTask()
-		{
-			try
-			{
-				_InnerTask.GetResult();
-
-				return SwitchToSucceeded();
-			}
-			catch (OperationCanceledException e)
-			{
-				return SwitchToCancelled(e.CancellationToken);
-			}
-			catch (Exception e)
-			{
-				return SwitchToFaulted(e);
-			}
-		}
-
-		//****************************************
-
-		public static BaseValueTaskSource Retrieve(TaskQueue stream, Func<Task> action, CancellationToken token)
-		{
-			if (!Cache.TryTake(out var Task))
-				Task = new WrappedTask();
-
-			Task._Action = action;
-			Task.Initialise(stream, token);
-
-			return Task;
-		}
-	}
-
-	private sealed class WrappedTask<TValue> : BaseValueTaskSource
-	{ //****************************************
-		private readonly static ConcurrentBag<WrappedTask<TValue>> Cache = new();
-		//****************************************
-		private readonly Action _ContinueWrappedTask;
-
-		private Func<TValue, Task>? _Action;
-		private TValue _Value = default!;
-		private ConfiguredTaskAwaitable.ConfiguredTaskAwaiter _InnerTask;
-		//****************************************
-
-		public WrappedTask() => _ContinueWrappedTask = ContinueWrappedTask;
-
-		public override BaseTask Execute()
-		{
-			try
-			{
-				_InnerTask = _Action!(_Value!).ConfigureAwait(false).GetAwaiter();
-
-				if (_InnerTask.IsCompleted)
-					return CompleteWrappedTask();
-
-				_InnerTask.OnCompleted(_ContinueWrappedTask);
-
-				return CompleteStreamTask;
-			}
-			catch (OperationCanceledException e)
-			{
-				return SwitchToCancelled(e.CancellationToken);
-			}
-			catch (Exception e)
-			{
-				return SwitchToFaulted(e);
-			}
-		}
-
-		protected override void Return()
-		{
-			_Action = null;
-			_Value = default!;
-			_InnerTask = default;
-
-			Cache.Add(this);
-		}
-
-		private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
-
-		private BaseTask CompleteWrappedTask()
-		{
-			try
-			{
-				_InnerTask.GetResult();
-
-				return SwitchToSucceeded();
-			}
-			catch (OperationCanceledException e)
-			{
-				return SwitchToCancelled(e.CancellationToken);
-			}
-			catch (Exception e)
-			{
-				return SwitchToFaulted(e);
-			}
-		}
-
-		//****************************************
-
-		public static BaseValueTaskSource Retrieve(TaskQueue stream, Func<TValue, Task> action, TValue value, CancellationToken token)
-		{
-			if (!Cache.TryTake(out var Task))
-				Task = new WrappedTask<TValue>();
-
-			Task._Action = action;
-			Task._Value = value;
-			Task.Initialise(stream, token);
-
-			return Task;
-		}
-	}
-
-	private sealed class WrappedValueTask : BaseValueTaskSource
-	{ //****************************************
-		private readonly static ConcurrentBag<WrappedValueTask> Cache = new();
-		//****************************************
-		private readonly Action _ContinueWrappedTask;
-
-		private Func<ValueTask>? _Action;
-		private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _InnerTask;
-		//****************************************
-
-		public WrappedValueTask() => _ContinueWrappedTask = ContinueWrappedTask;
-
-		public override BaseTask Execute()
-		{
-			if (!TryActivate(out var NextTask))
-				return NextTask;
-
-			try
-			{
-				var Awaiter = _InnerTask = _Action!().ConfigureAwait(false).GetAwaiter();
-
-				if (Awaiter.IsCompleted)
-					return CompleteWrappedTask();
-
-				Awaiter.OnCompleted(_ContinueWrappedTask);
-
-				return CompleteStreamTask;
-			}
-			catch (OperationCanceledException e)
-			{
-				return SwitchToCancelled(e.CancellationToken);
-			}
-			catch (Exception e)
-			{
-				return SwitchToFaulted(e);
-			}
-		}
-
-		protected override void Return()
-		{
-			_Action = null;
-			_InnerTask = default;
-
-			Cache.Add(this);
-		}
-
-		private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
-
-		private BaseTask CompleteWrappedTask()
-		{
-			try
-			{
-				_InnerTask.GetResult();
-
-				return SwitchToSucceeded();
-			}
-			catch (OperationCanceledException e)
-			{
-				return SwitchToCancelled(e.CancellationToken);
-			}
-			catch (Exception e)
-			{
-				return SwitchToFaulted(e);
-			}
-		}
-
-		//****************************************
-
-		public static BaseValueTaskSource Retrieve(TaskQueue stream, Func<ValueTask> action, CancellationToken token)
-		{
-			if (!Cache.TryTake(out var Task))
-				Task = new WrappedValueTask();
-
-			Task._Action = action;
-			Task.Initialise(stream, token);
-
-			return Task;
-		}
-	}
-
-	private sealed class WrappedValueTask<TValue> : BaseValueTaskSource
-	{ //****************************************
-		private readonly static ConcurrentBag<WrappedValueTask<TValue>> Cache = new();
-		//****************************************
-		private readonly Action _ContinueWrappedTask;
-
-		private Func<TValue, ValueTask>? _Action;
-		private TValue _Value = default!;
-		private ConfiguredValueTaskAwaitable.ConfiguredValueTaskAwaiter _InnerTask;
-		//****************************************
-
-		internal WrappedValueTask() => _ContinueWrappedTask = ContinueWrappedTask;
-
-		public override BaseTask Execute()
-		{
-			try
-			{
-				var Awaiter = _InnerTask = _Action!(_Value!).ConfigureAwait(false).GetAwaiter();
-
-				if (Awaiter.IsCompleted)
-					return CompleteWrappedTask();
-
-				Awaiter.OnCompleted(_ContinueWrappedTask);
-
-				return CompleteStreamTask;
-			}
-			catch (OperationCanceledException e)
-			{
-				return SwitchToCancelled(e.CancellationToken);
-			}
-			catch (Exception e)
-			{
-				return SwitchToFaulted(e);
-			}
-		}
-
-		protected override void Return()
-		{
-			_Action = null;
-			_Value = default!;
-			_InnerTask = default;
-
-			Cache.Add(this);
-		}
-
-		private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
-
-		private BaseTask CompleteWrappedTask()
-		{
-			try
-			{
-				_InnerTask.GetResult();
-
-				return SwitchToSucceeded();
-			}
-			catch (OperationCanceledException e)
-			{
-				return SwitchToCancelled(e.CancellationToken);
-			}
-			catch (Exception e)
-			{
-				return SwitchToFaulted(e);
-			}
-		}
-
-		//****************************************
-
-		public static BaseValueTaskSource Retrieve(TaskQueue stream, Func<TValue, ValueTask> action, TValue value, CancellationToken token)
-		{
-			if (!Cache.TryTake(out var Task))
-				Task = new WrappedValueTask<TValue>();
-
-			Task._Action = action;
-			Task._Value = value;
-
-			Task.Initialise(stream, token);
+			Task.Initialise(stream, executeSynchronously, token);
 
 			return Task;
 		}
@@ -960,21 +716,7 @@ public sealed class TaskQueue
 		private Func<TResult>? _Func;
 		//****************************************
 
-		public override BaseTask Execute()
-		{
-			try
-			{
-				return SwitchToSucceeded(_Func!());
-			}
-			catch (OperationCanceledException e)
-			{
-				return SwitchToCancelled(e.CancellationToken);
-			}
-			catch (Exception e)
-			{
-				return SwitchToFaulted(e);
-			}
-		}
+		protected override ValueTask<TResult> GetAwaitable() => new(_Func!());
 
 		protected override void Return()
 		{
@@ -985,14 +727,13 @@ public sealed class TaskQueue
 
 		//****************************************
 
-		public static BaseValueTaskSource<TResult> Retrieve(TaskQueue stream, Func<TResult> func, CancellationToken token)
+		public static BaseValueTaskSource<TResult> Retrieve(TaskQueue stream, Func<TResult> func, bool executeSynchronously, CancellationToken token)
 		{
 			if (!Cache.TryTake(out var Task))
 				Task = new FuncTask<TResult>();
 
 			Task._Func = func;
-
-			Task.Initialise(stream, token);
+			Task.Initialise(stream, executeSynchronously, token);
 
 			return Task;
 		}
@@ -1006,21 +747,7 @@ public sealed class TaskQueue
 		private TValue _Value = default!;
 		//****************************************
 
-		public override BaseTask Execute()
-		{
-			try
-			{
-				return SwitchToSucceeded(_Func!(_Value!));
-			}
-			catch (OperationCanceledException e)
-			{
-				return SwitchToCancelled(e.CancellationToken);
-			}
-			catch (Exception e)
-			{
-				return SwitchToFaulted(e);
-			}
-		}
+		protected override ValueTask<TResult> GetAwaitable() => new(_Func!(_Value));
 
 		protected override void Return()
 		{
@@ -1032,7 +759,7 @@ public sealed class TaskQueue
 
 		//****************************************
 
-		public static BaseValueTaskSource<TResult> Retrieve(TaskQueue stream, Func<TValue, TResult> func, TValue value, CancellationToken token)
+		public static BaseValueTaskSource<TResult> Retrieve(TaskQueue stream, Func<TValue, TResult> func, TValue value, bool executeSynchronously, CancellationToken token)
 		{
 			if (!Cache.TryTake(out var Task))
 				Task = new FuncTask<TValue, TResult>();
@@ -1040,7 +767,134 @@ public sealed class TaskQueue
 			Task._Func = func;
 			Task._Value = value;
 
-			Task.Initialise(stream, token);
+			Task.Initialise(stream, executeSynchronously, token);
+
+			return Task;
+		}
+	}
+
+	private sealed class WrappedTask : BaseValueTaskSource
+	{ //****************************************
+		private readonly static ConcurrentBag<WrappedTask> Cache = new();
+		//****************************************
+		private Func<Task>? _Action;
+		//****************************************
+
+		protected override ValueTask GetAwaitable() => new(_Action!());
+
+		protected override void Return()
+		{
+			_Action = null;
+
+			Cache.Add(this);
+		}
+
+		//****************************************
+
+		public static BaseValueTaskSource Retrieve(TaskQueue stream, Func<Task> action, bool executeSynchronously, CancellationToken token)
+		{
+			if (!Cache.TryTake(out var Task))
+				Task = new WrappedTask();
+
+			Task._Action = action;
+			Task.Initialise(stream, executeSynchronously, token);
+
+			return Task;
+		}
+	}
+
+	private sealed class WrappedTask<TValue> : BaseValueTaskSource
+	{ //****************************************
+		private readonly static ConcurrentBag<WrappedTask<TValue>> Cache = new();
+		//****************************************
+		private Func<TValue, Task>? _Action;
+		private TValue _Value = default!;
+		//****************************************
+
+		protected override ValueTask GetAwaitable() => new(_Action!(_Value));
+
+		protected override void Return()
+		{
+			_Action = null;
+			_Value = default!;
+
+			Cache.Add(this);
+		}
+
+		//****************************************
+
+		public static BaseValueTaskSource Retrieve(TaskQueue stream, Func<TValue, Task> action, TValue value, bool executeSynchronously, CancellationToken token)
+		{
+			if (!Cache.TryTake(out var Task))
+				Task = new WrappedTask<TValue>();
+
+			Task._Action = action;
+			Task._Value = value;
+			Task.Initialise(stream, executeSynchronously, token);
+
+			return Task;
+		}
+	}
+
+	private sealed class WrappedValueTask : BaseValueTaskSource
+	{ //****************************************
+		private readonly static ConcurrentBag<WrappedValueTask> Cache = new();
+		//****************************************
+		private Func<ValueTask>? _Action;
+		//****************************************
+
+		protected override ValueTask GetAwaitable() => _Action!();
+
+		protected override void Return()
+		{
+			_Action = null;
+
+			Cache.Add(this);
+		}
+
+		//****************************************
+
+		public static BaseValueTaskSource Retrieve(TaskQueue stream, Func<ValueTask> action, bool executeSynchronously, CancellationToken token)
+		{
+			if (!Cache.TryTake(out var Task))
+				Task = new WrappedValueTask();
+
+			Task._Action = action;
+			Task.Initialise(stream, executeSynchronously, token);
+
+			return Task;
+		}
+	}
+
+	private sealed class WrappedValueTask<TValue> : BaseValueTaskSource
+	{ //****************************************
+		private readonly static ConcurrentBag<WrappedValueTask<TValue>> Cache = new();
+		//****************************************
+		private Func<TValue, ValueTask>? _Action;
+		private TValue _Value = default!;
+		//****************************************
+
+		protected override ValueTask GetAwaitable() => _Action!(_Value);
+
+		protected override void Return()
+		{
+			_Action = null;
+			_Value = default!;
+
+			Cache.Add(this);
+		}
+
+		//****************************************
+
+		public static BaseValueTaskSource Retrieve(TaskQueue stream, Func<TValue, ValueTask> action, TValue value, bool executeSynchronously, CancellationToken token)
+		{
+			if (!Cache.TryTake(out var Task))
+				Task = new WrappedValueTask<TValue>();
+
+			Task._Action = action;
+			Task._Value = value;
+
+			Task.Initialise(stream, executeSynchronously, token);
 
 			return Task;
 		}
@@ -1050,73 +904,28 @@ public sealed class TaskQueue
 	{ //****************************************
 		private readonly static ConcurrentBag<WrappedFuncTask<TResult>> Cache = new();
 		//****************************************
-		private readonly Action _ContinueWrappedTask;
-
 		private Func<Task<TResult>>? _Func;
-		private ConfiguredTaskAwaitable<TResult>.ConfiguredTaskAwaiter _InnerTask;
 		//****************************************
 
-		public WrappedFuncTask() => _ContinueWrappedTask = ContinueWrappedTask;
-
-		public override BaseTask Execute()
-		{
-			try
-			{
-				_InnerTask = _Func!().ConfigureAwait(false).GetAwaiter();
-
-				if (_InnerTask.IsCompleted)
-					return CompleteWrappedTask();
-
-				_InnerTask.OnCompleted(_ContinueWrappedTask);
-
-				return CompleteStreamTask;
-			}
-			catch (OperationCanceledException e)
-			{
-				return SwitchToCancelled(e.CancellationToken);
-			}
-			catch (Exception e)
-			{
-				return SwitchToFaulted(e);
-			}
-		}
+		protected override ValueTask<TResult> GetAwaitable() => new(_Func!());
 
 		protected override void Return()
 		{
 			_Func = null;
-			_InnerTask = default;
 
 			Cache.Add(this);
 		}
 
-		private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
-
-		private BaseTask CompleteWrappedTask()
-		{
-			try
-			{
-				return SwitchToSucceeded(_InnerTask.GetResult());
-			}
-			catch (OperationCanceledException e)
-			{
-				return SwitchToCancelled(e.CancellationToken);
-			}
-			catch (Exception e)
-			{
-				return SwitchToFaulted(e);
-			}
-		}
-
 		//****************************************
 
-		public static BaseValueTaskSource<TResult> Retrieve(TaskQueue stream, Func<Task<TResult>> func, CancellationToken token)
+		public static BaseValueTaskSource<TResult> Retrieve(TaskQueue stream, Func<Task<TResult>> func, bool executeSynchronously, CancellationToken token)
 		{
 			if (!Cache.TryTake(out var Task))
 				Task = new WrappedFuncTask<TResult>();
 
 			Task._Func = func;
 
-			Task.Initialise(stream, token);
+			Task.Initialise(stream, executeSynchronously, token);
 
 			return Task;
 		}
@@ -1126,68 +935,23 @@ public sealed class TaskQueue
 	{ //****************************************
 		private readonly static ConcurrentBag<WrappedFuncTask<TValue, TResult>> Cache = new();
 		//****************************************
-		private readonly Action _ContinueWrappedTask;
-
 		private Func<TValue, Task<TResult>>? _Func;
 		private TValue _Value = default!;
-		private ConfiguredTaskAwaitable<TResult>.ConfiguredTaskAwaiter _InnerTask;
 		//****************************************
 
-		public WrappedFuncTask() => _ContinueWrappedTask = ContinueWrappedTask;
-
-		public override BaseTask Execute()
-		{
-			try
-			{
-				_InnerTask = _Func!(_Value!).ConfigureAwait(false).GetAwaiter();
-
-				if (_InnerTask.IsCompleted)
-					return CompleteWrappedTask();
-
-				_InnerTask.OnCompleted(_ContinueWrappedTask);
-
-				return CompleteStreamTask;
-			}
-			catch (OperationCanceledException e)
-			{
-				return SwitchToCancelled(e.CancellationToken);
-			}
-			catch (Exception e)
-			{
-				return SwitchToFaulted(e);
-			}
-		}
+		protected override ValueTask<TResult> GetAwaitable() => new(_Func!(_Value));
 
 		protected override void Return()
 		{
 			_Func = null;
 			_Value = default!;
-			_InnerTask = default;
 
 			Cache.Add(this);
 		}
 
-		private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
-
-		private BaseTask CompleteWrappedTask()
-		{
-			try
-			{
-				return SwitchToSucceeded(_InnerTask.GetResult());
-			}
-			catch (OperationCanceledException e)
-			{
-				return SwitchToCancelled(e.CancellationToken);
-			}
-			catch (Exception e)
-			{
-				return SwitchToFaulted(e);
-			}
-		}
-
 		//****************************************
 
-		public static BaseValueTaskSource<TResult> Retrieve(TaskQueue stream, Func<TValue, Task<TResult>> func, TValue value, CancellationToken token)
+		public static BaseValueTaskSource<TResult> Retrieve(TaskQueue stream, Func<TValue, Task<TResult>> func, TValue value, bool executeSynchronously, CancellationToken token)
 		{
 			if (!Cache.TryTake(out var Task))
 				Task = new WrappedFuncTask<TValue, TResult>();
@@ -1195,7 +959,7 @@ public sealed class TaskQueue
 			Task._Func = func;
 			Task._Value = value;
 
-			Task.Initialise(stream, token);
+			Task.Initialise(stream, executeSynchronously, token);
 
 			return Task;
 		}
@@ -1205,73 +969,28 @@ public sealed class TaskQueue
 	{ //****************************************
 		private readonly static ConcurrentBag<WrappedFuncValueTask<TResult>> Cache = new();
 		//****************************************
-		private readonly Action _ContinueWrappedTask;
-
 		private Func<ValueTask<TResult>>? _Func;
-		private ConfiguredValueTaskAwaitable<TResult>.ConfiguredValueTaskAwaiter _InnerTask;
 		//****************************************
 
-		internal WrappedFuncValueTask() => _ContinueWrappedTask = ContinueWrappedTask;
-
-		public override BaseTask Execute()
-		{
-			try
-			{
-				_InnerTask = _Func!().ConfigureAwait(false).GetAwaiter();
-
-				if (_InnerTask.IsCompleted)
-					return CompleteWrappedTask();
-
-				_InnerTask.OnCompleted(_ContinueWrappedTask);
-
-				return CompleteStreamTask;
-			}
-			catch (OperationCanceledException e)
-			{
-				return SwitchToCancelled(e.CancellationToken);
-			}
-			catch (Exception e)
-			{
-				return SwitchToFaulted(e);
-			}
-		}
+		protected override ValueTask<TResult> GetAwaitable() => _Func!();
 
 		protected override void Return()
 		{
 			_Func = null;
-			_InnerTask = default;
 
 			Cache.Add(this);
 		}
 
-		private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
-
-		private BaseTask CompleteWrappedTask()
-		{
-			try
-			{
-				return SwitchToSucceeded(_InnerTask.GetResult());
-			}
-			catch (OperationCanceledException e)
-			{
-				return SwitchToCancelled(e.CancellationToken);
-			}
-			catch (Exception e)
-			{
-				return SwitchToFaulted(e);
-			}
-		}
-
 		//****************************************
 
-		public static BaseValueTaskSource<TResult> Retrieve(TaskQueue stream, Func<ValueTask<TResult>> func, CancellationToken token)
+		public static BaseValueTaskSource<TResult> Retrieve(TaskQueue stream, Func<ValueTask<TResult>> func, bool executeSynchronously, CancellationToken token)
 		{
 			if (!Cache.TryTake(out var Task))
 				Task = new WrappedFuncValueTask<TResult>();
 
 			Task._Func = func;
 
-			Task.Initialise(stream, token);
+			Task.Initialise(stream, executeSynchronously, token);
 
 			return Task;
 		}
@@ -1281,67 +1000,22 @@ public sealed class TaskQueue
 	{ //****************************************
 		private readonly static ConcurrentBag<WrappedFuncValueTask<TValue, TResult>> Cache = new();
 		//****************************************
-		private readonly Action _ContinueWrappedTask;
-
 		private Func<TValue, ValueTask<TResult>>? _Func;
 		private TValue _Value = default!;
-		private ConfiguredValueTaskAwaitable<TResult>.ConfiguredValueTaskAwaiter _InnerTask;
 		//****************************************
 
-		public WrappedFuncValueTask() => _ContinueWrappedTask = ContinueWrappedTask;
-
-		public override BaseTask Execute()
-		{
-			try
-			{
-				_InnerTask = _Func!(_Value!).ConfigureAwait(false).GetAwaiter();
-
-				if (_InnerTask.IsCompleted)
-					return CompleteWrappedTask();
-
-				_InnerTask.OnCompleted(_ContinueWrappedTask);
-
-				return CompleteStreamTask;
-			}
-			catch (OperationCanceledException e)
-			{
-				return SwitchToCancelled(e.CancellationToken);
-			}
-			catch (Exception e)
-			{
-				return SwitchToFaulted(e);
-			}
-		}
+		protected override ValueTask<TResult> GetAwaitable() => _Func!(_Value);
 
 		protected override void Return()
 		{
 			_Func = null;
-			_InnerTask = default;
 
 			Cache.Add(this);
 		}
 
-		private void ContinueWrappedTask() => ExecuteNextTask(CompleteWrappedTask());
-
-		private BaseTask CompleteWrappedTask()
-		{
-			try
-			{
-				return SwitchToSucceeded(_InnerTask.GetResult());
-			}
-			catch (OperationCanceledException e)
-			{
-				return SwitchToCancelled(e.CancellationToken);
-			}
-			catch (Exception e)
-			{
-				return SwitchToFaulted(e);
-			}
-		}
-
 		//****************************************
 
-		public static BaseValueTaskSource<TResult> Retrieve(TaskQueue stream, Func<TValue, ValueTask<TResult>> func, TValue value, CancellationToken token)
+		public static BaseValueTaskSource<TResult> Retrieve(TaskQueue stream, Func<TValue, ValueTask<TResult>> func, TValue value, bool executeSynchronously, CancellationToken token)
 		{
 			if (!Cache.TryTake(out var Task))
 				Task = new WrappedFuncValueTask<TValue, TResult>();
@@ -1349,7 +1023,7 @@ public sealed class TaskQueue
 			Task._Func = func;
 			Task._Value = value;
 
-			Task.Initialise(stream, token);
+			Task.Initialise(stream, executeSynchronously, token);
 
 			return Task;
 		}
